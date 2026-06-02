@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>生前整理 - ダッシュボード</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" onload="onGsiLoad()" async></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/sheets.js"></script>
+  <script src="js/schema.js"></script>
+  <script>
+    function dashboardApp() {
+      return {
+        loading: true,
+        error: null,
+        overallPct: 0,
+        stats: { total: 0, done: 0, inProgress: 0, todo: 0 },
+        groups: GROUPS.map(g => ({ ...g, done: 0, total: 0, pct: 0 })),
+
+        async init() {
+          await waitForGsi();
+          initAuth(
+            () => this.load(),
+            () => { window.location.href = 'index.html'; }
+          );
+        },
+
+        async load() {
+          if (!CONFIG.SPREADSHEET_ID) {
+            this.error = 'js/config.js の SPREADSHEET_ID が未設定です';
+            this.loading = false;
+            return;
+          }
+          try {
+            // cash_flow のみ Phase 2 で実装
+            const rows = await getSheet('cash_flow');
+            const g = this.groups[0]; // 支出・収入
+            g.total = rows.length;
+            g.done = rows.filter(r => doneCount(r) === 4).length;
+            g.pct = g.total ? Math.round(g.done / g.total * 100) : 0;
+
+            const allDone = rows.reduce((s, r) => s + doneCount(r), 0);
+            const possible = rows.length * 4;
+
+            this.stats = {
+              total: rows.length,
+              done: rows.filter(r => doneCount(r) === 4).length,
+              inProgress: rows.filter(r => { const d = doneCount(r); return d > 0 && d < 4; }).length,
+              todo: rows.filter(r => doneCount(r) === 0).length
+            };
+            this.overallPct = possible ? Math.round(allDone / possible * 100) : 0;
+          } catch (e) {
+            this.error = e.message;
+          }
+          this.loading = false;
+        },
+
+        groupLink(group) {
+          if (group.sheets.length === 0) return null;
+          return `item-list.html?sheet=${group.sheets[0]}`;
+        }
+      };
+    }
+  </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <div x-data="dashboardApp()" x-init="init()">
+
+    <!-- Nav -->
+    <nav class="bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+      <p class="font-medium">生前整理</p>
+      <button @click="signOut()" class="text-xs text-gray-400 hover:text-gray-600">ログアウト</button>
+    </nav>
+
+    <!-- Loading -->
+    <div x-show="loading" class="flex items-center justify-center py-24 text-sm text-gray-400">読み込み中...</div>
+
+    <!-- Error -->
+    <div x-show="!loading && error" class="max-w-3xl mx-auto p-4">
+      <div class="bg-red-50 text-red-700 rounded-lg p-4 text-sm" x-text="error"></div>
+    </div>
+
+    <!-- Content -->
+    <div x-show="!loading && !error" class="max-w-3xl mx-auto p-4 space-y-4">
+
+      <div class="pt-2">
+        <p class="text-sm text-gray-500">家族で進める生前整理</p>
+      </div>
+
+      <!-- 全体進捗 -->
+      <div class="bg-white rounded-xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm text-gray-500">家族が受け取れる状態</span>
+          <span class="text-sm font-medium" x-text="overallPct + '%'"></span>
+        </div>
+        <div class="bg-gray-100 h-2 rounded-full overflow-hidden mb-4">
+          <div class="bg-blue-500 h-full rounded-full transition-all duration-500"
+               :style="'width:' + overallPct + '%'"></div>
+        </div>
+        <div class="grid grid-cols-4 gap-2 text-center">
+          <div>
+            <p class="text-2xl font-medium" x-text="stats.total"></p>
+            <p class="text-xs text-gray-400">項目数</p>
+          </div>
+          <div>
+            <p class="text-2xl font-medium text-green-600" x-text="stats.done"></p>
+            <p class="text-xs text-gray-400">完了</p>
+          </div>
+          <div>
+            <p class="text-2xl font-medium text-yellow-500" x-text="stats.inProgress"></p>
+            <p class="text-xs text-gray-400">進行中</p>
+          </div>
+          <div>
+            <p class="text-2xl font-medium text-blue-500" x-text="stats.todo"></p>
+            <p class="text-xs text-gray-400">TODO</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4グループ -->
+      <div class="bg-white rounded-xl p-5 shadow-sm">
+        <p class="font-medium mb-3">4つのグループ</p>
+        <div class="space-y-2">
+          <template x-for="(group, i) in groups" :key="i">
+            <div>
+              <template x-if="groupLink(group)">
+                <a :href="groupLink(group)"
+                   class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <span class="text-sm" x-text="group.label"></span>
+                  <div class="flex items-center gap-3">
+                    <div class="w-16 bg-gray-200 h-1 rounded-full overflow-hidden">
+                      <div class="bg-green-500 h-full" :style="'width:' + group.pct + '%'"></div>
+                    </div>
+                    <span class="text-xs text-gray-400 w-8 text-right"
+                          x-text="group.done + '/' + group.total"></span>
+                  </div>
+                </a>
+              </template>
+              <template x-if="!groupLink(group)">
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg opacity-40">
+                  <span class="text-sm" x-text="group.label"></span>
+                  <span class="text-xs text-gray-400">準備中</span>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/alpinejs@3/dist/cdn.min.js" defer></script>
+</body>
+</html>

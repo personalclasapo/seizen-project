@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>画面G・A・I：項目追加・ログイン・TODO</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+
+<div class="max-w-3xl mx-auto">
+
+<div class="mb-8">
+<h1 class="text-xl font-bold mb-1">画面G：項目追加フロー</h1>
+<p class="text-sm text-gray-600">グループ→項目タイプ→個別項目の3ステップで追加。最小限の情報で追加して、後から育てる方針。</p>
+
+<div class="mt-4 bg-white rounded-lg p-6 shadow-sm">
+
+<div class="mb-4">
+<p class="text-lg font-medium mb-1">項目を追加</p>
+<p class="text-sm text-gray-500">どのグループに、何を追加しますか？</p>
+</div>
+
+<div class="mb-4">
+<p class="text-sm text-gray-500 mb-2">Step 1：グループを選ぶ</p>
+<div class="grid grid-cols-2 gap-2">
+<button class="text-left p-3 border rounded-md hover:bg-gray-50">
+<span class="text-sm">支出・収入</span>
+</button>
+<button class="text-left p-3 bg-blue-50 border border-blue-300 rounded-md font-medium">
+<span class="text-sm text-blue-700">資産・負債</span>
+</button>
+<button class="text-left p-3 border rounded-md hover:bg-gray-50">
+<span class="text-sm">健康・人間関係</span>
+</button>
+<button class="text-left p-3 border rounded-md hover:bg-gray-50">
+<span class="text-sm">意思・希望</span>
+</button>
+</div>
+</div>
+
+<div class="mb-4">
+<p class="text-sm text-gray-500 mb-2">Step 2：項目タイプを選ぶ</p>
+<div class="grid grid-cols-3 gap-2">
+<button class="p-3 bg-blue-50 border border-blue-300 rounded-md font-medium">
+<span class="text-sm text-blue-700">銀行口座</span>
+</button>
+<button class="p-3 border rounded-md hover:bg-gray-50">
+<span class="text-sm">証券口座</span>
+</button>
+<button class="p-3 border rounded-md hover:bg-gray-50">
+<span class="text-sm">暗号資産</span>
+</button>
+<button class="p-3 border rounded-md hover:bg-gray-50">
+<span class="text-sm">不動産</span>
+</button>
+<button class="p-3 border rounded-md hover:bg-gray-50">
+<span class="text-sm">保険商品</span>
+</button>
+<button class="p-3 border rounded-md hover:bg-gray-50">
+<span class="text-sm">借入・保証</span>
+</button>
+</div>
+</div>
+
+<div class="bg-gray-50 rounded-md p-4">
+<p class="text-sm text-gray-500 mb-3">Step 3：銀行口座の情報を入力</p>
+
+<div class="mb-3">
+<label class="text-xs text-gray-500 block mb-1">銀行名・支店名</label>
+<input type="text" placeholder="例：三菱UFJ銀行 横浜支店" class="text-sm w-full px-3 py-2 border rounded-md">
+</div>
+
+<div class="mb-3">
+<label class="text-xs text-gray-500 block mb-1">名義人</label>
+<select class="text-sm w-full px-3 py-2 border rounded-md">
+<option>父</option>
+<option>母</option>
+<option>父・母共有</option>
+<option>その他</option>
+</select>
+</div>
+
+<div class="mb-3">
+<label class="text-xs text-gray-500 block mb-1">口座の状態</label>
+<div class="grid grid-cols-4 gap-2">
+<button class="text-xs py-2 border rounded-md hover:bg-gray-100">メイン</button>
+<button class="text-xs py-2 border rounded-md hover:bg-gray-100">サブ</button>
+<button class="text-xs py-2 border rounded-md hover:bg-gray-100">休眠</button>
+<button class="text-xs py-2 border rounded-md hover:bg-gray-100">解約予定</button>
+</div>
+</div>
+
+<div class="mb-4">
+<label class="text-xs text-gray-500 block mb-1">口座番号（任意）</label>
+<input type="text" placeholder="後から入力もできます" class="text-sm w-full px-3 py-2 border rounded-md">
+</div>
+
+<div class="flex justify-end gap-2">
+<button class="text-sm px-4 py-2 border rounded-md">キャンセル</button>
+<button class="text-sm px-4 py-2 bg-blue-600 text-white rounded-md">追加する</button>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="mb-8">
+<h1 class="text-xl font-bold mb-1">画面A：ログイン</h1>
+<p class="text-sm text-gray-600">Googleアカウントでログイン。家族メンバーごとのアクセス制御。</p>
+
+<div class="mt-4 bg-white rounded-lg p-10 shadow-sm">
+<div class="max-w-sm mx-auto">
+
+<div class="text-center mb-8">
+<p class="text-xl font-medium mb-1">生前整理サービス</p>
+<p class="text-sm text-gray-500">家族で進める、いざという時に動ける状態づくり</p>
+</div>
+
+<div class="bg-gray-50 rounded-lg p-6">
+<p class="text-sm text-center mb-5">ログインしてはじめる</p>
+<button class="w-full py-3 border bg-white rounded-md flex items-center justify-center gap-2 hover:bg-gray-50">
+<svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+<span class="text-sm">Googleアカウントでログイン</span>
+</button>
+<p class="text-xs text-gray-500 text-center mt-4 leading-relaxed">入力した情報は<br>あなたのGoogleスプレッドシートに<br>直接保存されます</p>
+</div>
+
+</div>
+</div>
+</div>
+
+<div>
+<h1 class="text-xl font-bold mb-1">画面I：TODO一覧</h1>
+<p class="text-sm text-gray-600">整えるべきタスクの一覧。家族で進める作業の見える化。</p>
+
+<div class="mt-4 bg-white rounded-lg p-6 shadow-sm">
+
+<div class="mb-4">
+<p class="text-lg font-medium mb-1">整えるべきこと</p>
+<p class="text-sm text-gray-500">家族が動ける状態にするために、対応が必要なこと</p>
+</div>
+
+<div class="flex gap-2 mb-4">
+<button class="text-xs px-3 py-1 bg-blue-50 text-blue-700 border border-blue-300 rounded-md font-medium">未完了 (7)</button>
+<button class="text-xs px-3 py-1 bg-white border rounded-md">完了 (12)</button>
+<button class="text-xs px-3 py-1 bg-white border rounded-md">すべて</button>
+</div>
+
+<div class="space-y-0 divide-y border rounded-md">
+
+<div class="flex items-center gap-3 p-3">
+<input type="checkbox" class="w-4 h-4">
+<div class="flex-1">
+<p class="text-sm">Netflix に家族会員を追加する</p>
+<p class="text-xs text-gray-500">Netflix・アクセス・操作観点</p>
+</div>
+<span class="text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded-md">未対応</span>
+</div>
+
+<div class="flex items-center gap-3 p-3">
+<input type="checkbox" class="w-4 h-4">
+<div class="flex-1">
+<p class="text-sm">三菱UFJ銀行 凍結時に止まる引き落とし設定を確認</p>
+<p class="text-xs text-gray-500">三菱UFJ銀行・緊急時の手順観点</p>
+</div>
+<span class="text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded-md">未対応</span>
+</div>
+
+<div class="flex items-center gap-3 p-3">
+<input type="checkbox" class="w-4 h-4">
+<div class="flex-1">
+<p class="text-sm">ゆうちょ銀行 通帳の場所を確認・記録</p>
+<p class="text-xs text-gray-500">ゆうちょ銀行・アクセス・操作観点</p>
+</div>
+<span class="text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded-md">未対応</span>
+</div>
+
+<div class="flex items-center gap-3 p-3">
+<input type="checkbox" class="w-4 h-4">
+<div class="flex-1">
+<p class="text-sm">第一生命 保険金請求の手順を整理</p>
+<p class="text-xs text-gray-500">第一生命 終身保険・緊急時の手順観点</p>
+</div>
+<span class="text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded-md">未対応</span>
+</div>
+
+<div class="flex items-center gap-3 p-3">
+<input type="checkbox" class="w-4 h-4">
+<div class="flex-1">
+<p class="text-sm">Apple決済の内訳（月3,200円）を確認</p>
+<p class="text-xs text-gray-500">明細抽出結果・要確認</p>
+</div>
+<span class="text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded-md">未対応</span>
+</div>
+
+</div>
+
+</div>
+</div>
+
+<div class="mt-6 text-sm text-gray-500">
+<p>実装メモ：</p>
+<ul class="list-disc list-inside mt-1 space-y-1">
+<li>画面G：項目追加は3ステップフロー、Step 3は項目タイプ固有のフォーム</li>
+<li>画面A：Google OAuthを使う、シンプルな構成</li>
+<li>画面I：TODOは各項目の4観点から自動生成（未確認の観点がTODOになる）+ 手動追加も可</li>
+</ul>
+</div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生前整理サービス 画面モック一覧</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+
+<div class="max-w-3xl mx-auto">
+
+<div class="mb-8">
+<h1 class="text-2xl font-bold mb-2">生前整理サービス 画面モック一覧</h1>
+<p class="text-sm text-gray-600">各画面のHTMLモック。Claude Codeで実装する際の出発点として参照する。</p>
+</div>
+
+<div class="bg-white rounded-lg p-6 shadow-sm mb-6">
+<h2 class="text-lg font-bold mb-3">画面の役割と関係</h2>
+<div class="text-sm text-gray-700 space-y-2">
+<p><strong>画面A：ログイン</strong>　最初の入口。Googleアカウントでログイン。</p>
+<p><strong>画面C：ダッシュボード</strong>　ホーム画面。全体進捗、4グループの状況、次にやることのサジェスト。</p>
+<p><strong>画面D：明細アップロード</strong>　明細PDF/CSVをアップロード（Google Driveに保存）。</p>
+<p><strong>画面E：明細抽出結果の確認</strong>　Claude Codeで解析された結果を、家族が確認・登録。</p>
+<p><strong>画面F：項目詳細（4観点）</strong>　中核画面。1項目に対して、4観点を2x2のグリッドで表示・編集。</p>
+<p><strong>画面G：項目追加フロー</strong>　新規項目の追加（グループ→項目タイプ→入力）。</p>
+<p><strong>画面H：項目一覧</strong>　項目を縦に並べる。詳細表示と簡易表示の切り替え可能。</p>
+<p><strong>画面I：TODO一覧</strong>　整えるべきタスクの一覧。</p>
+</div>
+</div>
+
+<div class="bg-white rounded-lg p-6 shadow-sm mb-6">
+<h2 class="text-lg font-bold mb-3">モックファイル一覧</h2>
+<div class="space-y-2">
+<a href="screen_f_item_detail.html" class="block p-3 bg-gray-50 rounded-md hover:bg-gray-100">
+<p class="font-medium text-sm">画面F：項目詳細（4観点）</p>
+<p class="text-xs text-gray-500">screen_f_item_detail.html</p>
+</a>
+<a href="screen_h_item_list.html" class="block p-3 bg-gray-50 rounded-md hover:bg-gray-100">
+<p class="font-medium text-sm">画面H：項目一覧（簡易表示・詳細表示）</p>
+<p class="text-xs text-gray-500">screen_h_item_list.html</p>
+</a>
+<a href="screen_c_dashboard.html" class="block p-3 bg-gray-50 rounded-md hover:bg-gray-100">
+<p class="font-medium text-sm">画面C：ダッシュボード</p>
+<p class="text-xs text-gray-500">screen_c_dashboard.html</p>
+</a>
+<a href="screen_d_e_upload_extraction.html" class="block p-3 bg-gray-50 rounded-md hover:bg-gray-100">
+<p class="font-medium text-sm">画面D・E：明細アップロードと抽出結果確認</p>
+<p class="text-xs text-gray-500">screen_d_e_upload_extraction.html</p>
+</a>
+<a href="screen_g_a_i_others.html" class="block p-3 bg-gray-50 rounded-md hover:bg-gray-100">
+<p class="font-medium text-sm">画面G・A・I：項目追加・ログイン・TODO</p>
+<p class="text-xs text-gray-500">screen_g_a_i_others.html</p>
+</a>
+</div>
+</div>
+
+<div class="bg-white rounded-lg p-6 shadow-sm mb-6">
+<h2 class="text-lg font-bold mb-3">UI設計の共通方針</h2>
+<div class="text-sm text-gray-700 space-y-2">
+<p><strong>カード型UI</strong>：項目を白地のカードで表示。シャドウで浮き上がる感じ。</p>
+<p><strong>色の意味</strong>：緑=完了、黄=未確認、グレー=該当なし、青=操作可能なボタンや情報</p>
+<p><strong>4観点の表示</strong>：項目詳細では2x2のグリッド、一覧の簡易表示では小さなアイコン4つ</p>
+<p><strong>レスポンシブ</strong>：PC・タブレット・スマホで使えるように。Tailwindのレスポンシブクラスで対応。</p>
+<p><strong>フォント・サイズ</strong>：基本は14px、見出しは16-22px。余白を多めに取って読みやすく。</p>
+</div>
+</div>
+
+<div class="bg-yellow-50 rounded-lg p-6 mb-6">
+<h2 class="text-lg font-bold mb-3">デザイントーンについて</h2>
+<p class="text-sm text-gray-700 leading-relaxed">
+このモックは、構造を確認するための仮置きデザイン。<br>
+実装時に、寺内さんが複数のトーン案（自然系/信頼系/温かさ系など）から判断する。<br>
+LP（tlife.info）とは別のブランディングが必要（LPは社外財務サポーター用）。
+</p>
+</div>
+
+<div class="bg-blue-50 rounded-lg p-6">
+<h2 class="text-lg font-bold mb-3">Claude Codeでの使い方</h2>
+<div class="text-sm text-gray-700 space-y-2">
+<p>1. 各モックHTMLを開いて構造を確認</p>
+<p>2. 実装する画面のモックを参照して、コードを生成</p>
+<p>3. データはGoogleスプシから取得、スプシのカラム構成は設計ドキュメント参照</p>
+<p>4. Tailwind CSSを使用、CDNから読み込み（モックと同じ構成）</p>
+<p>5. 認証はGoogle OAuth、APIは Google Sheets API / Drive API</p>
+</div>
+</div>
+
+</div>
+
+</body>
+</html>

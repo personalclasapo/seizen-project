@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>画面D・E：明細アップロードと抽出結果確認</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+
+<div class="max-w-3xl mx-auto">
+
+<div class="mb-8">
+<h1 class="text-xl font-bold mb-1">画面D：明細アップロード</h1>
+<p class="text-sm text-gray-600">明細PDF/CSVのアップロード画面。Claude Codeで自動解析する想定で、Webアプリでは解析しない。</p>
+
+<div class="mt-4 bg-white rounded-lg p-6 shadow-sm">
+
+<div class="mb-4">
+<p class="text-lg font-medium mb-1">明細をアップロード</p>
+<p class="text-sm text-gray-500">カード明細・銀行明細を投入</p>
+</div>
+
+<div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4">
+<svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+<p class="text-sm mb-1">ここにファイルをドラッグ&ドロップ</p>
+<p class="text-xs text-gray-500 mb-3">または</p>
+<button class="px-4 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50">ファイルを選択</button>
+<p class="text-xs text-gray-500 mt-3">対応形式：PDF、CSV（複数同時アップロード可）</p>
+</div>
+
+<div class="border-t pt-4 mb-4">
+<p class="text-sm font-medium mb-3">アップロード履歴</p>
+<div class="space-y-2">
+
+<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
+<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+<div class="flex-1">
+<p class="text-sm">三井住友カード明細_2025年6月-2026年5月.pdf</p>
+<p class="text-xs text-gray-500">2026/5/30 アップロード・12件の定期支払い検出</p>
+</div>
+<span class="text-xs text-green-700 bg-green-100 px-2 py-1 rounded-md">処理済</span>
+</div>
+
+<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
+<svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+<div class="flex-1">
+<p class="text-sm">楽天カード明細_2025年12月.pdf</p>
+<p class="text-xs text-gray-500">2026/5/30 アップロード</p>
+</div>
+<span class="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-md">処理中</span>
+</div>
+
+</div>
+</div>
+
+<div class="bg-blue-50 rounded-md p-4">
+<p class="text-sm font-medium mb-2">明細の集め方ガイド</p>
+<p class="text-xs text-gray-700 leading-relaxed">
+クレジットカード：各カード会社のマイページから過去12ヶ月分をPDFでダウンロード<br>
+銀行：ネットバンキングからCSVで取得（取得できない場合は通帳画像でも可）<br>
+過去分が取れない場合：今後発生する明細を随時アップロード
+</p>
+</div>
+
+</div>
+</div>
+
+<div>
+<h1 class="text-xl font-bold mb-1">画面E：明細抽出結果の確認</h1>
+<p class="text-sm text-gray-600">Claude Codeが解析した結果を、家族で確認・登録する画面。</p>
+
+<div class="mt-4 bg-white rounded-lg p-6 shadow-sm">
+
+<div class="mb-4">
+<p class="text-sm text-gray-500 mb-1">三井住友カード明細（2025年6月〜2026年5月）</p>
+<p class="text-lg font-medium">12件の定期支払いを検出しました</p>
+</div>
+
+<div class="space-y-3">
+
+<div class="border rounded-lg p-4">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-md">AI推定</span>
+<p class="font-medium">NETFLIX.COM</p>
+</div>
+<p class="font-medium">月1,490円</p>
+</div>
+<div class="flex items-center gap-2 mb-3">
+<span class="text-xs text-gray-500">推定種別：</span>
+<select class="text-xs border rounded px-2 py-1">
+<option>サブスク（動画配信）</option>
+<option>公共料金</option>
+<option>通信費</option>
+<option>その他</option>
+</select>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1 text-xs bg-blue-600 text-white rounded-md">登録する</button>
+<button class="px-3 py-1 text-xs bg-white border rounded-md">スキップ</button>
+</div>
+</div>
+
+<div class="border rounded-lg p-4">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded-md">要確認</span>
+<p class="font-medium">APPLE.COM/BILL</p>
+</div>
+<p class="font-medium">月3,200円</p>
+</div>
+<p class="text-xs text-gray-500 mb-3">Apple決済経由のため、内訳の確認が必要</p>
+<div class="flex gap-2">
+<button class="px-3 py-1 text-xs bg-white border rounded-md">内訳を入力</button>
+<button class="px-3 py-1 text-xs bg-white border rounded-md">スキップ</button>
+</div>
+</div>
+
+<div class="border rounded-lg p-4">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-md">AI推定</span>
+<p class="font-medium">東京電力エナジー</p>
+</div>
+<p class="font-medium">月平均 8,400円</p>
+</div>
+<div class="flex items-center gap-2 mb-3">
+<span class="text-xs text-gray-500">推定種別：</span>
+<select class="text-xs border rounded px-2 py-1">
+<option>公共料金（電気）</option>
+<option>サブスク</option>
+<option>通信費</option>
+<option>その他</option>
+</select>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1 text-xs bg-blue-600 text-white rounded-md">登録する</button>
+<button class="px-3 py-1 text-xs bg-white border rounded-md">スキップ</button>
+</div>
+</div>
+
+</div>
+
+<p class="text-xs text-gray-500 text-center mt-4">他9件の検出結果を表示</p>
+
+</div>
+</div>
+
+<div class="mt-6 text-sm text-gray-500">
+<p>実装メモ：</p>
+<ul class="list-disc list-inside mt-1 space-y-1">
+<li>画面Dではファイルアップロードのみ、Google Driveに保存される</li>
+<li>解析はClaude Codeで実行、結果は明細取引履歴シートに書き込まれる</li>
+<li>画面Eでは、解析済みデータを家族が確認、種別を修正、登録するかスキップする</li>
+<li>「AI推定」バッジ＝AIが種別を推定したもの、「要確認」バッジ＝内訳が必要なもの（Apple/Google決済など）</li>
+</ul>
+</div>
+
+</div>
+
+</body>
+</html>

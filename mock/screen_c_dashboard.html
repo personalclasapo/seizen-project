@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>画面C：ダッシュボード</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+
+<div class="max-w-3xl mx-auto">
+
+<div class="mb-4">
+<h1 class="text-xl font-bold mb-1">画面C：ダッシュボード</h1>
+<p class="text-sm text-gray-600">ホーム画面。全体進捗、4グループの状況、次にやることのサジェスト。</p>
+</div>
+
+<div class="mb-6">
+<p class="text-sm text-gray-500 mb-1">家族で進める生前整理</p>
+<p class="text-2xl font-medium">寺内家</p>
+</div>
+
+<div class="bg-white rounded-lg p-5 shadow-sm mb-4">
+<div class="flex items-center justify-between mb-3">
+<span class="text-sm text-gray-500">家族が動ける状態</span>
+<span class="text-sm font-medium">42%</span>
+</div>
+<div class="bg-gray-200 h-2 rounded-full overflow-hidden mb-4">
+<div class="bg-blue-500 w-[42%] h-full"></div>
+</div>
+<div class="grid grid-cols-4 gap-3">
+<div class="text-center">
+<p class="text-2xl font-medium">23</p>
+<p class="text-xs text-gray-500">項目数</p>
+</div>
+<div class="text-center">
+<p class="text-2xl font-medium text-green-600">8</p>
+<p class="text-xs text-gray-500">完了</p>
+</div>
+<div class="text-center">
+<p class="text-2xl font-medium text-yellow-600">15</p>
+<p class="text-xs text-gray-500">進行中</p>
+</div>
+<div class="text-center">
+<p class="text-2xl font-medium text-blue-600">7</p>
+<p class="text-xs text-gray-500">TODO</p>
+</div>
+</div>
+</div>
+
+<div class="bg-white rounded-lg p-5 shadow-sm mb-4">
+<p class="font-medium mb-3">4つのグループ</p>
+<div class="space-y-2">
+
+<div class="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer">
+<div class="flex items-center gap-3">
+<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+<div>
+<p class="text-sm">支出・収入</p>
+<p class="text-xs text-gray-500">支出 月¥48,200 / 収入 月¥185,000</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="bg-gray-200 w-16 h-1 rounded-full overflow-hidden">
+<div class="bg-green-500 w-[65%] h-full"></div>
+</div>
+<span class="text-xs text-gray-500">8/12</span>
+</div>
+</div>
+
+<div class="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer">
+<div class="flex items-center gap-3">
+<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+<p class="text-sm">資産・負債</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="bg-gray-200 w-16 h-1 rounded-full overflow-hidden">
+<div class="bg-green-500 w-[43%] h-full"></div>
+</div>
+<span class="text-xs text-gray-500">3/7</span>
+</div>
+</div>
+
+<div class="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer">
+<div class="flex items-center gap-3">
+<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+<p class="text-sm">健康・人間関係</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="bg-gray-200 w-16 h-1 rounded-full overflow-hidden">
+<div class="bg-green-500 w-0 h-full"></div>
+</div>
+<span class="text-xs text-gray-500">0/2</span>
+</div>
+</div>
+
+<div class="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer">
+<div class="flex items-center gap-3">
+<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+<p class="text-sm">意思・希望</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="bg-gray-200 w-16 h-1 rounded-full overflow-hidden">
+<div class="bg-green-500 w-0 h-full"></div>
+</div>
+<span class="text-xs text-gray-500">0/2</span>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="bg-white rounded-lg p-5 shadow-sm">
+<p class="font-medium mb-3">次にやること</p>
+<div class="space-y-2">
+<div class="flex items-center gap-3 p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
+<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+<div class="flex-1">
+<p class="text-sm">母のクレジットカード明細をアップロード</p>
+<p class="text-xs text-gray-500">サブスクや公共料金が自動で見える</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
+<svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+<div class="flex-1">
+<p class="text-sm">Netflixの解約手順を確認</p>
+<p class="text-xs text-gray-500">緊急時の手順が未確認</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
+<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+<div class="flex-1">
+<p class="text-sm">保険商品を登録する</p>
+<p class="text-xs text-gray-500">まだ登録されていません</p>
+</div>
+</div>
+</div>
+</div>
+
+<div class="mt-6 text-sm text-gray-500">
+<p>実装メモ：</p>
+<ul class="list-disc list-inside mt-1 space-y-1">
+<li>「家族が動ける状態」のパーセンテージは、全項目の4観点完了率から自動計算</li>
+<li>「支出・収入」グループには、月額合計を併記</li>
+<li>「次にやること」は、未完了の項目・新規アップロードの誘導など、状況に応じて動的に表示</li>
+</ul>
+</div>
+
+</div>
+
+</body>
+</html>
