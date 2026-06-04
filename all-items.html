@@ -21,7 +21,7 @@
         filterStatuses: [],
         showFilter: false,
 
-        get availableGroups() {
+        availableGroups() {
           const seen = new Set();
           const out = [];
           for (const item of this.allItems) {
@@ -30,11 +30,7 @@
           return out;
         },
 
-        get activeFilterCount() {
-          return this.filterGroups.length + this.filterStatuses.length;
-        },
-
-        get filtered() {
+        filtered() {
           let items = this.allItems;
 
           if (this.filterGroups.length > 0) {
@@ -74,12 +70,13 @@
                 getSheet(key).then(rows => ({ key, rows }))
               )
             );
+            const items = [];
             for (const r of results) {
               if (r.status === 'rejected') continue;
               const { key, rows } = r.value;
               const def = SHEETS[key];
               for (const row of rows) {
-                this.allItems.push({
+                items.push({
                   sheetKey: key,
                   group: def.group,
                   label: def.label,
@@ -89,6 +86,7 @@
                 });
               }
             }
+            this.allItems = items;
           } catch (e) {
             this.error = e.message;
           }
@@ -155,15 +153,15 @@
         </div>
         <div class="flex-1"></div>
         <button @click="showFilter = !showFilter"
-          :class="activeFilterCount > 0 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
+          :class="filterGroups.length + filterStatuses.length > 0 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
           class="px-3 py-1.5 text-xs border rounded-lg font-medium flex items-center gap-1.5">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M7 9h10M11 14h2"/>
           </svg>
           絞込
-          <span x-show="activeFilterCount > 0"
+          <span x-show="filterGroups.length + filterStatuses.length > 0"
                 class="bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
-                x-text="activeFilterCount"></span>
+                x-text="filterGroups.length + filterStatuses.length"></span>
         </button>
       </div>
 
@@ -172,7 +170,7 @@
         <div>
           <p class="text-xs text-gray-500 mb-2">グループ</p>
           <div class="flex flex-wrap gap-2">
-            <template x-for="g in availableGroups" :key="g">
+            <template x-for="g in availableGroups()" :key="g">
               <button @click="toggleGroup(g)"
                 :class="filterGroups.includes(g) ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
                 class="px-3 py-1 text-xs border rounded-lg" x-text="g"></button>
@@ -198,11 +196,11 @@
       </div>
 
       <!-- Item count -->
-      <p class="text-xs text-gray-400" x-text="filtered.length + '件'"></p>
+      <p class="text-xs text-gray-400" x-text="filtered().length + '件'"></p>
 
       <!-- Item list -->
       <div class="space-y-2">
-        <template x-for="item in filtered" :key="item.sheetKey + '-' + item.row._row">
+        <template x-for="item in filtered()" :key="item.sheetKey + '-' + item.row._row">
           <div @click="goDetail(item)"
                class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
             <div class="flex items-start justify-between mb-2">
@@ -225,7 +223,7 @@
           </div>
         </template>
 
-        <div x-show="filtered.length === 0" class="text-center py-16 text-gray-400 text-sm">
+        <div x-show="filtered().length === 0" class="text-center py-16 text-gray-400 text-sm">
           該当する項目がありません
         </div>
       </div>
