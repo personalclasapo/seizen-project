@@ -54,6 +54,14 @@
           return this.sheetDef.sub(row);
         },
 
+        itemAmount(row) {
+          return this.sheetDef.amount?.(row) || '';
+        },
+
+        itemHolder(row) {
+          return this.sheetDef.holder?.(row) || '';
+        },
+
         perspectiveStatuses(row) {
           return PERSPECTIVES.map(p => ({
             label: p.label,
@@ -136,13 +144,17 @@
           <div x-show="!detailView"
                @click="goDetail(row)"
                class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-            <div class="flex items-start justify-between mb-3">
-              <div class="flex-1 min-w-0">
-                <p class="font-medium truncate" x-text="itemName(row)"></p>
-                <p class="text-xs text-gray-400 mt-0.5 truncate" x-text="itemSub(row)"></p>
-              </div>
-              <span class="text-xs text-gray-400 ml-3 shrink-0"
-                    x-text="doneCount(row) + '/4'"></span>
+            <div class="flex items-start justify-between mb-1">
+              <p class="font-medium truncate flex-1 min-w-0" x-text="itemName(row)"></p>
+              <template x-if="itemHolder(row)">
+                <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
+                      class="text-xs px-2 py-0.5 rounded-full font-medium ml-2 shrink-0"
+                      x-text="itemHolder(row)"></span>
+              </template>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-sm font-medium text-gray-700" x-text="itemAmount(row)"></p>
+              <span class="text-xs text-gray-400" x-text="doneCount(row) + '/4'"></span>
             </div>
             <div class="grid grid-cols-4 gap-1.5">
               <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">
@@ -159,13 +171,17 @@
           <div x-show="detailView"
                @click="goDetail(row)"
                class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-            <div class="flex items-start justify-between mb-3">
-              <div class="flex-1 min-w-0">
-                <p class="font-medium truncate" x-text="itemName(row)"></p>
-                <p class="text-xs text-gray-400 mt-0.5" x-text="itemSub(row)"></p>
-              </div>
-              <span class="text-xs text-gray-400 ml-3 shrink-0"
-                    x-text="doneCount(row) + '/4'"></span>
+            <div class="flex items-start justify-between mb-1">
+              <p class="font-medium truncate flex-1 min-w-0" x-text="itemName(row)"></p>
+              <template x-if="itemHolder(row)">
+                <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
+                      class="text-xs px-2 py-0.5 rounded-full font-medium ml-2 shrink-0"
+                      x-text="itemHolder(row)"></span>
+              </template>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-sm font-medium text-gray-700" x-text="itemAmount(row)"></p>
+              <span class="text-xs text-gray-400" x-text="doneCount(row) + '/4'"></span>
             </div>
             <div class="grid grid-cols-2 gap-2">
               <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">

@@ -16,6 +16,17 @@ const PERSPECTIVES = [
 
 const STATUS_OPTIONS = ['完了', '未確認', '該当なし'];
 
+const HOLDER_COLORS = {
+  '父':  { bg: 'bg-blue-100',  text: 'text-blue-700'  },
+  '母':  { bg: 'bg-rose-100',  text: 'text-rose-700'  },
+  '自分': { bg: 'bg-green-100', text: 'text-green-700' },
+  '子':  { bg: 'bg-amber-100', text: 'text-amber-700' },
+};
+
+function holderColor(holder) {
+  return HOLDER_COLORS[holder] || { bg: 'bg-gray-100', text: 'text-gray-500' };
+}
+
 const SHEETS = {
   cash_flow: {
     label: 'サブスク・支払い',
@@ -33,7 +44,13 @@ const SHEETS = {
       else if (r.billing_amount) parts.push(`${Number(r.billing_amount).toLocaleString()}円`);
       if (r.contract_holder_id) parts.push(`契約者：${r.contract_holder_id}`);
       return parts.join(' · ');
-    }
+    },
+    amount: r => {
+      if (r.monthly_amount) return `月 ¥${Number(r.monthly_amount).toLocaleString()}`;
+      if (r.billing_amount) return `¥${Number(r.billing_amount).toLocaleString()}`;
+      return '';
+    },
+    holder: r => r.contract_holder_id || ''
   },
   bank_account: {
     label: '銀行口座',
