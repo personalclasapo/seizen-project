@@ -148,7 +148,7 @@
               <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">
                 <div :class="ps.color.bg + ' ' + ps.color.text"
                      class="rounded p-1.5 text-center">
-                  <div class="text-xs mb-0.5" x-text="ps.label.slice(0, 3)"></div>
+                  <div class="text-xs mb-0.5" x-text="ps.label"></div>
                   <div class="text-xs font-medium" x-text="ps.color.icon"></div>
                 </div>
               </template>

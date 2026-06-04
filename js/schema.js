@@ -8,10 +8,10 @@ const COMMON_COLS = [
 ];
 
 const PERSPECTIVES = [
-  { key: 'q1', statusCol: 'q1_existence_status',   contentCol: 'q1_existence_content',   label: '存在の把握' },
-  { key: 'q2', statusCol: 'q2_understanding_status', contentCol: 'q2_understanding_content', label: '中身の理解' },
-  { key: 'q3', statusCol: 'q3_access_status',       contentCol: 'q3_access_content',      label: 'アクセス・操作' },
-  { key: 'q4', statusCol: 'q4_emergency_status',    contentCol: 'q4_emergency_content',   label: '緊急時の手順' },
+  { key: 'q1', statusCol: 'q1_existence_status',   contentCol: 'q1_existence_content',   label: '把握' },
+  { key: 'q2', statusCol: 'q2_understanding_status', contentCol: 'q2_understanding_content', label: '中身' },
+  { key: 'q3', statusCol: 'q3_access_status',       contentCol: 'q3_access_content',      label: 'アクセス' },
+  { key: 'q4', statusCol: 'q4_emergency_status',    contentCol: 'q4_emergency_content',   label: '緊急' },
 ];
 
 const STATUS_OPTIONS = ['完了', '未確認', '該当なし'];
