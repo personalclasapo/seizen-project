@@ -67,7 +67,7 @@ const SHEETS = {
       if (n) cards.push({
         label: '金額', type: 'amount',
         amountNum: Number(n).toLocaleString(),
-        amountCycle: r.monthly_amount ? '月' : (r.billing_cycle || '')
+        amountCycle: r.billing_cycle === '月額' ? '月' : (r.billing_cycle || (r.monthly_amount ? '月' : ''))
       });
       if (r.plan) cards.push({ label: 'プラン', value: r.plan });
       if (r.contract_holder_id) cards.push({ label: '契約者', value: r.contract_holder_id });

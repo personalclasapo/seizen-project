@@ -164,9 +164,9 @@
           this.infoModal.error = null;
           try {
             const updated = { ...this.row, ...this.infoModal.f };
-            // monthly_amount を billing_amount に同期（月額の場合）
-            if (this.sheetKey === 'cash_flow' && this.infoModal.f.billing_cycle === '月額') {
-              updated.monthly_amount = this.infoModal.f.billing_amount;
+            if (this.sheetKey === 'cash_flow') {
+              updated.monthly_amount = this.infoModal.f.billing_cycle === '月額'
+                ? this.infoModal.f.billing_amount : '';
             }
             await updateRow(this.sheetKey, this.row._row, toRow(updated, getAllCols(this.sheetKey)));
             Object.assign(this.row, updated);
@@ -378,22 +378,16 @@
                 </div>
               </div>
               <div>
-                <label class="text-xs text-gray-500 block mb-1">契約者</label>
-                <input type="text" x-model="infoModal.f.contract_holder_id" @input="infoModal.dirty = true"
-                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                       placeholder="父"/>
-              </div>
-              <div>
                 <label class="text-xs text-gray-500 block mb-1">プラン（任意）</label>
                 <input type="text" x-model="infoModal.f.plan" @input="infoModal.dirty = true"
                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                        placeholder="家族プラン"/>
               </div>
               <div>
-                <label class="text-xs text-gray-500 block mb-1">支払い方法</label>
-                <input type="text" x-model="infoModal.f.payment_method" @input="infoModal.dirty = true"
+                <label class="text-xs text-gray-500 block mb-1">契約者</label>
+                <input type="text" x-model="infoModal.f.contract_holder_id" @input="infoModal.dirty = true"
                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                       placeholder="クレジットカード"/>
+                       placeholder="父"/>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">状態</label>
