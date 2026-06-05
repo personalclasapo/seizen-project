@@ -50,6 +50,10 @@
           return this.sheetDef.name(row);
         },
 
+        itemStatusTag(row) {
+          return this.sheetDef.statusTag?.(row) || null;
+        },
+
         itemSub(row) {
           return this.sheetDef.sub(row);
         },
@@ -167,13 +171,21 @@
       <!-- 項目リスト -->
       <div class="space-y-3">
         <template x-for="row in items" :key="row._row">
-          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden"
+               :class="itemStatusTag(row)?.muted ? 'opacity-60' : ''">
 
             <!-- 上部ゾーン：項目情報 → 詳細ページへ -->
             <div @click="goDetail(row)"
                  class="px-4 pt-4 pb-3 cursor-pointer hover:bg-gray-50 transition-colors">
               <div class="flex items-center justify-between mb-1">
-                <p class="font-medium truncate flex-1 min-w-0" x-text="itemName(row)"></p>
+                <div class="flex items-center gap-1.5 flex-1 min-w-0">
+                  <p class="font-medium truncate" x-text="itemName(row)"></p>
+                  <template x-if="itemStatusTag(row)">
+                    <span :class="itemStatusTag(row).bg + ' ' + itemStatusTag(row).text"
+                          class="text-xs px-1.5 py-0.5 rounded font-medium shrink-0 whitespace-nowrap"
+                          x-text="itemStatusTag(row).label"></span>
+                  </template>
+                </div>
                 <div class="flex items-center gap-2 ml-2 shrink-0">
                   <template x-if="itemHolder(row)">
                     <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
