@@ -11,6 +11,8 @@
   <script src="js/sheets.js"></script>
   <script src="js/schema.js"></script>
   <script>
+    const PENCIL_SVG = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>`;
+
     function itemDetailApp() {
       return {
         loading: true,
@@ -21,15 +23,14 @@
         targetRowIndex: null,
 
         perspectiveModal: {
-          open: false,
-          saving: false,
-          error: null,
-          statusCol: '',
-          contentCol: '',
-          label: '',
-          status: '未確認',
-          content: '',
-          dirty: false
+          open: false, saving: false, error: null,
+          statusCol: '', contentCol: '', label: '',
+          status: '未確認', content: '', dirty: false
+        },
+
+        infoModal: {
+          open: false, saving: false, error: null, dirty: false,
+          f: {}
         },
 
         async init() {
@@ -80,29 +81,16 @@
           return this.sheetDef.infoCards(this.row);
         },
 
-        itemName() {
-          return this.row ? this.sheetDef.name(this.row) : '';
-        },
+        itemName() { return this.row ? this.sheetDef.name(this.row) : ''; },
+        itemStatusTag() { return this.row ? (this.sheetDef.statusTag?.(this.row) || null) : null; },
+        backLink() { return `item-list.html?sheet=${this.sheetKey}`; },
 
-        itemStatusTag() {
-          return this.row ? (this.sheetDef.statusTag?.(this.row) || null) : null;
-        },
-
-        backLink() {
-          return `item-list.html?sheet=${this.sheetKey}`;
-        },
-
+        // ── 観点編集 ──
         openPerspectiveModal(ps) {
           this.perspectiveModal = {
-            open: true,
-            saving: false,
-            error: null,
-            statusCol: ps.statusCol,
-            contentCol: ps.contentCol,
-            label: ps.label,
-            status: ps.status,
-            content: ps.content,
-            dirty: false
+            open: true, saving: false, error: null,
+            statusCol: ps.statusCol, contentCol: ps.contentCol, label: ps.label,
+            status: ps.status, content: ps.content, dirty: false
           };
         },
 
@@ -118,10 +106,7 @@
             const updated = { ...this.row };
             updated[this.perspectiveModal.statusCol] = this.perspectiveModal.status;
             updated[this.perspectiveModal.contentCol] = this.perspectiveModal.content;
-
-            const cols = getAllCols(this.sheetKey);
-            await updateRow(this.sheetKey, this.row._row, toRow(updated, cols));
-
+            await updateRow(this.sheetKey, this.row._row, toRow(updated, getAllCols(this.sheetKey)));
             this.row[this.perspectiveModal.statusCol] = this.perspectiveModal.status;
             this.row[this.perspectiveModal.contentCol] = this.perspectiveModal.content;
             this.perspectiveModal.open = false;
@@ -129,6 +114,67 @@
             this.perspectiveModal.error = e.message;
           }
           this.perspectiveModal.saving = false;
+        },
+
+        // ── 基本情報編集 ──
+        openInfoModal() {
+          const r = this.row;
+          let f = {};
+          if (this.sheetKey === 'cash_flow') {
+            f = {
+              service_name: r.service_name || '',
+              billing_amount: r.billing_amount || '',
+              billing_cycle: r.billing_cycle || '月額',
+              contract_holder_id: r.contract_holder_id || '',
+              plan: r.plan || '',
+              payment_method: r.payment_method || '',
+              status: r.status || '継続中'
+            };
+          } else if (this.sheetKey === 'bank_account') {
+            f = {
+              bank_name: r.bank_name || '',
+              branch_name: r.branch_name || '',
+              account_type: r.account_type || '',
+              account_holder_id: r.account_holder_id || '',
+              account_status: r.account_status || 'メイン',
+              net_banking_usage: r.net_banking_usage || ''
+            };
+          } else if (this.sheetKey === 'insurance') {
+            f = {
+              insurance_company: r.insurance_company || '',
+              product_name: r.product_name || '',
+              insurance_type: r.insurance_type || '',
+              contract_holder_id: r.contract_holder_id || '',
+              insured_person_id: r.insured_person_id || '',
+              beneficiary_id: r.beneficiary_id || '',
+              payment_status: r.payment_status || '',
+              account_status: r.account_status || '継続中'
+            };
+          }
+          this.infoModal = { open: true, saving: false, error: null, dirty: false, f };
+        },
+
+        closeInfoModal() {
+          if (this.infoModal.dirty && !confirm('変更を破棄しますか？')) return;
+          this.infoModal.open = false;
+        },
+
+        async saveInfoModal() {
+          this.infoModal.saving = true;
+          this.infoModal.error = null;
+          try {
+            const updated = { ...this.row, ...this.infoModal.f };
+            // monthly_amount を billing_amount に同期（月額の場合）
+            if (this.sheetKey === 'cash_flow' && this.infoModal.f.billing_cycle === '月額') {
+              updated.monthly_amount = this.infoModal.f.billing_amount;
+            }
+            await updateRow(this.sheetKey, this.row._row, toRow(updated, getAllCols(this.sheetKey)));
+            Object.assign(this.row, updated);
+            this.infoModal.open = false;
+          } catch (e) {
+            this.infoModal.error = e.message;
+          }
+          this.infoModal.saving = false;
         }
       };
     }
@@ -185,6 +231,16 @@
 
       <!-- 情報カード -->
       <div x-show="infoCards().length > 0" class="bg-white rounded-xl px-5 py-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-xs text-gray-400">基本情報</p>
+          <button @click="openInfoModal()"
+                  class="text-gray-400 hover:text-gray-600 transition-colors p-1 -m-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+            </svg>
+          </button>
+        </div>
         <div class="flex flex-wrap gap-x-8 gap-y-3">
           <template x-for="card in infoCards()" :key="card.label">
             <div>
@@ -210,7 +266,12 @@
                 <span :class="ps.color.text" class="text-base font-bold" x-text="ps.color.icon"></span>
                 <button @click.stop="openPerspectiveModal(ps)"
                         :class="ps.color.text"
-                        class="opacity-50 hover:opacity-100 transition-opacity text-sm leading-none">✏</button>
+                        class="opacity-50 hover:opacity-100 transition-opacity">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                </button>
               </div>
             </div>
             <p :class="ps.content ? ps.color.text : 'text-gray-400'"
@@ -229,13 +290,9 @@
     </div>
 
     <!-- 観点編集モーダル -->
-    <div x-show="perspectiveModal.open"
-         class="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-         style="display: none">
+    <div x-show="perspectiveModal.open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="display:none">
       <div class="absolute inset-0 bg-black/40" @click="closePerspectiveModal()"></div>
       <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl">
-
-        <!-- ヘッダー -->
         <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b">
           <p class="font-medium" x-text="perspectiveModal.label + ' を編集'"></p>
           <button @click="closePerspectiveModal()" class="text-gray-400 hover:text-gray-600">
@@ -244,10 +301,7 @@
             </svg>
           </button>
         </div>
-
-        <!-- ボディ -->
         <div class="px-5 py-4 space-y-4">
-          <!-- 状態選択 -->
           <div>
             <p class="text-xs text-gray-500 mb-2">状態</p>
             <div class="flex gap-2">
@@ -262,29 +316,218 @@
                       class="flex-1 py-2 text-sm border rounded-lg font-medium">— 該当なし</button>
             </div>
           </div>
-          <!-- テキストエリア -->
           <div>
             <p class="text-xs text-gray-500 mb-2">中身</p>
-            <textarea
-              x-model="perspectiveModal.content"
-              @input="perspectiveModal.dirty = true"
-              class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm leading-relaxed resize-none focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-              rows="5"
-              placeholder="内容を入力（任意）"></textarea>
+            <textarea x-model="perspectiveModal.content" @input="perspectiveModal.dirty = true"
+                      class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm leading-relaxed resize-none focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                      rows="5" placeholder="内容を入力（任意）"></textarea>
           </div>
-          <!-- エラー -->
           <p x-show="perspectiveModal.error" class="text-red-600 text-sm" x-text="perspectiveModal.error"></p>
         </div>
-
-        <!-- フッター -->
         <div class="flex items-center justify-end gap-2 px-5 pb-5 pt-2">
-          <button @click="closePerspectiveModal()"
-                  class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">キャンセル</button>
-          <button @click="savePerspective()"
-                  :disabled="perspectiveModal.saving"
+          <button @click="closePerspectiveModal()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">キャンセル</button>
+          <button @click="savePerspective()" :disabled="perspectiveModal.saving"
                   class="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
             <span x-show="!perspectiveModal.saving">保存</span>
             <span x-show="perspectiveModal.saving">保存中...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 基本情報編集モーダル -->
+    <div x-show="infoModal.open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="display:none">
+      <div class="absolute inset-0 bg-black/40" @click="closeInfoModal()"></div>
+      <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl max-h-[90vh] flex flex-col">
+
+        <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b shrink-0">
+          <p class="font-medium">基本情報を編集</p>
+          <button @click="closeInfoModal()" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+
+          <!-- cash_flow フォーム -->
+          <template x-if="sheetKey === 'cash_flow'">
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">サービス名</label>
+                <input type="text" x-model="infoModal.f.service_name" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"/>
+              </div>
+              <div class="flex gap-3">
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">金額</label>
+                  <input type="number" x-model="infoModal.f.billing_amount" @input="infoModal.dirty = true"
+                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                         placeholder="1490"/>
+                </div>
+                <div class="w-32">
+                  <label class="text-xs text-gray-500 block mb-1">請求サイクル</label>
+                  <select x-model="infoModal.f.billing_cycle" @change="infoModal.dirty = true"
+                          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                    <option>月額</option>
+                    <option>年額</option>
+                    <option>隔月</option>
+                    <option>その他</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">契約者</label>
+                <input type="text" x-model="infoModal.f.contract_holder_id" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                       placeholder="父"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">プラン（任意）</label>
+                <input type="text" x-model="infoModal.f.plan" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                       placeholder="家族プラン"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">支払い方法</label>
+                <input type="text" x-model="infoModal.f.payment_method" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                       placeholder="クレジットカード"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">状態</label>
+                <div class="flex gap-2">
+                  <template x-for="s in ['継続中', '解約予定', '解約済']" :key="s">
+                    <button @click="infoModal.f.status = s; infoModal.dirty = true"
+                            :class="infoModal.f.status === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                            class="flex-1 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- bank_account フォーム -->
+          <template x-if="sheetKey === 'bank_account'">
+            <div class="space-y-4">
+              <div class="flex gap-3">
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">銀行名</label>
+                  <input type="text" x-model="infoModal.f.bank_name" @input="infoModal.dirty = true"
+                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                </div>
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">支店名</label>
+                  <input type="text" x-model="infoModal.f.branch_name" @input="infoModal.dirty = true"
+                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">口座種別</label>
+                <select x-model="infoModal.f.account_type" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option>普通預金</option><option>定期預金</option><option>貯蓄預金</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">名義人</label>
+                <input type="text" x-model="infoModal.f.account_holder_id" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">状態</label>
+                <div class="flex gap-2 flex-wrap">
+                  <template x-for="s in ['メイン', 'サブ', '休眠', '解約予定']" :key="s">
+                    <button @click="infoModal.f.account_status = s; infoModal.dirty = true"
+                            :class="infoModal.f.account_status === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                            class="px-3 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                  </template>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">ネットバンキング</label>
+                <div class="flex gap-2">
+                  <template x-for="s in ['利用中', '登録のみ', '未利用']" :key="s">
+                    <button @click="infoModal.f.net_banking_usage = s; infoModal.dirty = true"
+                            :class="infoModal.f.net_banking_usage === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                            class="flex-1 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- insurance フォーム -->
+          <template x-if="sheetKey === 'insurance'">
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">保険会社</label>
+                <input type="text" x-model="infoModal.f.insurance_company" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">商品名</label>
+                <input type="text" x-model="infoModal.f.product_name" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">保険種別</label>
+                <select x-model="infoModal.f.insurance_type" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option>生命</option><option>医療</option><option>がん</option>
+                  <option>個人年金</option><option>火災・地震</option><option>自動車</option><option>その他</option>
+                </select>
+              </div>
+              <div class="flex gap-3">
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">契約者</label>
+                  <input type="text" x-model="infoModal.f.contract_holder_id" @input="infoModal.dirty = true"
+                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                </div>
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">被保険者</label>
+                  <input type="text" x-model="infoModal.f.insured_person_id" @input="infoModal.dirty = true"
+                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">受取人</label>
+                <input type="text" x-model="infoModal.f.beneficiary_id" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">払込状況</label>
+                <div class="flex gap-2">
+                  <template x-for="s in ['払込中', '払込済', '失効']" :key="s">
+                    <button @click="infoModal.f.payment_status = s; infoModal.dirty = true"
+                            :class="infoModal.f.payment_status === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                            class="flex-1 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                  </template>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">状態</label>
+                <div class="flex gap-2 flex-wrap">
+                  <template x-for="s in ['継続中', '解約予定', '解約済', '失効']" :key="s">
+                    <button @click="infoModal.f.account_status = s; infoModal.dirty = true"
+                            :class="infoModal.f.account_status === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                            class="px-3 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <p x-show="infoModal.error" class="text-red-600 text-sm" x-text="infoModal.error"></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-5 pb-5 pt-3 border-t shrink-0">
+          <button @click="closeInfoModal()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">キャンセル</button>
+          <button @click="saveInfoModal()" :disabled="infoModal.saving"
+                  class="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
+            <span x-show="!infoModal.saving">保存</span>
+            <span x-show="infoModal.saving">保存中...</span>
           </button>
         </div>
 
