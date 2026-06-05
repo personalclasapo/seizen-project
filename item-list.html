@@ -152,26 +152,28 @@
           <div x-show="!detailView"
                @click="goDetail(row)"
                class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-            <!-- 1行目：項目名 + 進捗 -->
+            <!-- 1行目：項目名 + 契約者 + 進捗 -->
             <div class="flex items-center justify-between mb-1">
-              <p class="font-medium truncate" x-text="itemName(row)"></p>
-              <span class="text-xs text-gray-400 ml-3 shrink-0" x-text="doneCount(row) + '/4'"></span>
-            </div>
-            <!-- 2行目：金額 + プラン + 契約者 -->
-            <div class="flex items-center justify-between mb-3">
-              <div class="flex items-baseline gap-1 min-w-0">
-                <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
-                <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
-                <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
-                <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
-                <span x-show="itemPlan(row)" class="text-xs text-gray-600 truncate" x-text="itemPlan(row)"></span>
+              <p class="font-medium truncate flex-1 min-w-0" x-text="itemName(row)"></p>
+              <div class="flex items-center gap-2 ml-2 shrink-0">
+                <template x-if="itemHolder(row)">
+                  <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
+                        class="text-xs px-2 py-0.5 rounded-full font-medium"
+                        x-text="itemHolder(row)"></span>
+                </template>
+                <span class="text-xs text-gray-400" x-text="doneCount(row) + '/4'"></span>
               </div>
-              <template x-if="itemHolder(row)">
-                <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
-                      class="text-xs px-2 py-0.5 rounded-full font-medium ml-2 shrink-0"
-                      x-text="itemHolder(row)"></span>
-              </template>
             </div>
+            <!-- 2行目：金額 + プラン（ある場合のみ） -->
+            <div x-show="itemAmountNum(row) || itemPlan(row)" class="flex items-baseline gap-1 mb-3">
+              <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
+              <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
+              <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
+              <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
+              <span x-show="itemPlan(row)" class="text-xs text-gray-600 truncate" x-text="itemPlan(row)"></span>
+            </div>
+            <!-- 金額なしの場合のスペーサー -->
+            <div x-show="!itemAmountNum(row) && !itemPlan(row)" class="mb-3"></div>
             <div class="grid grid-cols-4 gap-1.5">
               <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">
                 <div :class="ps.color.bg + ' ' + ps.color.text"
@@ -187,26 +189,28 @@
           <div x-show="detailView"
                @click="goDetail(row)"
                class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-            <!-- 1行目：項目名 + 進捗 -->
+            <!-- 1行目：項目名 + 契約者 + 進捗 -->
             <div class="flex items-center justify-between mb-1">
-              <p class="font-medium truncate" x-text="itemName(row)"></p>
-              <span class="text-xs text-gray-400 ml-3 shrink-0" x-text="doneCount(row) + '/4'"></span>
-            </div>
-            <!-- 2行目：金額 + プラン + 契約者 -->
-            <div class="flex items-center justify-between mb-3">
-              <div class="flex items-baseline gap-1 min-w-0">
-                <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
-                <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
-                <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
-                <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
-                <span x-show="itemPlan(row)" class="text-xs text-gray-600 truncate" x-text="itemPlan(row)"></span>
+              <p class="font-medium truncate flex-1 min-w-0" x-text="itemName(row)"></p>
+              <div class="flex items-center gap-2 ml-2 shrink-0">
+                <template x-if="itemHolder(row)">
+                  <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
+                        class="text-xs px-2 py-0.5 rounded-full font-medium"
+                        x-text="itemHolder(row)"></span>
+                </template>
+                <span class="text-xs text-gray-400" x-text="doneCount(row) + '/4'"></span>
               </div>
-              <template x-if="itemHolder(row)">
-                <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
-                      class="text-xs px-2 py-0.5 rounded-full font-medium ml-2 shrink-0"
-                      x-text="itemHolder(row)"></span>
-              </template>
             </div>
+            <!-- 2行目：金額 + プラン（ある場合のみ） -->
+            <div x-show="itemAmountNum(row) || itemPlan(row)" class="flex items-baseline gap-1 mb-3">
+              <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
+              <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
+              <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
+              <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
+              <span x-show="itemPlan(row)" class="text-xs text-gray-600 truncate" x-text="itemPlan(row)"></span>
+            </div>
+            <!-- 金額なしの場合のスペーサー -->
+            <div x-show="!itemAmountNum(row) && !itemPlan(row)" class="mb-3"></div>
             <div class="grid grid-cols-2 gap-2">
               <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">
                 <div :class="ps.color.bg" class="rounded-lg p-3">
