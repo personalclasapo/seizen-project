@@ -272,17 +272,26 @@
             <!-- カード本体：詳細ページへ -->
             <div @click="goDetail(item)"
                  class="flex-1 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors min-w-0">
-              <!-- 1行目：項目名 + 状態タグ + 進捗 -->
+              <!-- 1行目：項目名 + 状態タグ + 右列（進捗＋契約者） -->
               <div class="flex items-start gap-2 mb-1">
-                <p class="font-medium leading-snug" x-text="item.name"></p>
-                <template x-if="itemStatusTag(item)">
-                  <span :class="itemStatusTag(item).bg + ' ' + itemStatusTag(item).text"
-                        class="text-xs px-1.5 py-0.5 rounded font-medium shrink-0 whitespace-nowrap mt-0.5"
-                        x-text="itemStatusTag(item).label"></span>
-                </template>
-                <span class="text-xs text-gray-400 ml-auto shrink-0 pl-1 mt-0.5" x-text="doneCount(item.row) + '/3'"></span>
+                <div class="flex-1 min-w-0">
+                  <span class="font-medium leading-snug" x-text="item.name"></span>
+                  <template x-if="itemStatusTag(item)">
+                    <span :class="itemStatusTag(item).bg + ' ' + itemStatusTag(item).text"
+                          class="text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap ml-1.5"
+                          x-text="itemStatusTag(item).label"></span>
+                  </template>
+                </div>
+                <div class="shrink-0 flex flex-col items-end gap-1 pl-1">
+                  <span class="text-xs text-gray-400" x-text="doneCount(item.row) + '/3'"></span>
+                  <template x-if="itemHolder(item)">
+                    <span :class="holderColor(itemHolder(item)).bg + ' ' + holderColor(itemHolder(item)).text"
+                          class="text-xs px-2 py-0.5 rounded-full font-medium"
+                          x-text="itemHolder(item)"></span>
+                  </template>
+                </div>
               </div>
-              <!-- 2行目：タイプ + 金額 + プラン + 契約者 -->
+              <!-- 2行目：タイプ + 金額 + プラン -->
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 shrink-0" x-text="item.label"></span>
                 <span x-show="itemAmountStr(item.row)"
@@ -291,11 +300,6 @@
                 <span x-show="item.row.plan"
                       class="text-xs text-gray-500 shrink-0"
                       x-text="item.row.plan"></span>
-                <template x-if="itemHolder(item)">
-                  <span :class="holderColor(itemHolder(item)).bg + ' ' + holderColor(itemHolder(item)).text"
-                        class="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-                        x-text="itemHolder(item)"></span>
-                </template>
               </div>
               <!-- 展開時：観点の中身 -->
               <div x-show="isExpanded(item)" class="mt-3 space-y-2">
