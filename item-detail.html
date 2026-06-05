@@ -125,11 +125,11 @@
               <!-- 金額カード -->
               <div x-show="card.type === 'amount'" class="flex items-baseline gap-0.5">
                 <span class="text-xs text-gray-400">¥</span>
-                <span class="text-lg font-bold text-gray-800" x-text="card.amountNum"></span>
+                <span class="text-base font-bold text-gray-800" x-text="card.amountNum"></span>
                 <span x-show="card.amountCycle" class="text-xs text-gray-400" x-text="'/' + card.amountCycle"></span>
               </div>
               <!-- 通常カード -->
-              <p x-show="card.type !== 'amount'" class="text-sm font-medium text-gray-800" x-text="card.value"></p>
+              <p x-show="card.type !== 'amount'" class="text-base font-bold text-gray-800" x-text="card.value"></p>
             </div>
           </template>
         </div>
