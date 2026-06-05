@@ -20,6 +20,8 @@
         filterGroups: [],
         filterStatuses: [],
         showFilter: false,
+        expandedItems: [],
+        allExpanded: false,
 
         availableGroups() {
           const seen = new Set();
@@ -32,11 +34,9 @@
 
         filtered() {
           let items = this.allItems;
-
           if (this.filterGroups.length > 0) {
             items = items.filter(i => this.filterGroups.includes(i.group));
           }
-
           if (this.filterStatuses.length > 0) {
             items = items.filter(i => {
               const d = doneCount(i.row);
@@ -46,13 +46,33 @@
               return false;
             });
           }
-
           return [...items].sort((a, b) => {
             if (this.sortBy === 'name') return a.name.localeCompare(b.name, 'ja');
             if (this.sortBy === 'done') return doneCount(b.row) - doneCount(a.row);
             const gi = x => GROUPS.findIndex(g => g.label === x.group);
             return gi(a) - gi(b) || a.name.localeCompare(b.name, 'ja');
           });
+        },
+
+        itemKey(item) {
+          return item.sheetKey + '-' + item.row._row;
+        },
+
+        isExpanded(item) {
+          return this.allExpanded || this.expandedItems.includes(this.itemKey(item));
+        },
+
+        toggleExpand(item) {
+          const key = this.itemKey(item);
+          if (this.allExpanded) {
+            this.allExpanded = false;
+            this.expandedItems = this.allItems
+              .map(i => this.itemKey(i))
+              .filter(k => k !== key);
+          } else {
+            const i = this.expandedItems.indexOf(key);
+            if (i >= 0) this.expandedItems.splice(i, 1); else this.expandedItems.push(key);
+          }
         },
 
         async init() {
@@ -76,14 +96,7 @@
               const { key, rows } = r.value;
               const def = SHEETS[key];
               for (const row of rows) {
-                items.push({
-                  sheetKey: key,
-                  group: def.group,
-                  label: def.label,
-                  name: def.name(row),
-                  sub: def.sub(row),
-                  row
-                });
+                items.push({ sheetKey: key, group: def.group, label: def.label, name: def.name(row), row });
               }
             }
             this.allItems = items;
@@ -96,27 +109,21 @@
         perspectiveStatuses(row) {
           return PERSPECTIVES.map(p => ({
             label: p.label,
+            content: row[p.contentCol] || '',
             color: perspectiveColor(row[p.statusCol] || '未確認')
           }));
         },
 
-        itemAmountNum(row) {
+        itemAmountStr(row) {
           const n = row.monthly_amount || row.billing_amount;
-          return n ? Number(n).toLocaleString() : '';
-        },
-
-        itemAmountCycle(row) {
-          if (row.monthly_amount) return '月';
-          if (row.billing_amount && row.billing_cycle) return row.billing_cycle;
-          return '';
+          if (!n) return '';
+          const num = Number(n).toLocaleString();
+          const cycle = row.monthly_amount ? '月' : (row.billing_cycle || '');
+          return cycle ? `¥${num}/${cycle}` : `¥${num}`;
         },
 
         itemHolder(item) {
           return SHEETS[item.sheetKey]?.holder?.(item.row) || '';
-        },
-
-        itemPlan(row) {
-          return row.plan || '';
         },
 
         goDetail(item) {
@@ -171,6 +178,14 @@
             class="px-3 py-1.5 text-xs border rounded-lg font-medium">完了</button>
         </div>
         <div class="flex-1"></div>
+        <div class="flex gap-1">
+          <button @click="allExpanded = false; expandedItems = []"
+            :class="!allExpanded ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
+            class="px-2.5 py-1.5 text-xs border rounded-lg font-medium">簡易</button>
+          <button @click="allExpanded = true"
+            :class="allExpanded ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
+            class="px-2.5 py-1.5 text-xs border rounded-lg font-medium">詳細</button>
+        </div>
         <button @click="showFilter = !showFilter"
           :class="filterGroups.length + filterStatuses.length > 0 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
           class="px-3 py-1.5 text-xs border rounded-lg font-medium flex items-center gap-1.5">
@@ -220,41 +235,51 @@
       <!-- Item list -->
       <div class="space-y-2">
         <template x-for="item in filtered()" :key="item.sheetKey + '-' + item.row._row">
-          <div @click="goDetail(item)"
-               class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-            <!-- 1行目：ラベル + 項目名 + 契約者 + 進捗 -->
-            <div class="flex items-center justify-between mb-1">
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden flex">
+
+            <!-- カード本体：詳細ページへ -->
+            <div @click="goDetail(item)"
+                 class="flex-1 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors min-w-0">
+              <!-- 1行：名前・ラベル・金額・契約者・進捗 -->
               <div class="flex items-center gap-2 min-w-0">
-                <span class="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 shrink-0" x-text="item.label"></span>
-                <p class="font-medium truncate" x-text="item.name"></p>
-              </div>
-              <div class="flex items-center gap-2 ml-2 shrink-0">
+                <p class="font-medium truncate min-w-0" x-text="item.name"></p>
+                <span class="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 shrink-0 whitespace-nowrap" x-text="item.label"></span>
+                <span x-show="itemAmountStr(item.row)"
+                      class="text-xs font-medium text-gray-600 shrink-0 whitespace-nowrap"
+                      x-text="itemAmountStr(item.row)"></span>
                 <template x-if="itemHolder(item)">
                   <span :class="holderColor(itemHolder(item)).bg + ' ' + holderColor(itemHolder(item)).text"
-                        class="text-xs px-2 py-0.5 rounded-full font-medium"
+                        class="text-xs px-2 py-0.5 rounded-full font-medium shrink-0 whitespace-nowrap"
                         x-text="itemHolder(item)"></span>
                 </template>
-                <span class="text-xs text-gray-400" x-text="doneCount(item.row) + '/3'"></span>
+                <span class="text-xs text-gray-400 shrink-0 ml-auto pl-1" x-text="doneCount(item.row) + '/3'"></span>
+              </div>
+              <!-- 展開時：観点の中身 -->
+              <div x-show="isExpanded(item)" class="mt-3 space-y-2">
+                <template x-for="ps in perspectiveStatuses(item.row)" :key="ps.label">
+                  <div :class="ps.color.bg" class="rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-1">
+                      <span :class="ps.color.text" class="text-xs font-medium" x-text="ps.label"></span>
+                      <span :class="ps.color.text" class="text-xs font-bold" x-text="ps.color.icon"></span>
+                    </div>
+                    <p :class="ps.content ? ps.color.text : 'text-gray-400'"
+                       class="text-xs leading-relaxed"
+                       x-text="ps.content || '（未入力）'"></p>
+                  </div>
+                </template>
               </div>
             </div>
-            <!-- 2行目：金額 + プラン（ある場合のみ） -->
-            <div x-show="itemAmountNum(item.row) || itemPlan(item.row)" class="flex items-baseline gap-1 mb-3">
-              <span x-show="itemAmountNum(item.row)" class="text-xs text-gray-400">¥</span>
-              <span x-show="itemAmountNum(item.row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(item.row)"></span>
-              <span x-show="itemAmountCycle(item.row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(item.row)"></span>
-              <span x-show="itemPlan(item.row)" class="text-xs text-gray-400 mx-0.5">・</span>
-              <span x-show="itemPlan(item.row)" class="text-sm font-bold text-gray-800 truncate" x-text="itemPlan(item.row)"></span>
+
+            <!-- 展開/折り畳みエリア：右端 縦仕切り -->
+            <div @click.stop="toggleExpand(item)"
+                 class="w-11 shrink-0 border-l border-gray-100 flex items-start justify-center pt-3 cursor-pointer hover:bg-gray-50 transition-colors select-none">
+              <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                   :class="isExpanded(item) ? 'rotate-180' : ''"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
             </div>
-            <div x-show="!itemAmountNum(item.row) && !itemPlan(item.row)" class="mb-3"></div>
-            <div class="grid grid-cols-3 gap-1.5">
-              <template x-for="ps in perspectiveStatuses(item.row)" :key="ps.label">
-                <div :class="ps.color.bg + ' ' + ps.color.text"
-                     class="rounded p-1.5 text-center">
-                  <div class="text-xs mb-0.5" x-text="ps.label"></div>
-                  <div class="text-xs font-medium" x-text="ps.color.icon"></div>
-                </div>
-              </template>
-            </div>
+
           </div>
         </template>
 
