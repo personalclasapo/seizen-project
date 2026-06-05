@@ -19,8 +19,26 @@ function initAuth(onSuccess, onRequired) {
   if (token) {
     onSuccess();
   } else {
-    onRequired();
+    _silentRefresh(onSuccess, onRequired);
   }
+}
+
+function _silentRefresh(onSuccess, onRequired) {
+  if (!_tokenClient) {
+    _tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CONFIG.CLIENT_ID,
+      scope: CONFIG.SCOPES,
+      callback: (response) => {
+        if (response.error) {
+          onRequired();
+          return;
+        }
+        _storeToken(response.access_token);
+        onSuccess();
+      }
+    });
+  }
+  _tokenClient.requestAccessToken({ prompt: '' });
 }
 
 function signIn() {
