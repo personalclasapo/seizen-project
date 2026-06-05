@@ -82,6 +82,17 @@
           }));
         },
 
+        expandedRows: [],
+
+        toggleExpand(rowId) {
+          const i = this.expandedRows.indexOf(rowId);
+          if (i >= 0) this.expandedRows.splice(i, 1); else this.expandedRows.push(rowId);
+        },
+
+        isExpanded(rowId) {
+          return this.detailView || this.expandedRows.includes(rowId);
+        },
+
         goDetail(row) {
           location.href = `item-detail.html?sheet=${this.sheetKey}&row=${row._row}`;
         }
@@ -128,7 +139,7 @@
       <!-- 表示切替 -->
       <div class="flex gap-2 mb-4">
         <button
-          @click="detailView = false"
+          @click="detailView = false; expandedRows = []"
           :class="!detailView ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
           class="px-3 py-1.5 text-xs border rounded-lg font-medium">
           簡易表示
@@ -150,85 +161,73 @@
       <!-- 項目リスト -->
       <div class="space-y-3">
         <template x-for="row in items" :key="row._row">
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
 
-          <!-- 簡易表示 -->
-          <div x-show="!detailView"
-               @click="goDetail(row)"
-               class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-            <!-- 1行目：項目名 + 契約者 + 進捗 -->
-            <div class="flex items-center justify-between mb-1">
-              <p class="font-medium truncate flex-1 min-w-0" x-text="itemName(row)"></p>
-              <div class="flex items-center gap-2 ml-2 shrink-0">
-                <template x-if="itemHolder(row)">
-                  <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
-                        class="text-xs px-2 py-0.5 rounded-full font-medium"
-                        x-text="itemHolder(row)"></span>
-                </template>
-                <span class="text-xs text-gray-400" x-text="doneCount(row) + '/4'"></span>
-              </div>
-            </div>
-            <!-- 2行目：金額 + プラン（ある場合のみ） -->
-            <div x-show="itemAmountNum(row) || itemPlan(row)" class="flex items-baseline gap-1 mb-3">
-              <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
-              <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
-              <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
-              <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
-              <span x-show="itemPlan(row)" class="text-sm font-bold text-gray-800 truncate" x-text="itemPlan(row)"></span>
-            </div>
-            <!-- 金額なしの場合のスペーサー -->
-            <div x-show="!itemAmountNum(row) && !itemPlan(row)" class="mb-3"></div>
-            <div class="grid grid-cols-4 gap-1.5">
-              <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">
-                <div :class="ps.color.bg + ' ' + ps.color.text"
-                     class="rounded p-1.5 text-center">
-                  <div class="text-xs mb-0.5" x-text="ps.label"></div>
-                  <div class="text-xs font-medium" x-text="ps.color.icon"></div>
+            <!-- 上部ゾーン：項目情報 → 詳細ページへ -->
+            <div @click="goDetail(row)"
+                 class="px-4 pt-4 pb-3 cursor-pointer hover:bg-gray-50 transition-colors">
+              <div class="flex items-center justify-between mb-1">
+                <p class="font-medium truncate flex-1 min-w-0" x-text="itemName(row)"></p>
+                <div class="flex items-center gap-2 ml-2 shrink-0">
+                  <template x-if="itemHolder(row)">
+                    <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
+                          class="text-xs px-2 py-0.5 rounded-full font-medium"
+                          x-text="itemHolder(row)"></span>
+                  </template>
+                  <span class="text-xs text-gray-400" x-text="doneCount(row) + '/3'"></span>
                 </div>
-              </template>
-            </div>
-          </div>
-
-          <!-- 詳細表示 -->
-          <div x-show="detailView"
-               @click="goDetail(row)"
-               class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-            <!-- 1行目：項目名 + 契約者 + 進捗 -->
-            <div class="flex items-center justify-between mb-1">
-              <p class="font-medium truncate flex-1 min-w-0" x-text="itemName(row)"></p>
-              <div class="flex items-center gap-2 ml-2 shrink-0">
-                <template x-if="itemHolder(row)">
-                  <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
-                        class="text-xs px-2 py-0.5 rounded-full font-medium"
-                        x-text="itemHolder(row)"></span>
-                </template>
-                <span class="text-xs text-gray-400" x-text="doneCount(row) + '/4'"></span>
+              </div>
+              <div x-show="itemAmountNum(row) || itemPlan(row)" class="flex items-baseline gap-1">
+                <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
+                <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
+                <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
+                <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
+                <span x-show="itemPlan(row)" class="text-sm font-bold text-gray-800 truncate" x-text="itemPlan(row)"></span>
               </div>
             </div>
-            <!-- 2行目：金額 + プラン（ある場合のみ） -->
-            <div x-show="itemAmountNum(row) || itemPlan(row)" class="flex items-baseline gap-1 mb-3">
-              <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
-              <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
-              <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
-              <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
-              <span x-show="itemPlan(row)" class="text-sm font-bold text-gray-800 truncate" x-text="itemPlan(row)"></span>
-            </div>
-            <!-- 金額なしの場合のスペーサー -->
-            <div x-show="!itemAmountNum(row) && !itemPlan(row)" class="mb-3"></div>
-            <div class="grid grid-cols-2 gap-2">
-              <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">
-                <div :class="ps.color.bg" class="rounded-lg p-3">
-                  <div class="flex items-center justify-between mb-1">
-                    <span :class="ps.color.text" class="text-xs font-medium" x-text="ps.label"></span>
-                    <span :class="ps.color.text" class="text-xs" x-text="ps.color.icon"></span>
+
+            <!-- 下部ゾーン：観点 → 展開/折り畳み -->
+            <div @click="toggleExpand(row._row)"
+                 class="bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors select-none">
+              <!-- 区切り線 + chevron -->
+              <div class="flex items-center px-4 py-1.5">
+                <div class="flex-1 border-t border-dashed border-gray-300"></div>
+                <div class="mx-2">
+                  <svg class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200"
+                       :class="isExpanded(row._row) ? 'rotate-180' : ''"
+                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </div>
+                <div class="flex-1 border-t border-dashed border-gray-300"></div>
+              </div>
+              <!-- 折り畳み：3観点アイコン -->
+              <div x-show="!isExpanded(row._row)" class="grid grid-cols-3 gap-1.5 px-4 pb-4">
+                <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">
+                  <div :class="ps.color.bg + ' ' + ps.color.text"
+                       class="rounded p-1.5 text-center">
+                    <div class="text-xs mb-0.5" x-text="ps.label"></div>
+                    <div class="text-xs font-medium" x-text="ps.color.icon"></div>
                   </div>
-                  <p :class="ps.color.text"
-                     class="text-xs leading-relaxed"
-                     x-text="ps.content || ps.status"></p>
-                </div>
-              </template>
+                </template>
+              </div>
+              <!-- 展開：観点の中身 -->
+              <div x-show="isExpanded(row._row)" class="space-y-2 px-4 pb-4">
+                <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">
+                  <div :class="ps.color.bg" class="rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-1">
+                      <span :class="ps.color.text" class="text-xs font-medium" x-text="ps.label"></span>
+                      <span :class="ps.color.text" class="text-xs font-bold" x-text="ps.color.icon"></span>
+                    </div>
+                    <p :class="ps.content ? ps.color.text : 'text-gray-400'"
+                       class="text-xs leading-relaxed"
+                       x-text="ps.content || '（未入力）'"></p>
+                  </div>
+                </template>
+              </div>
             </div>
-          </div>
 
+          </div>
         </template>
       </div>
     </div>

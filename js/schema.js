@@ -8,7 +8,6 @@ const COMMON_COLS = [
 ];
 
 const PERSPECTIVES = [
-  { key: 'q1', statusCol: 'q1_existence_status',   contentCol: 'q1_existence_content',   label: '把握' },
   { key: 'q2', statusCol: 'q2_understanding_status', contentCol: 'q2_understanding_content', label: '中身' },
   { key: 'q3', statusCol: 'q3_access_status',       contentCol: 'q3_access_content',      label: 'アクセス' },
   { key: 'q4', statusCol: 'q4_emergency_status',    contentCol: 'q4_emergency_content',   label: '緊急' },
@@ -64,8 +63,8 @@ const SHEETS = {
         amountNum: Number(n).toLocaleString(),
         amountCycle: r.monthly_amount ? '月' : (r.billing_cycle || '')
       });
-      if (r.contract_holder_id) cards.push({ label: '契約者', value: r.contract_holder_id });
       if (r.plan) cards.push({ label: 'プラン', value: r.plan });
+      if (r.contract_holder_id) cards.push({ label: '契約者', value: r.contract_holder_id });
       return cards;
     }
   },

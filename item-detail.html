@@ -135,22 +135,19 @@
         </div>
       </div>
 
-      <!-- 4観点グリッド -->
-      <div class="bg-white rounded-xl p-5 shadow-sm">
-        <p class="text-sm font-medium mb-4">4つの観点</p>
-        <div class="grid grid-cols-2 gap-3">
-          <template x-for="ps in perspectives()" :key="ps.label">
-            <div :class="ps.color.bg" class="rounded-xl p-4">
-              <div class="flex items-center justify-between mb-2">
-                <span :class="ps.color.text" class="text-sm font-medium" x-text="ps.label"></span>
-                <span :class="ps.color.text" class="text-base font-bold" x-text="ps.color.icon"></span>
-              </div>
-              <p :class="ps.color.text"
-                 class="text-xs leading-relaxed"
-                 x-text="ps.content || '（未入力）'"></p>
+      <!-- 3観点（縦並び） -->
+      <div class="space-y-3">
+        <template x-for="ps in perspectives()" :key="ps.label">
+          <div :class="ps.color.bg" class="rounded-xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span :class="ps.color.text" class="text-sm font-medium" x-text="ps.label"></span>
+              <span :class="ps.color.text" class="text-base font-bold" x-text="ps.color.icon"></span>
             </div>
-          </template>
-        </div>
+            <p :class="ps.content ? ps.color.text : 'text-gray-400'"
+               class="text-sm leading-relaxed"
+               x-text="ps.content || '（未入力）'"></p>
+          </div>
+        </template>
       </div>
 
       <!-- メモ -->

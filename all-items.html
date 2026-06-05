@@ -40,8 +40,8 @@
           if (this.filterStatuses.length > 0) {
             items = items.filter(i => {
               const d = doneCount(i.row);
-              if (this.filterStatuses.includes('done') && d === 4) return true;
-              if (this.filterStatuses.includes('inProgress') && d > 0 && d < 4) return true;
+              if (this.filterStatuses.includes('done') && d === PERSPECTIVES.length) return true;
+              if (this.filterStatuses.includes('inProgress') && d > 0 && d < PERSPECTIVES.length) return true;
               if (this.filterStatuses.includes('todo') && d === 0) return true;
               return false;
             });
@@ -234,7 +234,7 @@
                         class="text-xs px-2 py-0.5 rounded-full font-medium"
                         x-text="itemHolder(item)"></span>
                 </template>
-                <span class="text-xs text-gray-400" x-text="doneCount(item.row) + '/4'"></span>
+                <span class="text-xs text-gray-400" x-text="doneCount(item.row) + '/3'"></span>
               </div>
             </div>
             <!-- 2行目：金額 + プラン（ある場合のみ） -->
@@ -246,7 +246,7 @@
               <span x-show="itemPlan(item.row)" class="text-sm font-bold text-gray-800 truncate" x-text="itemPlan(item.row)"></span>
             </div>
             <div x-show="!itemAmountNum(item.row) && !itemPlan(item.row)" class="mb-3"></div>
-            <div class="grid grid-cols-4 gap-1.5">
+            <div class="grid grid-cols-3 gap-1.5">
               <template x-for="ps in perspectiveStatuses(item.row)" :key="ps.label">
                 <div :class="ps.color.bg + ' ' + ps.color.text"
                      class="rounded p-1.5 text-center">

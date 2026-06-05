@@ -38,16 +38,16 @@
             const rows = await getSheet('cash_flow');
             const g = this.groups[0]; // 支出・収入
             g.total = rows.length;
-            g.done = rows.filter(r => doneCount(r) === 4).length;
+            g.done = rows.filter(r => doneCount(r) === PERSPECTIVES.length).length;
             g.pct = g.total ? Math.round(g.done / g.total * 100) : 0;
 
             const allDone = rows.reduce((s, r) => s + doneCount(r), 0);
-            const possible = rows.length * 4;
+            const possible = rows.length * PERSPECTIVES.length;
 
             this.stats = {
               total: rows.length,
-              done: rows.filter(r => doneCount(r) === 4).length,
-              inProgress: rows.filter(r => { const d = doneCount(r); return d > 0 && d < 4; }).length,
+              done: rows.filter(r => doneCount(r) === PERSPECTIVES.length).length,
+              inProgress: rows.filter(r => { const d = doneCount(r); return d > 0 && d < PERSPECTIVES.length; }).length,
               todo: rows.filter(r => doneCount(r) === 0).length
             };
             this.overallPct = possible ? Math.round(allDone / possible * 100) : 0;
