@@ -55,11 +55,14 @@
         },
 
         itemAmountNum(row) {
-          return this.sheetDef.amountNum?.(row) || '';
+          const n = row.monthly_amount || row.billing_amount;
+          return n ? Number(n).toLocaleString() : '';
         },
 
         itemAmountCycle(row) {
-          return this.sheetDef.amountCycle?.(row) || '';
+          if (row.monthly_amount) return '月';
+          if (row.billing_amount && row.billing_cycle) return row.billing_cycle;
+          return '';
         },
 
         itemHolder(row) {
@@ -67,7 +70,7 @@
         },
 
         itemPlan(row) {
-          return this.sheetDef.plan?.(row) || '';
+          return row.plan || '';
         },
 
         perspectiveStatuses(row) {
