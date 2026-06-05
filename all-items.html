@@ -100,6 +100,25 @@
           }));
         },
 
+        itemAmountNum(row) {
+          const n = row.monthly_amount || row.billing_amount;
+          return n ? Number(n).toLocaleString() : '';
+        },
+
+        itemAmountCycle(row) {
+          if (row.monthly_amount) return '月';
+          if (row.billing_amount && row.billing_cycle) return row.billing_cycle;
+          return '';
+        },
+
+        itemHolder(item) {
+          return SHEETS[item.sheetKey]?.holder?.(item.row) || '';
+        },
+
+        itemPlan(row) {
+          return row.plan || '';
+        },
+
         goDetail(item) {
           location.href = `item-detail.html?sheet=${item.sheetKey}&row=${item.row._row}`;
         },
@@ -203,14 +222,30 @@
         <template x-for="item in filtered()" :key="item.sheetKey + '-' + item.row._row">
           <div @click="goDetail(item)"
                class="bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-            <div class="flex items-start justify-between mb-2">
-              <div class="flex-1 min-w-0">
-                <span class="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5" x-text="item.label"></span>
-                <p class="font-medium truncate text-sm mt-1" x-text="item.name"></p>
-                <p class="text-xs text-gray-400 truncate" x-text="item.sub"></p>
+            <!-- 1行目：ラベル + 項目名 + 契約者 + 進捗 -->
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 shrink-0" x-text="item.label"></span>
+                <p class="font-medium truncate" x-text="item.name"></p>
               </div>
-              <span class="text-xs text-gray-400 ml-3 shrink-0" x-text="doneCount(item.row) + '/4'"></span>
+              <div class="flex items-center gap-2 ml-2 shrink-0">
+                <template x-if="itemHolder(item)">
+                  <span :class="holderColor(itemHolder(item)).bg + ' ' + holderColor(itemHolder(item)).text"
+                        class="text-xs px-2 py-0.5 rounded-full font-medium"
+                        x-text="itemHolder(item)"></span>
+                </template>
+                <span class="text-xs text-gray-400" x-text="doneCount(item.row) + '/4'"></span>
+              </div>
             </div>
+            <!-- 2行目：金額 + プラン（ある場合のみ） -->
+            <div x-show="itemAmountNum(item.row) || itemPlan(item.row)" class="flex items-baseline gap-1 mb-3">
+              <span x-show="itemAmountNum(item.row)" class="text-xs text-gray-400">¥</span>
+              <span x-show="itemAmountNum(item.row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(item.row)"></span>
+              <span x-show="itemAmountCycle(item.row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(item.row)"></span>
+              <span x-show="itemPlan(item.row)" class="text-xs text-gray-400 mx-0.5">・</span>
+              <span x-show="itemPlan(item.row)" class="text-sm font-bold text-gray-800 truncate" x-text="itemPlan(item.row)"></span>
+            </div>
+            <div x-show="!itemAmountNum(item.row) && !itemPlan(item.row)" class="mb-3"></div>
             <div class="grid grid-cols-4 gap-1.5">
               <template x-for="ps in perspectiveStatuses(item.row)" :key="ps.label">
                 <div :class="ps.color.bg + ' ' + ps.color.text"
