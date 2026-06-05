@@ -33,6 +33,11 @@
           f: {}
         },
 
+        allEditModal: {
+          open: false, saving: false, deleting: false, error: null, dirty: false,
+          f: {}, perspectives: []
+        },
+
         async init() {
           const params = new URLSearchParams(location.search);
           this.sheetKey = params.get('sheet') || 'cash_flow';
@@ -175,6 +180,80 @@
             this.infoModal.error = e.message;
           }
           this.infoModal.saving = false;
+        },
+
+        // ── すべて編集 ──
+        _buildInfoFields() {
+          const r = this.row;
+          if (this.sheetKey === 'cash_flow') return {
+            service_name: r.service_name || '', billing_amount: r.billing_amount || '',
+            billing_cycle: r.billing_cycle || '月額', contract_holder_id: r.contract_holder_id || '',
+            plan: r.plan || '', status: r.status || '継続中'
+          };
+          if (this.sheetKey === 'bank_account') return {
+            bank_name: r.bank_name || '', branch_name: r.branch_name || '',
+            account_type: r.account_type || '', account_holder_id: r.account_holder_id || '',
+            account_status: r.account_status || 'メイン', net_banking_usage: r.net_banking_usage || ''
+          };
+          if (this.sheetKey === 'insurance') return {
+            insurance_company: r.insurance_company || '', product_name: r.product_name || '',
+            insurance_type: r.insurance_type || '', contract_holder_id: r.contract_holder_id || '',
+            insured_person_id: r.insured_person_id || '', beneficiary_id: r.beneficiary_id || '',
+            payment_status: r.payment_status || '', account_status: r.account_status || '継続中'
+          };
+          return {};
+        },
+
+        openAllEditModal() {
+          this.allEditModal = {
+            open: true, saving: false, deleting: false, error: null, dirty: false,
+            f: this._buildInfoFields(),
+            perspectives: PERSPECTIVES.map(p => ({
+              statusCol: p.statusCol, contentCol: p.contentCol, label: p.label,
+              status: this.row[p.statusCol] || '未確認',
+              content: this.row[p.contentCol] || ''
+            }))
+          };
+        },
+
+        closeAllEditModal() {
+          if (this.allEditModal.dirty && !confirm('変更を破棄しますか？')) return;
+          this.allEditModal.open = false;
+        },
+
+        async saveAllEdit() {
+          this.allEditModal.saving = true;
+          this.allEditModal.error = null;
+          try {
+            const updated = { ...this.row, ...this.allEditModal.f };
+            for (const ps of this.allEditModal.perspectives) {
+              updated[ps.statusCol] = ps.status;
+              updated[ps.contentCol] = ps.content;
+            }
+            if (this.sheetKey === 'cash_flow') {
+              updated.monthly_amount = this.allEditModal.f.billing_cycle === '月額'
+                ? this.allEditModal.f.billing_amount : '';
+            }
+            await updateRow(this.sheetKey, this.row._row, toRow(updated, getAllCols(this.sheetKey)));
+            Object.assign(this.row, updated);
+            this.allEditModal.open = false;
+          } catch (e) {
+            this.allEditModal.error = e.message;
+          }
+          this.allEditModal.saving = false;
+        },
+
+        async deleteItem() {
+          if (!confirm('この項目を削除しますか？\nこの操作は取り消せません')) return;
+          this.allEditModal.deleting = true;
+          this.allEditModal.error = null;
+          try {
+            await deleteRow(this.sheetKey, this.row._row);
+            window.location.href = this.backLink();
+          } catch (e) {
+            this.allEditModal.error = e.message;
+            this.allEditModal.deleting = false;
+          }
         }
       };
     }
@@ -192,6 +271,8 @@
         </svg>
       </a>
       <p class="font-medium flex-1 truncate" x-text="itemName()"></p>
+      <button x-show="!loading && row" @click="openAllEditModal()"
+              class="text-sm font-medium text-blue-600 hover:text-blue-800 shrink-0 mr-3">編集</button>
       <button @click="signOut()" class="text-xs text-gray-400 hover:text-gray-600 shrink-0">ログアウト</button>
     </nav>
 
@@ -287,6 +368,121 @@
         <p class="text-sm text-gray-700 leading-relaxed" x-text="row?.free_memo"></p>
       </div>
 
+    </div>
+
+    <!-- すべて編集モーダル -->
+    <div x-show="allEditModal.open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="display:none">
+      <div class="absolute inset-0 bg-black/40" @click="closeAllEditModal()"></div>
+      <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl max-h-[90vh] flex flex-col">
+
+        <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b shrink-0">
+          <p class="font-medium" x-text="itemName() + ' を編集'"></p>
+          <button @click="closeAllEditModal()" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="px-5 py-4 space-y-5 overflow-y-auto flex-1">
+
+          <!-- 基本情報セクション -->
+          <div>
+            <p class="text-xs font-medium text-gray-400 mb-3">基本情報</p>
+            <div class="space-y-3">
+              <template x-if="sheetKey === 'cash_flow'">
+                <div class="space-y-3">
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">サービス名</label>
+                    <input type="text" x-model="allEditModal.f.service_name" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div class="flex gap-3">
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">金額</label>
+                      <input type="number" x-model="allEditModal.f.billing_amount" @input="allEditModal.dirty = true"
+                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                    </div>
+                    <div class="w-32">
+                      <label class="text-xs text-gray-500 block mb-1">請求サイクル</label>
+                      <select x-model="allEditModal.f.billing_cycle" @change="allEditModal.dirty = true"
+                              class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                        <option>月額</option><option>年額</option><option>隔月</option><option>その他</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">プラン（任意）</label>
+                    <input type="text" x-model="allEditModal.f.plan" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">契約者</label>
+                    <input type="text" x-model="allEditModal.f.contract_holder_id" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">状態</label>
+                    <div class="flex gap-2">
+                      <template x-for="s in ['継続中', '解約予定', '解約済']" :key="s">
+                        <button @click="allEditModal.f.status = s; allEditModal.dirty = true"
+                                :class="allEditModal.f.status === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                                class="flex-1 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- 観点セクション -->
+          <div class="space-y-3">
+            <p class="text-xs font-medium text-gray-400">観点</p>
+            <template x-for="(ps, i) in allEditModal.perspectives" :key="ps.label">
+              <div class="border border-gray-100 rounded-xl p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <p class="text-sm font-medium text-gray-700" x-text="ps.label"></p>
+                  <div class="flex gap-1.5">
+                    <template x-for="s in ['完了', '未確認', '該当なし']" :key="s">
+                      <button @click="allEditModal.perspectives[i].status = s; allEditModal.dirty = true"
+                              :class="{
+                                'bg-green-50 text-green-700 border-green-300': allEditModal.perspectives[i].status === s && s === '完了',
+                                'bg-yellow-50 text-yellow-700 border-yellow-300': allEditModal.perspectives[i].status === s && s === '未確認',
+                                'bg-gray-100 text-gray-600 border-gray-300': allEditModal.perspectives[i].status === s && s === '該当なし',
+                                'bg-white text-gray-400 border-gray-200': allEditModal.perspectives[i].status !== s
+                              }"
+                              class="px-2.5 py-1 text-xs border rounded-lg font-medium" x-text="s"></button>
+                    </template>
+                  </div>
+                </div>
+                <textarea x-model="allEditModal.perspectives[i].content" @input="allEditModal.dirty = true"
+                          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm leading-relaxed resize-none focus:outline-none focus:border-blue-400"
+                          rows="3" placeholder="内容を入力（任意）"></textarea>
+              </div>
+            </template>
+          </div>
+
+          <p x-show="allEditModal.error" class="text-red-600 text-sm" x-text="allEditModal.error"></p>
+        </div>
+
+        <div class="px-5 pb-5 pt-3 border-t shrink-0 space-y-3">
+          <button @click="deleteItem()" :disabled="allEditModal.deleting"
+                  class="w-full py-2.5 text-sm text-red-500 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-xl font-medium transition-colors disabled:opacity-50">
+            <span x-show="!allEditModal.deleting">この項目を削除</span>
+            <span x-show="allEditModal.deleting">削除中...</span>
+          </button>
+          <div class="flex items-center justify-end gap-2">
+            <button @click="closeAllEditModal()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">キャンセル</button>
+            <button @click="saveAllEdit()" :disabled="allEditModal.saving"
+                    class="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
+              <span x-show="!allEditModal.saving">保存</span>
+              <span x-show="allEditModal.saving">保存中...</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- 観点編集モーダル -->

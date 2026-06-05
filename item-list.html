@@ -64,9 +64,7 @@
         },
 
         itemAmountCycle(row) {
-          if (row.monthly_amount) return '月';
-          if (row.billing_amount && row.billing_cycle) return row.billing_cycle;
-          return '';
+          return formatCycle(row);
         },
 
         itemHolder(row) {

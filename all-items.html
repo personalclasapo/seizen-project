@@ -128,7 +128,7 @@
           const n = row.monthly_amount || row.billing_amount;
           if (!n) return '';
           const num = Number(n).toLocaleString();
-          const cycle = row.monthly_amount ? '月' : (row.billing_cycle || '');
+          const cycle = formatCycle(row);
           return cycle ? `¥${num}/${cycle}` : `¥${num}`;
         },
 

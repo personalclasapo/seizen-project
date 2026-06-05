@@ -26,6 +26,12 @@ function holderColor(holder) {
   return HOLDER_COLORS[holder] || { bg: 'bg-gray-100', text: 'text-gray-500' };
 }
 
+const CYCLE_SHORT = { '月額': '月', '年額': '年' };
+function formatCycle(r) {
+  const raw = r.billing_cycle;
+  return CYCLE_SHORT[raw] ?? raw ?? (r.monthly_amount ? '月' : '');
+}
+
 const SHEETS = {
   cash_flow: {
     label: 'サブスク・支払い',
@@ -54,11 +60,7 @@ const SHEETS = {
       const n = r.monthly_amount || r.billing_amount;
       return n ? Number(n).toLocaleString() : '';
     },
-    amountCycle: r => {
-      if (r.monthly_amount) return '月';
-      if (r.billing_amount && r.billing_cycle) return r.billing_cycle;
-      return '';
-    },
+    amountCycle: r => formatCycle(r),
     holder: r => r.contract_holder_id || '',
     plan: r => r.plan || '',
     infoCards: r => {
@@ -67,7 +69,7 @@ const SHEETS = {
       if (n) cards.push({
         label: '金額', type: 'amount',
         amountNum: Number(n).toLocaleString(),
-        amountCycle: r.billing_cycle === '月額' ? '月' : (r.billing_cycle || (r.monthly_amount ? '月' : ''))
+        amountCycle: formatCycle(r)
       });
       if (r.plan) cards.push({ label: 'プラン', value: r.plan });
       if (r.contract_holder_id) cards.push({ label: '契約者', value: r.contract_holder_id });

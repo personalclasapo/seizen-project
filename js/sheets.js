@@ -53,6 +53,22 @@ function _toObjects(data) {
   });
 }
 
+// 行を削除（rowIndex は 1始まり）
+async function deleteRow(sheetName, rowIndex) {
+  const meta = await _req('GET',
+    `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}?fields=sheets.properties`
+  );
+  const sheet = meta.sheets.find(s => s.properties.title === sheetName);
+  if (!sheet) throw new Error('シートが見つかりません');
+  await _req('POST',
+    `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}:batchUpdate`,
+    { requests: [{ deleteDimension: {
+      range: { sheetId: sheet.properties.sheetId, dimension: 'ROWS',
+               startIndex: rowIndex - 1, endIndex: rowIndex }
+    }}]}
+  );
+}
+
 // カラム配列からオブジェクトを行配列に変換
 function toRow(obj, columns) {
   return columns.map(col => obj[col] ?? '');
