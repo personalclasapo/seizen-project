@@ -373,7 +373,7 @@
     <!-- すべて編集モーダル -->
     <div x-show="allEditModal.open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="display:none">
       <div class="absolute inset-0 bg-black/40" @click="closeAllEditModal()"></div>
-      <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl max-h-[90vh] flex flex-col">
+      <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl max-h-[90vh] flex flex-col" @click.stop>
 
         <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b shrink-0">
           <p class="font-medium" x-text="itemName() + ' を編集'"></p>
@@ -488,7 +488,7 @@
     <!-- 観点編集モーダル -->
     <div x-show="perspectiveModal.open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="display:none">
       <div class="absolute inset-0 bg-black/40" @click="closePerspectiveModal()"></div>
-      <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl">
+      <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl" @click.stop>
         <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b">
           <p class="font-medium" x-text="perspectiveModal.label + ' を編集'"></p>
           <button @click="closePerspectiveModal()" class="text-gray-400 hover:text-gray-600">
@@ -534,7 +534,7 @@
     <!-- 基本情報編集モーダル -->
     <div x-show="infoModal.open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="display:none">
       <div class="absolute inset-0 bg-black/40" @click="closeInfoModal()"></div>
-      <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl max-h-[90vh] flex flex-col">
+      <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl max-h-[90vh] flex flex-col" @click.stop>
 
         <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b shrink-0">
           <p class="font-medium">基本情報を編集</p>
