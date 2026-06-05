@@ -34,8 +34,8 @@ const SHEETS = {
     cols: [
       'service_name', 'service_category', 'cash_flow_type',
       'contract_holder_id', 'billing_cycle', 'billing_amount',
-      'monthly_amount', 'payment_method', 'status', 'plan',
-      'input_source', 'source_transaction_id'
+      'monthly_amount', 'payment_method', 'status',
+      'input_source', 'source_transaction_id', 'plan'
     ],
     name: r => r.service_name || '（名称未設定）',
     sub: r => {
