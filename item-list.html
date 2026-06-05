@@ -85,8 +85,14 @@
         expandedRows: [],
 
         toggleExpand(rowId) {
-          const i = this.expandedRows.indexOf(rowId);
-          if (i >= 0) this.expandedRows.splice(i, 1); else this.expandedRows.push(rowId);
+          if (this.detailView) {
+            // 全展開モードから個別管理に切り替え（タップした1件だけ閉じる）
+            this.detailView = false;
+            this.expandedRows = this.items.map(r => r._row).filter(id => id !== rowId);
+          } else {
+            const i = this.expandedRows.indexOf(rowId);
+            if (i >= 0) this.expandedRows.splice(i, 1); else this.expandedRows.push(rowId);
+          }
         },
 
         isExpanded(rowId) {
