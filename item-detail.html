@@ -20,6 +20,18 @@
         row: null,
         targetRowIndex: null,
 
+        perspectiveModal: {
+          open: false,
+          saving: false,
+          error: null,
+          statusCol: '',
+          contentCol: '',
+          label: '',
+          status: '未確認',
+          content: '',
+          dirty: false
+        },
+
         async init() {
           const params = new URLSearchParams(location.search);
           this.sheetKey = params.get('sheet') || 'cash_flow';
@@ -53,6 +65,9 @@
         perspectives() {
           if (!this.row) return [];
           return PERSPECTIVES.map(p => ({
+            key: p.key,
+            statusCol: p.statusCol,
+            contentCol: p.contentCol,
             label: p.label,
             status: this.row[p.statusCol] || '未確認',
             content: this.row[p.contentCol] || '',
@@ -75,6 +90,45 @@
 
         backLink() {
           return `item-list.html?sheet=${this.sheetKey}`;
+        },
+
+        openPerspectiveModal(ps) {
+          this.perspectiveModal = {
+            open: true,
+            saving: false,
+            error: null,
+            statusCol: ps.statusCol,
+            contentCol: ps.contentCol,
+            label: ps.label,
+            status: ps.status,
+            content: ps.content,
+            dirty: false
+          };
+        },
+
+        closePerspectiveModal() {
+          if (this.perspectiveModal.dirty && !confirm('変更を破棄しますか？')) return;
+          this.perspectiveModal.open = false;
+        },
+
+        async savePerspective() {
+          this.perspectiveModal.saving = true;
+          this.perspectiveModal.error = null;
+          try {
+            const updated = { ...this.row };
+            updated[this.perspectiveModal.statusCol] = this.perspectiveModal.status;
+            updated[this.perspectiveModal.contentCol] = this.perspectiveModal.content;
+
+            const cols = getAllCols(this.sheetKey);
+            await updateRow(this.sheetKey, this.row._row, toRow(updated, cols));
+
+            this.row[this.perspectiveModal.statusCol] = this.perspectiveModal.status;
+            this.row[this.perspectiveModal.contentCol] = this.perspectiveModal.content;
+            this.perspectiveModal.open = false;
+          } catch (e) {
+            this.perspectiveModal.error = e.message;
+          }
+          this.perspectiveModal.saving = false;
         }
       };
     }
@@ -135,13 +189,11 @@
           <template x-for="card in infoCards()" :key="card.label">
             <div>
               <p class="text-xs text-gray-400 mb-0.5" x-text="card.label"></p>
-              <!-- 金額カード -->
               <div x-show="card.type === 'amount'" class="flex items-baseline gap-0.5">
                 <span class="text-xs text-gray-400">¥</span>
                 <span class="text-xl font-bold text-gray-800" x-text="card.amountNum"></span>
                 <span x-show="card.amountCycle" class="text-xs text-gray-400" x-text="'/' + card.amountCycle"></span>
               </div>
-              <!-- 通常カード -->
               <p x-show="card.type !== 'amount'" class="text-base font-bold text-gray-800" x-text="card.value"></p>
             </div>
           </template>
@@ -154,7 +206,12 @@
           <div :class="ps.color.bg" class="rounded-xl p-4">
             <div class="flex items-center justify-between mb-2">
               <span :class="ps.color.text" class="text-sm font-medium" x-text="ps.label"></span>
-              <span :class="ps.color.text" class="text-base font-bold" x-text="ps.color.icon"></span>
+              <div class="flex items-center gap-2">
+                <span :class="ps.color.text" class="text-base font-bold" x-text="ps.color.icon"></span>
+                <button @click.stop="openPerspectiveModal(ps)"
+                        :class="ps.color.text"
+                        class="opacity-50 hover:opacity-100 transition-opacity text-sm leading-none">✏</button>
+              </div>
             </div>
             <p :class="ps.content ? ps.color.text : 'text-gray-400'"
                class="text-sm leading-relaxed"
@@ -169,12 +226,71 @@
         <p class="text-sm text-gray-700 leading-relaxed" x-text="row?.free_memo"></p>
       </div>
 
-      <!-- 編集（Phase 3 で実装） -->
-      <div class="bg-gray-50 rounded-xl p-4 text-center">
-        <p class="text-xs text-gray-400">編集機能は次のフェーズで実装予定</p>
-      </div>
-
     </div>
+
+    <!-- 観点編集モーダル -->
+    <div x-show="perspectiveModal.open"
+         class="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+         style="display: none">
+      <div class="absolute inset-0 bg-black/40" @click="closePerspectiveModal()"></div>
+      <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl">
+
+        <!-- ヘッダー -->
+        <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b">
+          <p class="font-medium" x-text="perspectiveModal.label + ' を編集'"></p>
+          <button @click="closePerspectiveModal()" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- ボディ -->
+        <div class="px-5 py-4 space-y-4">
+          <!-- 状態選択 -->
+          <div>
+            <p class="text-xs text-gray-500 mb-2">状態</p>
+            <div class="flex gap-2">
+              <button @click="perspectiveModal.status = '完了'; perspectiveModal.dirty = true"
+                      :class="perspectiveModal.status === '完了' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-500 border-gray-200'"
+                      class="flex-1 py-2 text-sm border rounded-lg font-medium">✓ 完了</button>
+              <button @click="perspectiveModal.status = '未確認'; perspectiveModal.dirty = true"
+                      :class="perspectiveModal.status === '未確認' ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-gray-500 border-gray-200'"
+                      class="flex-1 py-2 text-sm border rounded-lg font-medium">△ 未確認</button>
+              <button @click="perspectiveModal.status = '該当なし'; perspectiveModal.dirty = true"
+                      :class="perspectiveModal.status === '該当なし' ? 'bg-gray-100 text-gray-600 border-gray-300' : 'bg-white text-gray-500 border-gray-200'"
+                      class="flex-1 py-2 text-sm border rounded-lg font-medium">— 該当なし</button>
+            </div>
+          </div>
+          <!-- テキストエリア -->
+          <div>
+            <p class="text-xs text-gray-500 mb-2">中身</p>
+            <textarea
+              x-model="perspectiveModal.content"
+              @input="perspectiveModal.dirty = true"
+              class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm leading-relaxed resize-none focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+              rows="5"
+              placeholder="内容を入力（任意）"></textarea>
+          </div>
+          <!-- エラー -->
+          <p x-show="perspectiveModal.error" class="text-red-600 text-sm" x-text="perspectiveModal.error"></p>
+        </div>
+
+        <!-- フッター -->
+        <div class="flex items-center justify-end gap-2 px-5 pb-5 pt-2">
+          <button @click="closePerspectiveModal()"
+                  class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">キャンセル</button>
+          <button @click="savePerspective()"
+                  :disabled="perspectiveModal.saving"
+                  class="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
+            <span x-show="!perspectiveModal.saving">保存</span>
+            <span x-show="perspectiveModal.saving">保存中...</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
   <script src="https://unpkg.com/alpinejs@3/dist/cdn.min.js" defer></script>
