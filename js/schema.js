@@ -37,6 +37,12 @@ const SHEETS = {
       'input_source', 'source_transaction_id', 'plan'
     ],
     name: r => r.service_name || '（名称未設定）',
+    statusTag: r => {
+      const s = r.status;
+      if (!s || s === '継続中') return null;
+      if (s === '解約予定') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
+      return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+    },
     sub: r => {
       const parts = [];
       if (r.monthly_amount) parts.push(`月${Number(r.monthly_amount).toLocaleString()}円`);
@@ -77,6 +83,14 @@ const SHEETS = {
       'account_status', 'net_banking_usage'
     ],
     name: r => [r.bank_name, r.branch_name].filter(Boolean).join(' ') || '（名称未設定）',
+    statusTag: r => {
+      const s = r.account_status;
+      if (!s || s === 'メイン') return null;
+      if (s === '解約予定') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
+      if (s === '休眠') return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+      if (s === 'サブ') return { label: s, bg: 'bg-blue-50', text: 'text-blue-600', norm: 'active', muted: false };
+      return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+    },
     sub: r => [r.account_type, r.account_holder_id ? `名義：${r.account_holder_id}` : ''].filter(Boolean).join(' · '),
     infoCards: r => [
       { label: '名義人',         value: r.account_holder_id },
@@ -95,6 +109,12 @@ const SHEETS = {
       'maturity_date', 'account_status'
     ],
     name: r => [r.insurance_company, r.product_name].filter(Boolean).join(' ') || '（名称未設定）',
+    statusTag: r => {
+      const s = r.account_status;
+      if (!s || s === '継続中') return null;
+      if (s === '解約予定') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
+      return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+    },
     sub: r => [r.insurance_type, r.contract_holder_id ? `契約者：${r.contract_holder_id}` : ''].filter(Boolean).join(' · '),
     infoCards: r => [
       { label: '契約者',   value: r.contract_holder_id },
