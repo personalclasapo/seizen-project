@@ -60,12 +60,13 @@
           }));
         },
 
-        itemName() {
-          return this.row ? this.sheetDef.name(this.row) : '';
+        infoCards() {
+          if (!this.row || !this.sheetDef.infoCards) return [];
+          return this.sheetDef.infoCards(this.row);
         },
 
-        itemSub() {
-          return this.row ? this.sheetDef.sub(this.row) : '';
+        itemName() {
+          return this.row ? this.sheetDef.name(this.row) : '';
         },
 
         backLink() {
@@ -101,20 +102,36 @@
     <!-- Content -->
     <div x-show="!loading && !error && row" class="max-w-3xl mx-auto p-4 space-y-4">
 
-      <!-- 項目ヘッダー -->
+      <!-- ヘッダー -->
       <div class="pt-2">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-xs text-gray-400" x-text="sheetDef?.label || ''"></p>
-            <p class="text-xl font-medium mt-0.5" x-text="itemName()"></p>
-            <p class="text-sm text-gray-400 mt-0.5" x-text="itemSub()"></p>
-          </div>
-          <div class="text-right">
-            <p class="text-2xl font-medium"
+        <p class="text-xs text-gray-400 mb-1" x-text="sheetDef?.label || ''"></p>
+        <div class="flex items-start justify-between">
+          <p class="text-xl font-medium" x-text="itemName()"></p>
+          <div class="text-right ml-4 shrink-0">
+            <p class="text-2xl font-medium leading-none"
                :class="row && doneCount(row) === 4 ? 'text-green-600' : 'text-yellow-500'"
                x-text="row ? doneCount(row) + '/4' : ''"></p>
-            <p class="text-xs text-gray-400">観点完了</p>
+            <p class="text-xs text-gray-400 mt-0.5">観点完了</p>
           </div>
+        </div>
+      </div>
+
+      <!-- 情報カード -->
+      <div x-show="infoCards().length > 0" class="bg-white rounded-xl px-5 py-4 shadow-sm">
+        <div class="flex flex-wrap gap-x-8 gap-y-3">
+          <template x-for="card in infoCards()" :key="card.label">
+            <div>
+              <p class="text-xs text-gray-400 mb-0.5" x-text="card.label"></p>
+              <!-- 金額カード -->
+              <div x-show="card.type === 'amount'" class="flex items-baseline gap-0.5">
+                <span class="text-xs text-gray-400">¥</span>
+                <span class="text-lg font-bold text-gray-800" x-text="card.amountNum"></span>
+                <span x-show="card.amountCycle" class="text-xs text-gray-400" x-text="'/' + card.amountCycle"></span>
+              </div>
+              <!-- 通常カード -->
+              <p x-show="card.type !== 'amount'" class="text-sm font-medium text-gray-800" x-text="card.value"></p>
+            </div>
+          </template>
         </div>
       </div>
 

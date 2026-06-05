@@ -34,7 +34,7 @@ const SHEETS = {
     cols: [
       'service_name', 'service_category', 'cash_flow_type',
       'contract_holder_id', 'billing_cycle', 'billing_amount',
-      'monthly_amount', 'payment_method', 'status',
+      'monthly_amount', 'payment_method', 'status', 'plan',
       'input_source', 'source_transaction_id'
     ],
     name: r => r.service_name || '（名称未設定）',
@@ -45,12 +45,29 @@ const SHEETS = {
       if (r.contract_holder_id) parts.push(`契約者：${r.contract_holder_id}`);
       return parts.join(' · ');
     },
-    amount: r => {
-      if (r.monthly_amount) return `月 ¥${Number(r.monthly_amount).toLocaleString()}`;
-      if (r.billing_amount) return `¥${Number(r.billing_amount).toLocaleString()}`;
+    amountNum: r => {
+      const n = r.monthly_amount || r.billing_amount;
+      return n ? Number(n).toLocaleString() : '';
+    },
+    amountCycle: r => {
+      if (r.monthly_amount) return '月';
+      if (r.billing_amount && r.billing_cycle) return r.billing_cycle;
       return '';
     },
-    holder: r => r.contract_holder_id || ''
+    holder: r => r.contract_holder_id || '',
+    plan: r => r.plan || '',
+    infoCards: r => {
+      const cards = [];
+      const n = r.monthly_amount || r.billing_amount;
+      if (n) cards.push({
+        label: '金額', type: 'amount',
+        amountNum: Number(n).toLocaleString(),
+        amountCycle: r.monthly_amount ? '月' : (r.billing_cycle || '')
+      });
+      if (r.contract_holder_id) cards.push({ label: '契約者', value: r.contract_holder_id });
+      if (r.plan) cards.push({ label: 'プラン', value: r.plan });
+      return cards;
+    }
   },
   bank_account: {
     label: '銀行口座',
@@ -61,7 +78,13 @@ const SHEETS = {
       'account_status', 'net_banking_usage'
     ],
     name: r => [r.bank_name, r.branch_name].filter(Boolean).join(' ') || '（名称未設定）',
-    sub: r => [r.account_type, r.account_holder_id ? `名義：${r.account_holder_id}` : ''].filter(Boolean).join(' · ')
+    sub: r => [r.account_type, r.account_holder_id ? `名義：${r.account_holder_id}` : ''].filter(Boolean).join(' · '),
+    infoCards: r => [
+      { label: '名義人',         value: r.account_holder_id },
+      { label: '口座種別',       value: r.account_type },
+      { label: '状態',           value: r.account_status },
+      { label: 'ネットバンキング', value: r.net_banking_usage },
+    ].filter(c => c.value)
   },
   insurance: {
     label: '保険商品',
@@ -73,7 +96,14 @@ const SHEETS = {
       'maturity_date', 'account_status'
     ],
     name: r => [r.insurance_company, r.product_name].filter(Boolean).join(' ') || '（名称未設定）',
-    sub: r => [r.insurance_type, r.contract_holder_id ? `契約者：${r.contract_holder_id}` : ''].filter(Boolean).join(' · ')
+    sub: r => [r.insurance_type, r.contract_holder_id ? `契約者：${r.contract_holder_id}` : ''].filter(Boolean).join(' · '),
+    infoCards: r => [
+      { label: '契約者',   value: r.contract_holder_id },
+      { label: '被保険者', value: r.insured_person_id },
+      { label: '受取人',   value: r.beneficiary_id },
+      { label: '保険種別', value: r.insurance_type },
+      { label: '払込状況', value: r.payment_status },
+    ].filter(c => c.value)
   }
 };
 
