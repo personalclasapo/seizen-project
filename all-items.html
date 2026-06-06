@@ -242,8 +242,12 @@
               class="px-3 py-1 text-xs border rounded-lg">解約済</button>
           </div>
         </div>
-        <button @click="filterGroups = []; filterStatuses = []; filterStatus = 'all'"
-          class="text-xs text-gray-400 hover:text-gray-600">クリア</button>
+        <div class="flex items-center justify-between pt-1">
+          <button @click="filterGroups = []; filterStatuses = []; filterStatus = 'all'"
+            class="text-xs text-gray-400 hover:text-gray-600">クリア</button>
+          <button @click="showFilter = false"
+            class="text-xs font-medium text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-50">閉じる</button>
+        </div>
       </div>
 
       <!-- Item count -->
