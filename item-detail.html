@@ -33,9 +33,13 @@
           f: {}
         },
 
+        memoModal: {
+          open: false, saving: false, error: null, content: '', dirty: false
+        },
+
         allEditModal: {
           open: false, saving: false, deleting: false, error: null, dirty: false,
-          f: {}, perspectives: []
+          f: {}, perspectives: [], memo: ''
         },
 
         async init() {
@@ -212,7 +216,8 @@
               statusCol: p.statusCol, contentCol: p.contentCol, label: p.label,
               status: this.row[p.statusCol] || '未確認',
               content: this.row[p.contentCol] || ''
-            }))
+            })),
+            memo: this.row.free_memo || ''
           };
         },
 
@@ -230,6 +235,7 @@
               updated[ps.statusCol] = ps.status;
               updated[ps.contentCol] = ps.content;
             }
+            updated.free_memo = this.allEditModal.memo;
             if (this.sheetKey === 'cash_flow') {
               updated.monthly_amount = this.allEditModal.f.billing_cycle === '月額'
                 ? this.allEditModal.f.billing_amount : '';
@@ -254,6 +260,33 @@
             this.allEditModal.error = e.message;
             this.allEditModal.deleting = false;
           }
+        },
+
+        // ── メモ編集 ──
+        openMemoModal() {
+          this.memoModal = {
+            open: true, saving: false, error: null,
+            content: this.row.free_memo || '', dirty: false
+          };
+        },
+
+        closeMemoModal() {
+          if (this.memoModal.dirty && !confirm('変更を破棄しますか？')) return;
+          this.memoModal.open = false;
+        },
+
+        async saveMemoModal() {
+          this.memoModal.saving = true;
+          this.memoModal.error = null;
+          try {
+            const updated = { ...this.row, free_memo: this.memoModal.content };
+            await updateRow(this.sheetKey, this.row._row, toRow(updated, getAllCols(this.sheetKey)));
+            this.row.free_memo = this.memoModal.content;
+            this.memoModal.open = false;
+          } catch (e) {
+            this.memoModal.error = e.message;
+          }
+          this.memoModal.saving = false;
         }
       };
     }
@@ -363,9 +396,19 @@
       </div>
 
       <!-- メモ -->
-      <div x-show="row && row.free_memo" class="bg-white rounded-xl p-5 shadow-sm">
-        <p class="text-sm font-medium mb-2 text-gray-600">メモ</p>
-        <p class="text-sm text-gray-700 leading-relaxed" x-text="row?.free_memo"></p>
+      <div x-show="row" class="bg-white rounded-xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm font-medium text-gray-600">メモ</p>
+          <button @click="openMemoModal()"
+                  class="text-gray-400 hover:text-gray-600 transition-colors p-1 -m-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+            </svg>
+          </button>
+        </div>
+        <p :class="row?.free_memo ? 'text-gray-700' : 'text-gray-400'"
+           class="text-sm leading-relaxed" x-text="row?.free_memo || '（未入力）'"></p>
       </div>
 
     </div>
@@ -463,6 +506,14 @@
             </template>
           </div>
 
+          <!-- メモセクション -->
+          <div class="space-y-2">
+            <p class="text-xs font-medium text-gray-400">メモ</p>
+            <textarea x-model="allEditModal.memo" @input="allEditModal.dirty = true"
+                      class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm leading-relaxed resize-none focus:outline-none focus:border-blue-400"
+                      rows="3" placeholder="メモを入力（任意）"></textarea>
+          </div>
+
           <p x-show="allEditModal.error" class="text-red-600 text-sm" x-text="allEditModal.error"></p>
         </div>
 
@@ -482,6 +533,35 @@
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- メモ編集モーダル -->
+    <div x-show="memoModal.open" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="display:none">
+      <div class="absolute inset-0 bg-black/40" @click="closeMemoModal()"></div>
+      <div class="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg mx-0 sm:mx-4 shadow-xl" @click.stop>
+        <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b">
+          <p class="font-medium">メモを編集</p>
+          <button @click="closeMemoModal()" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="px-5 py-4 space-y-4">
+          <textarea x-model="memoModal.content" @input="memoModal.dirty = true"
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm leading-relaxed resize-none focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                    rows="6" placeholder="メモを入力（任意）"></textarea>
+          <p x-show="memoModal.error" class="text-red-600 text-sm" x-text="memoModal.error"></p>
+        </div>
+        <div class="flex items-center justify-end gap-2 px-5 pb-5 pt-2">
+          <button @click="closeMemoModal()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">キャンセル</button>
+          <button @click="saveMemoModal()" :disabled="memoModal.saving"
+                  class="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
+            <span x-show="!memoModal.saving">保存</span>
+            <span x-show="memoModal.saving">保存中...</span>
+          </button>
+        </div>
       </div>
     </div>
 
