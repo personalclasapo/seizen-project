@@ -12,33 +12,46 @@ function waitForGsi() {
   return new Promise(resolve => window.addEventListener('gsi-ready', resolve, { once: true }));
 }
 
-function initAuth(onSuccess, onRequired) {
+function initAuth(onSuccess, onRequired, opts = {}) {
   _onAuthSuccess = onSuccess;
   _onAuthRequired = onRequired;
   const token = _getStoredToken();
   if (token) {
     onSuccess();
+  } else if (opts.silent === false) {
+    // ログイン画面など：サイレント更新せず即ログインを要求
+    onRequired();
   } else {
     _silentRefresh(onSuccess, onRequired);
   }
 }
 
 function _silentRefresh(onSuccess, onRequired) {
+  let settled = false;
+  const finish = (fn) => { if (!settled) { settled = true; clearTimeout(timer); fn(); } };
+
+  // コールバックが返らない場合の保険（スマホでよく起きる）
+  const timer = setTimeout(() => finish(onRequired), 4000);
+
   if (!_tokenClient) {
     _tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: CONFIG.CLIENT_ID,
       scope: CONFIG.SCOPES,
       callback: (response) => {
         if (response.error) {
-          onRequired();
+          finish(onRequired);
           return;
         }
         _storeToken(response.access_token);
-        onSuccess();
+        finish(onSuccess);
       }
     });
   }
-  _tokenClient.requestAccessToken({ prompt: '' });
+  try {
+    _tokenClient.requestAccessToken({ prompt: '' });
+  } catch (e) {
+    finish(onRequired);
+  }
 }
 
 function signIn() {

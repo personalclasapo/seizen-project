@@ -23,7 +23,8 @@
           await waitForGsi();
           initAuth(
             () => { window.location.href = 'dashboard.html'; },
-            () => { this.loading = false; }
+            () => { this.loading = false; },
+            { silent: false }
           );
         }
       };
