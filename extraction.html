@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>生前整理 - 明細の確認</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" onload="onGsiLoad()" async></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/sheets.js"></script>
+  <script src="js/schema.js"></script>
+  <script>
+    // transaction_candidates のカラム順（setup.html と一致させる）
+    const CANDIDATE_COLS = [
+      'id', 'upload_id', 'service_name', 'raw_description',
+      'monthly_amount', 'billing_cycle', 'category_guess', 'status', 'registered_to'
+    ];
+
+    // 種別の選択肢
+    const CATEGORY_OPTIONS = [
+      'サブスク', 'サブスク（動画配信）', '公共料金', '公共料金（電気）',
+      '通信費', 'メディア（NHK・新聞）', '保険', '税金', '年金', 'その他'
+    ];
+
+    const CYCLE_OPTIONS = ['月額', '年額', '隔月', 'その他'];
+
+    function extractionApp() {
+      return {
+        loading: true,
+        error: null,
+        candidates: [],
+        cycleOptions: CYCLE_OPTIONS,
+
+        async init() {
+          await waitForGsi();
+          initAuth(
+            () => this.load(),
+            () => { window.location.href = 'index.html'; }
+          );
+        },
+
+        async load() {
+          try {
+            const rows = await getSheet('transaction_candidates');
+            this.candidates = rows
+              .filter(r => (r.status || '未登録') === '未登録')
+              .map(r => ({
+                _row: r._row,
+                id: r.id,
+                upload_id: r.upload_id,
+                service_name: r.service_name || '',
+                raw_description: r.raw_description || '',
+                monthly_amount: r.monthly_amount || '',
+                billing_cycle: r.billing_cycle || '月額',
+                category: r.category_guess || 'その他',
+                busy: false,
+                error: null
+              }));
+          } catch (e) {
+            this.error = e.message;
+          }
+          this.loading = false;
+        },
+
+        categoryOptions(cand) {
+          // 推定値がリストになければ先頭に足す
+          if (cand.category && !CATEGORY_OPTIONS.includes(cand.category)) {
+            return [cand.category, ...CATEGORY_OPTIONS];
+          }
+          return CATEGORY_OPTIONS;
+        },
+
+        formatAmount(cand) {
+          if (!cand.monthly_amount) return '';
+          const num = Number(cand.monthly_amount).toLocaleString();
+          const cycle = CYCLE_SHORT[cand.billing_cycle] ?? cand.billing_cycle ?? '月';
+          return `¥${num}/${cycle}`;
+        },
+
+        _candidateRow(cand, status, registeredTo) {
+          return {
+            id: cand.id,
+            upload_id: cand.upload_id,
+            service_name: cand.service_name,
+            raw_description: cand.raw_description,
+            monthly_amount: cand.monthly_amount,
+            billing_cycle: cand.billing_cycle,
+            category_guess: cand.category,
+            status,
+            registered_to: registeredTo || ''
+          };
+        },
+
+        async register(cand) {
+          cand.busy = true;
+          cand.error = null;
+          try {
+            const newId = 'cash_' + Date.now();
+            const today = new Date().toISOString().slice(0, 10);
+            const cashRow = {
+              id: newId,
+              created_at: today,
+              updated_at: today,
+              q1_existence_status: '完了',
+              q1_existence_content: '明細から自動検出',
+              q2_understanding_status: '未確認',
+              q3_access_status: '未確認',
+              q4_emergency_status: '未確認',
+              free_memo: '',
+              service_name: cand.service_name,
+              service_category: cand.category,
+              cash_flow_type: '支出',
+              billing_cycle: cand.billing_cycle,
+              billing_amount: cand.monthly_amount,
+              monthly_amount: cand.billing_cycle === '月額' ? cand.monthly_amount : '',
+              status: '継続中',
+              input_source: '明細',
+              source_transaction_id: cand.id
+            };
+            await appendRow('cash_flow', toRow(cashRow, getAllCols('cash_flow')));
+            await updateRow('transaction_candidates', cand._row,
+              toRow(this._candidateRow(cand, '登録済', newId), CANDIDATE_COLS));
+            this.candidates = this.candidates.filter(c => c._row !== cand._row);
+          } catch (e) {
+            cand.error = e.message;
+            cand.busy = false;
+          }
+        },
+
+        async skip(cand) {
+          cand.busy = true;
+          cand.error = null;
+          try {
+            await updateRow('transaction_candidates', cand._row,
+              toRow(this._candidateRow(cand, 'スキップ', ''), CANDIDATE_COLS));
+            this.candidates = this.candidates.filter(c => c._row !== cand._row);
+          } catch (e) {
+            cand.error = e.message;
+            cand.busy = false;
+          }
+        }
+      };
+    }
+  </script>
+</head>
+<body class="bg-[#FAF7F0] min-h-screen pb-16">
+
+  <div x-data="extractionApp()" x-init="init()">
+
+    <!-- Nav -->
+    <nav class="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+      <a href="dashboard.html" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </a>
+      <p class="font-medium flex-1">明細の確認</p>
+      <button @click="signOut()" class="text-xs text-gray-400 hover:text-gray-600">ログアウト</button>
+    </nav>
+
+    <!-- Loading -->
+    <div x-show="loading" class="flex items-center justify-center py-24 text-sm text-gray-400">読み込み中...</div>
+
+    <!-- Error -->
+    <div x-show="!loading && error" class="max-w-3xl mx-auto p-4">
+      <div class="bg-red-50 text-red-700 rounded-lg p-4 text-sm" x-text="error"></div>
+    </div>
+
+    <!-- Content -->
+    <div x-show="!loading && !error" class="max-w-3xl mx-auto p-4">
+
+      <!-- ヘッダー -->
+      <div class="pt-2 mb-4">
+        <p class="text-sm text-gray-500">明細から検出された定期支払い</p>
+        <p class="text-lg font-medium" x-text="candidates.length + '件の未登録'"></p>
+      </div>
+
+      <!-- 空状態 -->
+      <div x-show="candidates.length === 0" class="text-center py-16 text-gray-400 text-sm">
+        <p class="mb-1">確認待ちの候補はありません</p>
+        <p class="text-xs">明細をアップロードして解析すると、ここに定期支払いが表示されます</p>
+      </div>
+
+      <!-- 候補リスト -->
+      <div class="space-y-3">
+        <template x-for="cand in candidates" :key="cand._row">
+          <div class="bg-white rounded-xl p-4 shadow-sm">
+            <!-- 1行目：サービス名 + 金額 -->
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded font-medium shrink-0">AI推定</span>
+                <p class="font-medium truncate" x-text="cand.service_name"></p>
+              </div>
+              <p class="text-sm font-bold text-gray-800 shrink-0 ml-2" x-text="formatAmount(cand)"></p>
+            </div>
+            <!-- 生の摘要 -->
+            <p class="text-xs text-gray-400 mb-3" x-text="'明細摘要：' + cand.raw_description"></p>
+            <!-- 種別・サイクル -->
+            <div class="flex gap-2 mb-3">
+              <div class="flex-1">
+                <label class="text-xs text-gray-500 block mb-1">種別</label>
+                <select x-model="cand.category"
+                        class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-400">
+                  <template x-for="opt in categoryOptions(cand)" :key="opt">
+                    <option :value="opt" x-text="opt"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="w-28">
+                <label class="text-xs text-gray-500 block mb-1">サイクル</label>
+                <select x-model="cand.billing_cycle"
+                        class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:border-blue-400">
+                  <template x-for="opt in cycleOptions" :key="opt">
+                    <option :value="opt" x-text="opt"></option>
+                  </template>
+                </select>
+              </div>
+            </div>
+            <!-- エラー -->
+            <p x-show="cand.error" class="text-red-600 text-xs mb-2" x-text="cand.error"></p>
+            <!-- アクション -->
+            <div class="flex gap-2">
+              <button @click="register(cand)" :disabled="cand.busy"
+                      class="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
+                <span x-show="!cand.busy">登録する</span>
+                <span x-show="cand.busy">処理中...</span>
+              </button>
+              <button @click="skip(cand)" :disabled="cand.busy"
+                      class="px-4 py-1.5 text-sm bg-white border border-gray-200 text-gray-500 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50">
+                スキップ
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+    </div>
+
+    <!-- Bottom nav -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex">
+      <a href="dashboard.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+        <span class="text-xs mt-0.5">ホーム</span>
+      </a>
+      <a href="all-items.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+        </svg>
+        <span class="text-xs mt-0.5">全項目</span>
+      </a>
+    </nav>
+
+  </div>
+
+  <script src="https://unpkg.com/alpinejs@3/dist/cdn.min.js" defer></script>
+</body>
+</html>

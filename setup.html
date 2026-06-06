@@ -54,9 +54,13 @@
         'id','uploaded_at','file_name','file_type',
         'source','period_from','period_to','status','detected_count'
       ],
-      transaction_history: [
+      raw_transactions: [
         'id','upload_id','transaction_date','description',
-        'amount','extracted_to_item','status'
+        'amount','transaction_type','source_account','linked_candidate_id'
+      ],
+      transaction_candidates: [
+        'id','upload_id','service_name','raw_description',
+        'monthly_amount','billing_cycle','category_guess','status','registered_to'
       ]
     };
 
@@ -112,6 +116,15 @@
         '老齢厚生年金','年金','収入',
         '父','月額','185000','185000','口座振込','継続中','手動入力','',''
       ]
+    ];
+
+    // transaction_candidates サンプル（画面E確認用、ヘッダー行を除く）
+    const SAMPLE_CANDIDATES = [
+      ['cand_001','up_001','Netflix','NETFLIX.COM','1490','月額','サブスク（動画配信）','未登録',''],
+      ['cand_002','up_001','Apple','APPLE.COM/BILL','3200','月額','要確認','未登録',''],
+      ['cand_003','up_001','東京電力エナジー','TOKYO DENRYOKU','8400','月額','公共料金（電気）','未登録',''],
+      ['cand_004','up_001','ドコモ','NTT DOCOMO','6800','月額','通信費','未登録',''],
+      ['cand_005','up_001','Amazonプライム','AMAZON PRIME','600','月額','サブスク','未登録','']
     ];
 
     async function apiReq(method, url, body) {
@@ -215,6 +228,25 @@
             this.log('既存データがあるためサンプル追加をスキップ');
           }
 
+          // 5. transaction_candidates にサンプル追加（既存データがない場合のみ）
+          this.log('transaction_candidates のデータを確認中...');
+          const curCand = await apiReq('GET',
+            `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/transaction_candidates!A2:A6`
+          );
+          if (!curCand.values || curCand.values.length === 0) {
+            this.log('定期候補サンプルを追加中...');
+            await apiReq('POST', `${SPREADSHEET_API}/values:batchUpdate`, {
+              valueInputOption: 'RAW',
+              data: [{
+                range: 'transaction_candidates!A2',
+                values: SAMPLE_CANDIDATES
+              }]
+            });
+            this.log(`定期候補サンプル ${SAMPLE_CANDIDATES.length} 件追加`);
+          } else {
+            this.log('既存の定期候補があるためスキップ');
+          }
+
           this.log('✓ セットアップ完了');
         }
       };
@@ -254,9 +286,10 @@
         <div class="bg-gray-50 rounded-lg p-3 mb-4 text-sm text-gray-600">
           <p class="font-medium mb-1">実行内容</p>
           <ul class="text-xs space-y-0.5 text-gray-500">
-            <li>・ 6つのシートを作成（存在しない場合のみ）</li>
+            <li>・ 7つのシートを作成（存在しない場合のみ）</li>
             <li>・ 各シートにヘッダー行を書き込み</li>
             <li>・ cash_flow にサンプルデータ 5件を追加（空の場合のみ）</li>
+            <li>・ transaction_candidates にサンプル 5件を追加（空の場合のみ）</li>
           </ul>
         </div>
 
