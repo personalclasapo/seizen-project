@@ -178,28 +178,8 @@
     <!-- Content -->
     <div x-show="!loading && !error" class="max-w-3xl mx-auto p-4 space-y-3">
 
-      <!-- Sort & Filter bar -->
-      <div class="flex items-center gap-2 pt-2">
-        <div class="flex gap-1">
-          <button @click="sortBy = 'group'"
-            :class="sortBy === 'group' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
-            class="px-3 py-1.5 text-xs border rounded-lg font-medium">グループ</button>
-          <button @click="sortBy = 'name'"
-            :class="sortBy === 'name' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
-            class="px-3 py-1.5 text-xs border rounded-lg font-medium">名前</button>
-          <button @click="sortBy = 'done'"
-            :class="sortBy === 'done' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
-            class="px-3 py-1.5 text-xs border rounded-lg font-medium">完了</button>
-        </div>
-        <div class="flex-1"></div>
-        <div class="flex gap-1">
-          <button @click="allExpanded = false; expandedItems = []"
-            :class="!allExpanded ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
-            class="px-2.5 py-1.5 text-xs border rounded-lg font-medium">簡易</button>
-          <button @click="allExpanded = true"
-            :class="allExpanded ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
-            class="px-2.5 py-1.5 text-xs border rounded-lg font-medium">詳細</button>
-        </div>
+      <!-- Filter & View bar -->
+      <div class="flex items-center gap-1.5 pt-2">
         <button @click="showFilter = !showFilter"
           :class="filterGroups.length + filterStatuses.length + (filterStatus !== 'all' ? 1 : 0) > 0 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
           class="px-3 py-1.5 text-xs border rounded-lg font-medium flex items-center gap-1.5">
@@ -211,6 +191,12 @@
                 class="bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
                 x-text="filterGroups.length + filterStatuses.length + (filterStatus !== 'all' ? 1 : 0)"></span>
         </button>
+        <button @click="allExpanded = false; expandedItems = []"
+          :class="!allExpanded ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
+          class="px-3 py-1.5 text-xs border rounded-lg font-medium">簡易</button>
+        <button @click="allExpanded = true"
+          :class="allExpanded ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
+          class="px-3 py-1.5 text-xs border rounded-lg font-medium">詳細</button>
       </div>
 
       <!-- Filter panel -->
