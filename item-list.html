@@ -19,6 +19,41 @@
         sheetDef: null,
         items: [],
         detailView: false,
+        filterProgress: [],
+        filterStatus: 'all',
+        showFilter: false,
+
+        activeFilterCount() {
+          return this.filterProgress.length + (this.filterStatus !== 'all' ? 1 : 0);
+        },
+
+        filtered() {
+          let rows = this.items;
+          if (this.filterProgress.length > 0) {
+            rows = rows.filter(r => {
+              const d = doneCount(r);
+              if (this.filterProgress.includes('done') && d === PERSPECTIVES.length) return true;
+              if (this.filterProgress.includes('inProgress') && d > 0 && d < PERSPECTIVES.length) return true;
+              if (this.filterProgress.includes('todo') && d === 0) return true;
+              return false;
+            });
+          }
+          if (this.filterStatus !== 'all') {
+            rows = rows.filter(r => {
+              const tag = this.sheetDef.statusTag?.(r) || null;
+              if (this.filterStatus === 'active') return !tag || tag.norm === 'active';
+              if (this.filterStatus === 'closing') return tag?.norm === 'closing';
+              if (this.filterStatus === 'closed') return tag?.norm === 'closed';
+              return true;
+            });
+          }
+          return rows;
+        },
+
+        toggleProgress(s) {
+          const i = this.filterProgress.indexOf(s);
+          if (i >= 0) this.filterProgress.splice(i, 1); else this.filterProgress.push(s);
+        },
 
         async init() {
           const params = new URLSearchParams(location.search);
@@ -141,11 +176,22 @@
           <p class="text-lg font-medium" x-text="sheetDef?.label || ''"></p>
         </div>
         <span class="text-sm text-gray-400"
-              x-text="items.length + '件'"></span>
+              x-text="filtered().length + '件'"></span>
       </div>
 
-      <!-- 表示切替 -->
-      <div class="flex gap-2 mb-4">
+      <!-- 絞込・表示切替 -->
+      <div class="flex items-center gap-1.5 mb-4">
+        <button @click="showFilter = !showFilter"
+          :class="activeFilterCount() > 0 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
+          class="px-3 py-1.5 text-xs border rounded-lg font-medium flex items-center gap-1.5">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M7 9h10M11 14h2"/>
+          </svg>
+          絞込
+          <span x-show="activeFilterCount() > 0"
+                class="bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
+                x-text="activeFilterCount()"></span>
+        </button>
         <button
           @click="detailView = false; expandedRows = []"
           :class="!detailView ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
@@ -160,15 +206,52 @@
         </button>
       </div>
 
+      <!-- Filter panel -->
+      <div x-show="showFilter" class="bg-white rounded-xl p-4 shadow-sm space-y-3 mb-4">
+        <div>
+          <p class="text-xs text-gray-500 mb-2">進捗</p>
+          <div class="flex gap-2">
+            <button @click="toggleProgress('done')"
+              :class="filterProgress.includes('done') ? 'bg-green-50 text-green-700 border-green-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+              class="px-3 py-1 text-xs border rounded-lg">完了</button>
+            <button @click="toggleProgress('inProgress')"
+              :class="filterProgress.includes('inProgress') ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+              class="px-3 py-1 text-xs border rounded-lg">進行中</button>
+            <button @click="toggleProgress('todo')"
+              :class="filterProgress.includes('todo') ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+              class="px-3 py-1 text-xs border rounded-lg">TODO</button>
+          </div>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 mb-2">状態</p>
+          <div class="flex gap-2 flex-wrap">
+            <button @click="filterStatus = 'all'"
+              :class="filterStatus === 'all' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+              class="px-3 py-1 text-xs border rounded-lg">すべて</button>
+            <button @click="filterStatus = 'active'"
+              :class="filterStatus === 'active' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+              class="px-3 py-1 text-xs border rounded-lg">継続中</button>
+            <button @click="filterStatus = 'closing'"
+              :class="filterStatus === 'closing' ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+              class="px-3 py-1 text-xs border rounded-lg">解約予定</button>
+            <button @click="filterStatus = 'closed'"
+              :class="filterStatus === 'closed' ? 'bg-gray-200 text-gray-600 border-gray-400' : 'bg-gray-50 text-gray-600 border-gray-200'"
+              class="px-3 py-1 text-xs border rounded-lg">解約済</button>
+          </div>
+        </div>
+        <button @click="filterProgress = []; filterStatus = 'all'"
+          class="text-xs text-gray-400 hover:text-gray-600">クリア</button>
+      </div>
+
       <!-- 空状態 -->
-      <div x-show="items.length === 0" class="text-center py-16 text-gray-400 text-sm">
-        <p class="mb-1">まだ項目がありません</p>
-        <p class="text-xs">スプレッドシートにデータを追加してください</p>
+      <div x-show="filtered().length === 0" class="text-center py-16 text-gray-400 text-sm">
+        <p class="mb-1" x-text="items.length === 0 ? 'まだ項目がありません' : '該当する項目がありません'"></p>
+        <p x-show="items.length === 0" class="text-xs">スプレッドシートにデータを追加してください</p>
       </div>
 
       <!-- 項目リスト -->
       <div class="space-y-3">
-        <template x-for="row in items" :key="row._row">
+        <template x-for="row in filtered()" :key="row._row">
           <div class="bg-white rounded-xl shadow-sm overflow-hidden"
                :class="itemStatusTag(row)?.muted ? 'opacity-60' : ''">
 
