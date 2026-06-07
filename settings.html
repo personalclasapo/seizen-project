@@ -40,6 +40,9 @@
         newMemberColor: 'blue',
         colorOptions: COLOR_OPTIONS,
 
+        editingIdx: -1,
+        editingName: '',
+
         async init() {
           await waitForGsi();
           initAuth(
@@ -144,12 +147,42 @@
             m.color = prev;
             this.memberError = e.message;
           }
+        },
+
+        startEdit(idx) {
+          this.editingIdx = idx;
+          this.editingName = this.members[idx].display_name;
+        },
+
+        cancelEdit() {
+          this.editingIdx = -1;
+          this.editingName = '';
+        },
+
+        async saveMemberName(idx) {
+          const name = this.editingName.trim();
+          if (!name) { this.cancelEdit(); return; }
+          const m = this.members[idx];
+          if (name === m.display_name) { this.cancelEdit(); return; }
+          const prev = m.display_name;
+          m.display_name = name;
+          this.editingIdx = -1;
+          this.memberError = null;
+          try {
+            await updateRow('family_member', m._row, toRow(
+              { id: m.id, display_name: name, role: m.role || '', note: m.note || '', color: m.color || '' },
+              FM_COLS
+            ));
+          } catch (e) {
+            m.display_name = prev;
+            this.memberError = e.message;
+          }
         }
       };
     }
   </script>
 </head>
-<body class="bg-[#FAF7F0] min-h-screen">
+<body class="bg-[#FAF7F0] min-h-screen pb-16">
 
   <div x-data="settingsApp()" x-init="init()">
 
@@ -210,16 +243,53 @@
           <p x-show="members.length === 0" class="text-sm text-gray-400">メンバーがいません</p>
           <template x-for="(m, idx) in members" :key="m.id || idx">
             <div class="flex items-center gap-2">
-              <span class="text-sm flex-1 font-medium" x-text="m.display_name"></span>
-              <div class="flex gap-1.5">
+
+              <!-- 名前（通常 / 編集中） -->
+              <div class="flex items-center gap-1 flex-1 min-w-0">
+                <template x-if="editingIdx !== idx">
+                  <div class="flex items-center gap-1 min-w-0">
+                    <span class="text-sm font-medium truncate" x-text="m.display_name"></span>
+                    <button @click="startEdit(idx)" class="text-gray-300 hover:text-gray-500 shrink-0 p-0.5">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </template>
+                <template x-if="editingIdx === idx">
+                  <div class="flex items-center gap-1 flex-1 min-w-0">
+                    <input type="text" x-model="editingName"
+                           x-init="$nextTick(() => $el.focus())"
+                           @keydown.enter="saveMemberName(idx)"
+                           @keydown.escape="cancelEdit()"
+                           class="flex-1 min-w-0 text-sm border border-blue-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-300">
+                    <button @click="saveMemberName(idx)" class="text-blue-600 hover:text-blue-800 shrink-0">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                    </button>
+                    <button @click="cancelEdit()" class="text-gray-400 hover:text-gray-600 shrink-0">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                </template>
+              </div>
+
+              <!-- 色チップ -->
+              <div class="flex gap-1.5 shrink-0">
                 <template x-for="c in colorOptions" :key="c.key">
                   <button @click="setMemberColor(idx, c.key)"
                           :class="[c.dot, m.color === c.key ? 'ring-2 ring-offset-1 ring-gray-500 scale-110' : 'opacity-70 hover:opacity-100']"
                           class="w-6 h-6 rounded-full transition-all"></button>
                 </template>
               </div>
+
+              <!-- 削除 -->
               <button @click="deleteMember(idx)"
-                      class="text-xs text-gray-400 hover:text-red-500 ml-1 px-1">削除</button>
+                      class="text-xs text-gray-400 hover:text-red-500 ml-1 px-1 shrink-0">削除</button>
             </div>
           </template>
         </div>
@@ -256,6 +326,31 @@
 
     </div>
   </div>
+
+  <!-- Bottom nav -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex">
+    <a href="dashboard.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+      </svg>
+      <span class="text-xs mt-0.5">ホーム</span>
+    </a>
+    <a href="all-items.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+      </svg>
+      <span class="text-xs mt-0.5">全項目</span>
+    </a>
+    <a href="settings.html" class="flex-1 flex flex-col items-center py-2 text-blue-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+      <span class="text-xs mt-0.5">設定</span>
+    </a>
+  </nav>
 
   <script src="https://unpkg.com/alpinejs@3/dist/cdn.min.js" defer></script>
 </body>
