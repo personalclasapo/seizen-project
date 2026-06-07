@@ -104,7 +104,8 @@
           const m = this.members[idx];
           if (!m || m.color === colorKey) return;
           const prev = m.color;
-          m.color = colorKey;
+          // splice で置き換えることで Alpine.js のリアクティビティを確実に発火させる
+          this.members.splice(idx, 1, { ...m, color: colorKey });
           this.savingColorIdx = idx;
           this.memberError = null;
           try {
@@ -113,7 +114,7 @@
               FM_COLS
             ));
           } catch (e) {
-            m.color = prev;
+            this.members.splice(idx, 1, { ...this.members[idx], color: prev });
             this.memberError = e.message;
           } finally {
             this.savingColorIdx = -1;
@@ -136,7 +137,7 @@
           const m = this.members[idx];
           if (name === m.display_name) { this.cancelEdit(); return; }
           const prev = m.display_name;
-          m.display_name = name;
+          this.members.splice(idx, 1, { ...m, display_name: name });
           this.editingIdx = -1;
           this.memberError = null;
           try {
@@ -145,7 +146,7 @@
               FM_COLS
             ));
           } catch (e) {
-            m.display_name = prev;
+            this.members.splice(idx, 1, { ...this.members[idx], display_name: prev });
             this.memberError = e.message;
           }
         }
