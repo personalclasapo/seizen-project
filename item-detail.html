@@ -21,6 +21,7 @@
         sheetDef: null,
         row: null,
         targetRowIndex: null,
+        familyMembers: [],
 
         perspectiveModal: {
           open: false, saving: false, error: null,
@@ -63,7 +64,12 @@
 
         async load() {
           try {
-            const rows = await getSheet(this.sheetKey);
+            const [rows, members] = await Promise.all([
+              getSheet(this.sheetKey),
+              getSheet('family_member').catch(() => [])
+            ]);
+            loadFamilyMembers(members);
+            this.familyMembers = members;
             this.row = rows.find(r => r._row === this.targetRowIndex) || null;
             if (!this.row) this.error = '項目が見つかりません';
           } catch (e) {
@@ -476,8 +482,11 @@
                   </div>
                   <div>
                     <label class="text-xs text-gray-500 block mb-1">契約者</label>
-                    <input type="text" x-model="allEditModal.f.contract_holder_id" @input="allEditModal.dirty = true"
-                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                    <select x-model="allEditModal.f.contract_holder_id" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                    </select>
                   </div>
                   <div>
                     <label class="text-xs text-gray-500 block mb-1">状態</label>
@@ -685,9 +694,11 @@
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">契約者</label>
-                <input type="text" x-model="infoModal.f.contract_holder_id" @input="infoModal.dirty = true"
-                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                       placeholder="父"/>
+                <select x-model="infoModal.f.contract_holder_id" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                </select>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">状態</label>
@@ -726,8 +737,11 @@
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">名義人</label>
-                <input type="text" x-model="infoModal.f.account_holder_id" @input="infoModal.dirty = true"
-                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                <select x-model="infoModal.f.account_holder_id" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                </select>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">状態</label>
@@ -776,19 +790,28 @@
               <div class="flex gap-3">
                 <div class="flex-1">
                   <label class="text-xs text-gray-500 block mb-1">契約者</label>
-                  <input type="text" x-model="infoModal.f.contract_holder_id" @input="infoModal.dirty = true"
-                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  <select x-model="infoModal.f.contract_holder_id" @change="infoModal.dirty = true"
+                          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                    <option value="">（未設定）</option>
+                    <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                  </select>
                 </div>
                 <div class="flex-1">
                   <label class="text-xs text-gray-500 block mb-1">被保険者</label>
-                  <input type="text" x-model="infoModal.f.insured_person_id" @input="infoModal.dirty = true"
-                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  <select x-model="infoModal.f.insured_person_id" @change="infoModal.dirty = true"
+                          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                    <option value="">（未設定）</option>
+                    <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                  </select>
                 </div>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">受取人</label>
-                <input type="text" x-model="infoModal.f.beneficiary_id" @input="infoModal.dirty = true"
-                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                <select x-model="infoModal.f.beneficiary_id" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                </select>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">払込状況</label>
