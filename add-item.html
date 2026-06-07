@@ -194,8 +194,10 @@
       <div x-show="step === 2" class="space-y-4">
 
         <div class="pt-2">
-          <p class="text-xs text-gray-400 mb-1" x-text="selectedDef()?.group"></p>
-          <p class="font-medium" x-text="selectedDef()?.label + 'を追加'"></p>
+          <template x-if="!filterGroup">
+            <p class="text-xs text-gray-400 mb-1" x-text="selectedDef()?.group"></p>
+          </template>
+          <p class="font-medium" x-text="(filterGroup || selectedDef()?.label) + 'を追加'"></p>
         </div>
 
         <!-- エラー -->
@@ -246,7 +248,7 @@
 
         <!-- 保存ボタン -->
         <button @click="save()" :disabled="saving"
-          class="w-full bg-[#4A7C59] text-white rounded-xl py-3 text-sm font-medium hover:bg-[#3d6a4a] disabled:opacity-50 transition-colors">
+          class="w-full bg-white border border-blue-300 text-blue-600 rounded-xl py-3 text-sm font-medium hover:bg-blue-50 disabled:opacity-50 transition-colors">
           <span x-show="!saving">保存して一覧へ</span>
           <span x-show="saving">保存中...</span>
         </button>
