@@ -11,6 +11,19 @@
   <script src="js/sheets.js"></script>
   <script src="js/picker.js"></script>
   <script>
+    const FM_COLS = ['id', 'display_name', 'role', 'note', 'color'];
+
+    const COLOR_OPTIONS = [
+      { key: 'blue',   dot: 'bg-blue-400'   },
+      { key: 'rose',   dot: 'bg-rose-400'   },
+      { key: 'green',  dot: 'bg-green-500'  },
+      { key: 'amber',  dot: 'bg-amber-400'  },
+      { key: 'purple', dot: 'bg-purple-400' },
+      { key: 'teal',   dot: 'bg-teal-400'   },
+      { key: 'orange', dot: 'bg-orange-400' },
+      { key: 'indigo', dot: 'bg-indigo-400' },
+    ];
+
     function settingsApp() {
       return {
         ready: false,
@@ -20,15 +33,23 @@
         folderName: '',
         folderId: '',
 
+        members: [],
+        membersLoading: false,
+        memberError: null,
+        newMemberName: '',
+        newMemberColor: 'blue',
+        colorOptions: COLOR_OPTIONS,
+
         async init() {
           await waitForGsi();
           initAuth(
-            () => {
+            async () => {
               this.spreadsheetId = getSpreadsheetId();
               this.spreadsheetName = getSpreadsheetName() || (this.spreadsheetId ? '（選択済み）' : '');
               this.folderId = getDriveFolderId();
               this.folderName = getDriveFolderName();
               this.ready = true;
+              if (this.spreadsheetId) await this.loadMembers();
             },
             () => { window.location.href = 'index.html'; }
           );
@@ -47,6 +68,7 @@
               setSpreadsheetName(picked.name);
               this.spreadsheetId = picked.id;
               this.spreadsheetName = picked.name;
+              await this.loadMembers();
             }
           } catch (e) {
             this.error = e.message;
@@ -65,6 +87,62 @@
             }
           } catch (e) {
             this.error = e.message;
+          }
+        },
+
+        async loadMembers() {
+          if (!this.spreadsheetId) return;
+          this.membersLoading = true;
+          try {
+            this.members = await getSheet('family_member');
+          } catch {
+            this.members = [];
+          }
+          this.membersLoading = false;
+        },
+
+        async addMember() {
+          const name = this.newMemberName.trim();
+          if (!name) return;
+          this.memberError = null;
+          const id = 'fm_' + Date.now();
+          const color = this.newMemberColor || 'blue';
+          try {
+            await appendRow('family_member', toRow({ id, display_name: name, role: '', note: '', color }, FM_COLS));
+            this.newMemberName = '';
+            this.newMemberColor = 'blue';
+            this.members = await getSheet('family_member');
+          } catch (e) {
+            this.memberError = e.message;
+          }
+        },
+
+        async deleteMember(idx) {
+          const m = this.members[idx];
+          if (!m?._row) return;
+          this.memberError = null;
+          try {
+            await deleteRow('family_member', m._row);
+            this.members = await getSheet('family_member');
+          } catch (e) {
+            this.memberError = e.message;
+          }
+        },
+
+        async setMemberColor(idx, colorKey) {
+          const m = this.members[idx];
+          if (!m || m.color === colorKey) return;
+          const prev = m.color;
+          m.color = colorKey;
+          this.memberError = null;
+          try {
+            await updateRow('family_member', m._row, toRow(
+              { id: m.id, display_name: m.display_name, role: m.role || '', note: m.note || '', color: colorKey },
+              FM_COLS
+            ));
+          } catch (e) {
+            m.color = prev;
+            this.memberError = e.message;
           }
         }
       };
@@ -118,6 +196,53 @@
         <button @click="chooseFolder()"
                 class="px-4 py-2 text-sm border border-gray-200 rounded-lg font-medium text-gray-600 hover:bg-gray-50"
                 x-text="folderId ? 'フォルダを変更' : 'フォルダを選択'"></button>
+      </div>
+
+      <!-- 家族メンバー -->
+      <div x-show="configured" class="bg-white rounded-xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-sm font-medium">家族メンバー</p>
+          <span x-show="membersLoading" class="text-xs text-gray-400">読み込み中...</span>
+        </div>
+
+        <!-- メンバー一覧 -->
+        <div class="space-y-3 mb-4" x-show="!membersLoading">
+          <p x-show="members.length === 0" class="text-sm text-gray-400">メンバーがいません</p>
+          <template x-for="(m, idx) in members" :key="m.id || idx">
+            <div class="flex items-center gap-2">
+              <span class="text-sm flex-1 font-medium" x-text="m.display_name"></span>
+              <div class="flex gap-1.5">
+                <template x-for="c in colorOptions" :key="c.key">
+                  <button @click="setMemberColor(idx, c.key)"
+                          :class="[c.dot, m.color === c.key ? 'ring-2 ring-offset-1 ring-gray-500 scale-110' : 'opacity-70 hover:opacity-100']"
+                          class="w-6 h-6 rounded-full transition-all"></button>
+                </template>
+              </div>
+              <button @click="deleteMember(idx)"
+                      class="text-xs text-gray-400 hover:text-red-500 ml-1 px-1">削除</button>
+            </div>
+          </template>
+        </div>
+
+        <!-- 追加フォーム -->
+        <div class="flex items-center gap-2 pt-3 border-t border-gray-100">
+          <input type="text" x-model="newMemberName"
+                 @keydown.enter="addMember()"
+                 placeholder="名前を入力"
+                 class="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-300">
+          <div class="flex gap-1.5 shrink-0">
+            <template x-for="c in colorOptions" :key="c.key">
+              <button @click="newMemberColor = c.key"
+                      :class="[c.dot, newMemberColor === c.key ? 'ring-2 ring-offset-1 ring-gray-500 scale-110' : 'opacity-70 hover:opacity-100']"
+                      class="w-6 h-6 rounded-full transition-all"></button>
+            </template>
+          </div>
+          <button @click="addMember()"
+                  :disabled="!newMemberName.trim()"
+                  class="shrink-0 text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">追加</button>
+        </div>
+
+        <p x-show="memberError" class="mt-2 text-xs text-red-500" x-text="memberError"></p>
       </div>
 
       <!-- 完了 -->

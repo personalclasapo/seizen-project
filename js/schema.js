@@ -15,15 +15,30 @@ const PERSPECTIVES = [
 
 const STATUS_OPTIONS = ['完了', '未確認', '該当なし'];
 
-const HOLDER_COLORS = {
-  '父':  { bg: 'bg-blue-100',  text: 'text-blue-700'  },
-  '母':  { bg: 'bg-rose-100',  text: 'text-rose-700'  },
-  '自分': { bg: 'bg-green-100', text: 'text-green-700' },
-  '子':  { bg: 'bg-amber-100', text: 'text-amber-700' },
+const MEMBER_COLOR_PRESETS = {
+  blue:   { bg: 'bg-blue-100',   text: 'text-blue-700'   },
+  rose:   { bg: 'bg-rose-100',   text: 'text-rose-700'   },
+  green:  { bg: 'bg-green-100',  text: 'text-green-700'  },
+  amber:  { bg: 'bg-amber-100',  text: 'text-amber-700'  },
+  purple: { bg: 'bg-purple-100', text: 'text-purple-700' },
+  teal:   { bg: 'bg-teal-100',   text: 'text-teal-700'   },
+  orange: { bg: 'bg-orange-100', text: 'text-orange-700' },
+  indigo: { bg: 'bg-indigo-100', text: 'text-indigo-700' },
 };
 
+let _memberColorMap = {};
+
+function loadFamilyMembers(members) {
+  _memberColorMap = {};
+  for (const m of members) {
+    if (m.display_name) {
+      _memberColorMap[m.display_name] = MEMBER_COLOR_PRESETS[m.color] || { bg: 'bg-gray-100', text: 'text-gray-500' };
+    }
+  }
+}
+
 function holderColor(holder) {
-  return HOLDER_COLORS[holder] || { bg: 'bg-gray-100', text: 'text-gray-500' };
+  return _memberColorMap[holder] || { bg: 'bg-gray-100', text: 'text-gray-500' };
 }
 
 const CYCLE_SHORT = { '月額': '月', '年額': '年' };

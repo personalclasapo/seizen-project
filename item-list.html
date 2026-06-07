@@ -74,7 +74,12 @@
 
         async load() {
           try {
-            this.items = await getSheet(this.sheetKey);
+            const [items, members] = await Promise.all([
+              getSheet(this.sheetKey),
+              getSheet('family_member').catch(() => [])
+            ]);
+            loadFamilyMembers(members);
+            this.items = items;
           } catch (e) {
             this.error = e.message;
           }

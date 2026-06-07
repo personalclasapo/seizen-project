@@ -95,11 +95,15 @@
 
         async load() {
           try {
-            const results = await Promise.allSettled(
-              Object.keys(SHEETS).map(key =>
-                getSheet(key).then(rows => ({ key, rows }))
-              )
-            );
+            const [results, members] = await Promise.all([
+              Promise.allSettled(
+                Object.keys(SHEETS).map(key =>
+                  getSheet(key).then(rows => ({ key, rows }))
+                )
+              ),
+              getSheet('family_member').catch(() => [])
+            ]);
+            loadFamilyMembers(members);
             const items = [];
             for (const r of results) {
               if (r.status === 'rejected') continue;
