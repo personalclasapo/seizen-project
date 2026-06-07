@@ -154,7 +154,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
         </svg>
       </a>
-      <p class="font-medium flex-1" x-text="sheetDef?.label || ''"></p>
+      <p class="font-medium flex-1" x-text="sheetDef?.group || ''"></p>
       <button @click="signOut()" class="text-xs text-gray-400 hover:text-gray-600">ログアウト</button>
     </nav>
 
@@ -172,8 +172,8 @@
       <!-- ヘッダー -->
       <div class="flex items-center justify-between mb-4 pt-2">
         <div>
-          <p class="text-sm text-gray-500" x-text="sheetDef?.group || ''"></p>
-          <p class="text-lg font-medium" x-text="sheetDef?.label || ''"></p>
+          <p class="text-sm text-gray-500" x-text="sheetDef?.label || ''"></p>
+          <p class="text-lg font-medium" x-text="sheetDef?.group || ''"></p>
         </div>
         <span class="text-sm text-gray-400"
               x-text="filtered().length + '件'"></span>
@@ -280,12 +280,17 @@
                   <span class="text-xs text-gray-400" x-text="doneCount(row) + '/3'"></span>
                 </div>
               </div>
-              <div x-show="itemAmountNum(row) || itemPlan(row)" class="flex items-baseline gap-1">
-                <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
-                <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
-                <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
-                <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
-                <span x-show="itemPlan(row)" class="text-sm font-bold text-gray-800 truncate" x-text="itemPlan(row)"></span>
+              <div class="flex items-center gap-2 flex-wrap">
+                <template x-if="row.service_category">
+                  <span class="text-xs text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 shrink-0" x-text="row.service_category"></span>
+                </template>
+                <div x-show="itemAmountNum(row) || itemPlan(row)" class="flex items-baseline gap-1">
+                  <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
+                  <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
+                  <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
+                  <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
+                  <span x-show="itemPlan(row)" class="text-sm font-bold text-gray-800 truncate" x-text="itemPlan(row)"></span>
+                </div>
               </div>
             </div>
 
