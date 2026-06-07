@@ -20,11 +20,17 @@
         saveError: null,
 
         sheetKey: '',
+        filterGroup: '',
         members: [],
         form: {},
 
         sheetOptions() {
           return Object.entries(SHEETS).map(([key, def]) => ({ key, label: def.label, group: def.group }));
+        },
+
+        visibleGroups() {
+          const all = ['支出・収入', '資産・負債'];
+          return this.filterGroup ? all.filter(g => g === this.filterGroup) : all;
         },
 
         selectedDef() {
@@ -65,11 +71,22 @@
             this.members = await getSheet('family_member').catch(() => []);
           } catch (e) { /* family_member未作成は無視 */ }
 
-          // URLにsheetが指定されていれば選択済みとしてステップ2へ
           const params = new URLSearchParams(location.search);
+
+          // ?sheet= の場合は直接ステップ2へ
           const preSheet = params.get('sheet');
           if (preSheet && SHEETS[preSheet]) {
             this.selectSheet(preSheet);
+          }
+
+          // ?group= の場合はそのグループだけ表示。シートが1つなら自動選択
+          const preGroup = params.get('group');
+          if (!preSheet && preGroup) {
+            this.filterGroup = preGroup;
+            const opts = this.sheetOptions().filter(o => o.group === preGroup);
+            if (opts.length === 1) {
+              this.selectSheet(opts[0].key);
+            }
           }
 
           this.loading = false;
@@ -155,7 +172,7 @@
       <div x-show="step === 1">
         <p class="text-sm text-gray-500 pt-2 mb-4">どのカテゴリに追加しますか？</p>
 
-        <template x-for="group in ['支出・収入', '資産・負債']" :key="group">
+        <template x-for="group in visibleGroups()" :key="group">
           <div class="mb-4">
             <p class="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wide" x-text="group"></p>
             <div class="space-y-2">
