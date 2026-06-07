@@ -1,8 +1,7 @@
 const CONFIG = {
   CLIENT_ID: '1074813068152-8iablhbtg9ful7iir2c8d2j614mm5mue.apps.googleusercontent.com',
   API_KEY: 'AIzaSyA4kOpmmZKguqYwAzAjh27ORVYuE2MR3ys',
-  // 旧来のフォールバック（Picker未設定時に使用）。Picker選択後は localStorage が優先。
-  SPREADSHEET_ID: '15vFaStY7OOcMtq1YmKBIcjyTGg3_vVla2NfdYL7WtOg',
+  SPREADSHEET_ID: '',
   SCOPES: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file'
 };
 

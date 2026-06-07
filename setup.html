@@ -3,16 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>生前整理 - セットアップ</title>
+  <title>生前整理 - はじめる前に</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://accounts.google.com/gsi/client" onload="onGsiLoad()" async></script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/picker.js"></script>
   <script src="js/schema.js"></script>
   <script>
-    const SPREADSHEET_API = `https://sheets.googleapis.com/v4/spreadsheets/${getSpreadsheetId()}`;
-
-    // 必要なシートとそのヘッダー
     const SHEET_HEADERS = {
       cash_flow: [
         'id','created_at','updated_at',
@@ -64,61 +62,14 @@
       ]
     };
 
-    // cash_flow サンプルデータ（ヘッダー行を除く）
     const SAMPLE_ROWS = [
-      [
-        'cash_001','2026-06-02','2026-06-02',
-        '完了','家族が把握済み',
-        '完了','動画配信サービス、月1,490円。家族プランで父が契約者',
-        '未確認','',
-        '未確認','',
-        '',
-        'Netflix','サブスク','支出',
-        '父','月額','1490','1490','クレジットカード','継続中','手動入力','','家族プラン'
-      ],
-      [
-        'cash_002','2026-06-02','2026-06-02',
-        '完了','家族が把握済み',
-        '未確認','',
-        '未確認','',
-        '未確認','',
-        '',
-        'NHK受信料','公共料金','支出',
-        '父','2ヶ月','2950','1475','口座振替','継続中','手動入力','',''
-      ],
-      [
-        'cash_003','2026-06-02','2026-06-02',
-        '未確認','',
-        '未確認','',
-        '未確認','',
-        '未確認','',
-        '',
-        'Spotify','サブスク','支出',
-        '父','月額','980','980','クレジットカード','継続中','手動入力','','Premium'
-      ],
-      [
-        'cash_004','2026-06-02','2026-06-02',
-        '完了','父名義で自宅に届いている',
-        '完了','朝日新聞、月3,500円',
-        '未確認','',
-        '完了','解約は電話（0120-xxx-xxx）。本人以外でも手続き可',
-        '',
-        '朝日新聞','メディア（NHK・新聞）','支出',
-        '父','月額','3500','3500','口座振替','継続中','手動入力','',''
-      ],
-      [
-        'cash_005','2026-06-02','2026-06-02',
-        '完了','家族が把握済み',
-        '完了','年金（厚生年金）、月185,000円',
-        '完了','年金証書は引き出しに保管。受け取りは自動振込',
-        '完了','死亡時は年金事務所に届け出が必要。14日以内',
-        '年金証書は和室の引き出し（上段）に保管',
-        '老齢厚生年金','年金','収入',
-        '父','月額','185000','185000','口座振込','継続中','手動入力','',''
-      ]
+      ['cash_001','2026-06-02','2026-06-02','完了','家族が把握済み','完了','動画配信サービス、月1,490円。家族プランで父が契約者','未確認','','未確認','','','Netflix','サブスク','支出','父','月額','1490','1490','クレジットカード','継続中','手動入力','','家族プラン'],
+      ['cash_002','2026-06-02','2026-06-02','完了','家族が把握済み','未確認','','未確認','','未確認','','','NHK受信料','公共料金','支出','父','2ヶ月','2950','1475','口座振替','継続中','手動入力','',''],
+      ['cash_003','2026-06-02','2026-06-02','未確認','','未確認','','未確認','','未確認','','','Spotify','サブスク','支出','父','月額','980','980','クレジットカード','継続中','手動入力','','Premium'],
+      ['cash_004','2026-06-02','2026-06-02','完了','父名義で自宅に届いている','完了','朝日新聞、月3,500円','未確認','','完了','解約は電話（0120-xxx-xxx）。本人以外でも手続き可','','朝日新聞','メディア（NHK・新聞）','支出','父','月額','3500','3500','口座振替','継続中','手動入力','',''],
+      ['cash_005','2026-06-02','2026-06-02','完了','家族が把握済み','完了','年金（厚生年金）、月185,000円','完了','年金証書は引き出しに保管。受け取りは自動振込','完了','死亡時は年金事務所に届け出が必要。14日以内','年金証書は和室の引き出し（上段）に保管','老齢厚生年金','年金','収入','父','月額','185000','185000','口座振込','継続中','手動入力','','']
     ];
 
-    // transaction_candidates サンプル（画面E確認用、ヘッダー行を除く）
     const SAMPLE_CANDIDATES = [
       ['cand_001','up_001','Netflix','NETFLIX.COM','1490','月額','サブスク（動画配信）','未登録',''],
       ['cand_002','up_001','Apple','APPLE.COM/BILL','3200','月額','要確認','未登録',''],
@@ -127,127 +78,146 @@
       ['cand_005','up_001','Amazonプライム','AMAZON PRIME','600','月額','サブスク','未登録','']
     ];
 
-    async function apiReq(method, url, body) {
-      const res = await fetch(url, {
+    function apiReq(method, url, body) {
+      return fetch(url, {
         method,
         headers: {
           Authorization: `Bearer ${getToken()}`,
           'Content-Type': 'application/json'
         },
         body: body ? JSON.stringify(body) : undefined
+      }).then(async res => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error?.message || `API error ${res.status}`);
+        }
+        return res.json();
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || `API error ${res.status}`);
-      }
-      return res.json();
     }
 
     function setupApp() {
       return {
-        gsiReady: false,
-        authed: false,
-        running: false,
-        done: false,
-        error: null,
+        // ステップ: 'choose' | 'confirm' | 'initializing' | 'done'
+        step: 'choose',
+        selectedId: '',
+        selectedName: '',
+        manualId: '',
+        showManual: false,
         logs: [],
+        error: null,
 
         async init() {
           await waitForGsi();
-          this.gsiReady = true;
           initAuth(
-            () => { this.authed = true; },
-            () => { this.authed = false; }
+            () => { /* 認証済みのまま続行 */ },
+            () => { window.location.href = 'index.html'; }
           );
         },
 
-        doLogin() {
-          signIn();
-        },
-
-        async run() {
-          this.running = true;
-          this.done = false;
+        async pickExisting() {
           this.error = null;
-          this.logs = [];
           try {
-            await this.setup();
-            this.done = true;
+            const result = await pickSpreadsheet();
+            if (!result) return;
+            this.selectedId = result.id;
+            this.selectedName = result.name;
+            this.step = 'confirm';
           } catch (e) {
             this.error = e.message;
           }
-          this.running = false;
+        },
+
+        async createNew() {
+          this.error = null;
+          try {
+            const res = await apiReq('POST',
+              'https://sheets.googleapis.com/v4/spreadsheets',
+              { properties: { title: '生前整理データ' } }
+            );
+            this.selectedId = res.spreadsheetId;
+            this.selectedName = res.properties.title;
+            this.step = 'confirm';
+          } catch (e) {
+            this.error = e.message;
+          }
+        },
+
+        applyManual() {
+          const id = this.manualId.trim();
+          if (!id) return;
+          this.selectedId = id;
+          this.selectedName = id;
+          this.showManual = false;
+          this.step = 'confirm';
+        },
+
+        back() {
+          this.step = 'choose';
+          this.selectedId = '';
+          this.selectedName = '';
+          this.error = null;
+          this.logs = [];
         },
 
         log(msg) { this.logs.push(msg); },
 
-        async setup() {
-          // 1. 既存シートを確認
-          this.log('シート一覧を確認中...');
-          const info = await apiReq('GET', `${SPREADSHEET_API}?fields=sheets.properties.title`);
-          const existing = new Set(info.sheets.map(s => s.properties.title));
+        async initialize() {
+          this.step = 'initializing';
+          this.logs = [];
+          this.error = null;
+          setSpreadsheetId(this.selectedId);
+          const base = `https://sheets.googleapis.com/v4/spreadsheets/${this.selectedId}`;
+          try {
+            this.log('シート一覧を確認中...');
+            const info = await apiReq('GET', `${base}?fields=sheets.properties.title`);
+            const existing = new Set(info.sheets.map(s => s.properties.title));
 
-          // 2. 不足シートを作成
-          const required = Object.keys(SHEET_HEADERS);
-          const missing = required.filter(t => !existing.has(t));
-          if (missing.length > 0) {
-            this.log(`シートを作成: ${missing.join(', ')}`);
-            await apiReq('POST', `${SPREADSHEET_API}:batchUpdate`, {
-              requests: missing.map(title => ({ addSheet: { properties: { title } } }))
-            });
-          } else {
-            this.log('全シート確認済み');
-          }
+            const required = Object.keys(SHEET_HEADERS);
+            const missing = required.filter(t => !existing.has(t));
+            if (missing.length > 0) {
+              this.log(`シートを作成: ${missing.join(', ')}`);
+              await apiReq('POST', `${base}:batchUpdate`, {
+                requests: missing.map(title => ({ addSheet: { properties: { title } } }))
+              });
+            } else {
+              this.log('全シート確認済み');
+            }
 
-          // 3. ヘッダーを書き込み
-          this.log('ヘッダーを書き込み中...');
-          await apiReq('POST', `${SPREADSHEET_API}/values:batchUpdate`, {
-            valueInputOption: 'RAW',
-            data: required.map(sheet => ({
-              range: `${sheet}!A1`,
-              values: [SHEET_HEADERS[sheet]]
-            }))
-          });
-
-          // 4. cash_flow にサンプルデータ追加（既存データがない場合のみ）
-          this.log('cash_flow のデータを確認中...');
-          const current = await apiReq('GET',
-            `https://sheets.googleapis.com/v4/spreadsheets/${getSpreadsheetId()}/values/cash_flow!A2:A6`
-          );
-          if (!current.values || current.values.length === 0) {
-            this.log('サンプルデータを追加中...');
-            await apiReq('POST', `${SPREADSHEET_API}/values:batchUpdate`, {
+            this.log('ヘッダーを書き込み中...');
+            await apiReq('POST', `${base}/values:batchUpdate`, {
               valueInputOption: 'RAW',
-              data: [{
-                range: 'cash_flow!A2',
-                values: SAMPLE_ROWS
-              }]
+              data: required.map(sheet => ({
+                range: `${sheet}!A1`,
+                values: [SHEET_HEADERS[sheet]]
+              }))
             });
-            this.log(`サンプルデータ ${SAMPLE_ROWS.length} 件追加`);
-          } else {
-            this.log('既存データがあるためサンプル追加をスキップ');
-          }
 
-          // 5. transaction_candidates にサンプル追加（既存データがない場合のみ）
-          this.log('transaction_candidates のデータを確認中...');
-          const curCand = await apiReq('GET',
-            `https://sheets.googleapis.com/v4/spreadsheets/${getSpreadsheetId()}/values/transaction_candidates!A2:A6`
-          );
-          if (!curCand.values || curCand.values.length === 0) {
-            this.log('定期候補サンプルを追加中...');
-            await apiReq('POST', `${SPREADSHEET_API}/values:batchUpdate`, {
-              valueInputOption: 'RAW',
-              data: [{
-                range: 'transaction_candidates!A2',
-                values: SAMPLE_CANDIDATES
-              }]
-            });
-            this.log(`定期候補サンプル ${SAMPLE_CANDIDATES.length} 件追加`);
-          } else {
-            this.log('既存の定期候補があるためスキップ');
-          }
+            this.log('サンプルデータを確認中...');
+            const cur = await apiReq('GET', `${base}/values/cash_flow!A2:A6`);
+            if (!cur.values || cur.values.length === 0) {
+              this.log('サンプルデータを追加中...');
+              await apiReq('POST', `${base}/values:batchUpdate`, {
+                valueInputOption: 'RAW',
+                data: [{ range: 'cash_flow!A2', values: SAMPLE_ROWS }]
+              });
+            } else {
+              this.log('既存データがあるためサンプル追加をスキップ');
+            }
 
-          this.log('✓ セットアップ完了');
+            const curCand = await apiReq('GET', `${base}/values/transaction_candidates!A2:A6`);
+            if (!curCand.values || curCand.values.length === 0) {
+              await apiReq('POST', `${base}/values:batchUpdate`, {
+                valueInputOption: 'RAW',
+                data: [{ range: 'transaction_candidates!A2', values: SAMPLE_CANDIDATES }]
+              });
+            }
+
+            this.log('✓ 完了');
+            this.step = 'done';
+          } catch (e) {
+            this.error = e.message;
+            this.step = 'confirm';
+          }
         }
       };
     }
@@ -255,86 +225,116 @@
 </head>
 <body class="bg-[#FAF7F0] min-h-screen flex items-center justify-center p-4">
 
-  <div x-data="setupApp()" x-init="init()" class="w-full max-w-md">
+  <div x-data="setupApp()" x-init="init()" class="w-full max-w-sm mx-auto">
 
-    <div class="bg-white rounded-xl p-8 shadow-sm">
+    <div class="text-center mb-6">
+      <p class="text-xl font-medium">生前整理</p>
+    </div>
 
-      <div class="mb-6">
-        <p class="text-lg font-medium mb-1">スプレッドシートのセットアップ</p>
-        <p class="text-sm text-gray-500">シートの作成・ヘッダー書き込み・サンプルデータ投入を実行します</p>
-      </div>
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
 
-      <!-- ログイン前 -->
-      <div x-show="!authed">
-        <p class="text-sm text-gray-600 mb-4">Googleアカウントでログインしてください</p>
-        <button
-          @click="doLogin()"
-          :disabled="!gsiReady"
-          class="w-full py-3 border bg-white rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 disabled:opacity-40 transition-colors">
-          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-          </svg>
-          <span class="text-sm">Googleアカウントでログイン</span>
-        </button>
-      </div>
+      <!-- ステップ1: スプレッドシートを選ぶ -->
+      <div x-show="step === 'choose'" class="p-8">
+        <p class="font-medium text-center mb-1">データの保存先を設定</p>
+        <p class="text-sm text-gray-500 text-center mb-8 leading-relaxed">
+          情報はあなたのGoogleスプレッドシートに<br>直接保存されます
+        </p>
 
-      <!-- ログイン後 -->
-      <div x-show="authed && !done">
-        <div class="bg-gray-50 rounded-lg p-3 mb-4 text-sm text-gray-600">
-          <p class="font-medium mb-1">実行内容</p>
-          <ul class="text-xs space-y-0.5 text-gray-500">
-            <li>・ 7つのシートを作成（存在しない場合のみ）</li>
-            <li>・ 各シートにヘッダー行を書き込み</li>
-            <li>・ cash_flow にサンプルデータ 5件を追加（空の場合のみ）</li>
-            <li>・ transaction_candidates にサンプル 5件を追加（空の場合のみ）</li>
-          </ul>
+        <div class="space-y-3">
+          <button
+            @click="createNew()"
+            class="w-full py-3.5 bg-[#4A7C59] text-white rounded-lg text-sm font-medium hover:bg-[#3d6849] transition-colors">
+            新規スプレッドシートを作成
+          </button>
+
+          <button
+            @click="pickExisting()"
+            class="w-full py-3.5 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+            既存のスプレッドシートを選択
+          </button>
         </div>
 
-        <!-- ログ表示 -->
-        <div x-show="logs.length > 0" class="bg-gray-900 rounded-lg p-3 mb-4 space-y-1 min-h-16">
+        <div class="mt-4">
+          <button
+            @click="showManual = !showManual"
+            class="w-full text-xs text-gray-400 hover:text-gray-600 py-1 transition-colors">
+            スプレッドシートIDを直接入力
+          </button>
+          <div x-show="showManual" class="mt-2 flex gap-2">
+            <input
+              x-model="manualId"
+              type="text"
+              placeholder="スプレッドシートID"
+              class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-gray-400"
+              @keyup.enter="applyManual()" />
+            <button
+              @click="applyManual()"
+              class="px-3 py-2 bg-gray-700 text-white rounded-lg text-xs">決定</button>
+          </div>
+        </div>
+
+        <div x-show="error" class="mt-4 bg-red-50 text-red-700 rounded-lg p-3 text-xs" x-text="error"></div>
+      </div>
+
+      <!-- ステップ2: 確認・初期化 -->
+      <div x-show="step === 'confirm'" class="p-8">
+        <p class="font-medium text-center mb-6">このシートを使いますか？</p>
+
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+          <p class="text-xs text-gray-500 mb-1">選択したスプレッドシート</p>
+          <p class="text-sm font-medium text-gray-800 break-all" x-text="selectedName"></p>
+        </div>
+
+        <div class="bg-amber-50 rounded-lg p-3 mb-6">
+          <p class="text-xs text-gray-600 leading-relaxed">
+            「初期化する」を押すと、必要なシートとヘッダーが自動で作成されます。既存データは上書きされません。
+          </p>
+        </div>
+
+        <div x-show="error" class="bg-red-50 text-red-700 rounded-lg p-3 mb-4 text-xs" x-text="error"></div>
+
+        <div class="space-y-2">
+          <button
+            @click="initialize()"
+            class="w-full py-3.5 bg-[#4A7C59] text-white rounded-lg text-sm font-medium hover:bg-[#3d6849] transition-colors">
+            初期化する
+          </button>
+          <button
+            @click="back()"
+            class="w-full py-2.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+            戻る
+          </button>
+        </div>
+      </div>
+
+      <!-- ステップ3: 初期化中 -->
+      <div x-show="step === 'initializing'" class="p-8">
+        <p class="font-medium text-center mb-6">初期化しています...</p>
+        <div class="bg-gray-900 rounded-lg p-4 space-y-1 min-h-32">
           <template x-for="log in logs" :key="log">
             <p class="text-xs text-green-400 font-mono" x-text="log"></p>
           </template>
-          <span x-show="running" class="text-xs text-gray-400 font-mono animate-pulse">実行中...</span>
+          <span class="text-xs text-gray-400 font-mono animate-pulse">実行中...</span>
         </div>
-
-        <!-- エラー -->
-        <div x-show="error" class="bg-red-50 text-red-700 rounded-lg p-3 mb-4 text-sm" x-text="error"></div>
-
-        <button
-          @click="run()"
-          :disabled="running"
-          class="w-full py-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-          <span x-show="!running">セットアップを実行</span>
-          <span x-show="running">実行中...</span>
-        </button>
       </div>
 
-      <!-- 完了 -->
-      <div x-show="done" class="text-center">
-        <div class="text-4xl mb-3">✓</div>
-        <p class="font-medium mb-1">セットアップ完了</p>
-        <p class="text-sm text-gray-500 mb-6">スプレッドシートの準備ができました</p>
-        <div class="space-y-2">
-          <a href="dashboard.html"
-             class="block w-full py-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 text-center transition-colors">
-            ダッシュボードへ
-          </a>
-          <a href="index.html"
-             class="block w-full py-3 border rounded-lg text-sm text-gray-600 hover:bg-gray-50 text-center transition-colors">
-            ログインページへ
-          </a>
+      <!-- ステップ4: 完了 -->
+      <div x-show="step === 'done'" class="p-8 text-center">
+        <div class="w-14 h-14 bg-[#4A7C59] rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
         </div>
+        <p class="font-medium mb-1">準備ができました</p>
+        <p class="text-sm text-gray-500 mb-8">スプレッドシートの設定が完了しました</p>
+        <a href="dashboard.html"
+           class="block w-full py-3.5 bg-[#4A7C59] text-white rounded-lg text-sm font-medium hover:bg-[#3d6849] text-center transition-colors">
+          はじめる
+        </a>
       </div>
 
     </div>
 
-    <p class="text-xs text-center text-gray-400 mt-4">
-      このページはセットアップ専用です。通常利用には不要です。
-    </p>
   </div>
 
   <script src="https://unpkg.com/alpinejs@3/dist/cdn.min.js" defer></script>

@@ -22,7 +22,13 @@
           }
           await waitForGsi();
           initAuth(
-            () => { window.location.href = 'dashboard.html'; },
+            () => {
+              if (!getSpreadsheetId()) {
+                window.location.href = 'setup.html';
+              } else {
+                window.location.href = 'dashboard.html';
+              }
+            },
             () => { this.loading = false; },
             { silent: false }
           );
