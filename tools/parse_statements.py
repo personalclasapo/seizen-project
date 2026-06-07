@@ -121,12 +121,10 @@ def rows_to_dicts(values):
 
 
 # ── Drive ヘルパー ──
-def find_file(drive, folder_id, name):
-    safe = name.replace("'", "\\'")
-    q = f"'{folder_id}' in parents and name = '{safe}' and trashed = false"
-    res = drive.files().list(q=q, fields="files(id,name,mimeType)", pageSize=1).execute()
-    files = res.get("files", [])
-    return files[0] if files else None
+def list_folder_files(drive, folder_id):
+    q = f"'{folder_id}' in parents and trashed = false"
+    res = drive.files().list(q=q, fields="files(id,name,mimeType)", pageSize=200).execute()
+    return res.get("files", [])
 
 
 def download_text(drive, file_id):
@@ -241,32 +239,34 @@ def main():
     folder_id = cfg["folder_id"]
     sheets, drive = build_services(cfg)
 
+    # フォルダの実ファイルを基準に処理（アプリの記録有無に依存しない）
+    files = list_folder_files(drive, folder_id)
     uploads, _ = rows_to_dicts(sheet_values(sheets, ssid, "upload_history!A1:I"))
-    pending = [u for u in uploads if (u.get("status") or "未解析") != "解析済"]
-    if not pending:
-        print("未解析のアップロードはありません。")
-        return
+    hist_by_name = {u.get("file_name", ""): u for u in uploads}
 
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
     raw_rows, cand_rows = [], []
     cand_seq = 0
+    new_hist = []  # upload_history に新規追加する行
 
-    for up in pending:
-        fname = up.get("file_name", "")
-        ftype = (up.get("file_type") or "").upper()
-        print(f"処理中: {fname}")
-        if ftype != "CSV":
-            print(f"  → {ftype} はこのスクリプトでは未対応（手動解析対象）。スキップ")
+    for fmeta in files:
+        fname = fmeta["name"]
+        existing = hist_by_name.get(fname)
+        if existing and (existing.get("status") or "") == "解析済":
             continue
-        fmeta = find_file(drive, folder_id, fname)
-        if not fmeta:
-            print(f"  → フォルダ内に見つかりません。スキップ")
+        print(f"処理中: {fname}")
+        if not fname.lower().endswith(".csv"):
+            print(f"  → CSV以外はこのスクリプトでは未対応（手動解析対象）。スキップ")
             continue
         text = download_text(drive, fmeta["id"])
         txns = parse_csv(text)
         if not txns:
             print(f"  → 取引を解析できませんでした。スキップ")
             continue
+
+        # upload_id（既存行があれば流用、無ければ採番）
+        up_id = existing.get("id") if existing else f"up_{ts}_{len(new_hist)+1}"
+        up = {"id": up_id}
 
         candidates = detect_candidates(txns)
         # 候補IDを割り当て、生取引に紐付け
@@ -292,15 +292,30 @@ def main():
             ])
 
         dates = sorted(month_of(t["date"]) for t in txns)
-        sheet_update(sheets, ssid, f"upload_history!E{up['_row']}:I{up['_row']}", [[
-            t and txns[0]["source"] or "", dates[0], dates[-1], "解析済", len(candidates),
-        ]])
+        source = txns[0]["source"]
+        if existing:
+            # 既存の upload_history 行を更新
+            sheet_update(sheets, ssid, f"upload_history!E{existing['_row']}:I{existing['_row']}", [[
+                source, dates[0], dates[-1], "解析済", len(candidates),
+            ]])
+        else:
+            # アプリ未記録のファイル → upload_history に新規行を追加
+            new_hist.append([
+                up_id, datetime.now().strftime("%Y-%m-%d %H:%M"), fname, "CSV",
+                source, dates[0], dates[-1], "解析済", len(candidates),
+            ])
         print(f"  → 取引{len(txns)}件 / 定期候補{len(candidates)}件")
+
+    if not raw_rows and not new_hist:
+        print("未解析のファイルはありません。")
+        return
 
     if raw_rows:
         sheet_append(sheets, ssid, "raw_transactions!A1", raw_rows)
     if cand_rows:
         sheet_append(sheets, ssid, "transaction_candidates!A1", cand_rows)
+    if new_hist:
+        sheet_append(sheets, ssid, "upload_history!A1", new_hist)
 
     print(f"\n完了: raw_transactions {len(raw_rows)}件 / transaction_candidates {len(cand_rows)}件 を書き込みました。")
 
