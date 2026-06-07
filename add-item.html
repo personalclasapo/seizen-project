@@ -179,7 +179,7 @@
               <template x-for="opt in sheetOptions().filter(o => o.group === group)" :key="opt.key">
                 <button @click="selectSheet(opt.key)"
                   class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-[#4A7C59] hover:bg-green-50 transition-colors text-left">
-                  <span class="text-sm font-medium text-gray-700" x-text="opt.label"></span>
+                  <span class="text-sm font-medium text-gray-700" x-text="sheetOptions().filter(o => o.group === group).length === 1 ? group : opt.label"></span>
                   <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                   </svg>
