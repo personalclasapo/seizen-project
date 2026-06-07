@@ -1,1 +1,6 @@
 .DS_Store
+
+# サービスアカウントの鍵・ローカル設定（絶対にコミットしない）
+tools/secrets/
+tools/parse_config.json
+*.sa.json

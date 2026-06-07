@@ -1,0 +1,5 @@
+{
+  "service_account_file": "tools/secrets/sa.json",
+  "spreadsheet_id": "15vFaStY7OOcMtq1YmKBIcjyTGg3_vVla2NfdYL7WtOg",
+  "folder_id": "ここに明細フォルダのIDを入れる"
+}
