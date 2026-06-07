@@ -51,11 +51,23 @@ const SHEETS = {
   cash_flow: {
     label: 'サブスク・支払い',
     group: '支出・収入',
+    idPrefix: 'cash',
     cols: [
       'service_name', 'service_category', 'cash_flow_type',
       'contract_holder_id', 'billing_cycle', 'billing_amount',
       'monthly_amount', 'payment_method', 'status',
       'input_source', 'source_transaction_id', 'plan'
+    ],
+    formFields: [
+      { key: 'service_name',      label: 'サービス名・業者名', type: 'text',   required: true },
+      { key: 'service_category',  label: '種別',   type: 'select',
+        options: ['サブスク','公共料金','通信','メディア(NHK・新聞)','保険料の支払い','月額会員費','駐車場・トランクルーム・貸金庫','ローン返済','年金','給与','家賃収入','その他'] },
+      { key: 'cash_flow_type',    label: '支出/収入', type: 'select', options: ['支出','収入'] },
+      { key: 'billing_cycle',     label: '請求サイクル', type: 'select', options: ['月額','年額','隔月','その他'] },
+      { key: 'billing_amount',    label: '請求額（円）', type: 'number' },
+      { key: 'payment_method',    label: '支払い方法・口座', type: 'text' },
+      { key: 'contract_holder_id', label: '契約者', type: 'family_select' },
+      { key: 'status',            label: 'ステータス', type: 'select', options: ['継続中','解約予定','解約済'] },
     ],
     name: r => r.service_name || '（名称未設定）',
     statusTag: r => {
@@ -94,10 +106,20 @@ const SHEETS = {
   bank_account: {
     label: '銀行口座',
     group: '資産・負債',
+    idPrefix: 'bank',
     cols: [
       'bank_name', 'branch_name', 'account_type',
       'account_number', 'account_holder_id',
       'account_status', 'net_banking_usage'
+    ],
+    formFields: [
+      { key: 'bank_name',          label: '銀行名',   type: 'text', required: true },
+      { key: 'branch_name',        label: '支店名',   type: 'text' },
+      { key: 'account_type',       label: '口座種別', type: 'select', options: ['普通預金','定期預金','貯蓄預金'] },
+      { key: 'account_number',     label: '口座番号（任意）', type: 'text' },
+      { key: 'account_holder_id',  label: '名義人',   type: 'family_select' },
+      { key: 'net_banking_usage',  label: 'ネットバンキング', type: 'select', options: ['利用中','登録のみ','未利用'] },
+      { key: 'account_status',     label: 'ステータス', type: 'select', options: ['メイン','サブ','休眠','解約予定'] },
     ],
     name: r => [r.bank_name, r.branch_name].filter(Boolean).join(' ') || '（名称未設定）',
     statusTag: r => {
@@ -119,11 +141,26 @@ const SHEETS = {
   insurance: {
     label: '保険商品',
     group: '資産・負債',
+    idPrefix: 'ins',
     cols: [
       'insurance_company', 'product_name', 'insurance_type',
       'policy_number', 'contract_holder_id', 'insured_person_id',
       'beneficiary_id', 'insurance_amount', 'payment_status',
       'maturity_date', 'account_status'
+    ],
+    formFields: [
+      { key: 'insurance_company',  label: '保険会社名',   type: 'text', required: true },
+      { key: 'product_name',       label: '商品名',       type: 'text' },
+      { key: 'insurance_type',     label: '種別', type: 'select',
+        options: ['生命','医療','がん','個人年金','火災・地震','自動車','その他'] },
+      { key: 'policy_number',      label: '証券番号',     type: 'text' },
+      { key: 'contract_holder_id', label: '契約者',       type: 'family_select' },
+      { key: 'insured_person_id',  label: '被保険者',     type: 'family_select' },
+      { key: 'beneficiary_id',     label: '受取人',       type: 'family_select' },
+      { key: 'insurance_amount',   label: '保険金額',     type: 'text' },
+      { key: 'payment_status',     label: '払込状況', type: 'select', options: ['払込中','払込済','失効'] },
+      { key: 'maturity_date',      label: '満期日（例：終身、2030年3月）', type: 'text' },
+      { key: 'account_status',     label: 'ステータス', type: 'select', options: ['継続中','解約予定','解約済','失効'] },
     ],
     name: r => [r.insurance_company, r.product_name].filter(Boolean).join(' ') || '（名称未設定）',
     statusTag: r => {

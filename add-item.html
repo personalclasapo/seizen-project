@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>生前整理 - 項目追加</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" onload="onGsiLoad()" async></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/sheets.js"></script>
+  <script src="js/schema.js"></script>
+  <script>
+    function addItemApp() {
+      return {
+        step: 1,         // 1=シート選択, 2=入力フォーム
+        loading: true,
+        saving: false,
+        error: null,
+        saveError: null,
+
+        sheetKey: '',
+        members: [],
+        form: {},
+
+        sheetOptions() {
+          return Object.entries(SHEETS).map(([key, def]) => ({ key, label: def.label, group: def.group }));
+        },
+
+        selectedDef() {
+          return this.sheetKey ? SHEETS[this.sheetKey] : null;
+        },
+
+        formFields() {
+          return this.selectedDef()?.formFields || [];
+        },
+
+        memberOptions() {
+          return this.members.map(m => m.display_name).filter(Boolean);
+        },
+
+        selectSheet(key) {
+          this.sheetKey = key;
+          this.form = {};
+          for (const f of SHEETS[key].formFields) {
+            this.form[f.key] = '';
+          }
+          this.step = 2;
+        },
+
+        back() {
+          if (this.step === 2) this.step = 1;
+        },
+
+        async init() {
+          await waitForGsi();
+          initAuth(
+            () => this.load(),
+            () => { window.location.href = 'index.html'; }
+          );
+        },
+
+        async load() {
+          try {
+            this.members = await getSheet('family_member').catch(() => []);
+          } catch (e) { /* family_member未作成は無視 */ }
+
+          // URLにsheetが指定されていれば選択済みとしてステップ2へ
+          const params = new URLSearchParams(location.search);
+          const preSheet = params.get('sheet');
+          if (preSheet && SHEETS[preSheet]) {
+            this.selectSheet(preSheet);
+          }
+
+          this.loading = false;
+        },
+
+        async save() {
+          this.saveError = null;
+          const def = this.selectedDef();
+          if (!def) return;
+
+          const requiredField = def.formFields.find(f => f.required && !this.form[f.key]);
+          if (requiredField) {
+            this.saveError = `「${requiredField.label}」は必須です`;
+            return;
+          }
+
+          this.saving = true;
+          try {
+            // IDを生成
+            const existing = await getSheet(this.sheetKey).catch(() => []);
+            const prefix = def.idPrefix;
+            const nextNum = existing.length + 1;
+            const id = `${prefix}_${String(nextNum).padStart(3, '0')}`;
+
+            const now = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+
+            const allCols = getAllCols(this.sheetKey);
+            const obj = {
+              id,
+              created_at: now,
+              updated_at: now,
+              q1_existence_status: '未確認',
+              q2_understanding_status: '未確認',
+              q3_access_status: '未確認',
+              q4_emergency_status: '未確認',
+              ...this.form
+            };
+
+            // monthly_amount を自動計算（cash_flow のみ）
+            if (this.sheetKey === 'cash_flow' && obj.billing_amount) {
+              const amt = Number(obj.billing_amount);
+              if (obj.billing_cycle === '年額') obj.monthly_amount = String(Math.round(amt / 12));
+              else if (obj.billing_cycle === '月額') obj.monthly_amount = String(amt);
+            }
+
+            // input_source をセット（cash_flow のみ）
+            if (this.sheetKey === 'cash_flow') {
+              obj.input_source = '手動入力';
+            }
+
+            await appendRow(this.sheetKey, toRow(obj, allCols));
+            location.href = `item-list.html?sheet=${this.sheetKey}`;
+          } catch (e) {
+            this.saveError = e.message;
+          }
+          this.saving = false;
+        }
+      };
+    }
+  </script>
+</head>
+<body class="bg-[#FAF7F0] min-h-screen pb-16">
+
+  <div x-data="addItemApp()" x-init="init()">
+
+    <!-- Nav -->
+    <nav class="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+      <button @click="step === 2 ? back() : history.back()"
+              class="text-gray-400 hover:text-gray-600 p-1 -ml-1">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <p class="font-medium">項目を追加</p>
+    </nav>
+
+    <!-- Loading -->
+    <div x-show="loading" class="flex items-center justify-center py-24 text-sm text-gray-400">読み込み中...</div>
+
+    <div x-show="!loading" class="max-w-lg mx-auto p-4 space-y-4">
+
+      <!-- ---- Step 1: シート選択 ---- -->
+      <div x-show="step === 1">
+        <p class="text-sm text-gray-500 pt-2 mb-4">どのカテゴリに追加しますか？</p>
+
+        <template x-for="group in ['支出・収入', '資産・負債']" :key="group">
+          <div class="mb-4">
+            <p class="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wide" x-text="group"></p>
+            <div class="space-y-2">
+              <template x-for="opt in sheetOptions().filter(o => o.group === group)" :key="opt.key">
+                <button @click="selectSheet(opt.key)"
+                  class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-[#4A7C59] hover:bg-green-50 transition-colors text-left">
+                  <span class="text-sm font-medium text-gray-700" x-text="opt.label"></span>
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- ---- Step 2: 入力フォーム ---- -->
+      <div x-show="step === 2" class="space-y-4">
+
+        <div class="pt-2">
+          <p class="text-xs text-gray-400 mb-1" x-text="selectedDef()?.group"></p>
+          <p class="font-medium" x-text="selectedDef()?.label + 'を追加'"></p>
+        </div>
+
+        <!-- エラー -->
+        <div x-show="saveError" class="bg-red-50 text-red-700 rounded-lg p-3 text-sm" x-text="saveError"></div>
+
+        <!-- フォームフィールド -->
+        <div class="bg-white rounded-xl p-4 shadow-sm space-y-4">
+          <template x-for="field in formFields()" :key="field.key">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">
+                <span x-text="field.label"></span>
+                <span x-show="field.required" class="text-red-400 ml-0.5">*</span>
+              </label>
+
+              <!-- text / number -->
+              <template x-if="field.type === 'text' || field.type === 'number'">
+                <input
+                  :type="field.type"
+                  x-model="form[field.key]"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#4A7C59]"
+                  :placeholder="field.label">
+              </template>
+
+              <!-- select -->
+              <template x-if="field.type === 'select'">
+                <select x-model="form[field.key]"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#4A7C59] bg-white">
+                  <option value="">選択してください</option>
+                  <template x-for="opt in field.options" :key="opt">
+                    <option :value="opt" x-text="opt"></option>
+                  </template>
+                </select>
+              </template>
+
+              <!-- family_select -->
+              <template x-if="field.type === 'family_select'">
+                <select x-model="form[field.key]"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#4A7C59] bg-white">
+                  <option value="">（未設定）</option>
+                  <template x-for="name in memberOptions()" :key="name">
+                    <option :value="name" x-text="name"></option>
+                  </template>
+                </select>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <!-- 保存ボタン -->
+        <button @click="save()" :disabled="saving"
+          class="w-full bg-[#4A7C59] text-white rounded-xl py-3 text-sm font-medium hover:bg-[#3d6a4a] disabled:opacity-50 transition-colors">
+          <span x-show="!saving">保存して一覧へ</span>
+          <span x-show="saving">保存中...</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex">
+    <a href="dashboard.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+      </svg>
+      <span class="text-xs mt-0.5">ホーム</span>
+    </a>
+    <a href="all-items.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+      </svg>
+      <span class="text-xs mt-0.5">全項目</span>
+    </a>
+    <a href="settings.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+      <span class="text-xs mt-0.5">設定</span>
+    </a>
+  </nav>
+
+  <script src="https://unpkg.com/alpinejs@3/dist/cdn.min.js" defer></script>
+</body>
+</html>
