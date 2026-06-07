@@ -43,6 +43,17 @@ async function writeHeaders(sheetName, columns) {
   return _req('PUT', url, { values: [columns] });
 }
 
+// ヘッダー行に不足している列を末尾に補完する（既存列の順序は維持）。
+// 旧バージョンで作成され color 等の列が無いシートを自己修復するために使う。
+async function ensureHeader(sheetName, columns) {
+  const data = await _req('GET',
+    `${_apiBase()}/${encodeURIComponent(sheetName + '!1:1')}`);
+  const current = data?.values?.[0] || [];
+  const missing = columns.filter(c => !current.includes(c));
+  if (missing.length === 0) return;
+  await writeHeaders(sheetName, [...current, ...missing]);
+}
+
 function _toObjects(data) {
   if (!data?.values || data.values.length < 2) return [];
   const [headers, ...rows] = data.values;

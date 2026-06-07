@@ -65,6 +65,9 @@
           if (!this.spreadsheetId) return;
           this.membersLoading = true;
           try {
+            // 旧バージョンで作成されたシートには color 列が無いことがあるため、
+            // ヘッダーに不足列があれば補完してから読み込む
+            await ensureHeader('family_member', FM_COLS);
             this.members = await getSheet('family_member');
           } catch {
             this.members = [];
