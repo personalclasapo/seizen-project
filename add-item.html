@@ -194,10 +194,7 @@
       <div x-show="step === 2" class="space-y-4">
 
         <div class="pt-2">
-          <template x-if="!filterGroup">
-            <p class="text-xs text-gray-400 mb-1" x-text="selectedDef()?.group"></p>
-          </template>
-          <p class="font-medium" x-text="(filterGroup || selectedDef()?.label) + 'を追加'"></p>
+          <p class="font-medium" x-text="selectedDef()?.group + 'を追加'"></p>
         </div>
 
         <!-- エラー -->
