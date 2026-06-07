@@ -33,14 +33,20 @@
         detailView: false,
         filterProgress: [],
         filterStatus: 'all',
+        filterSheet: '',
         showFilter: false,
 
         activeFilterCount() {
-          return this.filterProgress.length + (this.filterStatus !== 'all' ? 1 : 0);
+          return this.filterProgress.length +
+            (this.filterStatus !== 'all' ? 1 : 0) +
+            (this.filterSheet ? 1 : 0);
         },
 
         filtered() {
           let rows = this.items;
+          if (this.filterSheet) {
+            rows = rows.filter(r => r._sheetKey === this.filterSheet);
+          }
           if (this.filterProgress.length > 0) {
             rows = rows.filter(r => {
               const d = doneCount(r);
@@ -52,7 +58,7 @@
           }
           if (this.filterStatus !== 'all') {
             rows = rows.filter(r => {
-              const tag = this.sheetDef.statusTag?.(r) || null;
+              const tag = SHEETS[r._sheetKey]?.statusTag?.(r) || null;
               if (this.filterStatus === 'active') return !tag || tag.norm === 'active';
               if (this.filterStatus === 'closing') return tag?.norm === 'closing';
               if (this.filterStatus === 'closed') return tag?.norm === 'closed';
@@ -97,25 +103,18 @@
           );
         },
 
-        async switchTab(key) {
-          if (key === this.sheetKey) return;
-          this.sheetKey = key;
-          this.sheetDef = SHEETS[key];
-          this.items = [];
-          this.filterProgress = [];
-          this.filterStatus = 'all';
-          this.loading = true;
-          await this.load();
-        },
-
         async load() {
           try {
-            const [items, members] = await Promise.all([
-              getSheet(this.sheetKey),
-              getSheet('family_member').catch(() => [])
-            ]);
+            const members = await getSheet('family_member').catch(() => []);
             loadFamilyMembers(members);
-            this.items = items;
+            const results = await Promise.all(
+              this.groupSheets.map(key =>
+                getSheet(key)
+                  .then(rows => rows.map(r => ({ ...r, _sheetKey: key, _uid: `${key}_${r._row}` })))
+                  .catch(() => [])
+              )
+            );
+            this.items = results.flat();
           } catch (e) {
             this.error = e.message;
           }
@@ -123,15 +122,19 @@
         },
 
         itemName(row) {
-          return this.sheetDef.name(row);
+          return SHEETS[row._sheetKey]?.name(row) || '';
         },
 
         itemStatusTag(row) {
-          return this.sheetDef.statusTag?.(row) || null;
+          return SHEETS[row._sheetKey]?.statusTag?.(row) || null;
         },
 
         itemSub(row) {
-          return this.sheetDef.sub(row);
+          return SHEETS[row._sheetKey]?.sub(row) || '';
+        },
+
+        itemSheetLabel(row) {
+          return SHEETS[row._sheetKey]?.label || '';
         },
 
         itemAmountNum(row) {
@@ -144,7 +147,7 @@
         },
 
         itemHolder(row) {
-          return this.sheetDef.holder?.(row) || '';
+          return SHEETS[row._sheetKey]?.holder?.(row) || '';
         },
 
         itemPlan(row) {
@@ -162,23 +165,22 @@
 
         expandedRows: [],
 
-        toggleExpand(rowId) {
+        toggleExpand(uid) {
           if (this.detailView) {
-            // 全展開モードから個別管理に切り替え（タップした1件だけ閉じる）
             this.detailView = false;
-            this.expandedRows = this.items.map(r => r._row).filter(id => id !== rowId);
+            this.expandedRows = this.items.map(r => r._uid).filter(id => id !== uid);
           } else {
-            const i = this.expandedRows.indexOf(rowId);
-            if (i >= 0) this.expandedRows.splice(i, 1); else this.expandedRows.push(rowId);
+            const i = this.expandedRows.indexOf(uid);
+            if (i >= 0) this.expandedRows.splice(i, 1); else this.expandedRows.push(uid);
           }
         },
 
-        isExpanded(rowId) {
-          return this.detailView || this.expandedRows.includes(rowId);
+        isExpanded(uid) {
+          return this.detailView || this.expandedRows.includes(uid);
         },
 
         goDetail(row) {
-          location.href = `item-detail.html?sheet=${this.sheetKey}&row=${row._row}`;
+          location.href = `item-detail.html?sheet=${row._sheetKey}&row=${row._row}`;
         }
       };
     }
@@ -219,20 +221,6 @@
               x-text="filtered().length + '件'"></span>
       </div>
 
-      <!-- タブ（グループに複数シートがある場合） -->
-      <template x-if="groupSheets.length > 1">
-        <div class="flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm">
-          <template x-for="key in groupSheets" :key="key">
-            <button
-              @click="switchTab(key)"
-              :class="sheetKey === key ? 'bg-[#4A7C59] text-white' : 'text-gray-500 hover:bg-gray-50'"
-              class="flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors"
-              x-text="SHEETS[key]?.label || key"
-            ></button>
-          </template>
-        </div>
-      </template>
-
       <!-- 絞込・表示切替 -->
       <div class="flex items-center gap-1.5 mb-4">
         <button @click="showFilter = !showFilter"
@@ -269,6 +257,23 @@
 
       <!-- Filter panel -->
       <div x-show="showFilter" class="bg-white rounded-xl p-4 shadow-sm space-y-3 mb-4">
+        <!-- 種別フィルター（複数シートのグループのみ表示） -->
+        <template x-if="groupSheets.length > 1">
+          <div>
+            <p class="text-xs text-gray-500 mb-2">種別</p>
+            <div class="flex gap-2 flex-wrap">
+              <button @click="filterSheet = ''"
+                :class="filterSheet === '' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                class="px-3 py-1 text-xs border rounded-lg">すべて</button>
+              <template x-for="key in groupSheets" :key="key">
+                <button @click="filterSheet = key"
+                  :class="filterSheet === key ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                  class="px-3 py-1 text-xs border rounded-lg"
+                  x-text="SHEETS[key]?.label || key"></button>
+              </template>
+            </div>
+          </div>
+        </template>
         <div>
           <p class="text-xs text-gray-500 mb-2">進捗</p>
           <div class="flex gap-2">
@@ -301,7 +306,7 @@
           </div>
         </div>
         <div class="flex items-center justify-between pt-1">
-          <button @click="filterProgress = []; filterStatus = 'all'"
+          <button @click="filterProgress = []; filterStatus = 'all'; filterSheet = ''"
             class="text-xs text-gray-400 hover:text-gray-600">クリア</button>
           <button @click="showFilter = false"
             class="text-xs font-medium text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-50">閉じる</button>
@@ -316,7 +321,7 @@
 
       <!-- 項目リスト -->
       <div class="space-y-3">
-        <template x-for="row in filtered()" :key="row._row">
+        <template x-for="row in filtered()" :key="row._uid">
           <div class="bg-white rounded-xl shadow-sm overflow-hidden"
                :class="itemStatusTag(row)?.muted ? 'opacity-60' : ''">
 
@@ -333,6 +338,10 @@
                   </template>
                 </div>
                 <div class="flex items-center gap-2 ml-2 shrink-0">
+                  <template x-if="groupSheets.length > 1">
+                    <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium shrink-0"
+                          x-text="itemSheetLabel(row)"></span>
+                  </template>
                   <template x-if="itemHolder(row)">
                     <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
                           class="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -356,14 +365,14 @@
             </div>
 
             <!-- 下部ゾーン：観点 → 展開/折り畳み -->
-            <div @click="toggleExpand(row._row)"
+            <div @click="toggleExpand(row._uid)"
                  class="cursor-pointer hover:bg-gray-50 transition-colors select-none">
               <!-- 区切り線 + chevron -->
               <div class="flex items-center px-4 py-1.5">
                 <div class="flex-1 border-t border-dashed border-gray-300"></div>
                 <div class="mx-2">
                   <svg class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200"
-                       :class="isExpanded(row._row) ? 'rotate-180' : ''"
+                       :class="isExpanded(row._uid) ? 'rotate-180' : ''"
                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                   </svg>
@@ -371,7 +380,7 @@
                 <div class="flex-1 border-t border-dashed border-gray-300"></div>
               </div>
               <!-- 折り畳み：3観点アイコン -->
-              <div x-show="!isExpanded(row._row)" class="grid grid-cols-3 gap-1.5 px-4 pb-4">
+              <div x-show="!isExpanded(row._uid)" class="grid grid-cols-3 gap-1.5 px-4 pb-4">
                 <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">
                   <div :class="ps.color.bg + ' ' + ps.color.text"
                        class="rounded p-1.5 text-center">
@@ -381,7 +390,7 @@
                 </template>
               </div>
               <!-- 展開：観点の中身 -->
-              <div x-show="isExpanded(row._row)" class="space-y-2 px-4 pb-4">
+              <div x-show="isExpanded(row._uid)" class="space-y-2 px-4 pb-4">
                 <template x-for="ps in perspectiveStatuses(row)" :key="ps.label">
                   <div :class="ps.color.bg" class="rounded-lg p-3">
                     <div class="flex items-center justify-between mb-1">
