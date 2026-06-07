@@ -29,9 +29,8 @@
         },
 
         async load() {
-          if (!CONFIG.SPREADSHEET_ID) {
-            this.error = 'js/config.js の SPREADSHEET_ID が未設定です';
-            this.loading = false;
+          if (!getSpreadsheetId()) {
+            window.location.href = 'settings.html';
             return;
           }
           try {
@@ -78,7 +77,10 @@
     <!-- Nav -->
     <nav class="bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10">
       <p class="font-medium">生前整理</p>
-      <button @click="signOut()" class="text-xs text-gray-400 hover:text-gray-600">ログアウト</button>
+      <div class="flex items-center gap-3">
+        <a href="settings.html" class="text-xs text-gray-400 hover:text-gray-600">設定</a>
+        <button @click="signOut()" class="text-xs text-gray-400 hover:text-gray-600">ログアウト</button>
+      </div>
     </nav>
 
     <!-- Loading -->

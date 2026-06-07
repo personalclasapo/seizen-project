@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>生前整理 - 設定</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" onload="onGsiLoad()" async></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/sheets.js"></script>
+  <script src="js/picker.js"></script>
+  <script>
+    function settingsApp() {
+      return {
+        ready: false,
+        error: null,
+        spreadsheetName: '',
+        spreadsheetId: '',
+        folderName: '',
+        folderId: '',
+
+        async init() {
+          await waitForGsi();
+          initAuth(
+            () => {
+              this.spreadsheetId = getSpreadsheetId();
+              this.spreadsheetName = getSpreadsheetName() || (this.spreadsheetId ? '（選択済み）' : '');
+              this.folderId = getDriveFolderId();
+              this.folderName = getDriveFolderName();
+              this.ready = true;
+            },
+            () => { window.location.href = 'index.html'; }
+          );
+        },
+
+        get configured() {
+          return !!this.spreadsheetId;
+        },
+
+        async chooseSpreadsheet() {
+          this.error = null;
+          try {
+            const picked = await pickSpreadsheet();
+            if (picked) {
+              setSpreadsheetId(picked.id);
+              setSpreadsheetName(picked.name);
+              this.spreadsheetId = picked.id;
+              this.spreadsheetName = picked.name;
+            }
+          } catch (e) {
+            this.error = e.message;
+          }
+        },
+
+        async chooseFolder() {
+          this.error = null;
+          try {
+            const picked = await pickFolder();
+            if (picked) {
+              setDriveFolderId(picked.id);
+              setDriveFolderName(picked.name);
+              this.folderId = picked.id;
+              this.folderName = picked.name;
+            }
+          } catch (e) {
+            this.error = e.message;
+          }
+        }
+      };
+    }
+  </script>
+</head>
+<body class="bg-[#FAF7F0] min-h-screen">
+
+  <div x-data="settingsApp()" x-init="init()">
+
+    <!-- Nav -->
+    <nav class="bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+      <p class="font-medium">設定</p>
+      <button @click="signOut()" class="text-xs text-gray-400 hover:text-gray-600">ログアウト</button>
+    </nav>
+
+    <div x-show="!ready" class="flex items-center justify-center py-24 text-sm text-gray-400">読み込み中...</div>
+
+    <div x-show="ready" class="max-w-lg mx-auto p-4 space-y-4">
+
+      <div class="pt-2">
+        <p class="text-sm text-gray-500 leading-relaxed">
+          データを保存する場所を選びます。スプレッドシートと明細フォルダは、ご家族のGoogle Driveから選択してください。
+        </p>
+      </div>
+
+      <!-- エラー -->
+      <div x-show="error" class="bg-red-50 text-red-700 rounded-lg p-3 text-sm" x-text="error"></div>
+
+      <!-- スプレッドシート -->
+      <div class="bg-white rounded-xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm font-medium">データ保存先（スプレッドシート）</p>
+          <span x-show="spreadsheetId" class="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded">設定済み</span>
+        </div>
+        <p x-show="spreadsheetName" class="text-sm text-gray-700 truncate mb-3" x-text="spreadsheetName"></p>
+        <p x-show="!spreadsheetName" class="text-sm text-gray-400 mb-3">未選択</p>
+        <button @click="chooseSpreadsheet()"
+                class="px-4 py-2 text-sm border border-gray-200 rounded-lg font-medium text-gray-600 hover:bg-gray-50"
+                x-text="spreadsheetId ? 'スプレッドシートを変更' : 'スプレッドシートを選択'"></button>
+      </div>
+
+      <!-- 明細フォルダ -->
+      <div class="bg-white rounded-xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm font-medium">明細の保存フォルダ（任意）</p>
+          <span x-show="folderId" class="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded">設定済み</span>
+        </div>
+        <p x-show="folderName" class="text-sm text-gray-700 truncate mb-3" x-text="folderName"></p>
+        <p x-show="!folderName" class="text-sm text-gray-400 mb-3">未選択（明細アップロード時にも選べます）</p>
+        <button @click="chooseFolder()"
+                class="px-4 py-2 text-sm border border-gray-200 rounded-lg font-medium text-gray-600 hover:bg-gray-50"
+                x-text="folderId ? 'フォルダを変更' : 'フォルダを選択'"></button>
+      </div>
+
+      <!-- 完了 -->
+      <a x-show="configured" href="dashboard.html"
+         class="block w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-medium text-center hover:bg-blue-700">
+        ダッシュボードへ
+      </a>
+      <p x-show="!configured" class="text-xs text-gray-400 text-center">
+        スプレッドシートを選択すると次へ進めます
+      </p>
+
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/alpinejs@3/dist/cdn.min.js" defer></script>
+</body>
+</html>

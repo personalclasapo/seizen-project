@@ -10,12 +10,12 @@
   <script src="js/auth.js"></script>
   <script src="js/sheets.js"></script>
   <script src="js/schema.js"></script>
+  <script src="js/picker.js"></script>
   <script>
     const UPLOAD_HISTORY_COLS = [
       'id', 'uploaded_at', 'file_name', 'file_type',
       'source', 'period_from', 'period_to', 'status', 'detected_count'
     ];
-    const DRIVE_FOLDER_NAME = '生前整理_明細';
 
     // ── Drive ヘルパー ──
     async function _driveReq(url, opts = {}) {
@@ -26,31 +26,6 @@
       if (res.status === 401) { signOut(); throw new Error('再ログインが必要です'); }
       if (!res.ok) throw new Error(`Drive API ${res.status}: ${await res.text()}`);
       return res.json();
-    }
-
-    async function getDriveFolderId() {
-      const cached = localStorage.getItem('sz_drive_folder');
-      if (cached) return cached;
-      const q = encodeURIComponent(
-        `mimeType='application/vnd.google-apps.folder' and name='${DRIVE_FOLDER_NAME}' and trashed=false`
-      );
-      const found = await _driveReq(
-        `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`
-      );
-      if (found.files && found.files.length) {
-        localStorage.setItem('sz_drive_folder', found.files[0].id);
-        return found.files[0].id;
-      }
-      const created = await _driveReq(
-        'https://www.googleapis.com/drive/v3/files?fields=id',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
-        }
-      );
-      localStorage.setItem('sz_drive_folder', created.id);
-      return created.id;
     }
 
     async function driveUploadFile(file, folderId) {
@@ -71,13 +46,29 @@
         uploading: false,
         dragOver: false,
         history: [],
+        folderId: '',
+        folderName: '',
 
         async init() {
           await waitForGsi();
           initAuth(
-            () => this.load(),
+            () => { this.folderId = getDriveFolderId(); this.folderName = getDriveFolderName(); this.load(); },
             () => { window.location.href = 'index.html'; }
           );
+        },
+
+        async chooseFolder() {
+          try {
+            const picked = await pickFolder();
+            if (picked) {
+              setDriveFolderId(picked.id);
+              setDriveFolderName(picked.name);
+              this.folderId = picked.id;
+              this.folderName = picked.name;
+            }
+          } catch (e) {
+            this.error = e.message;
+          }
         },
 
         async load() {
@@ -117,10 +108,14 @@
         },
 
         async uploadFiles(files) {
+          if (!this.folderId) {
+            this.error = '先に保存先フォルダを選択してください';
+            return;
+          }
           this.uploading = true;
           this.error = null;
           try {
-            const folderId = await getDriveFolderId();
+            const folderId = this.folderId;
             const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
             for (const file of files) {
               await driveUploadFile(file, folderId);
@@ -172,6 +167,20 @@
 
     <!-- Content -->
     <div x-show="!loading" class="max-w-3xl mx-auto p-4 space-y-4">
+
+      <!-- 保存先フォルダ -->
+      <div class="bg-white rounded-xl p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <div class="min-w-0">
+            <p class="text-xs text-gray-400 mb-0.5">保存先フォルダ（Drive）</p>
+            <p x-show="folderName" class="text-sm font-medium text-gray-800 truncate" x-text="folderName"></p>
+            <p x-show="!folderName" class="text-sm text-gray-400">未選択</p>
+          </div>
+          <button @click="chooseFolder()"
+                  class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg font-medium text-gray-600 hover:bg-gray-50 shrink-0 ml-3"
+                  x-text="folderName ? '変更' : 'フォルダを選択'"></button>
+        </div>
+      </div>
 
       <!-- ドロップエリア -->
       <div class="bg-white rounded-xl p-5 shadow-sm">

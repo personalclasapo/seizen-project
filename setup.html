@@ -10,7 +10,7 @@
   <script src="js/auth.js"></script>
   <script src="js/schema.js"></script>
   <script>
-    const SPREADSHEET_API = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}`;
+    const SPREADSHEET_API = `https://sheets.googleapis.com/v4/spreadsheets/${getSpreadsheetId()}`;
 
     // 必要なシートとそのヘッダー
     const SHEET_HEADERS = {
@@ -212,7 +212,7 @@
           // 4. cash_flow にサンプルデータ追加（既存データがない場合のみ）
           this.log('cash_flow のデータを確認中...');
           const current = await apiReq('GET',
-            `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/cash_flow!A2:A6`
+            `https://sheets.googleapis.com/v4/spreadsheets/${getSpreadsheetId()}/values/cash_flow!A2:A6`
           );
           if (!current.values || current.values.length === 0) {
             this.log('サンプルデータを追加中...');
@@ -231,7 +231,7 @@
           // 5. transaction_candidates にサンプル追加（既存データがない場合のみ）
           this.log('transaction_candidates のデータを確認中...');
           const curCand = await apiReq('GET',
-            `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/transaction_candidates!A2:A6`
+            `https://sheets.googleapis.com/v4/spreadsheets/${getSpreadsheetId()}/values/transaction_candidates!A2:A6`
           );
           if (!curCand.values || curCand.values.length === 0) {
             this.log('定期候補サンプルを追加中...');
