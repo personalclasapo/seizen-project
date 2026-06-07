@@ -28,7 +28,8 @@ async function ensurePicker() {
 }
 
 // 共通：Picker を開いて選択結果を返す（{id, name} または null）
-async function _showPicker(view) {
+// buildView は google.picker 読み込み後に呼ばれ、View を返す関数
+async function _showPicker(buildView) {
   await ensurePicker();
   const token = getToken();
   if (!token) throw new Error('ログインが必要です');
@@ -37,7 +38,7 @@ async function _showPicker(view) {
     const picker = new google.picker.PickerBuilder()
       .setOAuthToken(token)
       .setDeveloperKey(CONFIG.API_KEY)
-      .addView(view)
+      .addView(buildView())
       .setCallback((data) => {
         const action = data[google.picker.Response.ACTION];
         if (action === google.picker.Action.PICKED) {
@@ -54,16 +55,18 @@ async function _showPicker(view) {
 
 // スプレッドシートを選択
 async function pickSpreadsheet() {
-  const view = new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS)
-    .setMode(google.picker.DocsViewMode.LIST);
-  return _showPicker(view);
+  return _showPicker(() =>
+    new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS)
+      .setMode(google.picker.DocsViewMode.LIST)
+  );
 }
 
 // フォルダを選択
 async function pickFolder() {
-  const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
-    .setSelectFolderEnabled(true)
-    .setMimeTypes('application/vnd.google-apps.folder')
-    .setMode(google.picker.DocsViewMode.LIST);
-  return _showPicker(view);
+  return _showPicker(() =>
+    new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+      .setSelectFolderEnabled(true)
+      .setMimeTypes('application/vnd.google-apps.folder')
+      .setMode(google.picker.DocsViewMode.LIST)
+  );
 }
