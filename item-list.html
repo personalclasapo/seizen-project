@@ -27,6 +27,8 @@
         error: null,
         sheetKey: '',
         sheetDef: null,
+        groupLabel: '',
+        groupSheets: [],
         items: [],
         detailView: false,
         filterProgress: [],
@@ -67,7 +69,20 @@
 
         async init() {
           const params = new URLSearchParams(location.search);
-          this.sheetKey = params.get('sheet') || 'cash_flow';
+          const groupParam = params.get('group');
+          const sheetParam = params.get('sheet');
+
+          if (groupParam) {
+            const grp = GROUPS.find(g => g.label === groupParam);
+            this.groupSheets = grp ? grp.sheets : [];
+            this.groupLabel = groupParam;
+            this.sheetKey = this.groupSheets[0] || '';
+          } else {
+            this.sheetKey = sheetParam || 'cash_flow';
+            this.groupSheets = [this.sheetKey];
+            this.groupLabel = '';
+          }
+
           this.sheetDef = SHEETS[this.sheetKey];
           if (!this.sheetDef) {
             this.error = '不正なシートキーです: ' + this.sheetKey;
@@ -80,6 +95,17 @@
             () => this.load(),
             () => { window.location.href = 'index.html'; }
           );
+        },
+
+        async switchTab(key) {
+          if (key === this.sheetKey) return;
+          this.sheetKey = key;
+          this.sheetDef = SHEETS[key];
+          this.items = [];
+          this.filterProgress = [];
+          this.filterStatus = 'all';
+          this.loading = true;
+          await this.load();
         },
 
         async load() {
@@ -169,7 +195,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
         </svg>
       </a>
-      <p class="font-medium flex-1" x-text="sheetDef?.group || ''"></p>
+      <p class="font-medium flex-1" x-text="groupLabel || sheetDef?.group || ''"></p>
       <button @click="signOut()" class="text-xs text-gray-400 hover:text-gray-600">ログアウト</button>
     </nav>
 
@@ -187,11 +213,25 @@
       <!-- ヘッダー -->
       <div class="flex items-center justify-between mb-4 pt-2">
         <div>
-          <p class="text-lg font-medium" x-text="sheetDef?.group || ''"></p>
+          <p class="text-lg font-medium" x-text="groupLabel || sheetDef?.group || ''"></p>
         </div>
         <span class="text-sm text-gray-400"
               x-text="filtered().length + '件'"></span>
       </div>
+
+      <!-- タブ（グループに複数シートがある場合） -->
+      <template x-if="groupSheets.length > 1">
+        <div class="flex gap-1 mb-4 bg-white rounded-xl p-1 shadow-sm">
+          <template x-for="key in groupSheets" :key="key">
+            <button
+              @click="switchTab(key)"
+              :class="sheetKey === key ? 'bg-[#4A7C59] text-white' : 'text-gray-500 hover:bg-gray-50'"
+              class="flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors"
+              x-text="SHEETS[key]?.label || key"
+            ></button>
+          </template>
+        </div>
+      </template>
 
       <!-- 絞込・表示切替 -->
       <div class="flex items-center gap-1.5 mb-4">

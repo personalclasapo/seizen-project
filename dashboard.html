@@ -64,7 +64,7 @@
 
         groupLink(group) {
           if (group.sheets.length === 0) return null;
-          return `item-list.html?sheet=${group.sheets[0]}`;
+          return `item-list.html?group=${encodeURIComponent(group.label)}`;
         }
       };
     }
