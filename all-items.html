@@ -106,7 +106,8 @@
               const { key, rows } = r.value;
               const def = SHEETS[key];
               for (const row of rows) {
-                items.push({ sheetKey: key, group: def.group, label: def.label, name: def.name(row), row });
+                const itemLabel = key === 'cash_flow' ? (row.service_category || def.label) : def.label;
+                items.push({ sheetKey: key, group: def.group, label: itemLabel, name: def.name(row), row });
               }
             }
             this.allItems = items;

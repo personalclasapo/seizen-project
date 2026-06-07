@@ -132,6 +132,7 @@
           if (this.sheetKey === 'cash_flow') {
             f = {
               service_name: r.service_name || '',
+              service_category: r.service_category || 'その他',
               billing_amount: r.billing_amount || '',
               billing_cycle: r.billing_cycle || '月額',
               contract_holder_id: r.contract_holder_id || '',
@@ -190,7 +191,8 @@
         _buildInfoFields() {
           const r = this.row;
           if (this.sheetKey === 'cash_flow') return {
-            service_name: r.service_name || '', billing_amount: r.billing_amount || '',
+            service_name: r.service_name || '', service_category: r.service_category || 'その他',
+            billing_amount: r.billing_amount || '',
             billing_cycle: r.billing_cycle || '月額', contract_holder_id: r.contract_holder_id || '',
             plan: r.plan || '', status: r.status || '継続中'
           };
@@ -440,6 +442,15 @@
                     <input type="text" x-model="allEditModal.f.service_name" @input="allEditModal.dirty = true"
                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
                   </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">種別</label>
+                    <select x-model="allEditModal.f.service_category" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option>サブスク</option><option>サブスク（動画配信）</option><option>公共料金</option>
+                      <option>公共料金（電気）</option><option>通信費</option><option>メディア（NHK・新聞）</option>
+                      <option>保険</option><option>税金</option><option>年金</option><option>その他</option>
+                    </select>
+                  </div>
                   <div class="flex gap-3">
                     <div class="flex-1">
                       <label class="text-xs text-gray-500 block mb-1">金額</label>
@@ -634,6 +645,15 @@
                 <label class="text-xs text-gray-500 block mb-1">サービス名</label>
                 <input type="text" x-model="infoModal.f.service_name" @input="infoModal.dirty = true"
                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">種別</label>
+                <select x-model="infoModal.f.service_category" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option>サブスク</option><option>サブスク（動画配信）</option><option>公共料金</option>
+                  <option>公共料金（電気）</option><option>通信費</option><option>メディア（NHK・新聞）</option>
+                  <option>保険</option><option>税金</option><option>年金</option><option>その他</option>
+                </select>
               </div>
               <div class="flex gap-3">
                 <div class="flex-1">
