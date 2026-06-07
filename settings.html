@@ -32,12 +32,22 @@
         members: [],
         membersLoading: false,
         memberError: null,
+        savingColorIdx: -1,
         newMemberName: '',
         newMemberColor: 'blue',
         colorOptions: COLOR_OPTIONS,
 
         editingIdx: -1,
         editingName: '',
+
+        colorDot(colorKey) {
+          const map = {
+            blue: 'bg-blue-400', rose: 'bg-rose-400', green: 'bg-green-500',
+            amber: 'bg-amber-400', purple: 'bg-purple-400', teal: 'bg-teal-400',
+            orange: 'bg-orange-400', indigo: 'bg-indigo-400',
+          };
+          return map[colorKey] || 'bg-gray-300';
+        },
 
         async init() {
           await waitForGsi();
@@ -95,6 +105,7 @@
           if (!m || m.color === colorKey) return;
           const prev = m.color;
           m.color = colorKey;
+          this.savingColorIdx = idx;
           this.memberError = null;
           try {
             await updateRow('family_member', m._row, toRow(
@@ -104,6 +115,8 @@
           } catch (e) {
             m.color = prev;
             this.memberError = e.message;
+          } finally {
+            this.savingColorIdx = -1;
           }
         },
 
@@ -168,54 +181,67 @@
         <div class="space-y-3 mb-4" x-show="!membersLoading">
           <p x-show="members.length === 0" class="text-sm text-gray-400">メンバーがいません</p>
           <template x-for="(m, idx) in members" :key="m.id || idx">
-            <div class="flex items-center gap-2">
+            <div class="rounded-lg border border-gray-100 p-3 space-y-2">
 
-              <!-- 名前（通常 / 編集中） -->
-              <div class="flex items-center gap-1 flex-1 min-w-0">
-                <template x-if="editingIdx !== idx">
-                  <div class="flex items-center gap-1 min-w-0">
-                    <span class="text-sm font-medium truncate" x-text="m.display_name"></span>
-                    <button @click="startEdit(idx)" class="text-gray-300 hover:text-gray-500 shrink-0 p-0.5">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                      </svg>
-                    </button>
-                  </div>
-                </template>
-                <template x-if="editingIdx === idx">
-                  <div class="flex items-center gap-1 flex-1 min-w-0">
-                    <input type="text" x-model="editingName"
-                           x-init="$nextTick(() => $el.focus())"
-                           @keydown.enter="saveMemberName(idx)"
-                           @keydown.escape="cancelEdit()"
-                           class="flex-1 min-w-0 text-sm border border-blue-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-300">
-                    <button @click="saveMemberName(idx)" class="text-blue-600 hover:text-blue-800 shrink-0">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                      </svg>
-                    </button>
-                    <button @click="cancelEdit()" class="text-gray-400 hover:text-gray-600 shrink-0">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                    </button>
-                  </div>
-                </template>
+              <!-- 名前行 -->
+              <div class="flex items-center gap-2">
+                <!-- 現在色ドット -->
+                <div :class="colorDot(m.color)" class="w-4 h-4 rounded-full shrink-0"></div>
+
+                <!-- 名前（通常 / 編集中） -->
+                <div class="flex items-center gap-1 flex-1 min-w-0">
+                  <template x-if="editingIdx !== idx">
+                    <div class="flex items-center gap-1 min-w-0">
+                      <span class="text-sm font-medium truncate" x-text="m.display_name"></span>
+                      <button @click="startEdit(idx)" class="text-gray-300 hover:text-gray-500 shrink-0 p-0.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </template>
+                  <template x-if="editingIdx === idx">
+                    <div class="flex items-center gap-1 flex-1 min-w-0">
+                      <input type="text" x-model="editingName"
+                             x-init="$nextTick(() => $el.focus())"
+                             @keydown.enter="if (!$event.isComposing) saveMemberName(idx)"
+                             @keydown.escape="cancelEdit()"
+                             class="flex-1 min-w-0 text-sm border border-blue-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-300">
+                      <button @click="saveMemberName(idx)" class="text-blue-600 hover:text-blue-800 shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                      </button>
+                      <button @click="cancelEdit()" class="text-gray-400 hover:text-gray-600 shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- 削除 -->
+                <button @click="deleteMember(idx)"
+                        class="text-xs text-gray-400 hover:text-red-500 px-1 shrink-0">削除</button>
               </div>
 
-              <!-- 色チップ -->
-              <div class="flex gap-1.5 shrink-0">
-                <template x-for="c in colorOptions" :key="c.key">
-                  <button @click="setMemberColor(idx, c.key)"
-                          :class="[c.dot, m.color === c.key ? 'ring-2 ring-offset-1 ring-gray-500 scale-110' : 'opacity-70 hover:opacity-100']"
-                          class="w-6 h-6 rounded-full transition-all"></button>
-                </template>
+              <!-- 色選択行 -->
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-400 shrink-0">カラー</span>
+                <div class="flex gap-2 flex-1">
+                  <template x-for="c in colorOptions" :key="c.key">
+                    <button @click="setMemberColor(idx, c.key)"
+                            :class="[c.dot, m.color === c.key ? 'ring-2 ring-offset-2 ring-gray-600 scale-110' : 'opacity-60 hover:opacity-100']"
+                            class="w-7 h-7 rounded-full transition-all"
+                            :title="c.key"></button>
+                  </template>
+                </div>
+                <span x-show="savingColorIdx === idx" class="text-xs text-gray-400 shrink-0">保存中...</span>
+                <span x-show="savingColorIdx !== idx && m.color" class="text-xs text-gray-400 shrink-0">タップで変更</span>
               </div>
 
-              <!-- 削除 -->
-              <button @click="deleteMember(idx)"
-                      class="text-xs text-gray-400 hover:text-red-500 ml-1 px-1 shrink-0">削除</button>
             </div>
           </template>
         </div>
@@ -223,7 +249,7 @@
         <!-- 追加フォーム -->
         <div class="flex items-center gap-2 pt-3 border-t border-gray-100">
           <input type="text" x-model="newMemberName"
-                 @keydown.enter="addMember()"
+                 @keydown.enter="if (!$event.isComposing) addMember()"
                  placeholder="名前を入力"
                  class="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-300">
           <div class="flex gap-1.5 shrink-0">
