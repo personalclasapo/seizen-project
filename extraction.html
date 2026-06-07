@@ -190,7 +190,9 @@
             <div class="flex items-center justify-between mb-1">
               <div class="flex items-center gap-2 min-w-0">
                 <span class="text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded font-medium shrink-0">AI推定</span>
-                <p class="font-medium truncate" x-text="cand.service_name"></p>
+                <input type="text" x-model="cand.service_name"
+                       class="font-medium bg-transparent border-b border-gray-300 hover:border-gray-400 focus:border-blue-400 focus:outline-none w-full min-w-0"
+                       placeholder="サービス名"/>
               </div>
               <p class="text-sm font-bold text-gray-800 shrink-0 ml-2" x-text="formatAmount(cand)"></p>
             </div>
