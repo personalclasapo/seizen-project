@@ -19,11 +19,38 @@ async function _req(method, url, body) {
 // 実シートのヘッダー順をキャッシュする（書き込み列ずれを防ぐため）
 const _headerCache = {};
 
+// --- sessionStorage キャッシュ（2分TTL） ---
+const _CACHE_TTL = 2 * 60 * 1000;
+
+function _cacheKey(name) {
+  return `sz_sheet_${getSpreadsheetId()}_${name}`;
+}
+function _getCached(name) {
+  try {
+    const raw = sessionStorage.getItem(_cacheKey(name));
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    return Date.now() - ts < _CACHE_TTL ? data : null;
+  } catch { return null; }
+}
+function _setCache(name, data) {
+  try {
+    sessionStorage.setItem(_cacheKey(name), JSON.stringify({ data, ts: Date.now() }));
+  } catch {}
+}
+function _clearCache(name) {
+  try { sessionStorage.removeItem(_cacheKey(name)); } catch {}
+}
+
 // シート全体を取得してオブジェクト配列で返す
 async function getSheet(name) {
+  const cached = _getCached(name);
+  if (cached) return cached;
   const data = await _req('GET', `${_apiBase()}/${encodeURIComponent(name)}`);
   if (data?.values?.[0]) _headerCache[name] = data.values[0];
-  return _toObjects(data);
+  const result = _toObjects(data);
+  _setCache(name, result);
+  return result;
 }
 
 async function _getHeaders(sheetName) {
@@ -40,12 +67,14 @@ async function _getHeaders(sheetName) {
 async function saveRow(sheetName, rowIndex, obj, schemaCols) {
   const headers = await ensureHeader(sheetName, schemaCols);
   await updateRow(sheetName, rowIndex, toRow(obj, headers));
+  _clearCache(sheetName);
 }
 
 // オブジェクトを「実シートのヘッダー順」で1行追加する。
 async function appendObj(sheetName, obj, schemaCols) {
   const headers = await ensureHeader(sheetName, schemaCols);
   await appendRow(sheetName, toRow(obj, headers));
+  _clearCache(sheetName);
 }
 
 // 行を追加
@@ -105,6 +134,7 @@ async function deleteRow(sheetName, rowIndex) {
                startIndex: rowIndex - 1, endIndex: rowIndex }
     }}]}
   );
+  _clearCache(sheetName);
 }
 
 // カラム配列からオブジェクトを行配列に変換

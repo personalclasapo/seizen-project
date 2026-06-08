@@ -33,9 +33,13 @@
             window.location.href = 'settings.html';
             return;
           }
-          try {
-            // cash_flow のみ Phase 2 で実装
-            const rows = await getSheet('cash_flow');
+          const [cashResult, candResult] = await Promise.allSettled([
+            getSheet('cash_flow'),
+            getSheet('transaction_candidates')
+          ]);
+
+          if (cashResult.status === 'fulfilled') {
+            const rows = cashResult.value;
             const g = this.groups[0]; // 支出・収入
             g.total = rows.length;
             g.done = rows.filter(r => doneCount(r) === PERSPECTIVES.length).length;
@@ -51,14 +55,13 @@
               todo: rows.filter(r => doneCount(r) === 0).length
             };
             this.overallPct = possible ? Math.round(allDone / possible * 100) : 0;
-          } catch (e) {
-            this.error = e.message;
+          } else {
+            this.error = cashResult.reason?.message;
           }
-          // 明細の未登録候補数（取得失敗は無視）
-          try {
-            const cand = await getSheet('transaction_candidates');
-            this.pendingCandidates = cand.filter(r => (r.status || '未登録') === '未登録').length;
-          } catch (e) { /* シート未作成などは無視 */ }
+
+          if (candResult.status === 'fulfilled') {
+            this.pendingCandidates = candResult.value.filter(r => (r.status || '未登録') === '未登録').length;
+          }
           this.loading = false;
         },
 
