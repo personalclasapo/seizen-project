@@ -334,31 +334,38 @@
                 </div>
                 <div class="shrink-0 flex flex-col items-end gap-0.5 pl-1">
                   <template x-if="itemHolders(item).length > 0">
-                    <div class="flex flex-col items-end gap-0.5">
+                    <div class="flex flex-col items-end gap-0.5"
+                         @click.stop="shouldCollapseHolders(itemHolders(item)) && toggleHolderExpand(itemKey(item), $event)"
+                         :class="shouldCollapseHolders(itemHolders(item)) ? 'cursor-pointer' : ''">
                       <template x-if="isHolderExpanded(itemKey(item))">
                         <div class="flex flex-col items-end gap-0.5">
                           <template x-for="(h, idx) in itemHolders(item)" :key="h.role">
                             <div class="flex items-center gap-1">
+                              <svg x-show="idx === 0"
+                                   class="w-3.5 h-3.5 text-gray-400 shrink-0 rotate-180"
+                                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                              </svg>
+                              <span x-show="idx !== 0" class="w-3.5 shrink-0"></span>
                               <span class="text-xs text-gray-400 whitespace-nowrap" x-text="h.role + '：'"></span>
                               <span :class="holderColor(h.name).bg + ' ' + holderColor(h.name).text"
                                     class="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                                     x-text="h.name"></span>
-                              <button x-show="idx === 0"
-                                      @click.stop="toggleHolderExpand(itemKey(item), $event)"
-                                      class="text-xs text-gray-400 hover:text-gray-600 w-3 text-center leading-none">▴</button>
                             </div>
                           </template>
                         </div>
                       </template>
                       <template x-if="!isHolderExpanded(itemKey(item))">
                         <div class="flex items-center gap-1">
+                          <svg x-show="shouldCollapseHolders(itemHolders(item))"
+                               class="w-3.5 h-3.5 text-gray-400 shrink-0"
+                               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                          </svg>
                           <span class="text-xs text-gray-400 whitespace-nowrap" x-text="itemHolders(item)[0].role + '：'"></span>
                           <span :class="holderColor(itemHolders(item)[0].name).bg + ' ' + holderColor(itemHolders(item)[0].name).text"
                                 class="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                                 x-text="itemHolders(item)[0].name"></span>
-                          <button x-show="shouldCollapseHolders(itemHolders(item))"
-                                  @click.stop="toggleHolderExpand(itemKey(item), $event)"
-                                  class="text-xs text-gray-400 hover:text-gray-600 w-3 text-center leading-none">▾</button>
                         </div>
                       </template>
                     </div>
