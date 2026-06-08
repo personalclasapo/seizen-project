@@ -19,7 +19,6 @@ function initAuth(onSuccess, onRequired, opts = {}) {
   if (token) {
     onSuccess();
   } else if (opts.silent === false) {
-    // ログイン画面など：サイレント更新せず即ログインを要求
     onRequired();
   } else {
     _silentRefresh(onSuccess, onRequired);
@@ -30,8 +29,8 @@ function _silentRefresh(onSuccess, onRequired) {
   let settled = false;
   const finish = (fn) => { if (!settled) { settled = true; clearTimeout(timer); fn(); } };
 
-  // コールバックが返らない場合の保険（スマホでよく起きる）
-  const timer = setTimeout(() => finish(onRequired), 4000);
+  // スマホでGSIの応答が遅れるケースに備えて余裕を持たせる
+  const timer = setTimeout(() => finish(onRequired), 12000);
 
   if (!_tokenClient) {
     _tokenClient = google.accounts.oauth2.initTokenClient({
@@ -43,6 +42,7 @@ function _silentRefresh(onSuccess, onRequired) {
           return;
         }
         _storeToken(response.access_token);
+        localStorage.setItem('sz_consented', '1');
         finish(onSuccess);
       }
     });
@@ -65,17 +65,21 @@ function signIn() {
           return;
         }
         _storeToken(response.access_token);
+        localStorage.setItem('sz_consented', '1');
         _onAuthSuccess && _onAuthSuccess();
       }
     });
   }
-  _tokenClient.requestAccessToken({ prompt: _getStoredToken() ? '' : 'consent' });
+  // 一度でも同意済みなら consent 画面をスキップ。初回のみ同意を求める
+  const hasConsented = localStorage.getItem('sz_consented') === '1';
+  _tokenClient.requestAccessToken({ prompt: hasConsented ? '' : 'consent' });
 }
 
 function signOut() {
   const token = _getStoredToken();
   if (token) google.accounts.oauth2.revoke(token, () => {});
   localStorage.removeItem('sz_token');
+  localStorage.removeItem('sz_consented');
   window.location.href = 'index.html';
 }
 
@@ -99,6 +103,6 @@ function _getStoredToken() {
 function _storeToken(token) {
   localStorage.setItem('sz_token', JSON.stringify({
     token,
-    exp: Date.now() + 55 * 60 * 1000
+    exp: Date.now() + 58 * 60 * 1000
   }));
 }
