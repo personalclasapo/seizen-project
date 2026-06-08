@@ -16,10 +16,36 @@ async function _req(method, url, body) {
   return res.json();
 }
 
+// 実シートのヘッダー順をキャッシュする（書き込み列ずれを防ぐため）
+const _headerCache = {};
+
 // シート全体を取得してオブジェクト配列で返す
 async function getSheet(name) {
   const data = await _req('GET', `${_apiBase()}/${encodeURIComponent(name)}`);
+  if (data?.values?.[0]) _headerCache[name] = data.values[0];
   return _toObjects(data);
+}
+
+async function _getHeaders(sheetName) {
+  if (_headerCache[sheetName]) return _headerCache[sheetName];
+  const data = await _req('GET', `${_apiBase()}/${encodeURIComponent(sheetName + '!1:1')}`);
+  const headers = data?.values?.[0] || [];
+  _headerCache[sheetName] = headers;
+  return headers;
+}
+
+// オブジェクトを「実シートのヘッダー順」で1行更新する。
+// schema 側の列順とシートの実列順がずれていても破損しない。
+// 不足列は ensureHeader で末尾に補完してから書く。
+async function saveRow(sheetName, rowIndex, obj, schemaCols) {
+  const headers = await ensureHeader(sheetName, schemaCols);
+  await updateRow(sheetName, rowIndex, toRow(obj, headers));
+}
+
+// オブジェクトを「実シートのヘッダー順」で1行追加する。
+async function appendObj(sheetName, obj, schemaCols) {
+  const headers = await ensureHeader(sheetName, schemaCols);
+  await appendRow(sheetName, toRow(obj, headers));
 }
 
 // 行を追加
@@ -46,12 +72,13 @@ async function writeHeaders(sheetName, columns) {
 // ヘッダー行に不足している列を末尾に補完する（既存列の順序は維持）。
 // 旧バージョンで作成され color 等の列が無いシートを自己修復するために使う。
 async function ensureHeader(sheetName, columns) {
-  const data = await _req('GET',
-    `${_apiBase()}/${encodeURIComponent(sheetName + '!1:1')}`);
-  const current = data?.values?.[0] || [];
+  const current = await _getHeaders(sheetName);
   const missing = columns.filter(c => !current.includes(c));
-  if (missing.length === 0) return;
-  await writeHeaders(sheetName, [...current, ...missing]);
+  if (missing.length === 0) return current;
+  const updated = [...current, ...missing];
+  await writeHeaders(sheetName, updated);
+  _headerCache[sheetName] = updated;
+  return updated;
 }
 
 function _toObjects(data) {

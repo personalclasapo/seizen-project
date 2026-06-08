@@ -113,7 +113,6 @@
 
             const now = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
 
-            const allCols = getAllCols(this.sheetKey);
             const obj = {
               id,
               created_at: now,
@@ -137,7 +136,7 @@
               obj.input_source = '手動入力';
             }
 
-            await appendRow(this.sheetKey, toRow(obj, allCols));
+            await appendObj(this.sheetKey, obj, getAllCols(this.sheetKey));
             location.href = `item-list.html?sheet=${this.sheetKey}`;
           } catch (e) {
             this.saveError = e.message;

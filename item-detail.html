@@ -108,6 +108,7 @@
 
         itemName() { return this.row ? this.sheetDef.name(this.row) : ''; },
         itemStatusTag() { return this.row ? (this.sheetDef.statusTag?.(this.row) || null) : null; },
+        headerTag() { return this.row ? (this.sheetDef.headerTag?.(this.row) || '') : ''; },
         backLink() { return `item-list.html?sheet=${this.sheetKey}`; },
 
         // ── 観点編集 ──
@@ -131,7 +132,7 @@
             const updated = { ...this.row };
             updated[this.perspectiveModal.statusCol] = this.perspectiveModal.status;
             updated[this.perspectiveModal.contentCol] = this.perspectiveModal.content;
-            await updateRow(this.sheetKey, this.row._row, toRow(updated, getAllCols(this.sheetKey)));
+            await saveRow(this.sheetKey, this.row._row, updated, getAllCols(this.sheetKey));
             this.row[this.perspectiveModal.statusCol] = this.perspectiveModal.status;
             this.row[this.perspectiveModal.contentCol] = this.perspectiveModal.content;
             this.perspectiveModal.open = false;
@@ -161,6 +162,7 @@
               bank_name: r.bank_name || '',
               branch_name: r.branch_name || '',
               account_type: r.account_type || '',
+              estimated_amount: r.estimated_amount || '',
               account_holder_id: r.account_holder_id || '',
               account_status: r.account_status || 'メイン',
               net_banking_usage: r.net_banking_usage || ''
@@ -173,6 +175,8 @@
               contract_holder_id: r.contract_holder_id || '',
               insured_person_id: r.insured_person_id || '',
               beneficiary_id: r.beneficiary_id || '',
+              estimated_amount: r.estimated_amount || '',
+              maturity_date: r.maturity_date || '',
               payment_status: r.payment_status || '',
               account_status: r.account_status || '継続中'
             };
@@ -194,7 +198,7 @@
               updated.monthly_amount = this.infoModal.f.billing_cycle === '月額'
                 ? this.infoModal.f.billing_amount : '';
             }
-            await updateRow(this.sheetKey, this.row._row, toRow(updated, getAllCols(this.sheetKey)));
+            await saveRow(this.sheetKey, this.row._row, updated, getAllCols(this.sheetKey));
             Object.assign(this.row, updated);
             this.infoModal.open = false;
           } catch (e) {
@@ -214,13 +218,15 @@
           };
           if (this.sheetKey === 'bank_account') return {
             bank_name: r.bank_name || '', branch_name: r.branch_name || '',
-            account_type: r.account_type || '', account_holder_id: r.account_holder_id || '',
+            account_type: r.account_type || '', estimated_amount: r.estimated_amount || '',
+            account_holder_id: r.account_holder_id || '',
             account_status: r.account_status || 'メイン', net_banking_usage: r.net_banking_usage || ''
           };
           if (this.sheetKey === 'insurance') return {
             insurance_company: r.insurance_company || '', product_name: r.product_name || '',
             insurance_type: r.insurance_type || '', contract_holder_id: r.contract_holder_id || '',
             insured_person_id: r.insured_person_id || '', beneficiary_id: r.beneficiary_id || '',
+            estimated_amount: r.estimated_amount || '', maturity_date: r.maturity_date || '',
             payment_status: r.payment_status || '', account_status: r.account_status || '継続中'
           };
           return {};
@@ -258,7 +264,7 @@
               updated.monthly_amount = this.allEditModal.f.billing_cycle === '月額'
                 ? this.allEditModal.f.billing_amount : '';
             }
-            await updateRow(this.sheetKey, this.row._row, toRow(updated, getAllCols(this.sheetKey)));
+            await saveRow(this.sheetKey, this.row._row, updated, getAllCols(this.sheetKey));
             Object.assign(this.row, updated);
             this.allEditModal.open = false;
           } catch (e) {
@@ -298,7 +304,7 @@
           this.memoModal.error = null;
           try {
             const updated = { ...this.row, free_memo: this.memoModal.content };
-            await updateRow(this.sheetKey, this.row._row, toRow(updated, getAllCols(this.sheetKey)));
+            await saveRow(this.sheetKey, this.row._row, updated, getAllCols(this.sheetKey));
             this.row.free_memo = this.memoModal.content;
             this.memoModal.open = false;
           } catch (e) {
@@ -350,9 +356,9 @@
                       class="text-xs px-1.5 py-0.5 rounded font-medium"
                       x-text="itemStatusTag().label"></span>
               </template>
-              <template x-if="row?.service_category">
+              <template x-if="headerTag()">
                 <span class="text-xs text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 font-medium"
-                      x-text="row.service_category"></span>
+                      x-text="headerTag()"></span>
               </template>
             </div>
           </div>
@@ -505,6 +511,149 @@
                         <button @click="allEditModal.f.status = s; allEditModal.dirty = true"
                                 :class="allEditModal.f.status === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
                                 class="flex-1 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- bank_account 基本情報 -->
+              <template x-if="sheetKey === 'bank_account'">
+                <div class="space-y-3">
+                  <div class="flex gap-3">
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">銀行名</label>
+                      <input type="text" x-model="allEditModal.f.bank_name" @input="allEditModal.dirty = true"
+                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                    </div>
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">支店名</label>
+                      <input type="text" x-model="allEditModal.f.branch_name" @input="allEditModal.dirty = true"
+                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                    </div>
+                  </div>
+                  <div class="flex gap-3">
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">口座種別</label>
+                      <select x-model="allEditModal.f.account_type" @change="allEditModal.dirty = true"
+                              class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                        <option>普通預金</option><option>定期預金</option><option>貯蓄預金</option>
+                      </select>
+                    </div>
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">概算残高（円）</label>
+                      <input type="number" x-model="allEditModal.f.estimated_amount" @input="allEditModal.dirty = true"
+                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">名義人</label>
+                    <select x-model="allEditModal.f.account_holder_id" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">状態</label>
+                    <div class="flex gap-2 flex-wrap">
+                      <template x-for="s in ['メイン', 'サブ', '休眠', '解約予定']" :key="s">
+                        <button @click="allEditModal.f.account_status = s; allEditModal.dirty = true"
+                                :class="allEditModal.f.account_status === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                                class="px-3 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                      </template>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">ネットバンキング</label>
+                    <div class="flex gap-2">
+                      <template x-for="s in ['利用中', '登録のみ', '未利用']" :key="s">
+                        <button @click="allEditModal.f.net_banking_usage = s; allEditModal.dirty = true"
+                                :class="allEditModal.f.net_banking_usage === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                                class="flex-1 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- insurance 基本情報 -->
+              <template x-if="sheetKey === 'insurance'">
+                <div class="space-y-3">
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">保険会社</label>
+                    <input type="text" x-model="allEditModal.f.insurance_company" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">商品名</label>
+                    <input type="text" x-model="allEditModal.f.product_name" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">保険種別</label>
+                    <select x-model="allEditModal.f.insurance_type" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option>生命</option><option>医療</option><option>がん</option>
+                      <option>個人年金</option><option>火災・地震</option><option>自動車</option><option>その他</option>
+                    </select>
+                  </div>
+                  <div class="flex gap-3">
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">契約者</label>
+                      <select x-model="allEditModal.f.contract_holder_id" @change="allEditModal.dirty = true"
+                              class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                        <option value="">（未設定）</option>
+                        <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                      </select>
+                    </div>
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">被保険者</label>
+                      <select x-model="allEditModal.f.insured_person_id" @change="allEditModal.dirty = true"
+                              class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                        <option value="">（未設定）</option>
+                        <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">受取人</label>
+                    <select x-model="allEditModal.f.beneficiary_id" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                    </select>
+                  </div>
+                  <div class="flex gap-3">
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">保険金額（円）</label>
+                      <input type="number" x-model="allEditModal.f.estimated_amount" @input="allEditModal.dirty = true"
+                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                    </div>
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">満期日</label>
+                      <input type="text" x-model="allEditModal.f.maturity_date" @input="allEditModal.dirty = true"
+                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                             placeholder="終身、2030年3月 など"/>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">払込状況</label>
+                    <div class="flex gap-2">
+                      <template x-for="s in ['払込中', '払込済', '失効']" :key="s">
+                        <button @click="allEditModal.f.payment_status = s; allEditModal.dirty = true"
+                                :class="allEditModal.f.payment_status === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                                class="flex-1 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                      </template>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">状態</label>
+                    <div class="flex gap-2 flex-wrap">
+                      <template x-for="s in ['継続中', '解約予定', '解約済', '失効']" :key="s">
+                        <button @click="allEditModal.f.account_status = s; allEditModal.dirty = true"
+                                :class="allEditModal.f.account_status === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                                class="px-3 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
                       </template>
                     </div>
                   </div>
@@ -738,12 +887,20 @@
                          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
                 </div>
               </div>
-              <div>
-                <label class="text-xs text-gray-500 block mb-1">口座種別</label>
-                <select x-model="infoModal.f.account_type" @change="infoModal.dirty = true"
-                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
-                  <option>普通預金</option><option>定期預金</option><option>貯蓄預金</option>
-                </select>
+              <div class="flex gap-3">
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">口座種別</label>
+                  <select x-model="infoModal.f.account_type" @change="infoModal.dirty = true"
+                          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                    <option>普通預金</option><option>定期預金</option><option>貯蓄預金</option>
+                  </select>
+                </div>
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">概算残高（円）</label>
+                  <input type="number" x-model="infoModal.f.estimated_amount" @input="infoModal.dirty = true"
+                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                         placeholder="1000000"/>
+                </div>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">名義人</label>
@@ -822,6 +979,20 @@
                   <option value="">（未設定）</option>
                   <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
                 </select>
+              </div>
+              <div class="flex gap-3">
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">保険金額（円）</label>
+                  <input type="number" x-model="infoModal.f.estimated_amount" @input="infoModal.dirty = true"
+                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                         placeholder="3000000"/>
+                </div>
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">満期日</label>
+                  <input type="text" x-model="infoModal.f.maturity_date" @input="infoModal.dirty = true"
+                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                         placeholder="終身、2030年3月 など"/>
+                </div>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">払込状況</label>

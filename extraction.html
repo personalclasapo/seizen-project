@@ -118,7 +118,7 @@
               input_source: '明細',
               source_transaction_id: cand.id
             };
-            await appendRow('cash_flow', toRow(cashRow, getAllCols('cash_flow')));
+            await appendObj('cash_flow', cashRow, getAllCols('cash_flow'));
             await updateRow('transaction_candidates', cand._row,
               toRow(this._candidateRow(cand, '登録済', newId), CANDIDATE_COLS));
             this.candidates = this.candidates.filter(c => c._row !== cand._row);

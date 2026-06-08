@@ -87,6 +87,7 @@ const SHEETS = {
       { key: 'status',            label: 'ステータス', type: 'select', options: ['継続中','解約予定','解約済'] },
     ],
     name: r => r.service_name || '（名称未設定）',
+    headerTag: r => r.service_category || '',
     statusTag: r => {
       const s = r.status;
       if (!s || s === '継続中') return null;
@@ -152,12 +153,19 @@ const SHEETS = {
     estimatedAmount: r => formatEstimatedAmount(r.estimated_amount),
     subType: r => r.account_type || '',
     sub: r => [r.account_type, r.account_holder_id ? `名義：${r.account_holder_id}` : ''].filter(Boolean).join(' · '),
-    infoCards: r => [
-      { label: '名義人',         value: r.account_holder_id },
-      { label: '口座種別',       value: r.account_type },
-      { label: '状態',           value: r.account_status },
-      { label: 'ネットバンキング', value: r.net_banking_usage },
-    ].filter(c => c.value)
+    infoCards: r => {
+      const cards = [];
+      if (r.estimated_amount) cards.push({
+        label: '概算残高', type: 'amount',
+        amountNum: Number(r.estimated_amount).toLocaleString()
+      });
+      return cards.concat([
+        { label: '名義人',         value: r.account_holder_id },
+        { label: '口座種別',       value: r.account_type },
+        { label: '状態',           value: r.account_status },
+        { label: 'ネットバンキング', value: r.net_banking_usage },
+      ].filter(c => c.value));
+    }
   },
   insurance: {
     label: '保険商品',
@@ -178,13 +186,13 @@ const SHEETS = {
       { key: 'contract_holder_id', label: '契約者',       type: 'family_select' },
       { key: 'insured_person_id',  label: '被保険者',     type: 'family_select' },
       { key: 'beneficiary_id',     label: '受取人',       type: 'family_select' },
-      { key: 'insurance_amount',   label: '保険金額',     type: 'text' },
-      { key: 'estimated_amount',   label: '概算保険金額（円）', type: 'number' },
+      { key: 'estimated_amount',   label: '保険金額（円）', type: 'number' },
       { key: 'payment_status',     label: '払込状況', type: 'select', options: ['払込中','払込済','失効'] },
       { key: 'maturity_date',      label: '満期日（例：終身、2030年3月）', type: 'text' },
       { key: 'account_status',     label: 'ステータス', type: 'select', options: ['継続中','解約予定','解約済','失効'] },
     ],
     name: r => [r.insurance_company, r.product_name].filter(Boolean).join(' ') || '（名称未設定）',
+    headerTag: r => r.maturity_date || '',
     statusTag: r => {
       const s = r.account_status;
       if (!s || s === '継続中') return null;
@@ -196,19 +204,23 @@ const SHEETS = {
       { role: '被保険者', name: r.insured_person_id },
       { role: '受取人',   name: r.beneficiary_id },
     ].filter(x => x.name),
-    estimatedAmount: r => {
-      if (r.estimated_amount) return formatEstimatedAmount(r.estimated_amount);
-      return r.insurance_amount || '';
-    },
+    estimatedAmount: r => formatEstimatedAmount(r.estimated_amount),
     subType: r => r.insurance_type ? r.insurance_type + '保険' : '',
     sub: r => [r.insurance_type, r.contract_holder_id ? `契約者：${r.contract_holder_id}` : ''].filter(Boolean).join(' · '),
-    infoCards: r => [
-      { label: '契約者',   value: r.contract_holder_id },
-      { label: '被保険者', value: r.insured_person_id },
-      { label: '受取人',   value: r.beneficiary_id },
-      { label: '保険種別', value: r.insurance_type },
-      { label: '払込状況', value: r.payment_status },
-    ].filter(c => c.value)
+    infoCards: r => {
+      const cards = [];
+      if (r.estimated_amount) cards.push({
+        label: '保険金額', type: 'amount',
+        amountNum: Number(r.estimated_amount).toLocaleString()
+      });
+      return cards.concat([
+        { label: '契約者',   value: r.contract_holder_id },
+        { label: '被保険者', value: r.insured_person_id },
+        { label: '受取人',   value: r.beneficiary_id },
+        { label: '保険種別', value: r.insurance_type },
+        { label: '払込状況', value: r.payment_status },
+      ].filter(c => c.value));
+    }
   }
 };
 
