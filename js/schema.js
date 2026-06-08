@@ -47,6 +47,22 @@ function formatCycle(r) {
   return CYCLE_SHORT[raw] ?? raw ?? (r.monthly_amount ? '月' : '');
 }
 
+function formatEstimatedAmount(v) {
+  if (!v) return '';
+  const n = Number(v);
+  if (isNaN(n) || n === 0) return '';
+  const abs = Math.abs(n);
+  let s;
+  if (abs >= 100000000) {
+    s = '約' + (Math.round(abs / 100000000 * 10) / 10).toLocaleString() + '億円';
+  } else if (abs >= 10000) {
+    s = '約' + Math.round(abs / 10000).toLocaleString() + '万円';
+  } else {
+    s = '約' + Math.round(abs).toLocaleString() + '円';
+  }
+  return n < 0 ? '− ' + s : s;
+}
+
 const SHEETS = {
   cash_flow: {
     label: 'サブスク・支払い',
@@ -58,6 +74,7 @@ const SHEETS = {
       'monthly_amount', 'payment_method', 'status',
       'input_source', 'source_transaction_id', 'plan'
     ],
+    holders: r => r.contract_holder_id ? [{ role: '契約者', name: r.contract_holder_id }] : [],
     formFields: [
       { key: 'service_name',      label: 'サービス名・業者名', type: 'text',   required: true },
       { key: 'service_category',  label: '種別',   type: 'select',
@@ -109,7 +126,7 @@ const SHEETS = {
     idPrefix: 'bank',
     cols: [
       'bank_name', 'branch_name', 'account_type',
-      'account_number', 'account_holder_id',
+      'account_number', 'estimated_amount', 'account_holder_id',
       'account_status', 'net_banking_usage'
     ],
     formFields: [
@@ -117,6 +134,7 @@ const SHEETS = {
       { key: 'branch_name',        label: '支店名',   type: 'text' },
       { key: 'account_type',       label: '口座種別', type: 'select', options: ['普通預金','定期預金','貯蓄預金'] },
       { key: 'account_number',     label: '口座番号（任意）', type: 'text' },
+      { key: 'estimated_amount',   label: '概算残高（円）', type: 'number' },
       { key: 'account_holder_id',  label: '名義人',   type: 'family_select' },
       { key: 'net_banking_usage',  label: 'ネットバンキング', type: 'select', options: ['利用中','登録のみ','未利用'] },
       { key: 'account_status',     label: 'ステータス', type: 'select', options: ['メイン','サブ','休眠','解約予定'] },
@@ -130,6 +148,9 @@ const SHEETS = {
       if (s === 'サブ') return { label: s, bg: 'bg-blue-50', text: 'text-blue-600', norm: 'active', muted: false };
       return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
     },
+    holders: r => r.account_holder_id ? [{ role: '名義人', name: r.account_holder_id }] : [],
+    estimatedAmount: r => formatEstimatedAmount(r.estimated_amount),
+    subType: r => r.account_type || '',
     sub: r => [r.account_type, r.account_holder_id ? `名義：${r.account_holder_id}` : ''].filter(Boolean).join(' · '),
     infoCards: r => [
       { label: '名義人',         value: r.account_holder_id },
@@ -145,8 +166,8 @@ const SHEETS = {
     cols: [
       'insurance_company', 'product_name', 'insurance_type',
       'policy_number', 'contract_holder_id', 'insured_person_id',
-      'beneficiary_id', 'insurance_amount', 'payment_status',
-      'maturity_date', 'account_status'
+      'beneficiary_id', 'insurance_amount', 'estimated_amount',
+      'payment_status', 'maturity_date', 'account_status'
     ],
     formFields: [
       { key: 'insurance_company',  label: '保険会社名',   type: 'text', required: true },
@@ -158,6 +179,7 @@ const SHEETS = {
       { key: 'insured_person_id',  label: '被保険者',     type: 'family_select' },
       { key: 'beneficiary_id',     label: '受取人',       type: 'family_select' },
       { key: 'insurance_amount',   label: '保険金額',     type: 'text' },
+      { key: 'estimated_amount',   label: '概算保険金額（円）', type: 'number' },
       { key: 'payment_status',     label: '払込状況', type: 'select', options: ['払込中','払込済','失効'] },
       { key: 'maturity_date',      label: '満期日（例：終身、2030年3月）', type: 'text' },
       { key: 'account_status',     label: 'ステータス', type: 'select', options: ['継続中','解約予定','解約済','失効'] },
@@ -169,6 +191,16 @@ const SHEETS = {
       if (s === '解約予定') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
       return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
     },
+    holders: r => [
+      { role: '契約者',   name: r.contract_holder_id },
+      { role: '被保険者', name: r.insured_person_id },
+      { role: '受取人',   name: r.beneficiary_id },
+    ].filter(x => x.name),
+    estimatedAmount: r => {
+      if (r.estimated_amount) return formatEstimatedAmount(r.estimated_amount);
+      return r.insurance_amount || '';
+    },
+    subType: r => r.insurance_type ? r.insurance_type + '保険' : '',
     sub: r => [r.insurance_type, r.contract_holder_id ? `契約者：${r.contract_holder_id}` : ''].filter(Boolean).join(' · '),
     infoCards: r => [
       { label: '契約者',   value: r.contract_holder_id },

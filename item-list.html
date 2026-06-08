@@ -150,6 +150,49 @@
           return SHEETS[row._sheetKey]?.holder?.(row) || '';
         },
 
+        itemHolders(row) {
+          return SHEETS[row._sheetKey]?.holders?.(row) || [];
+        },
+
+        itemCategoryTag(row) {
+          if (row._sheetKey === 'cash_flow') return row.service_category || '';
+          return SHEETS[row._sheetKey]?.label || '';
+        },
+
+        itemEstimatedAmount(row) {
+          return SHEETS[row._sheetKey]?.estimatedAmount?.(row) || '';
+        },
+
+        itemSubType(row) {
+          return SHEETS[row._sheetKey]?.subType?.(row) || '';
+        },
+
+        isCashFlow(row) {
+          return row._sheetKey === 'cash_flow';
+        },
+
+        isNegativeAmount(row) {
+          const v = row.estimated_amount;
+          return v !== undefined && v !== '' && Number(v) < 0;
+        },
+
+        shouldCollapseHolders(holders) {
+          const unique = [...new Set(holders.map(h => h.name).filter(Boolean))];
+          return unique.length >= 2;
+        },
+
+        expandedHolderRows: [],
+
+        toggleHolderExpand(uid, e) {
+          e.stopPropagation();
+          const i = this.expandedHolderRows.indexOf(uid);
+          if (i >= 0) this.expandedHolderRows.splice(i, 1); else this.expandedHolderRows.push(uid);
+        },
+
+        isHolderExpanded(uid) {
+          return this.expandedHolderRows.includes(uid);
+        },
+
         itemPlan(row) {
           return row.plan || '';
         },
@@ -337,30 +380,65 @@
                           x-text="itemStatusTag(row).label"></span>
                   </template>
                 </div>
-                <div class="flex items-center gap-2 ml-2 shrink-0">
-                  <template x-if="groupSheets.length > 1">
-                    <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium shrink-0"
-                          x-text="itemSheetLabel(row)"></span>
-                  </template>
-                  <template x-if="itemHolder(row)">
-                    <span :class="holderColor(itemHolder(row)).bg + ' ' + holderColor(itemHolder(row)).text"
-                          class="text-xs px-2 py-0.5 rounded-full font-medium"
-                          x-text="itemHolder(row)"></span>
+                <div class="flex flex-col items-end gap-0.5 ml-2 shrink-0">
+                  <template x-if="itemHolders(row).length > 0">
+                    <div class="flex flex-col items-end gap-0.5">
+                      <!-- 展開時：全員縦リスト -->
+                      <template x-if="isHolderExpanded(row._uid)">
+                        <div class="flex flex-col items-end gap-0.5">
+                          <template x-for="(h, idx) in itemHolders(row)" :key="h.role">
+                            <div class="flex items-center gap-1">
+                              <span class="text-xs text-gray-400 whitespace-nowrap" x-text="h.role + '：'"></span>
+                              <span :class="holderColor(h.name).bg + ' ' + holderColor(h.name).text"
+                                    class="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                                    x-text="h.name"></span>
+                              <button x-show="idx === 0"
+                                      @click.stop="toggleHolderExpand(row._uid, $event)"
+                                      class="text-xs text-gray-400 hover:text-gray-600 w-3 text-center leading-none">▴</button>
+                            </div>
+                          </template>
+                        </div>
+                      </template>
+                      <!-- 折り畳み時：代表のみ -->
+                      <template x-if="!isHolderExpanded(row._uid)">
+                        <div class="flex items-center gap-1">
+                          <span class="text-xs text-gray-400 whitespace-nowrap" x-text="itemHolders(row)[0].role + '：'"></span>
+                          <span :class="holderColor(itemHolders(row)[0].name).bg + ' ' + holderColor(itemHolders(row)[0].name).text"
+                                class="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                                x-text="itemHolders(row)[0].name"></span>
+                          <button x-show="shouldCollapseHolders(itemHolders(row))"
+                                  @click.stop="toggleHolderExpand(row._uid, $event)"
+                                  class="text-xs text-gray-400 hover:text-gray-600 w-3 text-center leading-none">▾</button>
+                        </div>
+                      </template>
+                    </div>
                   </template>
                   <span class="text-xs text-gray-400" x-text="doneCount(row) + '/3'"></span>
                 </div>
               </div>
               <div class="flex items-center gap-2 flex-wrap">
-                <template x-if="row.service_category">
-                  <span class="text-xs text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 shrink-0" x-text="row.service_category"></span>
+                <template x-if="itemCategoryTag(row)">
+                  <span class="text-xs text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 shrink-0"
+                        x-text="itemCategoryTag(row)"></span>
                 </template>
-                <div x-show="itemAmountNum(row) || itemPlan(row)" class="flex items-baseline gap-1">
-                  <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
-                  <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
-                  <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
-                  <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
-                  <span x-show="itemPlan(row)" class="text-sm font-bold text-gray-800 truncate" x-text="itemPlan(row)"></span>
-                </div>
+                <template x-if="isCashFlow(row)">
+                  <div x-show="itemAmountNum(row) || itemPlan(row)" class="flex items-baseline gap-1">
+                    <span x-show="itemAmountNum(row)" class="text-xs text-gray-400">¥</span>
+                    <span x-show="itemAmountNum(row)" class="text-base font-bold text-gray-800" x-text="itemAmountNum(row)"></span>
+                    <span x-show="itemAmountCycle(row)" class="text-xs text-gray-400" x-text="'/' + itemAmountCycle(row)"></span>
+                    <span x-show="itemPlan(row)" class="text-xs text-gray-400 mx-0.5">・</span>
+                    <span x-show="itemPlan(row)" class="text-sm font-bold text-gray-800 truncate" x-text="itemPlan(row)"></span>
+                  </div>
+                </template>
+                <template x-if="!isCashFlow(row)">
+                  <div x-show="itemEstimatedAmount(row) || itemSubType(row)" class="flex items-baseline gap-1">
+                    <span x-show="itemEstimatedAmount(row)"
+                          :class="isNegativeAmount(row) ? 'text-base font-bold text-red-500' : 'text-base font-bold text-gray-800'"
+                          x-text="itemEstimatedAmount(row)"></span>
+                    <span x-show="itemEstimatedAmount(row) && itemSubType(row)" class="text-xs text-gray-400">・</span>
+                    <span x-show="itemSubType(row)" class="text-sm text-gray-400" x-text="itemSubType(row)"></span>
+                  </div>
+                </template>
               </div>
             </div>
 

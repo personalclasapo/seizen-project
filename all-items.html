@@ -151,6 +151,44 @@
           return SHEETS[item.sheetKey]?.holder?.(item.row) || '';
         },
 
+        itemHolders(item) {
+          return SHEETS[item.sheetKey]?.holders?.(item.row) || [];
+        },
+
+        shouldCollapseHolders(holders) {
+          const unique = [...new Set(holders.map(h => h.name).filter(Boolean))];
+          return unique.length >= 2;
+        },
+
+        expandedHolderKeys: [],
+
+        toggleHolderExpand(key, e) {
+          e.stopPropagation();
+          const i = this.expandedHolderKeys.indexOf(key);
+          if (i >= 0) this.expandedHolderKeys.splice(i, 1); else this.expandedHolderKeys.push(key);
+        },
+
+        isHolderExpanded(key) {
+          return this.expandedHolderKeys.includes(key);
+        },
+
+        isCashFlowItem(item) {
+          return item.sheetKey === 'cash_flow';
+        },
+
+        itemEstimatedAmountStr(item) {
+          return SHEETS[item.sheetKey]?.estimatedAmount?.(item.row) || '';
+        },
+
+        itemSubType(item) {
+          return SHEETS[item.sheetKey]?.subType?.(item.row) || '';
+        },
+
+        isNegativeAmount(item) {
+          const v = item.row.estimated_amount;
+          return v !== undefined && v !== '' && Number(v) < 0;
+        },
+
         itemStatusTag(item) {
           return SHEETS[item.sheetKey]?.statusTag?.(item.row) || null;
         },
@@ -294,24 +332,63 @@
                           x-text="itemStatusTag(item).label"></span>
                   </template>
                 </div>
-                <div class="shrink-0 flex flex-col items-end gap-1 pl-1">
-                  <span class="text-xs text-gray-400" x-text="doneCount(item.row) + '/3'"></span>
-                  <template x-if="itemHolder(item)">
-                    <span :class="holderColor(itemHolder(item)).bg + ' ' + holderColor(itemHolder(item)).text"
-                          class="text-xs px-2 py-0.5 rounded-full font-medium"
-                          x-text="itemHolder(item)"></span>
+                <div class="shrink-0 flex flex-col items-end gap-0.5 pl-1">
+                  <template x-if="itemHolders(item).length > 0">
+                    <div class="flex flex-col items-end gap-0.5">
+                      <template x-if="isHolderExpanded(itemKey(item))">
+                        <div class="flex flex-col items-end gap-0.5">
+                          <template x-for="(h, idx) in itemHolders(item)" :key="h.role">
+                            <div class="flex items-center gap-1">
+                              <span class="text-xs text-gray-400 whitespace-nowrap" x-text="h.role + '：'"></span>
+                              <span :class="holderColor(h.name).bg + ' ' + holderColor(h.name).text"
+                                    class="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                                    x-text="h.name"></span>
+                              <button x-show="idx === 0"
+                                      @click.stop="toggleHolderExpand(itemKey(item), $event)"
+                                      class="text-xs text-gray-400 hover:text-gray-600 w-3 text-center leading-none">▴</button>
+                            </div>
+                          </template>
+                        </div>
+                      </template>
+                      <template x-if="!isHolderExpanded(itemKey(item))">
+                        <div class="flex items-center gap-1">
+                          <span class="text-xs text-gray-400 whitespace-nowrap" x-text="itemHolders(item)[0].role + '：'"></span>
+                          <span :class="holderColor(itemHolders(item)[0].name).bg + ' ' + holderColor(itemHolders(item)[0].name).text"
+                                class="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                                x-text="itemHolders(item)[0].name"></span>
+                          <button x-show="shouldCollapseHolders(itemHolders(item))"
+                                  @click.stop="toggleHolderExpand(itemKey(item), $event)"
+                                  class="text-xs text-gray-400 hover:text-gray-600 w-3 text-center leading-none">▾</button>
+                        </div>
+                      </template>
+                    </div>
                   </template>
+                  <span class="text-xs text-gray-400" x-text="doneCount(item.row) + '/3'"></span>
                 </div>
               </div>
-              <!-- 2行目：タイプ + 金額 + プラン -->
+              <!-- 2行目：タイプ + 金額/概算額 + プラン/種別補足 -->
               <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 shrink-0" x-text="item.label"></span>
-                <span x-show="itemAmountStr(item.row)"
-                      class="text-xs font-medium text-gray-600 shrink-0"
-                      x-text="itemAmountStr(item.row)"></span>
-                <span x-show="item.row.plan"
-                      class="text-xs text-gray-500 shrink-0"
-                      x-text="item.row.plan"></span>
+                <span x-show="item.label" class="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 shrink-0" x-text="item.label"></span>
+                <template x-if="isCashFlowItem(item)">
+                  <span x-show="itemAmountStr(item.row)"
+                        class="text-xs font-medium text-gray-600 shrink-0"
+                        x-text="itemAmountStr(item.row)"></span>
+                </template>
+                <template x-if="isCashFlowItem(item)">
+                  <span x-show="item.row.plan"
+                        class="text-xs text-gray-500 shrink-0"
+                        x-text="item.row.plan"></span>
+                </template>
+                <template x-if="!isCashFlowItem(item)">
+                  <span x-show="itemEstimatedAmountStr(item)"
+                        :class="isNegativeAmount(item) ? 'text-xs font-medium text-red-500 shrink-0' : 'text-xs font-medium text-gray-600 shrink-0'"
+                        x-text="itemEstimatedAmountStr(item)"></span>
+                </template>
+                <template x-if="!isCashFlowItem(item)">
+                  <span x-show="itemSubType(item)"
+                        class="text-xs text-gray-500 shrink-0"
+                        x-text="itemSubType(item)"></span>
+                </template>
               </div>
               <!-- 展開時：観点の中身 -->
               <div x-show="isExpanded(item)" class="mt-3 space-y-2">
