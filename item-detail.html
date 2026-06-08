@@ -594,6 +594,19 @@
                     <input type="text" x-model="allEditModal.f.product_name" @input="allEditModal.dirty = true"
                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
                   </div>
+                  <div class="flex gap-3">
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">保険金額（円）</label>
+                      <input type="number" x-model="allEditModal.f.estimated_amount" @input="allEditModal.dirty = true"
+                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                    </div>
+                    <div class="flex-1">
+                      <label class="text-xs text-gray-500 block mb-1">満期日</label>
+                      <input type="text" x-model="allEditModal.f.maturity_date" @input="allEditModal.dirty = true"
+                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                             placeholder="終身、2030年3月 など"/>
+                    </div>
+                  </div>
                   <div>
                     <label class="text-xs text-gray-500 block mb-1">保険種別</label>
                     <select x-model="allEditModal.f.insurance_type" @change="allEditModal.dirty = true"
@@ -627,19 +640,6 @@
                       <option value="">（未設定）</option>
                       <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
                     </select>
-                  </div>
-                  <div class="flex gap-3">
-                    <div class="flex-1">
-                      <label class="text-xs text-gray-500 block mb-1">保険金額（円）</label>
-                      <input type="number" x-model="allEditModal.f.estimated_amount" @input="allEditModal.dirty = true"
-                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
-                    </div>
-                    <div class="flex-1">
-                      <label class="text-xs text-gray-500 block mb-1">満期日</label>
-                      <input type="text" x-model="allEditModal.f.maturity_date" @input="allEditModal.dirty = true"
-                             class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
-                             placeholder="終身、2030年3月 など"/>
-                    </div>
                   </div>
                   <div>
                     <label class="text-xs text-gray-500 block mb-1">払込状況</label>
@@ -950,6 +950,20 @@
                 <input type="text" x-model="infoModal.f.product_name" @input="infoModal.dirty = true"
                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
               </div>
+              <div class="flex gap-3">
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">保険金額（円）</label>
+                  <input type="number" x-model="infoModal.f.estimated_amount" @input="infoModal.dirty = true"
+                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                         placeholder="3000000"/>
+                </div>
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 block mb-1">満期日</label>
+                  <input type="text" x-model="infoModal.f.maturity_date" @input="infoModal.dirty = true"
+                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                         placeholder="終身、2030年3月 など"/>
+                </div>
+              </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">保険種別</label>
                 <select x-model="infoModal.f.insurance_type" @change="infoModal.dirty = true"
@@ -983,20 +997,6 @@
                   <option value="">（未設定）</option>
                   <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
                 </select>
-              </div>
-              <div class="flex gap-3">
-                <div class="flex-1">
-                  <label class="text-xs text-gray-500 block mb-1">保険金額（円）</label>
-                  <input type="number" x-model="infoModal.f.estimated_amount" @input="infoModal.dirty = true"
-                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
-                         placeholder="3000000"/>
-                </div>
-                <div class="flex-1">
-                  <label class="text-xs text-gray-500 block mb-1">満期日</label>
-                  <input type="text" x-model="infoModal.f.maturity_date" @input="infoModal.dirty = true"
-                         class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
-                         placeholder="終身、2030年3月 など"/>
-                </div>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">払込状況</label>
