@@ -166,6 +166,61 @@ const SHEETS = {
       ].filter(c => c.value));
     }
   },
+  insurance: {
+    label: '保険商品',
+    group: '資産・負債',
+    idPrefix: 'ins',
+    cols: [
+      'insurance_company', 'product_name', 'insurance_type',
+      'policy_number', 'contract_holder_id', 'insured_person_id',
+      'beneficiary_id', 'insurance_amount', 'estimated_amount',
+      'payment_status', 'maturity_date', 'account_status'
+    ],
+    formFields: [
+      { key: 'insurance_company',  label: '保険会社名',   type: 'text', required: true },
+      { key: 'product_name',       label: '商品名',       type: 'text' },
+      { key: 'insurance_type',     label: '種別', type: 'select',
+        options: ['生命','医療','がん','個人年金','火災・地震','自動車','その他'] },
+      { key: 'policy_number',      label: '証券番号',     type: 'text' },
+      { key: 'contract_holder_id', label: '契約者',       type: 'family_select' },
+      { key: 'insured_person_id',  label: '被保険者',     type: 'family_select' },
+      { key: 'beneficiary_id',     label: '受取人',       type: 'family_select' },
+      { key: 'estimated_amount',   label: '保険金額（円）', type: 'number' },
+      { key: 'payment_status',     label: '払込状況', type: 'select', options: ['払込中','払込済','失効'] },
+      { key: 'maturity_date',      label: '満期日（例：終身、2030年3月）', type: 'text' },
+      { key: 'account_status',     label: 'ステータス', type: 'select', options: ['継続中','解約予定','解約済','失効'] },
+    ],
+    name: r => [r.insurance_company, r.product_name].filter(Boolean).join(' ') || '（名称未設定）',
+    headerTag: r => r.maturity_date || '',
+    statusTag: r => {
+      const s = r.account_status;
+      if (!s || s === '継続中') return null;
+      if (s === '解約予定') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
+      return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+    },
+    holders: r => [
+      { role: '契約者',   name: r.contract_holder_id },
+      { role: '被保険者', name: r.insured_person_id },
+      { role: '受取人',   name: r.beneficiary_id },
+    ].filter(x => x.name),
+    estimatedAmount: r => formatEstimatedAmount(r.estimated_amount),
+    subType: r => r.insurance_type ? r.insurance_type + '保険' : '',
+    sub: r => [r.insurance_type, r.contract_holder_id ? `契約者：${r.contract_holder_id}` : ''].filter(Boolean).join(' · '),
+    infoCards: r => {
+      const cards = [];
+      if (r.estimated_amount) cards.push({
+        label: '保険金額', type: 'amount',
+        amountNum: Number(r.estimated_amount).toLocaleString()
+      });
+      return cards.concat([
+        { label: '保険種別', value: r.insurance_type },
+        { label: '契約者',   value: r.contract_holder_id },
+        { label: '被保険者', value: r.insured_person_id },
+        { label: '受取人',   value: r.beneficiary_id },
+        { label: '払込状況', value: r.payment_status },
+      ].filter(c => c.value));
+    }
+  },
   securities: {
     label: '証券・投資',
     group: '資産・負債',
@@ -371,61 +426,6 @@ const SHEETS = {
       ].filter(c => c.value));
     }
   },
-  insurance: {
-    label: '保険商品',
-    group: '資産・負債',
-    idPrefix: 'ins',
-    cols: [
-      'insurance_company', 'product_name', 'insurance_type',
-      'policy_number', 'contract_holder_id', 'insured_person_id',
-      'beneficiary_id', 'insurance_amount', 'estimated_amount',
-      'payment_status', 'maturity_date', 'account_status'
-    ],
-    formFields: [
-      { key: 'insurance_company',  label: '保険会社名',   type: 'text', required: true },
-      { key: 'product_name',       label: '商品名',       type: 'text' },
-      { key: 'insurance_type',     label: '種別', type: 'select',
-        options: ['生命','医療','がん','個人年金','火災・地震','自動車','その他'] },
-      { key: 'policy_number',      label: '証券番号',     type: 'text' },
-      { key: 'contract_holder_id', label: '契約者',       type: 'family_select' },
-      { key: 'insured_person_id',  label: '被保険者',     type: 'family_select' },
-      { key: 'beneficiary_id',     label: '受取人',       type: 'family_select' },
-      { key: 'estimated_amount',   label: '保険金額（円）', type: 'number' },
-      { key: 'payment_status',     label: '払込状況', type: 'select', options: ['払込中','払込済','失効'] },
-      { key: 'maturity_date',      label: '満期日（例：終身、2030年3月）', type: 'text' },
-      { key: 'account_status',     label: 'ステータス', type: 'select', options: ['継続中','解約予定','解約済','失効'] },
-    ],
-    name: r => [r.insurance_company, r.product_name].filter(Boolean).join(' ') || '（名称未設定）',
-    headerTag: r => r.maturity_date || '',
-    statusTag: r => {
-      const s = r.account_status;
-      if (!s || s === '継続中') return null;
-      if (s === '解約予定') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
-      return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
-    },
-    holders: r => [
-      { role: '契約者',   name: r.contract_holder_id },
-      { role: '被保険者', name: r.insured_person_id },
-      { role: '受取人',   name: r.beneficiary_id },
-    ].filter(x => x.name),
-    estimatedAmount: r => formatEstimatedAmount(r.estimated_amount),
-    subType: r => r.insurance_type ? r.insurance_type + '保険' : '',
-    sub: r => [r.insurance_type, r.contract_holder_id ? `契約者：${r.contract_holder_id}` : ''].filter(Boolean).join(' · '),
-    infoCards: r => {
-      const cards = [];
-      if (r.estimated_amount) cards.push({
-        label: '保険金額', type: 'amount',
-        amountNum: Number(r.estimated_amount).toLocaleString()
-      });
-      return cards.concat([
-        { label: '保険種別', value: r.insurance_type },
-        { label: '契約者',   value: r.contract_holder_id },
-        { label: '被保険者', value: r.insured_person_id },
-        { label: '受取人',   value: r.beneficiary_id },
-        { label: '払込状況', value: r.payment_status },
-      ].filter(c => c.value));
-    }
-  }
 };
 
 const GROUPS = [
