@@ -213,10 +213,10 @@ const SHEETS = {
         amountNum: Number(r.estimated_amount).toLocaleString()
       });
       return cards.concat([
+        { label: '保険種別', value: r.insurance_type },
         { label: '契約者',   value: r.contract_holder_id },
         { label: '被保険者', value: r.insured_person_id },
         { label: '受取人',   value: r.beneficiary_id },
-        { label: '保険種別', value: r.insurance_type },
         { label: '払込状況', value: r.payment_status },
       ].filter(c => c.value));
     }
