@@ -128,6 +128,28 @@
       ['cand_005','up_001','Amazonプライム','AMAZON PRIME','600','月額','サブスク','未登録','']
     ];
 
+    const SAMPLE_SECURITIES = [
+      ['sec_001','2026-06-02','2026-06-02','完了','家族が把握済み','未確認','','未確認','','未確認','','','SBI証券','NISA','','父','1500000','利用中','運用中'],
+      ['sec_002','2026-06-02','2026-06-02','完了','家族が把握済み','未確認','','未確認','','未確認','','','楽天証券','iDeCo','','父','800000','利用中','運用中']
+    ];
+
+    const SAMPLE_CRYPTO = [
+      ['crypto_001','2026-06-02','2026-06-02','完了','家族が把握済み','未確認','','未確認','','未確認','','','コインチェック','取引所','BTC','父','300000','確認中','保有中']
+    ];
+
+    const SAMPLE_REAL_ESTATE = [
+      ['re_001','2026-06-02','2026-06-02','完了','家族全員が把握済み','完了','自宅として居住中。住宅ローン返済中','未確認','','未確認','','','戸建','神奈川県横浜市','父','35000000','あり','居住中'],
+      ['re_002','2026-06-02','2026-06-02','完了','家族が把握済み','未確認','','未確認','','未確認','','','土地','静岡県熱海市','父','5000000','なし','空き家']
+    ];
+
+    const SAMPLE_PRECIOUS_METAL = [
+      ['metal_001','2026-06-02','2026-06-02','完了','家族が把握済み','未確認','','未確認','','未確認','','','金','父','500000','自宅金庫','','保管中']
+    ];
+
+    const SAMPLE_LOAN = [
+      ['loan_001','2026-06-02','2026-06-02','完了','家族が把握済み','完了','三菱UFJ銀行の住宅ローン。月々92,000円返済中','未確認','','未確認','','','三菱UFJ銀行','住宅ローン','父','18000000','2038年12月','返済中']
+    ];
+
     function apiReq(method, url, body) {
       return fetch(url, {
         method,
@@ -260,6 +282,23 @@
                 valueInputOption: 'RAW',
                 data: [{ range: 'transaction_candidates!A2', values: SAMPLE_CANDIDATES }]
               });
+            }
+
+            const sampleSheets = [
+              { sheet: 'securities',     range: 'securities!A2:A3',     data: SAMPLE_SECURITIES },
+              { sheet: 'crypto',         range: 'crypto!A2:A2',         data: SAMPLE_CRYPTO },
+              { sheet: 'real_estate',    range: 'real_estate!A2:A3',    data: SAMPLE_REAL_ESTATE },
+              { sheet: 'precious_metal', range: 'precious_metal!A2:A2', data: SAMPLE_PRECIOUS_METAL },
+              { sheet: 'loan',           range: 'loan!A2:A2',           data: SAMPLE_LOAN },
+            ];
+            for (const s of sampleSheets) {
+              const cur = await apiReq('GET', `${base}/values/${s.range}`);
+              if (!cur.values || cur.values.length === 0) {
+                await apiReq('POST', `${base}/values:batchUpdate`, {
+                  valueInputOption: 'RAW',
+                  data: [{ range: `${s.sheet}!A2`, values: s.data }]
+                });
+              }
             }
 
             this.log('✓ 完了');
