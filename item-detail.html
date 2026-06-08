@@ -109,7 +109,11 @@
         itemName() { return this.row ? this.sheetDef.name(this.row) : ''; },
         itemStatusTag() { return this.row ? (this.sheetDef.statusTag?.(this.row) || null) : null; },
         headerTag() { return this.row ? (this.sheetDef.headerTag?.(this.row) || '') : ''; },
-        backLink() { return `item-list.html?sheet=${this.sheetKey}`; },
+        backLink() {
+          const grp = this.sheetDef?.group;
+          if (grp) return `item-list.html?group=${encodeURIComponent(grp)}`;
+          return `item-list.html?sheet=${this.sheetKey}`;
+        },
 
         // ── 観点編集 ──
         openPerspectiveModal(ps) {
