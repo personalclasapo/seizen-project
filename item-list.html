@@ -388,14 +388,12 @@
                       <!-- 展開時：全員縦リスト -->
                       <template x-if="isHolderExpanded(row._uid)">
                         <div class="flex flex-col items-end gap-0.5">
-                          <template x-for="(h, idx) in itemHolders(row)" :key="h.role">
+                          <template x-for="h in itemHolders(row)" :key="h.role">
                             <div class="flex items-center gap-1">
                               <span class="text-xs text-gray-400 whitespace-nowrap" x-text="h.role + '：'"></span>
                               <span :class="holderColor(h.name).bg + ' ' + holderColor(h.name).text"
                                     class="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                                     x-text="h.name"></span>
-                              <span x-show="idx === 0"
-                                    class="text-xs text-gray-400 w-3 text-center leading-none">▴</span>
                             </div>
                           </template>
                         </div>
@@ -407,10 +405,17 @@
                           <span :class="holderColor(itemHolders(row)[0].name).bg + ' ' + holderColor(itemHolders(row)[0].name).text"
                                 class="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                                 x-text="itemHolders(row)[0].name"></span>
-                          <span x-show="shouldCollapseHolders(itemHolders(row))"
-                                class="text-xs text-gray-400 w-3 text-center leading-none">▾</span>
                         </div>
                       </template>
+                      <!-- 展開トグル矢印：複数名いる場合のみ、エリア下部に中央揃え -->
+                      <div x-show="shouldCollapseHolders(itemHolders(row))"
+                           class="flex justify-center w-full pt-0.5">
+                        <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                             :class="isHolderExpanded(row._uid) ? 'rotate-180' : ''"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                      </div>
                     </div>
                   </template>
                   <span class="text-xs text-gray-400" x-text="doneCount(row) + '/3'"></span>
