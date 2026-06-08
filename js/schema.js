@@ -54,11 +54,10 @@ function formatEstimatedAmount(v) {
   const abs = Math.abs(n);
   let s;
   if (abs >= 100000000) {
-    s = '約' + (Math.round(abs / 100000000 * 10) / 10).toLocaleString() + '億円';
-  } else if (abs >= 10000) {
-    s = '約' + Math.round(abs / 10000).toLocaleString() + '万円';
+    const oku = Math.round(abs / 10000000) / 10;
+    s = oku.toLocaleString() + '億円';
   } else {
-    s = '約' + Math.round(abs).toLocaleString() + '円';
+    s = abs.toLocaleString() + '円';
   }
   return n < 0 ? '− ' + s : s;
 }
