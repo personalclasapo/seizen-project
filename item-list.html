@@ -382,7 +382,9 @@
                 </div>
                 <div class="flex flex-col items-end gap-0.5 ml-2 shrink-0">
                   <template x-if="itemHolders(row).length > 0">
-                    <div class="flex flex-col items-end gap-0.5">
+                    <div class="flex flex-col items-end gap-0.5"
+                         @click.stop="shouldCollapseHolders(itemHolders(row)) && toggleHolderExpand(row._uid, $event)"
+                         :class="shouldCollapseHolders(itemHolders(row)) ? 'cursor-pointer' : ''">
                       <!-- 展開時：全員縦リスト -->
                       <template x-if="isHolderExpanded(row._uid)">
                         <div class="flex flex-col items-end gap-0.5">
@@ -392,9 +394,8 @@
                               <span :class="holderColor(h.name).bg + ' ' + holderColor(h.name).text"
                                     class="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                                     x-text="h.name"></span>
-                              <button x-show="idx === 0"
-                                      @click.stop="toggleHolderExpand(row._uid, $event)"
-                                      class="text-xs text-gray-400 hover:text-gray-600 w-3 text-center leading-none">▴</button>
+                              <span x-show="idx === 0"
+                                    class="text-xs text-gray-400 w-3 text-center leading-none">▴</span>
                             </div>
                           </template>
                         </div>
@@ -406,9 +407,8 @@
                           <span :class="holderColor(itemHolders(row)[0].name).bg + ' ' + holderColor(itemHolders(row)[0].name).text"
                                 class="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                                 x-text="itemHolders(row)[0].name"></span>
-                          <button x-show="shouldCollapseHolders(itemHolders(row))"
-                                  @click.stop="toggleHolderExpand(row._uid, $event)"
-                                  class="text-xs text-gray-400 hover:text-gray-600 w-3 text-center leading-none">▾</button>
+                          <span x-show="shouldCollapseHolders(itemHolders(row))"
+                                class="text-xs text-gray-400 w-3 text-center leading-none">▾</span>
                         </div>
                       </template>
                     </div>
