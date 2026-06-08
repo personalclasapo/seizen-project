@@ -166,6 +166,211 @@ const SHEETS = {
       ].filter(c => c.value));
     }
   },
+  securities: {
+    label: '証券・投資',
+    group: '資産・負債',
+    idPrefix: 'sec',
+    cols: [
+      'company_name', 'account_type', 'account_number',
+      'holder_id', 'estimated_amount', 'net_usage', 'account_status'
+    ],
+    formFields: [
+      { key: 'company_name',     label: '証券会社名',         type: 'text', required: true },
+      { key: 'account_type',     label: '口座区分', type: 'select',
+        options: ['特定','一般','NISA','つみたてNISA','iDeCo','その他'] },
+      { key: 'account_number',   label: '口座番号（任意）',   type: 'text' },
+      { key: 'holder_id',        label: '名義人',             type: 'family_select' },
+      { key: 'estimated_amount', label: '評価額・概算（円）', type: 'number' },
+      { key: 'net_usage',        label: 'ネット証券', type: 'select', options: ['利用中','登録のみ','未利用'] },
+      { key: 'account_status',   label: 'ステータス', type: 'select', options: ['運用中','解約予定','解約済'] },
+    ],
+    name: r => [r.company_name, r.account_type].filter(Boolean).join(' ') || '（名称未設定）',
+    headerTag: r => r.account_type || '',
+    statusTag: r => {
+      const s = r.account_status;
+      if (!s || s === '運用中') return null;
+      if (s === '解約予定') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
+      return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+    },
+    holders: r => r.holder_id ? [{ role: '名義人', name: r.holder_id }] : [],
+    estimatedAmount: r => formatEstimatedAmount(r.estimated_amount),
+    subType: r => r.account_type || '',
+    sub: r => [r.account_type, r.holder_id ? `名義：${r.holder_id}` : ''].filter(Boolean).join(' · '),
+    infoCards: r => {
+      const cards = [];
+      if (r.estimated_amount) cards.push({ label: '評価額', type: 'amount', amountNum: Number(r.estimated_amount).toLocaleString() });
+      return cards.concat([
+        { label: '口座区分',   value: r.account_type },
+        { label: '名義人',     value: r.holder_id },
+        { label: 'ネット証券', value: r.net_usage },
+        { label: 'ステータス', value: r.account_status },
+      ].filter(c => c.value));
+    }
+  },
+  crypto: {
+    label: '暗号資産',
+    group: '資産・負債',
+    idPrefix: 'crypto',
+    cols: [
+      'exchange_name', 'storage_type', 'coin_type',
+      'holder_id', 'estimated_amount', 'seed_backup_status', 'account_status'
+    ],
+    formFields: [
+      { key: 'exchange_name',      label: '取引所・ウォレット名', type: 'text', required: true },
+      { key: 'storage_type',       label: '保管形態', type: 'select',
+        options: ['取引所','ホットウォレット','ハードウェアウォレット','その他'] },
+      { key: 'coin_type',          label: '通貨', type: 'select', options: ['BTC','ETH','その他'] },
+      { key: 'holder_id',          label: '名義人',             type: 'family_select' },
+      { key: 'estimated_amount',   label: '評価額・概算（円）', type: 'number' },
+      { key: 'seed_backup_status', label: 'シードフレーズ・秘密鍵バックアップ', type: 'select',
+        options: ['有（保管済）','無','確認中'] },
+      { key: 'account_status',     label: 'ステータス', type: 'select', options: ['保有中','売却予定','売却済'] },
+    ],
+    name: r => r.exchange_name || '（名称未設定）',
+    headerTag: r => r.coin_type || '',
+    statusTag: r => {
+      const s = r.account_status;
+      if (!s || s === '保有中') return null;
+      if (s === '売却予定') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
+      return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+    },
+    holders: r => r.holder_id ? [{ role: '名義人', name: r.holder_id }] : [],
+    estimatedAmount: r => formatEstimatedAmount(r.estimated_amount),
+    subType: r => r.storage_type || '',
+    sub: r => [r.coin_type, r.holder_id ? `名義：${r.holder_id}` : ''].filter(Boolean).join(' · '),
+    infoCards: r => {
+      const cards = [];
+      if (r.estimated_amount) cards.push({ label: '評価額', type: 'amount', amountNum: Number(r.estimated_amount).toLocaleString() });
+      return cards.concat([
+        { label: '保管形態',           value: r.storage_type },
+        { label: '通貨',               value: r.coin_type },
+        { label: '名義人',             value: r.holder_id },
+        { label: 'バックアップ',       value: r.seed_backup_status },
+        { label: 'ステータス',         value: r.account_status },
+      ].filter(c => c.value));
+    }
+  },
+  real_estate: {
+    label: '不動産',
+    group: '資産・負債',
+    idPrefix: 're',
+    cols: [
+      'property_type', 'location', 'holder_id',
+      'estimated_amount', 'loan_exists', 'usage_status'
+    ],
+    formFields: [
+      { key: 'property_type',    label: '種別', type: 'select', options: ['土地','戸建','マンション','その他'] },
+      { key: 'location',         label: '所在地（任意・ざっくりで可）', type: 'text' },
+      { key: 'holder_id',        label: '名義人',             type: 'family_select' },
+      { key: 'estimated_amount', label: '評価額・概算（円）', type: 'number' },
+      { key: 'loan_exists',      label: 'ローン', type: 'select', options: ['あり','なし'] },
+      { key: 'usage_status',     label: '利用状況', type: 'select', options: ['居住中','賃貸中','空き家','その他'] },
+    ],
+    name: r => [r.property_type, r.location].filter(Boolean).join(' ') || '（名称未設定）',
+    headerTag: r => r.property_type || '',
+    statusTag: r => {
+      const s = r.usage_status;
+      if (!s || s === '居住中') return null;
+      if (s === '賃貸中') return { label: s, bg: 'bg-blue-50', text: 'text-blue-600', norm: 'active', muted: false };
+      if (s === '空き家') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
+      return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+    },
+    holders: r => r.holder_id ? [{ role: '名義人', name: r.holder_id }] : [],
+    estimatedAmount: r => formatEstimatedAmount(r.estimated_amount),
+    subType: r => r.property_type || '',
+    sub: r => [r.property_type, r.holder_id ? `名義：${r.holder_id}` : ''].filter(Boolean).join(' · '),
+    infoCards: r => {
+      const cards = [];
+      if (r.estimated_amount) cards.push({ label: '評価額', type: 'amount', amountNum: Number(r.estimated_amount).toLocaleString() });
+      return cards.concat([
+        { label: '種別',       value: r.property_type },
+        { label: '名義人',     value: r.holder_id },
+        { label: 'ローン',     value: r.loan_exists },
+        { label: '利用状況',   value: r.usage_status },
+      ].filter(c => c.value));
+    }
+  },
+  precious_metal: {
+    label: '貴金属',
+    group: '資産・負債',
+    idPrefix: 'metal',
+    cols: [
+      'metal_type', 'holder_id', 'estimated_amount',
+      'storage_location', 'custodian_name', 'account_status'
+    ],
+    formFields: [
+      { key: 'metal_type',       label: '種別', type: 'select', options: ['金','プラチナ','銀','コイン','ジュエリー','その他'] },
+      { key: 'holder_id',        label: '名義人',             type: 'family_select' },
+      { key: 'estimated_amount', label: '評価額・概算（円）', type: 'number' },
+      { key: 'storage_location', label: '保管場所', type: 'select', options: ['自宅金庫','貸金庫','業者保管','その他'] },
+      { key: 'custodian_name',   label: '保管先名称（任意）', type: 'text' },
+      { key: 'account_status',   label: 'ステータス', type: 'select', options: ['保管中','売却予定','売却済'] },
+    ],
+    name: r => [r.metal_type, r.custodian_name].filter(Boolean).join(' ') || '（名称未設定）',
+    headerTag: r => r.metal_type || '',
+    statusTag: r => {
+      const s = r.account_status;
+      if (!s || s === '保管中') return null;
+      if (s === '売却予定') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
+      return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+    },
+    holders: r => r.holder_id ? [{ role: '名義人', name: r.holder_id }] : [],
+    estimatedAmount: r => formatEstimatedAmount(r.estimated_amount),
+    subType: r => r.metal_type || '',
+    sub: r => [r.metal_type, r.holder_id ? `名義：${r.holder_id}` : ''].filter(Boolean).join(' · '),
+    infoCards: r => {
+      const cards = [];
+      if (r.estimated_amount) cards.push({ label: '評価額', type: 'amount', amountNum: Number(r.estimated_amount).toLocaleString() });
+      return cards.concat([
+        { label: '種別',       value: r.metal_type },
+        { label: '名義人',     value: r.holder_id },
+        { label: '保管場所',   value: r.storage_location },
+        { label: '保管先',     value: r.custodian_name },
+        { label: 'ステータス', value: r.account_status },
+      ].filter(c => c.value));
+    }
+  },
+  loan: {
+    label: '借入・保証',
+    group: '資産・負債',
+    idPrefix: 'loan',
+    cols: [
+      'lender_name', 'loan_type', 'debtor_id',
+      'remaining_debt', 'repayment_due', 'account_status'
+    ],
+    formFields: [
+      { key: 'lender_name',    label: '借入先・保証先',   type: 'text', required: true },
+      { key: 'loan_type',      label: '種別', type: 'select',
+        options: ['住宅ローン','自動車ローン','カードローン','事業性借入','連帯保証','その他'] },
+      { key: 'debtor_id',      label: '債務者・保証人',   type: 'family_select' },
+      { key: 'remaining_debt', label: '残債・概算（円）', type: 'number' },
+      { key: 'repayment_due',  label: '完済予定（例：2035年3月）', type: 'text' },
+      { key: 'account_status', label: 'ステータス', type: 'select', options: ['返済中','完済予定','完済','保証中'] },
+    ],
+    name: r => [r.lender_name, r.loan_type].filter(Boolean).join(' ') || '（名称未設定）',
+    headerTag: r => r.loan_type || '',
+    statusTag: r => {
+      const s = r.account_status;
+      if (!s || s === '返済中') return null;
+      if (s === '完済予定') return { label: s, bg: 'bg-amber-100', text: 'text-amber-700', norm: 'closing', muted: false };
+      if (s === '保証中') return { label: s, bg: 'bg-blue-50', text: 'text-blue-600', norm: 'active', muted: false };
+      return { label: s, bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+    },
+    holders: r => r.debtor_id ? [{ role: '債務者・保証人', name: r.debtor_id }] : [],
+    estimatedAmount: r => r.remaining_debt ? formatEstimatedAmount(-Number(r.remaining_debt)) : '',
+    subType: r => r.loan_type || '',
+    sub: r => [r.loan_type, r.debtor_id ? `債務者：${r.debtor_id}` : ''].filter(Boolean).join(' · '),
+    infoCards: r => {
+      const cards = [];
+      if (r.remaining_debt) cards.push({ label: '残債', type: 'amount', amountNum: Number(r.remaining_debt).toLocaleString() });
+      return cards.concat([
+        { label: '種別',         value: r.loan_type },
+        { label: '債務者・保証人', value: r.debtor_id },
+        { label: '完済予定',     value: r.repayment_due },
+        { label: 'ステータス',   value: r.account_status },
+      ].filter(c => c.value));
+    }
+  },
   insurance: {
     label: '保険商品',
     group: '資産・負債',
@@ -225,7 +430,7 @@ const SHEETS = {
 
 const GROUPS = [
   { label: '支出・収入',   sheets: ['cash_flow'] },
-  { label: '資産・負債',   sheets: ['bank_account', 'insurance'] },
+  { label: '資産・負債',   sheets: ['bank_account', 'insurance', 'securities', 'crypto', 'real_estate', 'precious_metal', 'loan'] },
   { label: '健康・人間関係', sheets: [] },
   { label: '想い・希望',   sheets: [] },
 ];
