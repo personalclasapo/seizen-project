@@ -184,6 +184,20 @@
               payment_status: r.payment_status || '',
               account_status: r.account_status || '継続中'
             };
+          } else if (this.sheetKey === 'contact_network') {
+            f = {
+              contact_name:  r.contact_name  || '',
+              relationship:  r.relationship  || '',
+              notify_timing: r.notify_timing || '',
+              phone_number:  r.phone_number  || '',
+              email:         r.email         || ''
+            };
+          } else if (this.sheetKey === 'medical_info') {
+            f = {
+              subject_id:       r.subject_id       || '',
+              medical_category: r.medical_category || '',
+              title:            r.title            || ''
+            };
           }
           this.infoModal = { open: true, saving: false, error: null, dirty: false, f };
         },
@@ -232,6 +246,15 @@
             insured_person_id: r.insured_person_id || '', beneficiary_id: r.beneficiary_id || '',
             estimated_amount: r.estimated_amount || '', maturity_date: r.maturity_date || '',
             payment_status: r.payment_status || '', account_status: r.account_status || '継続中'
+          };
+          if (this.sheetKey === 'contact_network') return {
+            contact_name: r.contact_name || '', relationship: r.relationship || '',
+            notify_timing: r.notify_timing || '', phone_number: r.phone_number || '',
+            email: r.email || ''
+          };
+          if (this.sheetKey === 'medical_info') return {
+            subject_id: r.subject_id || '', medical_category: r.medical_category || '',
+            title: r.title || ''
           };
           return {};
         },
@@ -663,6 +686,73 @@
                   </div>
                 </div>
               </template>
+
+              <!-- contact_network 基本情報 -->
+              <template x-if="sheetKey === 'contact_network'">
+                <div class="space-y-3">
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">氏名・名称</label>
+                    <input type="text" x-model="allEditModal.f.contact_name" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">関係</label>
+                    <input type="text" x-model="allEditModal.f.relationship" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                           placeholder="例：父の高校の同級生、母の妹、菩提寺の住職"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">連絡タイミング</label>
+                    <select x-model="allEditModal.f.notify_timing" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <option>危篤時に呼ぶ</option><option>逝去後すぐ</option><option>葬儀の案内</option>
+                      <option>後日通知でよい</option><option>連絡不要</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">電話番号</label>
+                    <input type="text" x-model="allEditModal.f.phone_number" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                           placeholder="例：090-1234-5678"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">メールアドレス</label>
+                    <input type="text" x-model="allEditModal.f.email" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                           placeholder="例：taro@example.com"/>
+                  </div>
+                </div>
+              </template>
+
+              <!-- medical_info 基本情報 -->
+              <template x-if="sheetKey === 'medical_info'">
+                <div class="space-y-3">
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">対象者</label>
+                    <select x-model="allEditModal.f.subject_id" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">種別</label>
+                    <select x-model="allEditModal.f.medical_category" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <option>かかりつけ医・病院</option><option>常用薬・お薬手帳</option><option>持病・既往歴</option>
+                      <option>各種保険証</option><option>延命・治療の意思</option><option>臓器提供の意思</option>
+                      <option>要介護・障害</option><option>その他</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">項目名</label>
+                    <input type="text" x-model="allEditModal.f.title" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -1017,6 +1107,73 @@
                             class="px-3 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
                   </template>
                 </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- contact_network フォーム -->
+          <template x-if="sheetKey === 'contact_network'">
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">氏名・名称</label>
+                <input type="text" x-model="infoModal.f.contact_name" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">関係</label>
+                <input type="text" x-model="infoModal.f.relationship" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                       placeholder="例：父の高校の同級生、母の妹、菩提寺の住職"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">連絡タイミング</label>
+                <select x-model="infoModal.f.notify_timing" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <option>危篤時に呼ぶ</option><option>逝去後すぐ</option><option>葬儀の案内</option>
+                  <option>後日通知でよい</option><option>連絡不要</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">電話番号</label>
+                <input type="text" x-model="infoModal.f.phone_number" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                       placeholder="例：090-1234-5678"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">メールアドレス</label>
+                <input type="text" x-model="infoModal.f.email" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                       placeholder="例：taro@example.com"/>
+              </div>
+            </div>
+          </template>
+
+          <!-- medical_info フォーム -->
+          <template x-if="sheetKey === 'medical_info'">
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">対象者</label>
+                <select x-model="infoModal.f.subject_id" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">種別</label>
+                <select x-model="infoModal.f.medical_category" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <option>かかりつけ医・病院</option><option>常用薬・お薬手帳</option><option>持病・既往歴</option>
+                  <option>各種保険証</option><option>延命・治療の意思</option><option>臓器提供の意思</option>
+                  <option>要介護・障害</option><option>その他</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">項目名</label>
+                <input type="text" x-model="infoModal.f.title" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
               </div>
             </div>
           </template>

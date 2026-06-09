@@ -430,13 +430,15 @@ const SHEETS = {
     label: '連絡網',
     group: 'もしもの時',
     idPrefix: 'contact',
-    cols: ['contact_name', 'relationship', 'notify_timing'],
+    cols: ['contact_name', 'relationship', 'notify_timing', 'phone_number', 'email'],
     formFields: [
       { key: 'contact_name',  label: '氏名・名称', type: 'text' },
       { key: 'relationship',  label: '関係',       type: 'text',
         placeholder: '例：父の高校の同級生、母の妹、菩提寺の住職' },
       { key: 'notify_timing', label: '連絡タイミング', type: 'select',
         options: ['危篤時に呼ぶ', '逝去後すぐ', '葬儀の案内', '後日通知でよい', '連絡不要'] },
+      { key: 'phone_number',  label: '電話番号', type: 'text', placeholder: '例：090-1234-5678' },
+      { key: 'email',         label: 'メールアドレス', type: 'text', placeholder: '例：taro@example.com' },
     ],
     name: r => r.contact_name || '（名称未設定）',
     statusTag: r => {
@@ -450,6 +452,8 @@ const SHEETS = {
     infoCards: r => [
       { label: '関係',           value: r.relationship },
       { label: '連絡タイミング', value: r.notify_timing },
+      { label: '電話番号',       value: r.phone_number },
+      { label: 'メールアドレス', value: r.email },
     ].filter(c => c.value),
   },
   medical_info: {
