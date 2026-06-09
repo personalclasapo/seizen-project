@@ -168,6 +168,20 @@
       ['loan_001','2026-06-02','2026-06-02','完了','家族が把握済み','完了','三菱UFJ銀行の住宅ローン。月々92,000円返済中','未確認','','未確認','','','三菱UFJ銀行','住宅ローン','父','18000000','2038年12月','返済中']
     ];
 
+    const SAMPLE_CONTACT_NETWORK = [
+      ['contact_001','2026-06-09','2026-06-09','完了','家族全員が把握済み','完了','父の唯一の兄弟。父が危篤・逝去の際は必ず知らせる','未確認','','未確認','','','寺内一郎（伯父）','父の兄','逝去後すぐ'],
+      ['contact_002','2026-06-09','2026-06-09','完了','家族が把握済み','完了','先祖代々の菩提寺。葬儀・法要はここに依頼する','完了','電話番号は父の手帳（引き出し）に記載','未確認','','','〇〇寺','菩提寺の住職','逝去後すぐ'],
+      ['contact_003','2026-06-09','2026-06-09','未確認','','未確認','','未確認','','未確認','','','田中 健','父の会社の同期','後日通知でよい'],
+      ['contact_004','2026-06-09','2026-06-09','完了','家族が把握済み','完了','父が生前に相談・資料取り寄せ済み。担当は山田さん','完了','0120-xxx-xxxx（24時間対応）','完了','逝去確認後すぐ電話。「事前相談済みの寺内です」と伝える','','やすらぎ葬儀社','葬儀の手配先（事前相談済み）','逝去後すぐ']
+    ];
+
+    const SAMPLE_MEDICAL_INFO = [
+      ['med_001','2026-06-09','2026-06-09','完了','家族が把握済み','完了','高血圧・高脂血症で月1回通院。担当は鈴木先生','未確認','','未確認','','','父','かかりつけ医・病院','内科のかかりつけ医（横浜内科クリニック）'],
+      ['med_002','2026-06-09','2026-06-09','完了','家族が把握済み','完了','降圧剤・スタチン系薬を毎朝服用','完了','お薬手帳は洗面台の引き出しに保管','未確認','','','父','常用薬・お薬手帳','血圧・コレステロールの薬'],
+      ['med_003','2026-06-09','2026-06-09','完了','家族全員で話し合い済み','完了','回復見込みのない状態での延命治療は望まない。本人から直接確認済み','未確認','','未確認','','','父','延命・治療の意思','延命治療についての意思'],
+      ['med_004','2026-06-09','2026-06-09','完了','家族が把握済み','未確認','','未確認','','未確認','','','母','かかりつけ医・病院','整形外科（腰痛で通院中）']
+    ];
+
     function apiReq(method, url, body) {
       return fetch(url, {
         method,
@@ -303,11 +317,13 @@
             }
 
             const sampleSheets = [
-              { sheet: 'securities',     range: 'securities!A2:A3',     data: SAMPLE_SECURITIES },
-              { sheet: 'crypto',         range: 'crypto!A2:A2',         data: SAMPLE_CRYPTO },
-              { sheet: 'real_estate',    range: 'real_estate!A2:A3',    data: SAMPLE_REAL_ESTATE },
-              { sheet: 'precious_metal', range: 'precious_metal!A2:A2', data: SAMPLE_PRECIOUS_METAL },
-              { sheet: 'loan',           range: 'loan!A2:A2',           data: SAMPLE_LOAN },
+              { sheet: 'securities',       range: 'securities!A2:A3',         data: SAMPLE_SECURITIES },
+              { sheet: 'crypto',           range: 'crypto!A2:A2',             data: SAMPLE_CRYPTO },
+              { sheet: 'real_estate',      range: 'real_estate!A2:A3',        data: SAMPLE_REAL_ESTATE },
+              { sheet: 'precious_metal',   range: 'precious_metal!A2:A2',     data: SAMPLE_PRECIOUS_METAL },
+              { sheet: 'loan',             range: 'loan!A2:A2',               data: SAMPLE_LOAN },
+              { sheet: 'contact_network',  range: 'contact_network!A2:A5',    data: SAMPLE_CONTACT_NETWORK },
+              { sheet: 'medical_info',     range: 'medical_info!A2:A5',       data: SAMPLE_MEDICAL_INFO },
             ];
             for (const s of sampleSheets) {
               const cur = await apiReq('GET', `${base}/values/${s.range}`);
