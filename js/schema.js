@@ -446,6 +446,7 @@ const SHEETS = {
       return { label: r.notify_timing, bg: 'bg-blue-50', text: 'text-blue-600', norm: 'active', muted: false };
     },
     sub: r => r.relationship || '',
+    subType: r => r.relationship || '',
     infoCards: r => [
       { label: '関係',           value: r.relationship },
       { label: '連絡タイミング', value: r.notify_timing },
@@ -466,7 +467,9 @@ const SHEETS = {
     name: r => r.title || r.medical_category || '（項目名未設定）',
     headerTag: r => r.medical_category || '',
     statusTag: r => null,
+    holders: r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
     sub: r => [r.subject_id, r.medical_category].filter(Boolean).join('・'),
+    subType: r => r.medical_category || '',
     infoCards: r => [
       { label: '対象者', value: r.subject_id },
       { label: '種別',   value: r.medical_category },

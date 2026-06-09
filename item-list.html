@@ -156,7 +156,9 @@
 
         itemCategoryTag(row) {
           if (row._sheetKey === 'cash_flow') return row.service_category || '';
-          return SHEETS[row._sheetKey]?.label || '';
+          const def = SHEETS[row._sheetKey];
+          if (def?.headerTag) return def.headerTag(row);
+          return def?.label || '';
         },
 
         itemEstimatedAmount(row) {
