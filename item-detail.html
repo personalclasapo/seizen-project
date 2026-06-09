@@ -777,7 +777,7 @@
                   </div>
                 </div>
                 <textarea x-model="allEditModal.perspectives[i].content" @input="allEditModal.dirty = true"
-                          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm leading-relaxed resize-none focus:outline-none focus:border-blue-400"
+                          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue-400"
                           rows="3" placeholder="内容を入力（任意）"></textarea>
               </div>
             </template>
@@ -872,7 +872,7 @@
           <div>
             <p class="text-xs text-gray-500 mb-2">中身</p>
             <textarea x-model="perspectiveModal.content" @input="perspectiveModal.dirty = true"
-                      class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm leading-relaxed resize-none focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                      class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                       rows="5" placeholder="内容を入力（任意）"></textarea>
           </div>
           <p x-show="perspectiveModal.error" class="text-red-600 text-sm" x-text="perspectiveModal.error"></p>
