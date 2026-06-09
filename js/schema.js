@@ -426,13 +426,62 @@ const SHEETS = {
       ].filter(c => c.value));
     }
   },
+  contact_network: {
+    label: '連絡網',
+    group: 'もしもの時',
+    idPrefix: 'contact',
+    cols: ['contact_name', 'relationship', 'contact_type', 'notify_timing'],
+    formFields: [
+      { key: 'contact_name',  label: '氏名・名称', type: 'text' },
+      { key: 'relationship',  label: '関係',       type: 'text' },
+      { key: 'contact_type',  label: '区分',       type: 'select',
+        options: ['近親・親族', '友人・知人', '職場・仕事関係', '手続きの窓口', 'その他'] },
+      { key: 'notify_timing', label: '連絡タイミング', type: 'select',
+        options: ['危篤時に呼ぶ', '逝去後すぐ', '葬儀の案内', '後日通知でよい', '連絡不要'] },
+    ],
+    name: r => r.contact_name || '（名称未設定）',
+    headerTag: r => r.contact_type || '',
+    statusTag: r => {
+      if (r.notify_timing === '連絡不要')     return { label: '連絡不要', bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
+      if (r.notify_timing === '危篤時に呼ぶ') return { label: '危篤時',   bg: 'bg-rose-100', text: 'text-rose-700', norm: 'active', muted: false };
+      if (!r.notify_timing)                   return null;
+      return { label: r.notify_timing, bg: 'bg-blue-50', text: 'text-blue-600', norm: 'active', muted: false };
+    },
+    sub: r => r.relationship || '',
+    infoCards: r => [
+      { label: '区分',           value: r.contact_type },
+      { label: '関係',           value: r.relationship },
+      { label: '連絡タイミング', value: r.notify_timing },
+    ].filter(c => c.value),
+  },
+  medical_info: {
+    label: '医療・身体',
+    group: 'もしもの時',
+    idPrefix: 'med',
+    cols: ['subject_id', 'medical_category', 'title'],
+    formFields: [
+      { key: 'subject_id',       label: '対象者', type: 'family_select' },
+      { key: 'medical_category', label: '種別',   type: 'select',
+        options: ['かかりつけ医・病院', '常用薬・お薬手帳', '持病・既往歴', '各種保険証',
+                  '延命・治療の意思', '臓器提供の意思', '要介護・障害', 'その他'] },
+      { key: 'title', label: '項目名', type: 'text' },
+    ],
+    name: r => r.title || r.medical_category || '（項目名未設定）',
+    headerTag: r => r.medical_category || '',
+    statusTag: r => null,
+    sub: r => [r.subject_id, r.medical_category].filter(Boolean).join('・'),
+    infoCards: r => [
+      { label: '対象者', value: r.subject_id },
+      { label: '種別',   value: r.medical_category },
+    ].filter(c => c.value),
+  },
 };
 
 const GROUPS = [
   { label: '支出・収入',   sheets: ['cash_flow'] },
   { label: '資産・負債',   sheets: ['bank_account', 'insurance', 'securities', 'crypto', 'real_estate', 'precious_metal', 'loan'] },
-  { label: '健康・人間関係', sheets: [] },
-  { label: '想い・希望',   sheets: [] },
+  { label: 'もしもの時',   sheets: ['contact_network', 'medical_info'] },
+  { label: 'のこすもの',   sheets: [] },
 ];
 
 function getAllCols(sheetKey) {
