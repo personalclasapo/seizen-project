@@ -430,17 +430,15 @@ const SHEETS = {
     label: '連絡網',
     group: 'もしもの時',
     idPrefix: 'contact',
-    cols: ['contact_name', 'relationship', 'contact_type', 'notify_timing'],
+    cols: ['contact_name', 'relationship', 'notify_timing'],
     formFields: [
       { key: 'contact_name',  label: '氏名・名称', type: 'text' },
-      { key: 'relationship',  label: '関係',       type: 'text' },
-      { key: 'contact_type',  label: '区分',       type: 'select',
-        options: ['近親・親族', '友人・知人', '職場・仕事関係', '手続きの窓口', 'その他'] },
+      { key: 'relationship',  label: '関係',       type: 'text',
+        placeholder: '例：父の高校の同級生、母の妹、菩提寺の住職' },
       { key: 'notify_timing', label: '連絡タイミング', type: 'select',
         options: ['危篤時に呼ぶ', '逝去後すぐ', '葬儀の案内', '後日通知でよい', '連絡不要'] },
     ],
     name: r => r.contact_name || '（名称未設定）',
-    headerTag: r => r.contact_type || '',
     statusTag: r => {
       if (r.notify_timing === '連絡不要')     return { label: '連絡不要', bg: 'bg-gray-100', text: 'text-gray-500', norm: 'closed', muted: true };
       if (r.notify_timing === '危篤時に呼ぶ') return { label: '危篤時',   bg: 'bg-rose-100', text: 'text-rose-700', norm: 'active', muted: false };
@@ -449,7 +447,6 @@ const SHEETS = {
     },
     sub: r => r.relationship || '',
     infoCards: r => [
-      { label: '区分',           value: r.contact_type },
       { label: '関係',           value: r.relationship },
       { label: '連絡タイミング', value: r.notify_timing },
     ].filter(c => c.value),
@@ -464,7 +461,7 @@ const SHEETS = {
       { key: 'medical_category', label: '種別',   type: 'select',
         options: ['かかりつけ医・病院', '常用薬・お薬手帳', '持病・既往歴', '各種保険証',
                   '延命・治療の意思', '臓器提供の意思', '要介護・障害', 'その他'] },
-      { key: 'title', label: '項目名', type: 'text' },
+      { key: 'title', label: '項目名', type: 'text', placeholderBy: 'medical_category' },
     ],
     name: r => r.title || r.medical_category || '（項目名未設定）',
     headerTag: r => r.medical_category || '',

@@ -11,6 +11,18 @@
   <script src="js/sheets.js"></script>
   <script src="js/schema.js"></script>
   <script>
+    const MEDICAL_TITLE_PLACEHOLDER = {
+      'かかりつけ医・病院': '例：内科のかかりつけ医（◯◯クリニック）',
+      '常用薬・お薬手帳':   '例：血圧の薬、お薬手帳',
+      '持病・既往歴':       '例：高血圧、◯年に心筋梗塞',
+      '各種保険証':         '例：健康保険証、介護保険証',
+      '延命・治療の意思':   '例：延命治療は望まない',
+      '臓器提供の意思':     '例：臓器提供の意思表示カードあり',
+      '要介護・障害':       '例：要介護2、身体障害者手帳',
+      'その他':             '例：かかりつけ薬局',
+    };
+    const MEDICAL_TITLE_PLACEHOLDER_DEFAULT = '例：内科のかかりつけ医、血圧の薬、延命について';
+
     function addItemApp() {
       return {
         step: 1,         // 1=シート選択, 2=入力フォーム
@@ -45,9 +57,17 @@
           return this.members.map(m => m.display_name).filter(Boolean);
         },
 
+        getPlaceholder(field) {
+          if (field.placeholderBy) {
+            const val = this.form[field.placeholderBy];
+            return (val && MEDICAL_TITLE_PLACEHOLDER[val]) || MEDICAL_TITLE_PLACEHOLDER_DEFAULT;
+          }
+          return field.placeholder || field.label;
+        },
+
         selectSheet(key) {
           this.sheetKey = key;
-          this.form = {};
+          this.form = { free_memo: '' };
           for (const f of SHEETS[key].formFields) {
             this.form[f.key] = '';
           }
@@ -214,7 +234,7 @@
                   :type="field.type"
                   x-model="form[field.key]"
                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#4A7C59]"
-                  :placeholder="field.label">
+                  :placeholder="getPlaceholder(field)">
               </template>
 
               <!-- select -->
@@ -240,6 +260,13 @@
               </template>
             </div>
           </template>
+          <!-- 自由メモ（全シート共通） -->
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">自由メモ</label>
+            <textarea x-model="form.free_memo" rows="3"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#4A7C59] resize-none"
+              placeholder="補足・備考など"></textarea>
+          </div>
         </div>
 
         <!-- 保存ボタン -->
