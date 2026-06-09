@@ -462,11 +462,11 @@ const SHEETS = {
     idPrefix: 'med',
     cols: ['subject_id', 'medical_category', 'title'],
     formFields: [
-      { key: 'subject_id',       label: '対象者', type: 'family_select' },
+      { key: 'title', label: '項目名', type: 'text', placeholderBy: 'medical_category' },
       { key: 'medical_category', label: '種別',   type: 'select',
         options: ['かかりつけ医・病院', '常用薬・お薬手帳', '持病・既往歴', '各種保険証',
                   '延命・治療の意思', '臓器提供の意思', '要介護・障害', 'その他'] },
-      { key: 'title', label: '項目名', type: 'text', placeholderBy: 'medical_category' },
+      { key: 'subject_id',       label: '対象者', type: 'family_select' },
     ],
     name: r => r.title || r.medical_category || '（項目名未設定）',
     headerTag: r => r.medical_category || '',

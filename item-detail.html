@@ -787,8 +787,8 @@
           <div class="space-y-2">
             <p class="text-xs font-medium text-gray-400">メモ</p>
             <textarea x-model="allEditModal.memo" @input="allEditModal.dirty = true"
-                      class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm leading-relaxed resize-none focus:outline-none focus:border-blue-400"
-                      rows="3" placeholder="メモを入力（任意）"></textarea>
+                      class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue-400"
+                      rows="5" placeholder="メモを入力（任意）"></textarea>
           </div>
 
           <p x-show="allEditModal.error" class="text-red-600 text-sm" x-text="allEditModal.error"></p>
@@ -827,8 +827,8 @@
         </div>
         <div class="px-5 py-4 space-y-4">
           <textarea x-model="memoModal.content" @input="memoModal.dirty = true"
-                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm leading-relaxed resize-none focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                    rows="6" placeholder="メモを入力（任意）"></textarea>
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                    rows="8" placeholder="メモを入力（任意）"></textarea>
           <p x-show="memoModal.error" class="text-red-600 text-sm" x-text="memoModal.error"></p>
         </div>
         <div class="flex items-center justify-end gap-2 px-5 pb-5 pt-2">
