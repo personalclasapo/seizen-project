@@ -505,6 +505,10 @@ const SHEETS = {
     sub:       r => [r.farewell_category, r.subject_id].filter(Boolean).join('・'),
     statusTag: () => null,
     holders:   r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
+    expandedExtras: r => [
+      r.prearrangement   ? { label: '事前契約・互助会', value: r.prearrangement } : null,
+      r.provider_contact ? { label: '契約先・連絡先',   value: r.provider_contact } : null,
+    ].filter(Boolean),
     infoCards: r => [
       r.subject_id       && { label: '対象者',         value: r.subject_id },
       r.prearrangement   && { label: '事前契約・互助会', value: r.prearrangement },
@@ -529,6 +533,11 @@ const SHEETS = {
     sub:       r => [r.doc_category, r.subject_id, r.storage_location].filter(Boolean).join('・'),
     statusTag: () => null,
     holders:   r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
+    expandedExtras: r => [
+      r.will_format          ? { label: '形式',           value: r.will_format } : null,
+      r.storage_location     ? { label: '保管場所',       value: r.storage_location } : null,
+      r.professional_contact ? { label: '専門家・公証役場', value: r.professional_contact } : null,
+    ].filter(Boolean),
     infoCards: r => [
       r.subject_id           && { label: '対象者',         value: r.subject_id },
       r.will_format          && { label: '形式',           value: r.will_format },
