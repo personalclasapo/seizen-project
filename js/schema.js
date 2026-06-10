@@ -506,6 +506,7 @@ const SHEETS = {
     statusTag: () => null,
     holders:   r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
     infoCards: r => [
+      r.subject_id       && { label: '対象者',         value: r.subject_id },
       r.prearrangement   && { label: '事前契約・互助会', value: r.prearrangement },
       r.provider_contact && { label: '契約先・連絡先',   value: r.provider_contact },
     ].filter(Boolean),
@@ -529,6 +530,7 @@ const SHEETS = {
     statusTag: () => null,
     holders:   r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
     infoCards: r => [
+      r.subject_id           && { label: '対象者',         value: r.subject_id },
       r.will_format          && { label: '形式',           value: r.will_format },
       r.storage_location     && { label: '保管場所',       value: r.storage_location },
       r.professional_contact && { label: '専門家・公証役場', value: r.professional_contact },
