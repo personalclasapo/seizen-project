@@ -536,20 +536,12 @@
               </template>
 
 
-              <!-- noPerspectives シート：展開（メモ + ステータストグル）-->
+              <!-- noPerspectives シート：展開（メモのみ）-->
               <template x-if="SHEETS[row._sheetKey]?.noPerspectives">
-                <div x-show="isExpanded(row._uid)" class="px-4 pb-4 space-y-3" @click.stop>
+                <div x-show="isExpanded(row._uid)" class="px-4 pb-4" @click.stop>
                   <p :class="row.free_memo ? 'text-gray-700' : 'text-gray-400'"
                      class="text-xs leading-relaxed"
                      x-text="row.free_memo || '（メモなし）'"></p>
-                  <button @click.stop="toggleSingleStatus(row)"
-                          :disabled="row._saving"
-                          :class="row.q1_existence_status === '完了'
-                            ? 'bg-green-50 text-green-700 border-green-200'
-                            : 'bg-yellow-50 text-yellow-700 border-yellow-200'"
-                          class="w-full py-2 text-xs border rounded-lg font-medium disabled:opacity-50"
-                          x-text="row._saving ? '保存中...' : (row.q1_existence_status === '完了' ? '✓ 確認済み（タップで未確認に戻す）' : '△ 未確認（タップで完了にする）')">
-                  </button>
                 </div>
               </template>
 
