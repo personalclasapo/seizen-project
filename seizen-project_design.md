@@ -2,7 +2,7 @@
 
 このドキュメントは、生前整理サービス（仮称）の設計をまとめたものです。Claude Codeでの実装時、寺内さんの細かい指示なしで進められるレベルの詳細度で記載しています。
 
-**最終更新：2026-06-08（コード実装の実態に合わせて全面更新）**
+**最終更新：2026-06-10（コード実装の実態に合わせて全面更新）**
 
 ---
 
@@ -61,22 +61,26 @@
    - サブスク、公共料金、通信費、保険料の支払い、月額会員費
    - 年金、給与、家賃収入
 
-2. **資産・負債** — `sheets: ['bank_account', 'insurance']`
-   - 銀行口座、証券口座（未実装）
+2. **資産・負債** — `sheets: ['bank_account', 'insurance', 'securities', 'crypto', 'real_estate', 'precious_metal', 'loan']`
+   - 銀行口座、証券口座、暗号資産、不動産、貴金属
    - 保険商品
-   - 借入・保証（未実装）
+   - 借入・保証
 
-3. **健康・人間関係** — `sheets: []`（未実装）
+3. **もしもの時** — `sheets: ['contact_network', 'medical_info']`
+   - 連絡網（危篤時・葬儀時に連絡する人リスト）
+   - 医療・身体（かかりつけ医、常用薬、持病、延命意思など）
 
-4. **想い・希望** — `sheets: []`（未実装）
+4. **のこすもの** — `sheets: []`（未実装）
+   - 意思・希望、法的書類などを今後追加予定
 
 グループに `sheets: []` のものは、ダッシュボードで「準備中」表示になる。
 
-### 2-2. 3観点フレームワーク（実装上の実態）
+### 2-2. 観点フレームワーク（2系統）
 
-設計上は4観点だが、**実装では q2・q3・q4 の3観点が進捗計算の対象**。q1（存在の把握）はデータとして保存されるが、`PERSPECTIVES` 配列に含まれておらず、進捗の分母・分子には入らない。
+**通常シート（支出・収入・資産・負債グループ）**
 
-`js/schema.js` の `PERSPECTIVES`：
+`PERSPECTIVES` 配列で定義。q2・q3・q4 の3観点が進捗計算の対象。q1（存在の把握）はデータとして保存されるが進捗の分母・分子には入らない。
+
 ```js
 const PERSPECTIVES = [
   { key: 'q2', statusCol: 'q2_understanding_status', contentCol: 'q2_understanding_content', label: '中身' },
@@ -90,7 +94,9 @@ const PERSPECTIVES = [
 - **アクセス・操作（q3）**：家族がアクセスできる仕組みがあるか。解約・変更・継続などの操作ができるか
 - **緊急時の手順（q4）**：いざという時に家族が動くための手順が明確か
 
-q1（存在の把握）はシートに列として存在し、項目詳細画面で編集できる。ただし進捗バーには反映されない。
+**noPerspectivesシート（もしもの時グループ）**
+
+`SHEETS[key].noPerspectives: true` のシートは4観点を使わない。代わりに `q1_existence_status` の「完了」/「未確認」2値でステータスを管理する。`doneCount()` は `q1_existence_status === '完了'` なら1、そうでなければ0を返す（最大1）。
 
 ### 2-3. 入力経路（2系統、出口は統一）
 
@@ -101,7 +107,7 @@ q1（存在の把握）はシートに列として存在し、項目詳細画面
 - 結果：`transaction_candidates` に候補が書き込まれ、`extraction.html` で確認・登録
 
 **系統2：ヒアリング → 手動入力**
-- 対象：資産・負債、健康・人間関係、想い・希望
+- 対象：資産・負債、もしもの時
 - ユーザー作業：`add-item.html` でカテゴリ選択 → フォーム入力
 - 結果：各シートに直接書き込み
 
@@ -114,9 +120,9 @@ q1（存在の把握）はシートに列として存在し、項目詳細画面
 | `index.html` | ログイン | 実装済み。Google OAuth → スプシ未設定なら `setup.html`、設定済みなら `dashboard.html` |
 | `setup.html` | 初回セットアップ | 実装済み。新規作成 or 既存選択 → シート初期化（サンプルデータ投入含む）→ `dashboard.html` |
 | `dashboard.html` | ダッシュボード | 実装済み。全体進捗・グループ別進捗・明細候補バナー。スプシ未設定なら `settings.html` へ |
-| `item-list.html` | 項目一覧 | 実装済み。グループ or シート単位で表示。3観点アイコン・絞込・詳細展開 |
+| `item-list.html` | 項目一覧 | 実装済み。グループ or シート単位で表示。観点アイコン・絞込・詳細展開 |
 | `all-items.html` | 全項目一覧 | 実装済み。全シートを横断した一覧 |
-| `item-detail.html` | 項目詳細 | 実装済み。3観点カード・基本情報編集・削除（全項目一括編集モーダルあり） |
+| `item-detail.html` | 項目詳細 | 実装済み。観点カード・基本情報編集・削除（全項目一括編集モーダルあり） |
 | `add-item.html` | 項目追加 | 実装済み。グループ選択（Step1）→ 入力フォーム（Step2）の2ステップ |
 | `upload.html` | 明細アップロード | 実装済み。PDF/CSVをDriveに保存 |
 | `extraction.html` | 明細抽出結果 | 実装済み。`transaction_candidates` の確認・登録 |
@@ -124,7 +130,20 @@ q1（存在の把握）はシートに列として存在し、項目詳細画面
 
 **未実装**：TODO一覧（元設計の画面I）
 
-ボトムナビ（ホーム・全項目・設定）は全画面に共通。
+### ボトムナビ（全画面共通）
+
+4タブ構成：**ダッシュボード・グループ・全項目・設定**
+
+| タブ | リンク先 | アイコン |
+|-----|---------|---------|
+| ダッシュボード | `dashboard.html` | ホームアイコン |
+| グループ | `item-list.html`（グループ選択シート） | グリッドアイコン |
+| 全項目 | `all-items.html` | リストアイコン |
+| 設定 | `settings.html` | 歯車アイコン |
+
+### スクロールトップボタン
+
+`dashboard.html`, `all-items.html`, `item-list.html`, `item-detail.html`, `settings.html` に設置。300px以上スクロールすると右下に白背景＋グレーボーダーの丸ボタン（↑）が出現し、タップでトップへスムーズスクロール。
 
 ### 3-1. 画面遷移
 
@@ -135,6 +154,7 @@ index.html（ログイン）
        ↓
   item-list.html?group=支出・収入
   item-list.html?group=資産・負債
+  item-list.html?group=もしもの時
        ↓ 項目クリック
   item-detail.html?sheet=cash_flow&row=N
   
@@ -154,11 +174,13 @@ index.html（ログイン）
 - カード：`bg-white` + `rounded-xl` + `shadow-sm`
 - ボタン（主）：`bg-[#4A7C59] text-white`
 - ボタン（副）：`border border-blue-300 text-blue-600`
+- スクロールトップボタン：`bg-white border-2 border-gray-300 text-gray-600`
 
 ### 3-3. add-item.htmlの動作詳細
 
 - `?group=支出・収入` → Step1（グループ内シートが1つなら自動選択してStep2）
-- `?group=資産・負債` → Step1（銀行口座・保険商品を選択肢として表示）
+- `?group=資産・負債` → Step1（銀行口座・保険商品・証券・投資・暗号資産・不動産・貴金属・借入保証を選択肢として表示）
+- `?group=もしもの時` → Step1（連絡網・医療身体を選択肢として表示）
 - `?sheet=bank_account` → Step1をスキップしてStep2直接
 - Step2タイトル：`selectedDef().group + 'を追加'`（例：「資産・負債を追加」）
 - Step1のボタンラベル：グループ内シートが1つなら「グループ名」、複数ならシートのlabel
@@ -175,15 +197,22 @@ index.html（ログイン）
 - `cash_flow`：支出・収入
 - `bank_account`：銀行口座
 - `insurance`：保険商品
+- `securities`：証券・投資
+- `crypto`：暗号資産
+- `real_estate`：不動産
+- `precious_metal`：貴金属
+- `loan`：借入・保証
+- `contact_network`：連絡網（もしもの時グループ・noPerspectives）
+- `medical_info`：医療・身体（もしもの時グループ・noPerspectives）
 
 **マスター・補助データシート**
 - `family_member`：家族メンバーマスター
 - `upload_history`：明細アップロード履歴
-- `raw_transactions`：明細の生データ（元設計の `transaction_history` から改称）
+- `raw_transactions`：明細の生データ
 - `transaction_candidates`：AI抽出した定期支払い候補
 
-**未実装シート**（今後追加）
-- 証券・投資、暗号資産、不動産、貴金属、借入・保証、医療情報、人間関係、意思・希望、法的書類
+**未実装シート**（のこすもの系、今後追加）
+- 意思・希望、法的書類
 
 ### 4-2. 共通カラム（すべての項目データシート）
 
@@ -192,7 +221,9 @@ id                          項目ID（例：cash_001、bank_001、ins_001）
 created_at                  作成日時（ja-JP ロケール）
 updated_at                  最終更新日時
 
-q1_existence_status         観点1の状態（完了/未確認/該当なし）※進捗計算対象外
+q1_existence_status         観点1の状態（完了/未確認/該当なし）
+                            ※通常シート：進捗計算対象外
+                            ※noPerspectivesシート：これのみで完了/未確認を管理
 q1_existence_content        観点1の入力内容
 q2_understanding_status     観点2の状態（完了/未確認/該当なし）
 q2_understanding_content    観点2の入力内容
@@ -204,7 +235,9 @@ q4_emergency_content        観点4の入力内容
 free_memo                   自由記述メモ
 ```
 
-合計12カラムが共通。`doneCount(row)` は q2・q3・q4 が「完了」の数を返す（最大3）。
+合計12カラムが共通。`doneCount(row, sheetKey)` の返す値：
+- 通常シート：q2・q3・q4 が「完了」の数（最大3）
+- noPerspectivesシート：q1_existence_status が「完了」なら1、そうでなければ0（最大1）
 
 ### 4-3. 各シートの固有カラム
 
@@ -238,12 +271,13 @@ bank_name                   銀行名
 branch_name                 支店名
 account_type                口座種別（普通預金/定期預金/貯蓄預金）
 account_number              口座番号（任意）
+estimated_amount            概算残高（円）
 account_holder_id           名義人（family_member.display_name で参照）
 account_status              状態（メイン/サブ/休眠/解約予定）
 net_banking_usage           ネットバンキング利用（利用中/登録のみ/未利用）
 ```
 
-合計：12（共通）+ 7（固有）= 19カラム
+合計：12（共通）+ 8（固有）= 20カラム
 
 #### 4-3-3. insurance（保険商品）
 
@@ -255,13 +289,111 @@ policy_number               証券番号
 contract_holder_id          契約者（family_member.display_name で参照）
 insured_person_id           被保険者（family_member.display_name で参照）
 beneficiary_id              受取人（family_member.display_name で参照）
-insurance_amount            保険金額
+insurance_amount            保険金額（テキスト）
+estimated_amount            保険金額・概算（円、数値計算用）
 payment_status              払込状況（払込中/払込済/失効）
 maturity_date               満期日（テキスト、「終身」も可）
 account_status              ステータス（継続中/解約予定/解約済/失効）
 ```
 
-合計：12（共通）+ 11（固有）= 23カラム
+合計：12（共通）+ 12（固有）= 24カラム
+
+#### 4-3-4. securities（証券・投資）
+
+```
+company_name                証券会社名
+account_type                口座区分（特定/一般/NISA/つみたてNISA/iDeCo/その他）
+account_number              口座番号（任意）
+holder_id                   名義人（family_member.display_name で参照）
+estimated_amount            評価額・概算（円）
+net_usage                   ネット証券（利用中/登録のみ/未利用）
+account_status              ステータス（運用中/解約予定/解約済）
+```
+
+合計：12（共通）+ 7（固有）= 19カラム
+
+#### 4-3-5. crypto（暗号資産）
+
+```
+exchange_name               取引所・ウォレット名
+storage_type                保管形態（取引所/ホットウォレット/ハードウェアウォレット/その他）
+coin_type                   通貨（BTC/ETH/その他）
+holder_id                   名義人（family_member.display_name で参照）
+estimated_amount            評価額・概算（円）
+seed_backup_status          バックアップ状況（有（保管済）/無/確認中）
+account_status              ステータス（保有中/売却予定/売却済）
+```
+
+合計：12（共通）+ 7（固有）= 19カラム
+
+#### 4-3-6. real_estate（不動産）
+
+```
+property_type               種別（土地/戸建/マンション/その他）
+location                    所在地（任意・ざっくりで可）
+holder_id                   名義人（family_member.display_name で参照）
+estimated_amount            評価額・概算（円）
+loan_exists                 ローン（あり/なし）
+usage_status                利用状況（居住中/賃貸中/空き家/その他）
+```
+
+合計：12（共通）+ 6（固有）= 18カラム
+
+#### 4-3-7. precious_metal（貴金属）
+
+```
+metal_type                  種別（金/プラチナ/銀/コイン/ジュエリー/その他）
+holder_id                   名義人（family_member.display_name で参照）
+estimated_amount            評価額・概算（円）
+storage_location            保管場所（自宅金庫/貸金庫/業者保管/その他）
+custodian_name              保管先名称（任意）
+account_status              ステータス（保管中/売却予定/売却済）
+```
+
+合計：12（共通）+ 6（固有）= 18カラム
+
+#### 4-3-8. loan（借入・保証）
+
+```
+lender_name                 借入先・保証先
+loan_type                   種別（住宅ローン/自動車ローン/カードローン/事業性借入/連帯保証/その他）
+debtor_id                   債務者・保証人（family_member.display_name で参照）
+remaining_debt              残債・概算（円）
+repayment_due               完済予定（テキスト、例：2035年3月）
+account_status              ステータス（返済中/完済予定/完済/保証中）
+```
+
+合計：12（共通）+ 6（固有）= 18カラム
+
+#### 4-3-9. contact_network（連絡網）※noPerspectives
+
+```
+contact_name                氏名・名称
+relationship                関係（自由記述、例：父の高校の同級生）
+notify_timing               連絡タイミング（危篤時に呼ぶ/逝去後すぐ/葬儀の案内/後日通知でよい/連絡不要）
+phone_number                電話番号
+email                       メールアドレス
+subject_id                  対象者（family_member.display_name で参照）
+```
+
+合計：12（共通）+ 6（固有）= 18カラム
+
+statusTagは `notify_timing` の値に応じてバッジ表示：
+- `危篤時に呼ぶ` → ローズ（`bg-rose-100 text-rose-700`）
+- `連絡不要` → グレー（muted）
+- その他 → ブルー
+
+#### 4-3-10. medical_info（医療・身体）※noPerspectives
+
+```
+subject_id                  対象者（family_member.display_name で参照）
+medical_category            種別（かかりつけ医・病院/常用薬・お薬手帳/持病・既往歴/各種保険証/延命・治療の意思/臓器提供の意思/要介護・障害/その他）
+title                       項目名（自由記述）
+```
+
+合計：12（共通）+ 3（固有）= 15カラム
+
+statusTagは常に `null`（バッジ表示なし）。
 
 ### 4-4. マスター・補助データシート
 
@@ -293,8 +425,6 @@ detected_count              検出された取引数
 
 #### 4-4-3. raw_transactions（明細生データ）
 
-旧設計の `transaction_history` から改称・再設計。
-
 ```
 id                          取引ID（例：trans_001）
 upload_id                   どのアップロードに含まれるか（upload_history参照）
@@ -324,7 +454,7 @@ registered_to               登録後の項目ID（cash_flowのid）
 
 ### 4-5. 名義人の参照方式
 
-`contract_holder_id`・`account_holder_id`・`insured_person_id`・`beneficiary_id` は **`family_member.display_name` を文字列で格納**（IDではなく表示名で参照）。入力UIはプルダウンで登録済みメンバーから選ぶ（`family_select` フィールドタイプ）。
+`contract_holder_id`・`account_holder_id`・`insured_person_id`・`beneficiary_id`・`holder_id`・`debtor_id`・`subject_id` は **`family_member.display_name` を文字列で格納**（IDではなく表示名で参照）。入力UIはプルダウンで登録済みメンバーから選ぶ（`family_select` フィールドタイプ）。
 
 ### 4-6. idの採番
 
@@ -336,9 +466,10 @@ registered_to               登録後の項目ID（cash_flowのid）
 ```
 [family_member]
        ↑
-       | contract_holder_id, account_holder_id, insured_person_id, beneficiary_id（表示名で参照）
+       | 各種holder_id・subject_id（表示名で参照）
        |
-[cash_flow, bank_account, insurance, ...]
+[cash_flow, bank_account, insurance, securities, crypto,
+ real_estate, precious_metal, loan, contact_network, medical_info]
        
 [transaction_candidates] → 確認後に [cash_flow] に登録
        ↑
@@ -421,16 +552,18 @@ registered_to               登録後の項目ID（cash_flowのid）
   label: 'サブスク・支払い',      // 表示名（一覧のタブ、絞込チップなど）
   group: '支出・収入',            // 所属グループ名（add-item, item-listで使用）
   idPrefix: 'cash',               // ID採番のprefix
+  noPerspectives: true,           // （オプション）もしもの時シートのみ。4観点なし2値ステータス
   cols: [...],                    // 固有カラム名リスト（共通12列は含まない）
   formFields: [...],              // add-item.htmlのフォーム定義
   name: r => ...,                 // 項目の表示名を返す関数
   statusTag: r => ...,            // 状態バッジ（継続中はnull、解約予定など）を返す関数
   sub: r => ...,                  // 簡易表示のサブテキスト
   infoCards: r => [...],          // item-detail.htmlの基本情報カード
-  amountNum: r => ...,            // （cash_flowのみ）金額数値
-  amountCycle: r => ...,          // （cash_flowのみ）請求サイクル
-  holder: r => ...,               // （cash_flowのみ）契約者名
-  plan: r => ...,                 // （cash_flowのみ）プラン名
+  holders: r => [...],            // 名義人リスト（{ role, name } の配列）
+  headerTag: r => ...,            // （オプション）一覧ヘッダーの種別タグ
+  estimatedAmount: r => ...,      // （オプション）評価額・概算の整形済み文字列
+  subType: r => ...,              // （オプション）サブタイプ文字列
+  expandedExtras: r => [...],     // （オプション）一覧展開時に表示する追加フィールド
 }
 ```
 
@@ -449,44 +582,48 @@ registered_to               登録後の項目ID（cash_flowのid）
 
 | norm | 意味 | フィルター |
 |------|------|---------|
-| `null`（statusTag自体がnull） | 継続中・メイン | `active` |
-| `'active'` | 継続中だがサブ口座など | `active` |
-| `'closing'` | 解約予定 | `closing` |
-| `'closed'` | 解約済・休眠 | `closed` |
+| `null`（statusTag自体がnull） | 継続中・メイン・保有中など | `active` |
+| `'active'` | 継続中だがサブ口座・保証中など | `active` |
+| `'closing'` | 解約予定・完済予定など | `closing` |
+| `'closed'` | 解約済・休眠・完済・売却済など | `closed` |
+
+### 6-4. noPerspectivesシートの doneCount
+
+```js
+function doneCount(row, sheetKey) {
+  const key = sheetKey || row._sheetKey;
+  if (SHEETS[key]?.noPerspectives) {
+    return row.q1_existence_status === '完了' ? 1 : 0;
+  }
+  return PERSPECTIVES.filter(p => row[p.statusCol] === '完了').length;
+}
+
+function perspectiveMax(sheetKey) {
+  return SHEETS[sheetKey]?.noPerspectives ? 1 : PERSPECTIVES.length;
+}
+```
 
 ---
 
-## 7. 今後追加予定のシート（未実装）
+## 7. 残っている論点
 
-証券・投資、暗号資産、不動産、貴金属、借入・保証、医療情報、人間関係（訃報リスト等）、意思・希望、法的書類。
+### 7-1. q1（存在の把握）の扱い（通常シート）
 
-追加時の手順：
-1. `js/schema.js` の `SHEETS` にエントリを追加（`label`, `group`, `idPrefix`, `cols`, `formFields`, `name`, `statusTag`, `sub`, `infoCards`）
-2. `GROUPS` の対応グループの `sheets` 配列にシートキーを追加
-3. `setup.html` の `SHEET_HEADERS` にシートとカラム定義を追加
-4. 対応するスプシシートが自動作成される（次回 `setup.html` 実行時）
+通常シートでは q1 はスキーマ上は存在するが進捗計算から外れている。item-detail.htmlでは「全編集」モーダル経由で編集可能。今後、q1も進捗に含めるかどうかは要検討。含める場合は `PERSPECTIVES` 配列に追加するだけでよい。
 
----
+### 7-2. ダッシュボードの進捗集計
 
-## 8. 残っている論点
+現状は `cash_flow` のみを集計している。`bank_account`・`insurance`・その他シートを加えたダッシュボードへの拡張が必要。グループ別進捗カードも各グループのシートを全取得して合算する形に変更予定。
 
-### 8-1. q1（存在の把握）の扱い
-
-現状、q1はスキーマ上は存在するが進捗計算から外れている。item-detail.htmlでは「全編集」モーダル経由で編集可能。今後、q1も進捗に含めるかどうかは要検討。含める場合は `PERSPECTIVES` 配列に追加するだけでよい。
-
-### 8-2. ダッシュボードの進捗集計
-
-現状は `cash_flow` のみを集計している。`bank_account`・`insurance` を加えたダッシュボードへの拡張が必要。グループ別進捗カードも各グループのシートを全取得して合算する形に変更予定。
-
-### 8-3. TODO一覧（元設計の画面I）
+### 7-3. TODO一覧（元設計の画面I）
 
 未実装。「整えるべきタスクの一覧」。観点がq2/q3/q4で「未確認」のものを横断的に一覧表示し、優先度付け・担当割り当てができる画面。
 
-### 8-4. 他項目タイプの実装
+### 7-4. のこすもの グループの実装
 
-健康・人間関係、想い・希望グループのシート設計・実装。実際に運用しながら詳細設計を固める。
+未実装。意思・希望、法的書類などのシート設計・実装。実際に運用しながら詳細設計を固める。
 
-### 8-5. 事業化（将来の論点）
+### 7-5. 事業化（将来の論点）
 
 - ターゲット家族像の具体化
 - 価格設定（雑談ベースでは月1〜3万円、入口商品は月数千円という仮説あり）
@@ -496,7 +633,7 @@ registered_to               登録後の項目ID（cash_flowのid）
 
 ---
 
-## 9. 設計原則のまとめ
+## 8. 設計原則のまとめ
 
 1. **「家族が動ける状態を作る」がゴール**：情報の記録自体ではない
 2. **明細から取れる情報はヒアリングしない**：機械でできることは機械に任せる
@@ -518,7 +655,8 @@ registered_to               登録後の項目ID（cash_flowのid）
 - **項目**：1つのサブスク、1つの銀行口座、1つの保険商品など、データの最小単位
 - **項目タイプ**：項目の種類（サブスク、銀行口座、保険商品など）
 - **グループ**：項目タイプを束ねるカテゴリ（4グループ）
-- **観点**：「家族が動ける状態」を確認する視点（実装上は中身・アクセス・緊急の3つ）
+- **観点**：「家族が動ける状態」を確認する視点（通常シートは中身・アクセス・緊急の3つ、noPerspectivesシートは完了/未確認の2値）
+- **noPerspectives**：4観点を持たないシート（もしもの時グループ）。q1の完了/未確認のみでステータス管理
 - **家族プロジェクト型**：本サービスのポジショニング、家族を主役にした伴走モデル
 - **sheetKey**：コード上のシート識別子（例：`cash_flow`, `bank_account`, `insurance`）
-- **idPrefix**：ID採番の先頭文字列（cash, bank, ins）
+- **idPrefix**：ID採番の先頭文字列（cash, bank, ins, sec, crypto, re, metal, loan, contact, med）
