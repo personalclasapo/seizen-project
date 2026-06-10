@@ -545,13 +545,14 @@
                       <span class="text-gray-700" x-text="extra.value"></span>
                     </div>
                   </template>
-                  <template x-if="(SHEETS[row._sheetKey]?.expandedExtras?.(row) || []).length && row.free_memo">
-                    <div class="border-t border-dashed border-gray-200 my-1"></div>
-                  </template>
-                  <p x-show="row.free_memo || !(SHEETS[row._sheetKey]?.expandedExtras?.(row)?.length)"
-                     :class="row.free_memo ? 'text-gray-700' : 'text-gray-400'"
-                     class="text-xs leading-relaxed"
-                     x-text="row.free_memo || '（メモなし）'"></p>
+                  <div x-show="row.free_memo || !(SHEETS[row._sheetKey]?.expandedExtras?.(row)?.length)"
+                       class="flex items-start gap-2 text-xs">
+                    <span x-show="(SHEETS[row._sheetKey]?.expandedExtras?.(row) || []).length"
+                          class="text-gray-400 shrink-0 mt-0.5">メモ：</span>
+                    <p :class="row.free_memo ? 'text-gray-700' : 'text-gray-400'"
+                       class="leading-relaxed"
+                       x-text="row.free_memo || '（メモなし）'"></p>
+                  </div>
                 </div>
               </template>
 
