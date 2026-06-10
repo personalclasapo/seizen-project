@@ -208,6 +208,25 @@
               title:               r.title               || '',
               q1_existence_status: r.q1_existence_status || '未確認'
             };
+          } else if (this.sheetKey === 'funeral_memorial') {
+            f = {
+              farewell_category:   r.farewell_category   || '',
+              title:               r.title               || '',
+              subject_id:          r.subject_id          || '',
+              prearrangement:      r.prearrangement      || '',
+              provider_contact:    r.provider_contact    || '',
+              q1_existence_status: r.q1_existence_status || '未確認'
+            };
+          } else if (this.sheetKey === 'will_documents') {
+            f = {
+              doc_category:          r.doc_category          || '',
+              title:                 r.title                 || '',
+              subject_id:            r.subject_id            || '',
+              will_format:           r.will_format           || '',
+              storage_location:      r.storage_location      || '',
+              professional_contact:  r.professional_contact  || '',
+              q1_existence_status:   r.q1_existence_status   || '未確認'
+            };
           }
           this.infoModal = { open: true, saving: false, error: null, dirty: false, f };
         },
@@ -266,6 +285,18 @@
           if (this.sheetKey === 'medical_info') return {
             subject_id: r.subject_id || '', medical_category: r.medical_category || '',
             title: r.title || '', q1_existence_status: r.q1_existence_status || '未確認'
+          };
+          if (this.sheetKey === 'funeral_memorial') return {
+            farewell_category: r.farewell_category || '', title: r.title || '',
+            subject_id: r.subject_id || '', prearrangement: r.prearrangement || '',
+            provider_contact: r.provider_contact || '',
+            q1_existence_status: r.q1_existence_status || '未確認'
+          };
+          if (this.sheetKey === 'will_documents') return {
+            doc_category: r.doc_category || '', title: r.title || '',
+            subject_id: r.subject_id || '', will_format: r.will_format || '',
+            storage_location: r.storage_location || '', professional_contact: r.professional_contact || '',
+            q1_existence_status: r.q1_existence_status || '未確認'
           };
           return {};
         },
@@ -816,6 +847,115 @@
                   </div>
                 </div>
               </template>
+
+              <!-- funeral_memorial 基本情報 -->
+              <template x-if="sheetKey === 'funeral_memorial'">
+                <div class="space-y-3">
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">種別</label>
+                    <select x-model="allEditModal.f.farewell_category" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <option>葬儀</option><option>お墓・供養</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">項目名</label>
+                    <input type="text" x-model="allEditModal.f.title" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">対象者</label>
+                    <select x-model="allEditModal.f.subject_id" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">事前契約・互助会</label>
+                    <div class="flex gap-2">
+                      <template x-for="s in ['あり', 'なし', '不明']" :key="s">
+                        <button @click="allEditModal.f.prearrangement = s; allEditModal.dirty = true"
+                                :class="allEditModal.f.prearrangement === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                                class="flex-1 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                      </template>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">契約先・連絡先（任意）</label>
+                    <input type="text" x-model="allEditModal.f.provider_contact" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
+                    <div class="flex gap-2">
+                      <button @click="allEditModal.f.q1_existence_status = '完了'; allEditModal.dirty = true"
+                              :class="allEditModal.f.q1_existence_status === '完了' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-500 border-gray-200'"
+                              class="flex-1 py-2 text-sm border rounded-lg font-medium">完了</button>
+                      <button @click="allEditModal.f.q1_existence_status = '未確認'; allEditModal.dirty = true"
+                              :class="allEditModal.f.q1_existence_status === '未確認' ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-gray-500 border-gray-200'"
+                              class="flex-1 py-2 text-sm border rounded-lg font-medium">未確認</button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- will_documents 基本情報 -->
+              <template x-if="sheetKey === 'will_documents'">
+                <div class="space-y-3">
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">種別</label>
+                    <select x-model="allEditModal.f.doc_category" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <option>遺言書</option><option>その他相続関連書類</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">項目名</label>
+                    <input type="text" x-model="allEditModal.f.title" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">対象者</label>
+                    <select x-model="allEditModal.f.subject_id" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">形式</label>
+                    <select x-model="allEditModal.f.will_format" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <option>自筆証書</option><option>公正証書</option><option>法務局保管（自筆）</option><option>その他・不明</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">保管場所</label>
+                    <input type="text" x-model="allEditModal.f.storage_location" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">専門家・公証役場（任意）</label>
+                    <input type="text" x-model="allEditModal.f.professional_contact" @input="allEditModal.dirty = true"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
+                    <div class="flex gap-2">
+                      <button @click="allEditModal.f.q1_existence_status = '完了'; allEditModal.dirty = true"
+                              :class="allEditModal.f.q1_existence_status === '完了' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-500 border-gray-200'"
+                              class="flex-1 py-2 text-sm border rounded-lg font-medium">完了</button>
+                      <button @click="allEditModal.f.q1_existence_status = '未確認'; allEditModal.dirty = true"
+                              :class="allEditModal.f.q1_existence_status === '未確認' ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-gray-500 border-gray-200'"
+                              class="flex-1 py-2 text-sm border rounded-lg font-medium">未確認</button>
+                    </div>
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -1260,6 +1400,115 @@
                   <option value="">（未設定）</option>
                   <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
                 </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
+                <div class="flex gap-2">
+                  <button @click="infoModal.f.q1_existence_status = '完了'; infoModal.dirty = true"
+                          :class="infoModal.f.q1_existence_status === '完了' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-500 border-gray-200'"
+                          class="flex-1 py-2 text-sm border rounded-lg font-medium">完了</button>
+                  <button @click="infoModal.f.q1_existence_status = '未確認'; infoModal.dirty = true"
+                          :class="infoModal.f.q1_existence_status === '未確認' ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-gray-500 border-gray-200'"
+                          class="flex-1 py-2 text-sm border rounded-lg font-medium">未確認</button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- funeral_memorial フォーム -->
+          <template x-if="sheetKey === 'funeral_memorial'">
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">種別</label>
+                <select x-model="infoModal.f.farewell_category" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <option>葬儀</option><option>お墓・供養</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">項目名</label>
+                <input type="text" x-model="infoModal.f.title" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">対象者</label>
+                <select x-model="infoModal.f.subject_id" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">事前契約・互助会</label>
+                <div class="flex gap-2">
+                  <template x-for="s in ['あり', 'なし', '不明']" :key="s">
+                    <button @click="infoModal.f.prearrangement = s; infoModal.dirty = true"
+                            :class="infoModal.f.prearrangement === s ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-500 border-gray-200'"
+                            class="flex-1 py-2 text-sm border rounded-lg font-medium" x-text="s"></button>
+                  </template>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">契約先・連絡先（任意）</label>
+                <input type="text" x-model="infoModal.f.provider_contact" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
+                <div class="flex gap-2">
+                  <button @click="infoModal.f.q1_existence_status = '完了'; infoModal.dirty = true"
+                          :class="infoModal.f.q1_existence_status === '完了' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-500 border-gray-200'"
+                          class="flex-1 py-2 text-sm border rounded-lg font-medium">完了</button>
+                  <button @click="infoModal.f.q1_existence_status = '未確認'; infoModal.dirty = true"
+                          :class="infoModal.f.q1_existence_status === '未確認' ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-gray-500 border-gray-200'"
+                          class="flex-1 py-2 text-sm border rounded-lg font-medium">未確認</button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- will_documents フォーム -->
+          <template x-if="sheetKey === 'will_documents'">
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">種別</label>
+                <select x-model="infoModal.f.doc_category" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <option>遺言書</option><option>その他相続関連書類</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">項目名</label>
+                <input type="text" x-model="infoModal.f.title" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">対象者</label>
+                <select x-model="infoModal.f.subject_id" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">形式</label>
+                <select x-model="infoModal.f.will_format" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <option>自筆証書</option><option>公正証書</option><option>法務局保管（自筆）</option><option>その他・不明</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">保管場所</label>
+                <input type="text" x-model="infoModal.f.storage_location" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">専門家・公証役場（任意）</label>
+                <input type="text" x-model="infoModal.f.professional_contact" @input="infoModal.dirty = true"
+                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
