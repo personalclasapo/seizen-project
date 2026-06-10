@@ -198,6 +198,7 @@
               notify_timing:       r.notify_timing       || '',
               phone_number:        r.phone_number        || '',
               email:               r.email               || '',
+              subject_id:          r.subject_id          || '',
               q1_existence_status: r.q1_existence_status || '未確認'
             };
           } else if (this.sheetKey === 'medical_info') {
@@ -259,7 +260,8 @@
           if (this.sheetKey === 'contact_network') return {
             contact_name: r.contact_name || '', relationship: r.relationship || '',
             notify_timing: r.notify_timing || '', phone_number: r.phone_number || '',
-            email: r.email || '', q1_existence_status: r.q1_existence_status || '未確認'
+            email: r.email || '', subject_id: r.subject_id || '',
+            q1_existence_status: r.q1_existence_status || '未確認'
           };
           if (this.sheetKey === 'medical_info') return {
             subject_id: r.subject_id || '', medical_category: r.medical_category || '',
@@ -754,6 +756,14 @@
                            placeholder="例：taro@example.com"/>
                   </div>
                   <div>
+                    <label class="text-xs text-gray-500 block mb-1">対象者</label>
+                    <select x-model="allEditModal.f.subject_id" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                    </select>
+                  </div>
+                  <div>
                     <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
                     <div class="flex gap-2">
                       <button @click="allEditModal.f.q1_existence_status = '完了'; allEditModal.dirty = true"
@@ -1202,6 +1212,14 @@
                 <input type="text" x-model="infoModal.f.email" @input="infoModal.dirty = true"
                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
                        placeholder="例：taro@example.com"/>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">対象者</label>
+                <select x-model="infoModal.f.subject_id" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                </select>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>

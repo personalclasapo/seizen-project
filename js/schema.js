@@ -431,7 +431,7 @@ const SHEETS = {
     group: 'もしもの時',
     noPerspectives: true,
     idPrefix: 'contact',
-    cols: ['contact_name', 'relationship', 'notify_timing', 'phone_number', 'email'],
+    cols: ['contact_name', 'relationship', 'notify_timing', 'phone_number', 'email', 'subject_id'],
     formFields: [
       { key: 'contact_name',  label: '氏名・名称', type: 'text' },
       { key: 'relationship',  label: '関係',       type: 'text',
@@ -440,6 +440,7 @@ const SHEETS = {
         options: ['危篤時に呼ぶ', '逝去後すぐ', '葬儀の案内', '後日通知でよい', '連絡不要'] },
       { key: 'phone_number',  label: '電話番号', type: 'text', placeholder: '例：090-1234-5678' },
       { key: 'email',         label: 'メールアドレス', type: 'text', placeholder: '例：taro@example.com' },
+      { key: 'subject_id',    label: '対象者', type: 'family_select' },
     ],
     name: r => r.contact_name || '（名称未設定）',
     statusTag: r => {
@@ -448,9 +449,11 @@ const SHEETS = {
       if (!r.notify_timing)                   return null;
       return { label: r.notify_timing, bg: 'bg-blue-50', text: 'text-blue-600', norm: 'active', muted: false };
     },
+    holders: r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
     sub: r => r.relationship || '',
     subType: r => r.relationship || '',
     infoCards: r => [
+      { label: '対象者',         value: r.subject_id },
       { label: '関係',           value: r.relationship },
       { label: '連絡タイミング', value: r.notify_timing },
       { label: '電話番号',       value: r.phone_number },
