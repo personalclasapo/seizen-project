@@ -115,6 +115,24 @@
         'free_memo',
         'subject_id','medical_category','title'
       ],
+      funeral_memorial: [
+        'id','created_at','updated_at',
+        'q1_existence_status','q1_existence_content',
+        'q2_understanding_status','q2_understanding_content',
+        'q3_access_status','q3_access_content',
+        'q4_emergency_status','q4_emergency_content',
+        'free_memo',
+        'farewell_category','title','subject_id','prearrangement','provider_contact'
+      ],
+      will_documents: [
+        'id','created_at','updated_at',
+        'q1_existence_status','q1_existence_content',
+        'q2_understanding_status','q2_understanding_content',
+        'q3_access_status','q3_access_content',
+        'q4_emergency_status','q4_emergency_content',
+        'free_memo',
+        'doc_category','title','subject_id','will_format','storage_location','professional_contact'
+      ],
       family_member: ['id','display_name','role','note','color'],
       upload_history: [
         'id','uploaded_at','file_name','file_type',
@@ -180,6 +198,16 @@
       ['med_002','2026-06-09','2026-06-09','完了','家族が把握済み','完了','降圧剤・スタチン系薬を毎朝服用','完了','お薬手帳は洗面台の引き出しに保管','未確認','','','父','常用薬・お薬手帳','血圧・コレステロールの薬'],
       ['med_003','2026-06-09','2026-06-09','完了','家族全員で話し合い済み','完了','回復見込みのない状態での延命治療は望まない。本人から直接確認済み','未確認','','未確認','','','父','延命・治療の意思','延命治療についての意思'],
       ['med_004','2026-06-09','2026-06-09','完了','家族が把握済み','未確認','','未確認','','未確認','','','母','かかりつけ医・病院','整形外科（腰痛で通院中）']
+    ];
+
+    const SAMPLE_FUNERAL_MEMORIAL = [
+      ['fnl_001','2026-06-10','2026-06-10','未確認','永代供養の契約あり。掃除は2〜3年に1回でよいと聞いている','','','','','','','','お墓・供養','〇〇家の墓','父','あり','△△霊園 管理事務所 0120-000-000'],
+      ['fnl_002','2026-06-10','2026-06-10','未確認','家族葬を希望と聞いている。事前契約の有無は要確認','','','','','','','','葬儀','葬儀の希望','父','不明','']
+    ];
+
+    const SAMPLE_WILL_DOCUMENTS = [
+      ['will_001','2026-06-10','2026-06-10','未確認','','','','','','','','','遺言書','父の遺言書','父','公正証書','控えは自宅金庫、原本は公証役場','〇〇公証役場'],
+      ['will_002','2026-06-10','2026-06-10','未確認','','','','','','','','','その他相続関連書類','エンディングノート','父','','リビング書棚の引き出し','']
     ];
 
     function apiReq(method, url, body) {
@@ -322,8 +350,10 @@
               { sheet: 'real_estate',      range: 'real_estate!A2:A3',        data: SAMPLE_REAL_ESTATE },
               { sheet: 'precious_metal',   range: 'precious_metal!A2:A2',     data: SAMPLE_PRECIOUS_METAL },
               { sheet: 'loan',             range: 'loan!A2:A2',               data: SAMPLE_LOAN },
-              { sheet: 'contact_network',  range: 'contact_network!A2:A5',    data: SAMPLE_CONTACT_NETWORK },
-              { sheet: 'medical_info',     range: 'medical_info!A2:A5',       data: SAMPLE_MEDICAL_INFO },
+              { sheet: 'contact_network',  range: 'contact_network!A2:A5',      data: SAMPLE_CONTACT_NETWORK },
+              { sheet: 'medical_info',     range: 'medical_info!A2:A5',         data: SAMPLE_MEDICAL_INFO },
+              { sheet: 'funeral_memorial', range: 'funeral_memorial!A2:A3',     data: SAMPLE_FUNERAL_MEMORIAL },
+              { sheet: 'will_documents',   range: 'will_documents!A2:A3',       data: SAMPLE_WILL_DOCUMENTS },
             ];
             for (const s of sampleSheets) {
               const cur = await apiReq('GET', `${base}/values/${s.range}`);

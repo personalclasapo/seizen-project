@@ -488,13 +488,59 @@ const SHEETS = {
       { label: '種別',   value: r.medical_category },
     ].filter(c => c.value),
   },
+  funeral_memorial: {
+    label: '葬送・供養',
+    group: 'のこすもの',
+    noPerspectives: true,
+    idPrefix: 'fnl',
+    cols: ['farewell_category', 'title', 'subject_id', 'prearrangement', 'provider_contact'],
+    formFields: [
+      { key: 'farewell_category', label: '種別',               type: 'select', options: ['葬儀', 'お墓・供養'] },
+      { key: 'title',             label: '項目名',             type: 'text' },
+      { key: 'subject_id',        label: '対象者',             type: 'family_select' },
+      { key: 'prearrangement',    label: '事前契約・互助会',   type: 'select', options: ['あり', 'なし', '不明'] },
+      { key: 'provider_contact',  label: '契約先・連絡先（任意）', type: 'text' },
+    ],
+    name:      r => r.title || r.farewell_category || '葬送・供養',
+    sub:       r => [r.farewell_category, r.subject_id].filter(Boolean).join('・'),
+    statusTag: () => null,
+    holders:   r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
+    infoCards: r => [
+      r.prearrangement   && { label: '事前契約・互助会', value: r.prearrangement },
+      r.provider_contact && { label: '契約先・連絡先',   value: r.provider_contact },
+    ].filter(Boolean),
+  },
+  will_documents: {
+    label: '遺言・相続書類',
+    group: 'のこすもの',
+    noPerspectives: true,
+    idPrefix: 'will',
+    cols: ['doc_category', 'title', 'subject_id', 'will_format', 'storage_location', 'professional_contact'],
+    formFields: [
+      { key: 'doc_category',         label: '種別',                   type: 'select', options: ['遺言書', 'その他相続関連書類'] },
+      { key: 'title',                label: '項目名',                 type: 'text' },
+      { key: 'subject_id',           label: '対象者',                 type: 'family_select' },
+      { key: 'will_format',          label: '形式',                   type: 'select', options: ['自筆証書', '公正証書', '法務局保管（自筆）', 'その他・不明'] },
+      { key: 'storage_location',     label: '保管場所',               type: 'text' },
+      { key: 'professional_contact', label: '専門家・公証役場（任意）', type: 'text' },
+    ],
+    name:      r => r.title || r.doc_category || '遺言・相続書類',
+    sub:       r => [r.doc_category, r.subject_id, r.storage_location].filter(Boolean).join('・'),
+    statusTag: () => null,
+    holders:   r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
+    infoCards: r => [
+      r.will_format          && { label: '形式',           value: r.will_format },
+      r.storage_location     && { label: '保管場所',       value: r.storage_location },
+      r.professional_contact && { label: '専門家・公証役場', value: r.professional_contact },
+    ].filter(Boolean),
+  },
 };
 
 const GROUPS = [
   { label: '支出・収入',   sheets: ['cash_flow'] },
   { label: '資産・負債',   sheets: ['bank_account', 'insurance', 'securities', 'crypto', 'real_estate', 'precious_metal', 'loan'] },
   { label: 'もしもの時',   sheets: ['contact_network', 'medical_info'] },
-  { label: 'のこすもの',   sheets: [] },
+  { label: 'のこすもの',   sheets: ['funeral_memorial', 'will_documents'] },
 ];
 
 function getAllCols(sheetKey) {
