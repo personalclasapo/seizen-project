@@ -199,7 +199,9 @@
         },
 
         itemSubType(item) {
-          return SHEETS[item.sheetKey]?.subType?.(item.row) || '';
+          const def = SHEETS[item.sheetKey];
+          // subTypeが無い場合はheaderTag（種別）をフォールバック表示
+          return def?.subType?.(item.row) || def?.headerTag?.(item.row) || '';
         },
 
         isNegativeAmount(item) {

@@ -482,7 +482,7 @@ const SHEETS = {
     statusTag: r => null,
     holders: r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
     sub: r => [r.subject_id, r.medical_category].filter(Boolean).join('・'),
-    subType: r => r.medical_category || '',
+    subType: r => '',
     infoCards: r => [
       { label: '対象者', value: r.subject_id },
       { label: '種別',   value: r.medical_category },
