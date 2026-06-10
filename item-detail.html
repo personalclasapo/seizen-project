@@ -193,17 +193,19 @@
             };
           } else if (this.sheetKey === 'contact_network') {
             f = {
-              contact_name:  r.contact_name  || '',
-              relationship:  r.relationship  || '',
-              notify_timing: r.notify_timing || '',
-              phone_number:  r.phone_number  || '',
-              email:         r.email         || ''
+              contact_name:        r.contact_name        || '',
+              relationship:        r.relationship        || '',
+              notify_timing:       r.notify_timing       || '',
+              phone_number:        r.phone_number        || '',
+              email:               r.email               || '',
+              q1_existence_status: r.q1_existence_status || '未確認'
             };
           } else if (this.sheetKey === 'medical_info') {
             f = {
-              subject_id:       r.subject_id       || '',
-              medical_category: r.medical_category || '',
-              title:            r.title            || ''
+              subject_id:          r.subject_id          || '',
+              medical_category:    r.medical_category    || '',
+              title:               r.title               || '',
+              q1_existence_status: r.q1_existence_status || '未確認'
             };
           }
           this.infoModal = { open: true, saving: false, error: null, dirty: false, f };
@@ -257,11 +259,11 @@
           if (this.sheetKey === 'contact_network') return {
             contact_name: r.contact_name || '', relationship: r.relationship || '',
             notify_timing: r.notify_timing || '', phone_number: r.phone_number || '',
-            email: r.email || ''
+            email: r.email || '', q1_existence_status: r.q1_existence_status || '未確認'
           };
           if (this.sheetKey === 'medical_info') return {
             subject_id: r.subject_id || '', medical_category: r.medical_category || '',
-            title: r.title || ''
+            title: r.title || '', q1_existence_status: r.q1_existence_status || '未確認'
           };
           return {};
         },
@@ -1179,6 +1181,17 @@
                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
                        placeholder="例：taro@example.com"/>
               </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
+                <div class="flex gap-2">
+                  <button @click="infoModal.f.q1_existence_status = '完了'; infoModal.dirty = true"
+                          :class="infoModal.f.q1_existence_status === '完了' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-500 border-gray-200'"
+                          class="flex-1 py-2 text-sm border rounded-lg font-medium">完了</button>
+                  <button @click="infoModal.f.q1_existence_status = '未確認'; infoModal.dirty = true"
+                          :class="infoModal.f.q1_existence_status === '未確認' ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-gray-500 border-gray-200'"
+                          class="flex-1 py-2 text-sm border rounded-lg font-medium">未確認</button>
+                </div>
+              </div>
             </div>
           </template>
 
@@ -1207,6 +1220,17 @@
                   <option value="">（未設定）</option>
                   <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
                 </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
+                <div class="flex gap-2">
+                  <button @click="infoModal.f.q1_existence_status = '完了'; infoModal.dirty = true"
+                          :class="infoModal.f.q1_existence_status === '完了' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-500 border-gray-200'"
+                          class="flex-1 py-2 text-sm border rounded-lg font-medium">完了</button>
+                  <button @click="infoModal.f.q1_existence_status = '未確認'; infoModal.dirty = true"
+                          :class="infoModal.f.q1_existence_status === '未確認' ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-gray-500 border-gray-200'"
+                          class="flex-1 py-2 text-sm border rounded-lg font-medium">未確認</button>
+                </div>
               </div>
             </div>
           </template>
