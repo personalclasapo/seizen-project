@@ -511,7 +511,9 @@
                 </div>
                 <div class="flex-1 border-t border-dashed border-gray-300"></div>
                 <template x-if="!SHEETS[row._sheetKey]?.noPerspectives">
-                  <span class="text-xs text-gray-400 ml-2 shrink-0" x-text="doneCount(row, row._sheetKey) + '/3'"></span>
+                  <span class="text-xs ml-2 shrink-0"
+                        :class="doneCount(row, row._sheetKey) === 3 ? 'text-green-600' : 'text-yellow-500'"
+                        x-text="doneCount(row, row._sheetKey) === 3 ? '✓ 完了' : '△ 未確認 ' + doneCount(row, row._sheetKey) + '/3'"></span>
                 </template>
                 <template x-if="SHEETS[row._sheetKey]?.noPerspectives">
                   <span class="text-xs ml-2 shrink-0"

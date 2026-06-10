@@ -430,7 +430,9 @@
               </div>
               <div class="flex justify-end mt-0.5">
                 <template x-if="!SHEETS[item.sheetKey]?.noPerspectives">
-                  <span class="text-xs text-gray-400" x-text="doneCount(item.row) + '/3'"></span>
+                  <span class="text-xs"
+                        :class="doneCount(item.row) === 3 ? 'text-green-600' : 'text-yellow-500'"
+                        x-text="doneCount(item.row) === 3 ? '✓ 完了' : '△ 未確認 ' + doneCount(item.row) + '/3'"></span>
                 </template>
                 <template x-if="SHEETS[item.sheetKey]?.noPerspectives">
                   <span class="text-xs"
