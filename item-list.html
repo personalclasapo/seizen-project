@@ -498,6 +498,11 @@
                 <template x-if="!SHEETS[row._sheetKey]?.noPerspectives">
                   <span class="text-xs text-gray-400 ml-2 shrink-0" x-text="doneCount(row, row._sheetKey) + '/3'"></span>
                 </template>
+                <template x-if="SHEETS[row._sheetKey]?.noPerspectives">
+                  <span class="text-xs ml-2 shrink-0"
+                        :class="row.q1_existence_status === '完了' ? 'text-green-600' : 'text-yellow-500'"
+                        x-text="row.q1_existence_status === '完了' ? '✓ 完了' : '△ 未確認'"></span>
+                </template>
               </div>
 
               <!-- 通常シート：折り畳み（3観点アイコン）-->
