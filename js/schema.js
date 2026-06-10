@@ -429,6 +429,7 @@ const SHEETS = {
   contact_network: {
     label: '連絡網',
     group: 'もしもの時',
+    noPerspectives: true,
     idPrefix: 'contact',
     cols: ['contact_name', 'relationship', 'notify_timing', 'phone_number', 'email'],
     formFields: [
@@ -459,6 +460,7 @@ const SHEETS = {
   medical_info: {
     label: '医療・身体',
     group: 'もしもの時',
+    noPerspectives: true,
     idPrefix: 'med',
     cols: ['subject_id', 'medical_category', 'title'],
     formFields: [
@@ -492,8 +494,16 @@ function getAllCols(sheetKey) {
   return [...COMMON_COLS, ...(SHEETS[sheetKey]?.cols || [])];
 }
 
-function doneCount(row) {
+function doneCount(row, sheetKey) {
+  const key = sheetKey || row._sheetKey;
+  if (SHEETS[key]?.noPerspectives) {
+    return row.q1_existence_status === '完了' ? 1 : 0;
+  }
   return PERSPECTIVES.filter(p => row[p.statusCol] === '完了').length;
+}
+
+function perspectiveMax(sheetKey) {
+  return SHEETS[sheetKey]?.noPerspectives ? 1 : PERSPECTIVES.length;
 }
 
 function perspectiveColor(status) {

@@ -32,6 +32,7 @@
         row: null,
         targetRowIndex: null,
         familyMembers: [],
+        singleStatusSaving: false,
 
         perspectiveModal: {
           open: false, saving: false, error: null,
@@ -319,6 +320,20 @@
           }
         },
 
+        // ── noPerspectives ステータストグル ──
+        async toggleSingleStatus() {
+          const next = this.row.q1_existence_status === '完了' ? '未確認' : '完了';
+          this.singleStatusSaving = true;
+          try {
+            const updated = { ...this.row, q1_existence_status: next };
+            await saveRow(this.sheetKey, this.row._row, updated, getAllCols(this.sheetKey));
+            this.row.q1_existence_status = next;
+          } catch (e) {
+            alert('保存に失敗しました: ' + e.message);
+          }
+          this.singleStatusSaving = false;
+        },
+
         // ── メモ編集 ──
         openMemoModal() {
           this.memoModal = {
@@ -395,11 +410,19 @@
               </template>
             </div>
           </div>
-          <div class="text-right ml-4 shrink-0">
+          <div x-show="!sheetDef?.noPerspectives" class="text-right ml-4 shrink-0">
             <p class="text-2xl font-medium leading-none"
-               :class="row && doneCount(row) === PERSPECTIVES.length ? 'text-green-600' : 'text-yellow-500'"
-               x-text="row ? doneCount(row) + '/3' : ''"></p>
+               :class="row && doneCount(row, sheetKey) === PERSPECTIVES.length ? 'text-green-600' : 'text-yellow-500'"
+               x-text="row ? doneCount(row, sheetKey) + '/3' : ''"></p>
             <p class="text-xs text-gray-400 mt-0.5">観点完了</p>
+          </div>
+          <div x-show="sheetDef?.noPerspectives" class="text-right ml-4 shrink-0">
+            <button @click="toggleSingleStatus()"
+                    :disabled="singleStatusSaving"
+                    :class="row?.q1_existence_status === '完了' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'"
+                    class="px-3 py-1.5 text-xs border rounded-lg font-medium disabled:opacity-50"
+                    x-text="singleStatusSaving ? '保存中...' : (row?.q1_existence_status === '完了' ? '✓ 確認済み' : '△ 未確認')">
+            </button>
           </div>
         </div>
       </div>
@@ -431,8 +454,8 @@
         </div>
       </div>
 
-      <!-- 3観点（縦並び） -->
-      <div class="space-y-3">
+      <!-- 3観点（縦並び）: noPerspectives シートでは非表示 -->
+      <div x-show="!sheetDef?.noPerspectives" class="space-y-3">
         <template x-for="ps in perspectives()" :key="ps.label">
           <div :class="ps.color.bg" class="rounded-xl p-4">
             <div class="flex items-center justify-between mb-2">
@@ -762,8 +785,8 @@
             </div>
           </div>
 
-          <!-- 観点セクション -->
-          <div class="space-y-3">
+          <!-- 観点セクション: noPerspectives シートでは非表示 -->
+          <div x-show="!sheetDef?.noPerspectives" class="space-y-3">
             <p class="text-xs font-medium text-gray-400">観点</p>
             <template x-for="(ps, i) in allEditModal.perspectives" :key="ps.label">
               <div class="border border-gray-100 rounded-xl p-4 space-y-3">
