@@ -452,6 +452,10 @@ const SHEETS = {
     holders: r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
     sub: r => r.relationship || '',
     subType: r => r.relationship || '',
+    expandedExtras: r => [
+      r.phone_number ? { label: '電話番号', value: r.phone_number } : null,
+      r.email        ? { label: 'メール',   value: r.email }        : null,
+    ].filter(Boolean),
     infoCards: r => [
       { label: '対象者',         value: r.subject_id },
       { label: '関係',           value: r.relationship },
@@ -478,7 +482,7 @@ const SHEETS = {
     statusTag: r => null,
     holders: r => r.subject_id ? [{ role: '対象者', name: r.subject_id }] : [],
     sub: r => [r.subject_id, r.medical_category].filter(Boolean).join('・'),
-    subType: r => r.medical_category || '',
+    subType: r => '',
     infoCards: r => [
       { label: '対象者', value: r.subject_id },
       { label: '種別',   value: r.medical_category },

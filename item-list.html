@@ -538,8 +538,17 @@
 
               <!-- noPerspectives シート：展開（メモのみ）-->
               <template x-if="SHEETS[row._sheetKey]?.noPerspectives">
-                <div x-show="isExpanded(row._uid)" class="px-4 pb-4" @click.stop>
-                  <p :class="row.free_memo ? 'text-gray-700' : 'text-gray-400'"
+                <div x-show="isExpanded(row._uid)" class="px-4 pb-4 space-y-1" @click.stop>
+                  <template x-if="SHEETS[row._sheetKey]?.expandedExtras">
+                    <template x-for="extra in (SHEETS[row._sheetKey].expandedExtras(row) || [])" :key="extra.label">
+                      <div class="flex items-center gap-2 text-xs">
+                        <span class="text-gray-400 shrink-0" x-text="extra.label"></span>
+                        <span class="text-gray-700" x-text="extra.value"></span>
+                      </div>
+                    </template>
+                  </template>
+                  <p x-show="row.free_memo || !(SHEETS[row._sheetKey]?.expandedExtras?.(row)?.length)"
+                     :class="row.free_memo ? 'text-gray-700' : 'text-gray-400'"
                      class="text-xs leading-relaxed"
                      x-text="row.free_memo || '（メモなし）'"></p>
                 </div>
