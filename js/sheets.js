@@ -139,5 +139,11 @@ async function deleteRow(sheetName, rowIndex) {
 
 // カラム配列からオブジェクトを行配列に変換
 function toRow(obj, columns) {
-  return columns.map(col => obj[col] ?? '');
+  return columns.map(col => {
+    const v = obj[col] ?? '';
+    // Sheets API (USER_ENTERED) converts leading-zero strings (e.g. "090...") to numbers.
+    // Prefix with apostrophe to force text storage.
+    if (typeof v === 'string' && /^0\d/.test(v)) return "'" + v;
+    return v;
+  });
 }
