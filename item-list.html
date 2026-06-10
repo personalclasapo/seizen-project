@@ -38,9 +38,10 @@
         showFilter: false,
 
         activeFilterCount() {
+          const hasStatusFilter = this.groupSheets.every(k => SHEETS[k]?.group !== 'もしもの時');
           return this.filterProgress.length +
             this.filterHolders.length +
-            (this.filterStatus !== 'all' ? 1 : 0) +
+            (hasStatusFilter && this.filterStatus !== 'all' ? 1 : 0) +
             (this.filterSheet ? 1 : 0);
         },
 
@@ -379,23 +380,25 @@
             </div>
           </div>
         </template>
-        <div>
-          <p class="text-xs text-gray-500 mb-2">状態</p>
-          <div class="flex gap-2 flex-wrap">
-            <button @click="filterStatus = 'all'"
-              :class="filterStatus === 'all' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
-              class="px-3 py-1 text-xs border rounded-lg">すべて</button>
-            <button @click="filterStatus = 'active'"
-              :class="filterStatus === 'active' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
-              class="px-3 py-1 text-xs border rounded-lg">継続中</button>
-            <button @click="filterStatus = 'closing'"
-              :class="filterStatus === 'closing' ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
-              class="px-3 py-1 text-xs border rounded-lg">解約予定</button>
-            <button @click="filterStatus = 'closed'"
-              :class="filterStatus === 'closed' ? 'bg-gray-200 text-gray-600 border-gray-400' : 'bg-gray-50 text-gray-600 border-gray-200'"
-              class="px-3 py-1 text-xs border rounded-lg">解約済</button>
+        <template x-if="groupSheets.every(k => SHEETS[k]?.group !== 'もしもの時')">
+          <div>
+            <p class="text-xs text-gray-500 mb-2">状態</p>
+            <div class="flex gap-2 flex-wrap">
+              <button @click="filterStatus = 'all'"
+                :class="filterStatus === 'all' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                class="px-3 py-1 text-xs border rounded-lg">すべて</button>
+              <button @click="filterStatus = 'active'"
+                :class="filterStatus === 'active' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                class="px-3 py-1 text-xs border rounded-lg">継続中</button>
+              <button @click="filterStatus = 'closing'"
+                :class="filterStatus === 'closing' ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                class="px-3 py-1 text-xs border rounded-lg">解約予定</button>
+              <button @click="filterStatus = 'closed'"
+                :class="filterStatus === 'closed' ? 'bg-gray-200 text-gray-600 border-gray-400' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                class="px-3 py-1 text-xs border rounded-lg">解約済</button>
+            </div>
           </div>
-        </div>
+        </template>
         <div class="flex items-center justify-between pt-1">
           <button @click="filterProgress = []; filterHolders = []; filterStatus = 'all'; filterSheet = ''"
             class="text-xs text-gray-400 hover:text-gray-600">クリア</button>
