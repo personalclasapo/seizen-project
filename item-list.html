@@ -528,7 +528,7 @@
                         <span :class="ps.color.text" class="text-xs font-bold" x-text="ps.color.icon"></span>
                       </div>
                       <p :class="ps.content ? ps.color.text : 'text-gray-400'"
-                         class="text-xs leading-relaxed"
+                         class="text-xs leading-relaxed whitespace-pre-wrap"
                          x-text="ps.content || '（未入力）'"></p>
                     </div>
                   </template>
@@ -550,7 +550,7 @@
                     <span x-show="(SHEETS[row._sheetKey]?.expandedExtras?.(row) || []).length"
                           class="text-gray-400 shrink-0 mt-0.5">メモ：</span>
                     <p :class="row.free_memo ? 'text-gray-700' : 'text-gray-400'"
-                       class="leading-relaxed"
+                       class="leading-relaxed whitespace-pre-wrap"
                        x-text="row.free_memo || '（メモなし）'"></p>
                   </div>
                 </div>

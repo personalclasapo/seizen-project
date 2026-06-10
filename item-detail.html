@@ -477,7 +477,7 @@
               </div>
             </div>
             <p :class="ps.content ? ps.color.text : 'text-gray-400'"
-               class="text-sm leading-relaxed"
+               class="text-sm leading-relaxed whitespace-pre-wrap"
                x-text="ps.content || '（未入力）'"></p>
           </div>
         </template>
@@ -496,7 +496,7 @@
           </button>
         </div>
         <p :class="row?.free_memo ? 'text-gray-700' : 'text-gray-400'"
-           class="text-sm leading-relaxed" x-text="row?.free_memo || '（未入力）'"></p>
+           class="text-sm leading-relaxed whitespace-pre-wrap" x-text="row?.free_memo || '（未入力）'"></p>
       </div>
 
     </div>
