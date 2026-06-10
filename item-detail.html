@@ -753,6 +753,17 @@
                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
                            placeholder="例：taro@example.com"/>
                   </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
+                    <div class="flex gap-2">
+                      <button @click="allEditModal.f.q1_existence_status = '完了'; allEditModal.dirty = true"
+                              :class="allEditModal.f.q1_existence_status === '完了' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-500 border-gray-200'"
+                              class="flex-1 py-2 text-sm border rounded-lg font-medium">完了</button>
+                      <button @click="allEditModal.f.q1_existence_status = '未確認'; allEditModal.dirty = true"
+                              :class="allEditModal.f.q1_existence_status === '未確認' ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-gray-500 border-gray-200'"
+                              class="flex-1 py-2 text-sm border rounded-lg font-medium">未確認</button>
+                    </div>
+                  </div>
                 </div>
               </template>
 
@@ -781,6 +792,17 @@
                       <option value="">（未設定）</option>
                       <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
                     </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
+                    <div class="flex gap-2">
+                      <button @click="allEditModal.f.q1_existence_status = '完了'; allEditModal.dirty = true"
+                              :class="allEditModal.f.q1_existence_status === '完了' ? 'bg-green-50 text-green-700 border-green-300' : 'bg-white text-gray-500 border-gray-200'"
+                              class="flex-1 py-2 text-sm border rounded-lg font-medium">完了</button>
+                      <button @click="allEditModal.f.q1_existence_status = '未確認'; allEditModal.dirty = true"
+                              :class="allEditModal.f.q1_existence_status === '未確認' ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-white text-gray-500 border-gray-200'"
+                              class="flex-1 py-2 text-sm border rounded-lg font-medium">未確認</button>
+                    </div>
                   </div>
                 </div>
               </template>
