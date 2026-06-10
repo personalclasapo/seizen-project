@@ -453,8 +453,8 @@ const SHEETS = {
     sub: r => r.relationship || '',
     subType: r => r.relationship || '',
     expandedExtras: r => [
-      r.phone_number ? { label: '電話番号', value: r.phone_number } : null,
-      r.email        ? { label: 'メール',   value: r.email }        : null,
+      r.phone_number ? { label: '電話番号', value: r.phone_number, icon: 'phone' } : null,
+      r.email        ? { label: 'メール',   value: r.email,        icon: 'mail' }  : null,
     ].filter(Boolean),
     infoCards: r => [
       { label: '対象者',         value: r.subject_id },

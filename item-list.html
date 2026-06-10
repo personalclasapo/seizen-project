@@ -470,30 +470,13 @@
               <!-- 区切り線 + chevron + 進捗 -->
               <div class="flex items-center px-4 py-1.5">
                 <div class="flex-1 border-t border-dashed border-gray-300"></div>
-                <template x-if="!SHEETS[row._sheetKey]?.noPerspectives">
-                  <div class="mx-2">
-                    <svg class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200"
-                         :class="isExpanded(row._uid) ? 'rotate-180' : ''"
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                  </div>
-                </template>
-                <template x-if="SHEETS[row._sheetKey]?.noPerspectives">
-                  <div class="mx-2 flex items-center gap-1 text-gray-400">
-                    <svg class="w-3 h-3 transition-transform duration-200"
-                         :class="isExpanded(row._uid) ? 'rotate-180' : ''"
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                    <span class="text-xs">メモ</span>
-                    <svg class="w-3 h-3 transition-transform duration-200"
-                         :class="isExpanded(row._uid) ? 'rotate-180' : ''"
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                  </div>
-                </template>
+                <div class="mx-2">
+                  <svg class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200"
+                       :class="isExpanded(row._uid) ? 'rotate-180' : ''"
+                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </div>
                 <div class="flex-1 border-t border-dashed border-gray-300"></div>
                 <template x-if="!SHEETS[row._sheetKey]?.noPerspectives">
                   <span class="text-xs text-gray-400 ml-2 shrink-0" x-text="doneCount(row, row._sheetKey) + '/3'"></span>
@@ -545,23 +528,38 @@
               </template>
 
 
-              <!-- noPerspectives シート：展開（メモのみ）-->
+              <!-- noPerspectives シート：展開（情報カード + メモカード）-->
               <template x-if="SHEETS[row._sheetKey]?.noPerspectives">
-                <div x-show="isExpanded(row._uid)" class="px-4 pb-4 space-y-1" @click.stop>
+                <div x-show="isExpanded(row._uid)" class="px-4 pb-4 space-y-2" @click.stop>
                   <template x-for="extra in (SHEETS[row._sheetKey]?.expandedExtras?.(row) || [])" :key="extra.label">
-                    <div class="flex items-center gap-2 text-xs">
-                      <span class="text-gray-400 shrink-0" x-text="extra.label + '：'"></span>
-                      <span class="text-gray-700" x-text="extra.value"></span>
+                    <div class="bg-white border border-gray-200 rounded-lg p-3">
+                      <div class="flex items-center gap-1 mb-1 text-gray-400">
+                        <template x-if="extra.icon === 'phone'">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                          </svg>
+                        </template>
+                        <template x-if="extra.icon === 'mail'">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                          </svg>
+                        </template>
+                        <span class="text-xs font-medium" x-text="extra.label"></span>
+                      </div>
+                      <p class="text-xs text-gray-700 leading-relaxed break-all" x-text="extra.value"></p>
                     </div>
                   </template>
-                  <div x-show="row.free_memo || !(SHEETS[row._sheetKey]?.expandedExtras?.(row)?.length)"
-                       class="flex items-start gap-2 text-xs">
-                    <span x-show="(SHEETS[row._sheetKey]?.expandedExtras?.(row) || []).length"
-                          class="text-gray-400 shrink-0 mt-0.5">メモ：</span>
-                    <p :class="row.free_memo ? 'text-gray-700' : 'text-gray-400'"
-                       class="leading-relaxed whitespace-pre-wrap"
-                       x-text="row.free_memo || '（メモなし）'"></p>
+                  <div x-show="row.free_memo" class="bg-white border border-gray-200 rounded-lg p-3">
+                    <div class="flex items-center gap-1 mb-1 text-gray-400">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                      </svg>
+                      <span class="text-xs font-medium">メモ</span>
+                    </div>
+                    <p class="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap" x-text="row.free_memo"></p>
                   </div>
+                  <p x-show="!(SHEETS[row._sheetKey]?.expandedExtras?.(row)?.length) && !row.free_memo"
+                     class="text-xs text-gray-400">（情報なし）</p>
                 </div>
               </template>
 
