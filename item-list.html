@@ -32,14 +32,27 @@
         items: [],
         detailView: false,
         filterProgress: [],
+        filterHolders: [],
         filterStatus: 'all',
         filterSheet: '',
         showFilter: false,
 
         activeFilterCount() {
           return this.filterProgress.length +
+            this.filterHolders.length +
             (this.filterStatus !== 'all' ? 1 : 0) +
             (this.filterSheet ? 1 : 0);
+        },
+
+        availableHolders() {
+          const seen = new Set();
+          const out = [];
+          for (const r of this.items) {
+            for (const h of (SHEETS[r._sheetKey]?.holders?.(r) || [])) {
+              if (h.name && !seen.has(h.name)) { seen.add(h.name); out.push(h.name); }
+            }
+          }
+          return out;
         },
 
         filtered() {
@@ -52,9 +65,14 @@
               const d = doneCount(r, r._sheetKey);
               const max = perspectiveMax(r._sheetKey);
               if (this.filterProgress.includes('done') && d === max) return true;
-              if (this.filterProgress.includes('inProgress') && d > 0 && d < max) return true;
-              if (this.filterProgress.includes('todo') && d === 0) return true;
+              if (this.filterProgress.includes('inProgress') && d < max) return true;
               return false;
+            });
+          }
+          if (this.filterHolders.length > 0) {
+            rows = rows.filter(r => {
+              const names = (SHEETS[r._sheetKey]?.holders?.(r) || []).map(h => h.name);
+              return names.some(n => this.filterHolders.includes(n));
             });
           }
           if (this.filterStatus !== 'all') {
@@ -72,6 +90,11 @@
         toggleProgress(s) {
           const i = this.filterProgress.indexOf(s);
           if (i >= 0) this.filterProgress.splice(i, 1); else this.filterProgress.push(s);
+        },
+
+        toggleHolder(name) {
+          const i = this.filterHolders.indexOf(name);
+          if (i >= 0) this.filterHolders.splice(i, 1); else this.filterHolders.push(name);
         },
 
         async init() {
@@ -342,11 +365,20 @@
             <button @click="toggleProgress('inProgress')"
               :class="filterProgress.includes('inProgress') ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
               class="px-3 py-1 text-xs border rounded-lg">進行中</button>
-            <button @click="toggleProgress('todo')"
-              :class="filterProgress.includes('todo') ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
-              class="px-3 py-1 text-xs border rounded-lg">TODO</button>
           </div>
         </div>
+        <template x-if="availableHolders().length > 0">
+          <div>
+            <p class="text-xs text-gray-500 mb-2">対象者</p>
+            <div class="flex gap-2 flex-wrap">
+              <template x-for="name in availableHolders()" :key="name">
+                <button @click="toggleHolder(name)"
+                  :class="filterHolders.includes(name) ? holderColor(name).bg + ' ' + holderColor(name).text + ' border-current' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                  class="px-3 py-1 text-xs border rounded-lg" x-text="name"></button>
+              </template>
+            </div>
+          </div>
+        </template>
         <div>
           <p class="text-xs text-gray-500 mb-2">状態</p>
           <div class="flex gap-2 flex-wrap">
@@ -365,7 +397,7 @@
           </div>
         </div>
         <div class="flex items-center justify-between pt-1">
-          <button @click="filterProgress = []; filterStatus = 'all'; filterSheet = ''"
+          <button @click="filterProgress = []; filterHolders = []; filterStatus = 'all'; filterSheet = ''"
             class="text-xs text-gray-400 hover:text-gray-600">クリア</button>
           <button @click="showFilter = false"
             class="text-xs font-medium text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-50">閉じる</button>

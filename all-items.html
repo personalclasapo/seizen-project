@@ -29,6 +29,7 @@
         sortBy: 'group',
         filterGroups: [],
         filterStatuses: [],
+        filterHolders: [],
         filterStatus: 'all',
         showFilter: false,
         expandedItems: [],
@@ -43,6 +44,17 @@
           return out;
         },
 
+        availableHolders() {
+          const seen = new Set();
+          const out = [];
+          for (const item of this.allItems) {
+            for (const h of (SHEETS[item.sheetKey]?.holders?.(item.row) || [])) {
+              if (h.name && !seen.has(h.name)) { seen.add(h.name); out.push(h.name); }
+            }
+          }
+          return out;
+        },
+
         filtered() {
           let items = this.allItems;
           if (this.filterGroups.length > 0) {
@@ -50,11 +62,17 @@
           }
           if (this.filterStatuses.length > 0) {
             items = items.filter(i => {
-              const d = doneCount(i.row);
-              if (this.filterStatuses.includes('done') && d === PERSPECTIVES.length) return true;
-              if (this.filterStatuses.includes('inProgress') && d > 0 && d < PERSPECTIVES.length) return true;
-              if (this.filterStatuses.includes('todo') && d === 0) return true;
+              const d = doneCount(i.row, i.sheetKey);
+              const max = perspectiveMax(i.sheetKey);
+              if (this.filterStatuses.includes('done') && d === max) return true;
+              if (this.filterStatuses.includes('inProgress') && d < max) return true;
               return false;
+            });
+          }
+          if (this.filterHolders.length > 0) {
+            items = items.filter(i => {
+              const names = (SHEETS[i.sheetKey]?.holders?.(i.row) || []).map(h => h.name);
+              return names.some(n => this.filterHolders.includes(n));
             });
           }
           if (this.filterStatus !== 'all') {
@@ -205,6 +223,11 @@
         toggleStatus(s) {
           const i = this.filterStatuses.indexOf(s);
           if (i >= 0) this.filterStatuses.splice(i, 1); else this.filterStatuses.push(s);
+        },
+
+        toggleHolder(name) {
+          const i = this.filterHolders.indexOf(name);
+          if (i >= 0) this.filterHolders.splice(i, 1); else this.filterHolders.push(name);
         }
       };
     }
@@ -234,15 +257,15 @@
       <!-- Filter & View bar -->
       <div class="flex items-center gap-1.5 pt-2">
         <button @click="showFilter = !showFilter"
-          :class="filterGroups.length + filterStatuses.length + (filterStatus !== 'all' ? 1 : 0) > 0 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
+          :class="filterGroups.length + filterStatuses.length + filterHolders.length + (filterStatus !== 'all' ? 1 : 0) > 0 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
           class="px-3 py-1.5 text-xs border rounded-lg font-medium flex items-center gap-1.5">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M7 9h10M11 14h2"/>
           </svg>
           絞込
-          <span x-show="filterGroups.length + filterStatuses.length + (filterStatus !== 'all' ? 1 : 0) > 0"
+          <span x-show="filterGroups.length + filterStatuses.length + filterHolders.length + (filterStatus !== 'all' ? 1 : 0) > 0"
                 class="bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
-                x-text="filterGroups.length + filterStatuses.length + (filterStatus !== 'all' ? 1 : 0)"></span>
+                x-text="filterGroups.length + filterStatuses.length + filterHolders.length + (filterStatus !== 'all' ? 1 : 0)"></span>
         </button>
         <button @click="allExpanded = false; expandedItems = []"
           :class="!allExpanded ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-200'"
@@ -272,7 +295,7 @@
           </div>
         </div>
         <div>
-          <p class="text-xs text-gray-500 mb-2">ステータス</p>
+          <p class="text-xs text-gray-500 mb-2">進捗</p>
           <div class="flex gap-2">
             <button @click="toggleStatus('done')"
               :class="filterStatuses.includes('done') ? 'bg-green-50 text-green-700 border-green-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
@@ -280,11 +303,20 @@
             <button @click="toggleStatus('inProgress')"
               :class="filterStatuses.includes('inProgress') ? 'bg-yellow-50 text-yellow-700 border-yellow-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
               class="px-3 py-1 text-xs border rounded-lg">進行中</button>
-            <button @click="toggleStatus('todo')"
-              :class="filterStatuses.includes('todo') ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-gray-50 text-gray-600 border-gray-200'"
-              class="px-3 py-1 text-xs border rounded-lg">TODO</button>
           </div>
         </div>
+        <template x-if="availableHolders().length > 0">
+          <div>
+            <p class="text-xs text-gray-500 mb-2">対象者</p>
+            <div class="flex gap-2 flex-wrap">
+              <template x-for="name in availableHolders()" :key="name">
+                <button @click="toggleHolder(name)"
+                  :class="filterHolders.includes(name) ? holderColor(name).bg + ' ' + holderColor(name).text + ' border-current' : 'bg-gray-50 text-gray-600 border-gray-200'"
+                  class="px-3 py-1 text-xs border rounded-lg" x-text="name"></button>
+              </template>
+            </div>
+          </div>
+        </template>
         <div>
           <p class="text-xs text-gray-500 mb-2">状態</p>
           <div class="flex gap-2 flex-wrap">
@@ -303,7 +335,7 @@
           </div>
         </div>
         <div class="flex items-center justify-between pt-1">
-          <button @click="filterGroups = []; filterStatuses = []; filterStatus = 'all'"
+          <button @click="filterGroups = []; filterStatuses = []; filterHolders = []; filterStatus = 'all'"
             class="text-xs text-gray-400 hover:text-gray-600">クリア</button>
           <button @click="showFilter = false"
             class="text-xs font-medium text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-50">閉じる</button>
