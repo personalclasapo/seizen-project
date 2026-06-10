@@ -138,7 +138,9 @@
               const { key, rows } = r.value;
               const def = SHEETS[key];
               for (const row of rows) {
-                const itemLabel = key === 'cash_flow' ? (row.service_category || def.label) : def.label;
+                const itemLabel = key === 'cash_flow'    ? (row.service_category || def.label)
+                                : key === 'medical_info' ? (row.medical_category || def.label)
+                                : def.label;
                 items.push({ sheetKey: key, group: def.group, label: itemLabel, name: def.name(row), row });
               }
             }
@@ -199,9 +201,7 @@
         },
 
         itemSubType(item) {
-          const def = SHEETS[item.sheetKey];
-          // subTypeが無い場合はheaderTag（種別）をフォールバック表示
-          return def?.subType?.(item.row) || def?.headerTag?.(item.row) || '';
+          return SHEETS[item.sheetKey]?.subType?.(item.row) || '';
         },
 
         isNegativeAmount(item) {
