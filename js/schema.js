@@ -434,13 +434,13 @@ const SHEETS = {
     cols: ['contact_name', 'relationship', 'notify_timing', 'phone_number', 'email', 'subject_id'],
     formFields: [
       { key: 'contact_name',  label: '氏名・名称', type: 'text' },
+      { key: 'subject_id',    label: '対象者', type: 'family_select' },
       { key: 'relationship',  label: '関係',       type: 'text',
         placeholder: '例：父の高校の同級生、母の妹、菩提寺の住職' },
       { key: 'notify_timing', label: '連絡タイミング', type: 'select',
         options: ['危篤時に呼ぶ', '逝去後すぐ', '葬儀の案内', '後日通知でよい', '連絡不要'] },
       { key: 'phone_number',  label: '電話番号', type: 'text', placeholder: '例：090-1234-5678' },
       { key: 'email',         label: 'メールアドレス', type: 'text', placeholder: '例：taro@example.com' },
-      { key: 'subject_id',    label: '対象者', type: 'family_select' },
     ],
     name: r => r.contact_name || '（名称未設定）',
     statusTag: r => {

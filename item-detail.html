@@ -729,6 +729,14 @@
                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
                   </div>
                   <div>
+                    <label class="text-xs text-gray-500 block mb-1">対象者</label>
+                    <select x-model="allEditModal.f.subject_id" @change="allEditModal.dirty = true"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                      <option value="">（未設定）</option>
+                      <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                    </select>
+                  </div>
+                  <div>
                     <label class="text-xs text-gray-500 block mb-1">関係</label>
                     <input type="text" x-model="allEditModal.f.relationship" @input="allEditModal.dirty = true"
                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
@@ -754,14 +762,6 @@
                     <input type="text" x-model="allEditModal.f.email" @input="allEditModal.dirty = true"
                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
                            placeholder="例：taro@example.com"/>
-                  </div>
-                  <div>
-                    <label class="text-xs text-gray-500 block mb-1">対象者</label>
-                    <select x-model="allEditModal.f.subject_id" @change="allEditModal.dirty = true"
-                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
-                      <option value="">（未設定）</option>
-                      <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
-                    </select>
                   </div>
                   <div>
                     <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
@@ -1187,6 +1187,14 @@
                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"/>
               </div>
               <div>
+                <label class="text-xs text-gray-500 block mb-1">対象者</label>
+                <select x-model="infoModal.f.subject_id" @change="infoModal.dirty = true"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                  <option value="">（未設定）</option>
+                  <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
+                </select>
+              </div>
+              <div>
                 <label class="text-xs text-gray-500 block mb-1">関係</label>
                 <input type="text" x-model="infoModal.f.relationship" @input="infoModal.dirty = true"
                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
@@ -1212,14 +1220,6 @@
                 <input type="text" x-model="infoModal.f.email" @input="infoModal.dirty = true"
                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
                        placeholder="例：taro@example.com"/>
-              </div>
-              <div>
-                <label class="text-xs text-gray-500 block mb-1">対象者</label>
-                <select x-model="infoModal.f.subject_id" @change="infoModal.dirty = true"
-                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
-                  <option value="">（未設定）</option>
-                  <template x-for="m in familyMembers" :key="m.id"><option :value="m.display_name" x-text="m.display_name"></option></template>
-                </select>
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">完了ステータス</label>
