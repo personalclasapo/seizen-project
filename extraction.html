@@ -240,22 +240,66 @@
     </div>
 
     <!-- Bottom nav -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex">
-      <a href="dashboard.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-        </svg>
-        <span class="text-xs mt-0.5">ホーム</span>
-      </a>
-      <a href="all-items.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-        </svg>
-        <span class="text-xs mt-0.5">全項目</span>
-      </a>
-    </nav>
+    <div x-data="{ showGroups: false }">
+
+      <!-- グループ選択シート -->
+      <div x-show="showGroups"
+           x-transition:enter="transition ease-out duration-150"
+           x-transition:enter-start="opacity-0 translate-y-2"
+           x-transition:enter-end="opacity-100 translate-y-0"
+           x-transition:leave="transition ease-in duration-100"
+           x-transition:leave-start="opacity-100 translate-y-0"
+           x-transition:leave-end="opacity-0 translate-y-2"
+           @click="showGroups = false"
+           class="fixed inset-0 z-40">
+        <div @click.stop
+             class="fixed bottom-14 left-0 right-0 bg-white border-t rounded-t-2xl shadow-2xl z-50 p-4">
+          <p class="text-xs text-gray-400 text-center mb-3 font-medium">グループ</p>
+          <div class="grid grid-cols-2 gap-2">
+            <a href="item-list.html?group=%E6%94%AF%E5%87%BA%E3%83%BB%E5%8F%8E%E5%85%A5"
+               class="flex items-center justify-center p-3 rounded-xl bg-[#FAF7F0] border border-[#E8E0D0] hover:bg-[#F0EAE0] text-sm font-medium text-gray-700">支出・収入</a>
+            <a href="item-list.html?group=%E8%B3%87%E7%94%A3%E3%83%BB%E8%B2%A0%E5%82%B5"
+               class="flex items-center justify-center p-3 rounded-xl bg-[#FAF7F0] border border-[#E8E0D0] hover:bg-[#F0EAE0] text-sm font-medium text-gray-700">資産・負債</a>
+            <a href="item-list.html?group=%E3%82%82%E3%81%97%E3%82%82%E3%81%AE%E6%99%82"
+               class="flex items-center justify-center p-3 rounded-xl bg-[#FAF7F0] border border-[#E8E0D0] hover:bg-[#F0EAE0] text-sm font-medium text-gray-700">もしもの時</a>
+            <a href="item-list.html?group=%E3%81%AE%E3%81%93%E3%81%99%E3%82%82%E3%81%AE"
+               class="flex items-center justify-center p-3 rounded-xl bg-[#FAF7F0] border border-[#E8E0D0] hover:bg-[#F0EAE0] text-sm font-medium text-gray-700">のこすもの</a>
+          </div>
+        </div>
+      </div>
+
+      <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex z-30">
+        <a href="dashboard.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          <span class="text-xs mt-0.5">ダッシュボード</span>
+        </a>
+        <button @click="showGroups = !showGroups"
+                class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+          </svg>
+          <span class="text-xs mt-0.5">グループ</span>
+        </button>
+        <a href="all-items.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+          </svg>
+          <span class="text-xs mt-0.5">全項目</span>
+        </a>
+        <a href="settings.html" class="flex-1 flex flex-col items-center py-2 text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          <span class="text-xs mt-0.5">設定</span>
+        </a>
+      </nav>
+    </div>
 
   </div>
 
