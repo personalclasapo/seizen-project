@@ -420,6 +420,10 @@
                          x-text="ps.content || '（未入力）'"></p>
                     </div>
                   </template>
+                  <div x-show="item.row.free_memo" class="flex items-start gap-2 text-xs mt-1">
+                    <span class="text-gray-400 shrink-0 mt-0.5">メモ：</span>
+                    <p class="text-gray-700 leading-relaxed whitespace-pre-wrap" x-text="item.row.free_memo"></p>
+                  </div>
                 </div>
               </template>
               <!-- 展開時：noPerspectives（extras + メモ）-->
