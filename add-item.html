@@ -25,7 +25,6 @@
 
     function addItemApp() {
       return {
-        step: 1,         // 1=シート選択, 2=入力フォーム
         loading: true,
         saving: false,
         error: null,
@@ -38,6 +37,15 @@
 
         sheetOptions() {
           return Object.entries(SHEETS).map(([key, def]) => ({ key, label: def.label, group: def.group }));
+        },
+
+        groupSheets() {
+          if (!this.filterGroup) return [];
+          return this.sheetOptions().filter(o => o.group === this.filterGroup);
+        },
+
+        showChips() {
+          return this.groupSheets().length > 1;
         },
 
         visibleGroups() {
@@ -65,17 +73,19 @@
           return field.placeholder || field.label;
         },
 
-        selectSheet(key) {
+        hasFormValues() {
+          return Object.entries(this.form).some(([k, v]) => k !== 'free_memo' && v !== '');
+        },
+
+        selectSheet(key, confirm_switch = false) {
+          if (confirm_switch && this.sheetKey !== key && this.hasFormValues()) {
+            if (!confirm('入力内容がクリアされます。よろしいですか？')) return;
+          }
           this.sheetKey = key;
           this.form = { free_memo: '' };
           for (const f of SHEETS[key].formFields) {
             this.form[f.key] = '';
           }
-          this.step = 2;
-        },
-
-        back() {
-          if (this.step === 2) this.step = 1;
         },
 
         async init() {
@@ -93,20 +103,19 @@
 
           const params = new URLSearchParams(location.search);
 
-          // ?sheet= の場合は直接ステップ2へ
+          // ?sheet= の場合は直接そのシートを選択
           const preSheet = params.get('sheet');
           if (preSheet && SHEETS[preSheet]) {
+            this.filterGroup = SHEETS[preSheet].group;
             this.selectSheet(preSheet);
           }
 
-          // ?group= の場合はそのグループだけ表示。シートが1つなら自動選択
+          // ?group= の場合はそのグループに絞り、先頭シートを自動選択
           const preGroup = params.get('group');
           if (!preSheet && preGroup) {
             this.filterGroup = preGroup;
             const opts = this.sheetOptions().filter(o => o.group === preGroup);
-            if (opts.length === 1) {
-              this.selectSheet(opts[0].key);
-            }
+            if (opts.length > 0) this.selectSheet(opts[0].key);
           }
 
           this.loading = false;
@@ -173,13 +182,13 @@
 
     <!-- Nav -->
     <nav class="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-      <button @click="step === 2 ? back() : history.back()"
+      <button @click="history.back()"
               class="text-gray-400 hover:text-gray-600 p-1 -ml-1">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
-      <p class="font-medium">項目を追加</p>
+      <p class="font-medium" x-text="filterGroup ? filterGroup + 'を追加' : '項目を追加'"></p>
     </nav>
 
     <!-- Loading -->
@@ -187,16 +196,15 @@
 
     <div x-show="!loading" class="max-w-lg mx-auto p-4 space-y-4">
 
-      <!-- ---- Step 1: シート選択 ---- -->
-      <div x-show="step === 1">
+      <!-- グループが絞られていない場合のシート選択リスト -->
+      <div x-show="!filterGroup">
         <p class="text-sm text-gray-500 pt-2 mb-4">どのカテゴリに追加しますか？</p>
-
         <template x-for="group in visibleGroups()" :key="group">
           <div class="mb-4">
             <p class="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wide" x-text="group"></p>
             <div class="space-y-2">
               <template x-for="opt in sheetOptions().filter(o => o.group === group)" :key="opt.key">
-                <button @click="selectSheet(opt.key)"
+                <button @click="filterGroup = group; selectSheet(opt.key)"
                   class="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-[#4A7C59] hover:bg-green-50 transition-colors text-left">
                   <span class="text-sm font-medium text-gray-700" x-text="sheetOptions().filter(o => o.group === group).length === 1 ? group : opt.label"></span>
                   <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,18 +217,28 @@
         </template>
       </div>
 
-      <!-- ---- Step 2: 入力フォーム ---- -->
-      <div x-show="step === 2" class="space-y-4">
+      <!-- グループが決まっている場合：チップ + フォーム -->
+      <div x-show="filterGroup" class="space-y-4">
 
-        <div class="pt-2">
-          <p class="font-medium" x-text="selectedDef()?.group + 'を追加'"></p>
+        <!-- カテゴリチップ（複数シートのグループのみ表示） -->
+        <div x-show="showChips()" class="flex flex-wrap gap-2 pt-1">
+          <template x-for="opt in groupSheets()" :key="opt.key">
+            <button
+              @click="selectSheet(opt.key, true)"
+              :class="sheetKey === opt.key
+                ? 'bg-[#4A7C59] text-white border-[#4A7C59]'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-[#4A7C59] hover:text-[#4A7C59]'"
+              class="px-3 py-1.5 rounded-full text-sm border transition-colors"
+              x-text="opt.label">
+            </button>
+          </template>
         </div>
 
         <!-- エラー -->
         <div x-show="saveError" class="bg-red-50 text-red-700 rounded-lg p-3 text-sm" x-text="saveError"></div>
 
         <!-- フォームフィールド -->
-        <div class="bg-white rounded-xl p-4 shadow-sm space-y-4">
+        <div x-show="sheetKey" class="bg-white rounded-xl p-4 shadow-sm space-y-4">
           <template x-for="field in formFields()" :key="field.key">
             <div>
               <label class="block text-xs text-gray-500 mb-1">
@@ -260,6 +278,7 @@
               </template>
             </div>
           </template>
+
           <!-- 完了ステータス（noPerspectives シートのみ） -->
           <template x-if="selectedDef()?.noPerspectives">
             <div>
@@ -285,7 +304,7 @@
         </div>
 
         <!-- 保存ボタン -->
-        <button @click="save()" :disabled="saving"
+        <button x-show="sheetKey" @click="save()" :disabled="saving"
           class="w-full bg-white border border-blue-300 text-blue-600 rounded-xl py-3 text-sm font-medium hover:bg-blue-50 disabled:opacity-50 transition-colors">
           <span x-show="!saving">保存して一覧へ</span>
           <span x-show="saving">保存中...</span>
