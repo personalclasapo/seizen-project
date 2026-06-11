@@ -20,10 +20,15 @@
         groups: GROUPS.map(g => ({ ...g, done: 0, total: 0, pct: 0 })),
         pendingCandidates: 0,
 
+        userEmail: '',
+
         async init() {
           await waitForGsi();
           initAuth(
-            () => this.load(),
+            () => {
+              fetchUserEmail().then(e => { this.userEmail = e; });
+              this.load();
+            },
             () => { window.location.href = 'index.html'; }
           );
         },
@@ -97,7 +102,10 @@
     <!-- Nav -->
     <nav class="bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10">
       <p class="font-medium">生前整理</p>
-      <button @click="signOut()" class="text-xs text-gray-400 hover:text-gray-600">ログアウト</button>
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="text-xs text-gray-400 truncate" x-text="userEmail"></span>
+        <button @click="signOut()" class="text-xs text-gray-400 hover:text-gray-600 shrink-0">ログアウト</button>
+      </div>
     </nav>
 
     <!-- Loading -->

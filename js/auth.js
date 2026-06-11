@@ -26,6 +26,11 @@ function initAuth(onSuccess, onRequired, opts = {}) {
 }
 
 function _silentRefresh(onSuccess, onRequired) {
+  // ログアウト直後は自動再ログインせず、ログイン画面に誘導する
+  if (localStorage.getItem('sz_switch_account') === '1') {
+    onRequired();
+    return;
+  }
   let settled = false;
   const finish = (fn) => { if (!settled) { settled = true; clearTimeout(timer); fn(); } };
 
@@ -43,6 +48,8 @@ function _silentRefresh(onSuccess, onRequired) {
         }
         _storeToken(response.access_token);
         localStorage.setItem('sz_consented', '1');
+        // 別アカウントで再発行される可能性があるためメールキャッシュは破棄
+        localStorage.removeItem('sz_user_email');
         finish(onSuccess);
       }
     });
@@ -66,13 +73,18 @@ function signIn() {
         }
         _storeToken(response.access_token);
         localStorage.setItem('sz_consented', '1');
+        localStorage.removeItem('sz_switch_account');
+        localStorage.removeItem('sz_user_email');
         _onAuthSuccess && _onAuthSuccess();
       }
     });
   }
-  // 一度でも同意済みなら consent 画面をスキップ。初回のみ同意を求める
+  // ログアウト直後はアカウント選択を表示。それ以外は一度同意済みなら consent をスキップ
+  const switchAccount = localStorage.getItem('sz_switch_account') === '1';
   const hasConsented = localStorage.getItem('sz_consented') === '1';
-  _tokenClient.requestAccessToken({ prompt: hasConsented ? '' : 'consent' });
+  _tokenClient.requestAccessToken({
+    prompt: switchAccount ? 'select_account' : (hasConsented ? '' : 'consent')
+  });
 }
 
 function signOut() {
@@ -80,7 +92,31 @@ function signOut() {
   if (token) google.accounts.oauth2.revoke(token, () => {});
   localStorage.removeItem('sz_token');
   localStorage.removeItem('sz_consented');
+  localStorage.removeItem('sz_user_email');
+  // 次回ログイン時にアカウント選択を出し、自動再ログインを防ぐ
+  localStorage.setItem('sz_switch_account', '1');
   window.location.href = 'index.html';
+}
+
+// ── ログイン中アカウントの確認（Drive API の about を利用）──
+async function fetchUserEmail() {
+  const token = _getStoredToken();
+  if (!token) return '';
+  const cached = localStorage.getItem('sz_user_email');
+  if (cached) return cached;
+  try {
+    const res = await fetch(
+      'https://www.googleapis.com/drive/v3/about?fields=user(emailAddress,displayName)',
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) return '';
+    const d = await res.json();
+    const email = d.user?.emailAddress || '';
+    if (email) localStorage.setItem('sz_user_email', email);
+    return email;
+  } catch {
+    return '';
+  }
 }
 
 function getToken() {
