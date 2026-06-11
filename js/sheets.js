@@ -137,6 +137,29 @@ async function deleteRow(sheetName, rowIndex) {
   _clearCache(sheetName);
 }
 
+// 複数行を一括削除（異なるシートにまたがっても可）
+// items: [{ sheetName: string, rowIndex: number }, ...]
+async function bulkDeleteRowsMultiSheet(items) {
+  if (items.length === 0) return;
+  const meta = await _req('GET',
+    `https://sheets.googleapis.com/v4/spreadsheets/${getSpreadsheetId()}?fields=sheets.properties`
+  );
+  const sheetIdMap = {};
+  for (const s of meta.sheets) sheetIdMap[s.properties.title] = s.properties.sheetId;
+  const sorted = [...items].sort((a, b) => b.rowIndex - a.rowIndex);
+  const requests = sorted.map(({ sheetName, rowIndex }) => ({
+    deleteDimension: {
+      range: { sheetId: sheetIdMap[sheetName], dimension: 'ROWS',
+               startIndex: rowIndex - 1, endIndex: rowIndex }
+    }
+  }));
+  await _req('POST',
+    `https://sheets.googleapis.com/v4/spreadsheets/${getSpreadsheetId()}:batchUpdate`,
+    { requests }
+  );
+  [...new Set(items.map(i => i.sheetName))].forEach(n => _clearCache(n));
+}
+
 // カラム配列からオブジェクトを行配列に変換
 function toRow(obj, columns) {
   return columns.map(col => {

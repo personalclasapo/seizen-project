@@ -36,6 +36,10 @@
         filterStatus: 'all',
         filterSheet: '',
         showFilter: false,
+        selectMode: false,
+        selectedUids: [],
+        bulkDeleting: false,
+        bulkError: null,
 
         activeFilterCount() {
           const hasStatusFilter = this.groupSheets.every(k => SHEETS[k]?.group !== 'もしもの時');
@@ -263,7 +267,52 @@
         },
 
         goDetail(row) {
+          if (this.selectMode) { this.toggleSelect(row._uid); return; }
           location.href = `item-detail.html?sheet=${row._sheetKey}&row=${row._row}`;
+        },
+
+        toggleSelectMode() {
+          this.selectMode = !this.selectMode;
+          if (!this.selectMode) this.selectedUids = [];
+          this.bulkError = null;
+        },
+
+        toggleSelect(uid) {
+          const i = this.selectedUids.indexOf(uid);
+          if (i >= 0) this.selectedUids.splice(i, 1); else this.selectedUids.push(uid);
+        },
+
+        isSelected(uid) {
+          return this.selectedUids.includes(uid);
+        },
+
+        selectAllFiltered() {
+          const uids = this.filtered().map(r => r._uid);
+          if (uids.every(u => this.selectedUids.includes(u))) {
+            this.selectedUids = this.selectedUids.filter(u => !uids.includes(u));
+          } else {
+            const toAdd = uids.filter(u => !this.selectedUids.includes(u));
+            this.selectedUids.push(...toAdd);
+          }
+        },
+
+        async bulkDelete() {
+          if (this.selectedUids.length === 0) return;
+          if (!confirm(`選択した${this.selectedUids.length}件を削除しますか？`)) return;
+          this.bulkDeleting = true;
+          this.bulkError = null;
+          try {
+            const targets = this.items.filter(r => this.selectedUids.includes(r._uid));
+            await bulkDeleteRowsMultiSheet(
+              targets.map(r => ({ sheetName: r._sheetKey, rowIndex: r._row }))
+            );
+            this.items = this.items.filter(r => !this.selectedUids.includes(r._uid));
+            this.selectedUids = [];
+            this.selectMode = false;
+          } catch (e) {
+            this.bulkError = e.message;
+          }
+          this.bulkDeleting = false;
         }
       };
     }
@@ -329,7 +378,11 @@
           class="px-3 py-1.5 text-xs border rounded-lg font-medium">
           詳細
         </button>
-        <a :href="'add-item.html?group=' + encodeURIComponent(sheetDef.group)"
+        <button @click="toggleSelectMode()"
+          :class="selectMode ? 'bg-red-50 text-red-600 border-red-200' : 'bg-white text-gray-500 border-gray-200'"
+          class="px-3 py-1.5 text-xs border rounded-lg font-medium"
+          x-text="selectMode ? 'キャンセル' : '選択'"></button>
+        <a x-show="!selectMode" :href="'add-item.html?group=' + encodeURIComponent(sheetDef.group)"
           class="ml-auto flex items-center gap-1 px-3 py-1.5 text-xs bg-white border border-blue-300 text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -416,12 +469,23 @@
       <!-- 項目リスト -->
       <div class="space-y-3">
         <template x-for="row in filtered()" :key="row._uid">
-          <div class="bg-white rounded-xl shadow-sm overflow-hidden"
-               :class="itemStatusTag(row)?.muted ? 'opacity-60' : ''">
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden relative"
+               :class="[itemStatusTag(row)?.muted ? 'opacity-60' : '', selectMode && isSelected(row._uid) ? 'ring-2 ring-blue-500' : '']">
+
+            <!-- チェックボックス（選択モード時） -->
+            <div x-show="selectMode" class="absolute top-3 right-3 z-10 pointer-events-none">
+              <div :class="isSelected(row._uid) ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'"
+                   class="w-5 h-5 rounded-full border-2 flex items-center justify-center shadow-sm">
+                <svg x-show="isSelected(row._uid)" class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+            </div>
 
             <!-- 上部ゾーン：項目情報 → 詳細ページへ -->
             <div @click="goDetail(row)"
-                 class="px-4 pt-4 pb-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                 :class="selectMode ? 'cursor-pointer' : 'cursor-pointer hover:bg-gray-50'"
+                 class="px-4 pt-4 pb-3 transition-colors">
               <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center gap-1.5 flex-1 min-w-0">
                   <p class="font-medium truncate" x-text="itemName(row)"></p>
@@ -500,8 +564,9 @@
             </div>
 
             <!-- 下部ゾーン：観点 or メモ → 展開/折り畳み -->
-            <div @click="toggleExpand(row._uid)"
-                 class="cursor-pointer hover:bg-gray-50 transition-colors select-none">
+            <div @click="selectMode ? toggleSelect(row._uid) : toggleExpand(row._uid)"
+                 :class="selectMode ? 'cursor-pointer' : 'cursor-pointer hover:bg-gray-50'"
+                 class="transition-colors select-none">
               <!-- 区切り線 + chevron + 進捗 -->
               <div class="flex items-center px-4 py-1.5">
                 <div class="flex-1 border-t border-dashed border-gray-300"></div>
@@ -604,6 +669,20 @@
 
           </div>
         </template>
+      </div>
+    </div>
+
+    <!-- 選択モード フローティングバー -->
+    <div x-show="selectMode" class="fixed bottom-16 left-0 right-0 z-40 flex justify-center px-4 pb-2">
+      <div class="bg-gray-900 text-white rounded-xl shadow-xl px-4 py-3 flex items-center gap-3 max-w-sm w-full">
+        <button @click="selectAllFiltered()" class="text-xs text-gray-300 hover:text-white shrink-0"
+                x-text="filtered().every(r => selectedUids.includes(r._uid)) ? '選択解除' : 'すべて選択'"></button>
+        <span class="text-sm flex-1 text-center" x-text="selectedUids.length + '件選択中'"></span>
+        <button @click="bulkDelete()" :disabled="bulkDeleting || selectedUids.length === 0"
+                class="px-4 py-1.5 bg-red-500 text-white text-sm rounded-lg font-medium disabled:opacity-50 shrink-0">
+          <span x-show="!bulkDeleting">削除</span>
+          <span x-show="bulkDeleting">削除中...</span>
+        </button>
       </div>
     </div>
   </div>
