@@ -488,8 +488,8 @@
               <div class="flex justify-end mt-0.5">
                 <template x-if="!SHEETS[item.sheetKey]?.noPerspectives">
                   <span class="text-xs"
-                        :class="doneCount(item.row) === 3 ? 'text-green-600' : 'text-yellow-500'"
-                        x-text="doneCount(item.row) === 3 ? '✓ 完了' : '△ 未確認 ' + doneCount(item.row) + '/3'"></span>
+                        :class="doneCount(item.row, item.sheetKey) >= perspectiveMax(item.sheetKey) ? 'text-green-600' : 'text-yellow-500'"
+                        x-text="doneCount(item.row, item.sheetKey) >= perspectiveMax(item.sheetKey) ? '✓ 完了' : '△ 未確認 ' + doneCount(item.row, item.sheetKey) + '/' + perspectiveMax(item.sheetKey)"></span>
                 </template>
                 <template x-if="SHEETS[item.sheetKey]?.noPerspectives">
                   <span class="text-xs"
@@ -646,7 +646,7 @@
           </svg>
           <span class="text-xs mt-0.5">グループ</span>
         </button>
-        <a href="all-items.html" class="flex-1 flex flex-col items-center py-2 text-blue-600 hover:text-gray-600">
+        <a href="all-items.html" class="flex-1 flex flex-col items-center py-2 text-[#4A7C59] hover:text-gray-600">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M4 6h16M4 10h16M4 14h16M4 18h16"/>

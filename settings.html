@@ -96,7 +96,7 @@
           if (!m?._row) return;
           this.memberError = null;
           try {
-            await deleteRow('family_member', m._row);
+            await deleteRow('family_member', m._row, m.id);
             this.members = await getSheet('family_member');
           } catch (e) {
             this.memberError = e.message;
@@ -115,7 +115,7 @@
             await updateRow('family_member', m._row, toRow(
               { id: m.id, display_name: m.display_name, role: m.role || '', note: m.note || '', color: colorKey },
               FM_COLS
-            ));
+            ), m.id);
           } catch (e) {
             this.members.splice(idx, 1, { ...this.members[idx], color: prev });
             this.memberError = e.message;
@@ -147,7 +147,7 @@
             await updateRow('family_member', m._row, toRow(
               { id: m.id, display_name: name, role: m.role || '', note: m.note || '', color: m.color || '' },
               FM_COLS
-            ));
+            ), m.id);
           } catch (e) {
             this.members.splice(idx, 1, { ...this.members[idx], display_name: prev });
             this.memberError = e.message;
@@ -173,6 +173,25 @@
 
       <!-- エラー -->
       <div x-show="error" class="bg-red-50 text-red-700 rounded-lg p-3 text-sm" x-text="error"></div>
+
+      <!-- スプレッドシート未設定 → セットアップへ -->
+      <a x-show="!spreadsheetId" href="setup.html"
+         class="flex items-center justify-between bg-[#4A7C59]/10 border border-[#4A7C59]/30 rounded-xl p-4 hover:bg-[#4A7C59]/20 transition-colors">
+        <div class="flex items-center gap-3">
+          <svg class="w-5 h-5 text-[#4A7C59] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          <div>
+            <p class="text-sm font-medium text-[#3A6347]">スプレッドシートが未設定です</p>
+            <p class="text-xs text-[#4A7C59]">セットアップを開いて家族の記録を始めましょう</p>
+          </div>
+        </div>
+        <svg class="w-4 h-4 text-[#4A7C59] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
 
       <!-- 家族メンバー -->
       <div x-show="spreadsheetId" class="bg-white rounded-xl p-5 shadow-sm">
@@ -327,7 +346,7 @@
         </svg>
         <span class="text-xs mt-0.5">全項目</span>
       </a>
-      <a href="settings.html" class="flex-1 flex flex-col items-center py-2 text-blue-600 hover:text-gray-600">
+      <a href="settings.html" class="flex-1 flex flex-col items-center py-2 text-[#4A7C59] hover:text-gray-600">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>

@@ -124,7 +124,7 @@
             };
             await appendObj('cash_flow', cashRow, getAllCols('cash_flow'));
             await updateRow('transaction_candidates', cand._row,
-              toRow(this._candidateRow(cand, '登録済', newId), CANDIDATE_COLS));
+              toRow(this._candidateRow(cand, '登録済', newId), CANDIDATE_COLS), cand.id);
             this.candidates = this.candidates.filter(c => c._row !== cand._row);
           } catch (e) {
             cand.error = e.message;
@@ -137,7 +137,7 @@
           cand.error = null;
           try {
             await updateRow('transaction_candidates', cand._row,
-              toRow(this._candidateRow(cand, 'スキップ', ''), CANDIDATE_COLS));
+              toRow(this._candidateRow(cand, 'スキップ', ''), CANDIDATE_COLS), cand.id);
             this.candidates = this.candidates.filter(c => c._row !== cand._row);
           } catch (e) {
             cand.error = e.message;

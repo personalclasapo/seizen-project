@@ -30,34 +30,51 @@
 
         async load() {
           if (!getSpreadsheetId()) {
-            window.location.href = 'settings.html';
+            window.location.href = 'setup.html';
             return;
           }
-          const [cashResult, candResult] = await Promise.allSettled([
-            getSheet('cash_flow'),
+
+          // 全グループの全シートを集計対象にする（重複シートは排除）
+          const sheetKeys = [...new Set(GROUPS.flatMap(g => g.sheets))];
+          const results = await Promise.allSettled([
+            ...sheetKeys.map(k => getSheet(k)),
             getSheet('transaction_candidates')
           ]);
+          const candResult = results[results.length - 1];
 
-          if (cashResult.status === 'fulfilled') {
-            const rows = cashResult.value;
-            const g = this.groups[0]; // 支出・収入
-            g.total = rows.length;
-            g.done = rows.filter(r => doneCount(r) === PERSPECTIVES.length).length;
-            g.pct = g.total ? Math.round(g.done / g.total * 100) : 0;
+          // 取得できたシートだけ sheetKey -> rows に格納（未作成シートはスキップ）
+          const rowsByKey = {};
+          let anyOk = false;
+          sheetKeys.forEach((k, i) => {
+            if (results[i].status === 'fulfilled') { rowsByKey[k] = results[i].value; anyOk = true; }
+          });
+          if (!anyOk) this.error = results[0]?.reason?.message || null;
 
-            const allDone = rows.reduce((s, r) => s + doneCount(r), 0);
-            const possible = rows.length * PERSPECTIVES.length;
+          // 1項目 = perspectiveMax(sheetKey) ポイント満点として観点ベースで集計する。
+          // noPerspectives シート（max 1）も同じロジックで正しく扱える。
+          let totalItems = 0, doneItems = 0, inProgressItems = 0, todoItems = 0;
+          let donePoints = 0, possiblePoints = 0;
 
-            this.stats = {
-              total: rows.length,
-              done: rows.filter(r => doneCount(r) === PERSPECTIVES.length).length,
-              inProgress: rows.filter(r => { const d = doneCount(r); return d > 0 && d < PERSPECTIVES.length; }).length,
-              todo: rows.filter(r => doneCount(r) === 0).length
-            };
-            this.overallPct = possible ? Math.round(allDone / possible * 100) : 0;
-          } else {
-            this.error = cashResult.reason?.message;
-          }
+          this.groups = GROUPS.map(g => {
+            let gTotal = 0, gDone = 0;
+            for (const key of g.sheets) {
+              const rows = rowsByKey[key];
+              if (!rows) continue;
+              const max = perspectiveMax(key);
+              for (const r of rows) {
+                const d = doneCount(r, key);
+                gTotal++; totalItems++;
+                donePoints += d; possiblePoints += max;
+                if (d >= max) { gDone++; doneItems++; }
+                else if (d > 0) inProgressItems++;
+                else todoItems++;
+              }
+            }
+            return { ...g, done: gDone, total: gTotal, pct: gTotal ? Math.round(gDone / gTotal * 100) : 0 };
+          });
+
+          this.stats = { total: totalItems, done: doneItems, inProgress: inProgressItems, todo: todoItems };
+          this.overallPct = possiblePoints ? Math.round(donePoints / possiblePoints * 100) : 0;
 
           if (candResult.status === 'fulfilled') {
             this.pendingCandidates = candResult.value.filter(r => (r.status || '未登録') === '未登録').length;
@@ -100,25 +117,25 @@
 
       <!-- 明細から登録（未登録候補あり） -->
       <a x-show="pendingCandidates > 0" href="extraction.html"
-         class="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl p-4 hover:bg-blue-100 transition-colors">
+         class="flex items-center justify-between bg-[#4A7C59]/10 border border-[#4A7C59]/20 rounded-xl p-4 hover:bg-[#4A7C59]/20 transition-colors">
         <div class="flex items-center gap-3">
-          <svg class="w-5 h-5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-[#4A7C59] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
           <div>
-            <p class="text-sm font-medium text-blue-800">明細から登録できる項目があります</p>
-            <p class="text-xs text-blue-600" x-text="pendingCandidates + '件の定期支払いを確認'"></p>
+            <p class="text-sm font-medium text-[#3A6347]">明細から登録できる項目があります</p>
+            <p class="text-xs text-[#4A7C59]" x-text="pendingCandidates + '件の定期支払いを確認'"></p>
           </div>
         </div>
-        <svg class="w-4 h-4 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 text-[#4A7C59] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
         </svg>
       </a>
 
       <!-- 明細をアップロード（常時表示） -->
       <a href="upload.html"
-         class="flex items-center justify-between bg-white border-2 border-blue-300 text-blue-600 rounded-xl p-4 hover:bg-blue-50 transition-colors">
+         class="flex items-center justify-between bg-white border-2 border-[#4A7C59]/40 text-[#4A7C59] rounded-xl p-4 hover:bg-[#4A7C59]/10 transition-colors">
         <div class="flex items-center gap-3">
           <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -126,7 +143,7 @@
           </svg>
           <p class="text-sm font-medium">明細をアップロード</p>
         </div>
-        <svg class="w-4 h-4 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 text-[#4A7C59] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
         </svg>
       </a>
@@ -138,7 +155,7 @@
           <span class="text-sm font-medium" x-text="overallPct + '%'"></span>
         </div>
         <div class="bg-gray-100 h-2 rounded-full overflow-hidden mb-4">
-          <div class="bg-blue-500 h-full rounded-full transition-all duration-500"
+          <div class="bg-[#4A7C59] h-full rounded-full transition-all duration-500"
                :style="'width:' + overallPct + '%'"></div>
         </div>
         <div class="grid grid-cols-4 gap-2 text-center">
@@ -155,8 +172,8 @@
             <p class="text-xs text-gray-400">進行中</p>
           </div>
           <div>
-            <p class="text-2xl font-medium text-blue-500" x-text="stats.todo"></p>
-            <p class="text-xs text-gray-400">TODO</p>
+            <p class="text-2xl font-medium text-gray-400" x-text="stats.todo"></p>
+            <p class="text-xs text-gray-400">未着手</p>
           </div>
         </div>
       </div>
@@ -173,7 +190,7 @@
                   <span class="text-sm" x-text="group.label"></span>
                   <div class="flex items-center gap-3">
                     <div class="w-16 bg-gray-200 h-1 rounded-full overflow-hidden">
-                      <div class="bg-green-500 h-full" :style="'width:' + group.pct + '%'"></div>
+                      <div class="bg-[#4A7C59] h-full" :style="'width:' + group.pct + '%'"></div>
                     </div>
                     <span class="text-xs text-gray-400 w-8 text-right"
                           x-text="group.done + '/' + group.total"></span>
@@ -224,7 +241,7 @@
       </div>
 
       <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex z-30">
-        <a href="dashboard.html" class="flex-1 flex flex-col items-center py-2 text-blue-600 hover:text-gray-600">
+        <a href="dashboard.html" class="flex-1 flex flex-col items-center py-2 text-[#4A7C59] hover:text-gray-600">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>

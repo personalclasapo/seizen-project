@@ -61,12 +61,39 @@ async function _getHeaders(sheetName) {
   return headers;
 }
 
+// 楽観的ロックのガード用メッセージ
+const STALE_ROW_MESSAGE = '他の家族がデータを編集したため、この操作を中止しました。お手数ですが画面を再読み込みしてください。';
+
+// 0始まりの列インデックスを A1 形式の列名（A, B, ..., Z, AA, ...）に変換
+function _colLetter(index) {
+  let s = '';
+  let n = index;
+  do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
+  return s;
+}
+
+// 楽観的ロック：書き込み/削除の直前に、対象の物理行の id 列を1セルだけ読み、
+// 期待する id と一致するか照合する。家族の別端末が間に行を挿入・削除して
+// _row がずれていた場合、隣の項目を巻き込まないようにここで操作を中止する。
+async function _verifyRowId(sheetName, rowIndex, expectedId) {
+  if (!expectedId) return; // id を持たない行は照合をスキップ
+  const headers = await _getHeaders(sheetName);
+  const idCol = headers.indexOf('id');
+  if (idCol === -1) return; // id 列を持たないシートは対象外
+  const cell = `${sheetName}!${_colLetter(idCol)}${rowIndex}`;
+  const data = await _req('GET', `${_apiBase()}/${encodeURIComponent(cell)}`);
+  const actual = data?.values?.[0]?.[0] ?? '';
+  if (String(actual) !== String(expectedId)) {
+    throw new Error(STALE_ROW_MESSAGE);
+  }
+}
+
 // オブジェクトを「実シートのヘッダー順」で1行更新する。
 // schema 側の列順とシートの実列順がずれていても破損しない。
 // 不足列は ensureHeader で末尾に補完してから書く。
 async function saveRow(sheetName, rowIndex, obj, schemaCols) {
   const headers = await ensureHeader(sheetName, schemaCols);
-  await updateRow(sheetName, rowIndex, toRow(obj, headers));
+  await updateRow(sheetName, rowIndex, toRow(obj, headers), obj.id);
   _clearCache(sheetName);
 }
 
@@ -85,7 +112,9 @@ async function appendRow(sheetName, values) {
 }
 
 // 行を更新（rowIndex は 1始まり）
-async function updateRow(sheetName, rowIndex, values) {
+// expectedId を渡すと、書き込み前に対象行の id を照合し、ずれていれば中止する。
+async function updateRow(sheetName, rowIndex, values, expectedId) {
+  await _verifyRowId(sheetName, rowIndex, expectedId);
   const range = `${sheetName}!A${rowIndex}`;
   const url = `${_apiBase()}/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`;
   return _req('PUT', url, { values: [values] });
@@ -121,7 +150,9 @@ function _toObjects(data) {
 }
 
 // 行を削除（rowIndex は 1始まり）
-async function deleteRow(sheetName, rowIndex) {
+// expectedId を渡すと、削除前に対象行の id を照合し、ずれていれば中止する。
+async function deleteRow(sheetName, rowIndex, expectedId) {
+  await _verifyRowId(sheetName, rowIndex, expectedId);
   const meta = await _req('GET',
     `https://sheets.googleapis.com/v4/spreadsheets/${getSpreadsheetId()}?fields=sheets.properties`
   );

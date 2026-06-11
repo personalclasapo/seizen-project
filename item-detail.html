@@ -347,7 +347,7 @@
           this.allEditModal.deleting = true;
           this.allEditModal.error = null;
           try {
-            await deleteRow(this.sheetKey, this.row._row);
+            await deleteRow(this.sheetKey, this.row._row, this.row.id);
             window.location.href = this.backLink();
           } catch (e) {
             this.allEditModal.error = e.message;
