@@ -238,6 +238,7 @@
         logs: [],
         error: null,
         userEmail: '',
+        isNew: false,  // 新規作成 or 既存シート接続かでフローを分ける
 
         async init() {
           await waitForGsi();
@@ -254,6 +255,7 @@
             if (!result) return;
             this.selectedId = result.id;
             this.selectedName = result.name;
+            this.isNew = false;
             this.step = 'confirm';
           } catch (e) {
             this.error = e.message;
@@ -269,6 +271,7 @@
             );
             this.selectedId = res.spreadsheetId;
             this.selectedName = res.properties.title;
+            this.isNew = true;
             this.step = 'confirm';
           } catch (e) {
             this.error = e.message;
@@ -280,6 +283,7 @@
           if (!id) return;
           this.selectedId = id;
           this.selectedName = id;
+          this.isNew = false;
           this.showManual = false;
           this.step = 'confirm';
         },
@@ -325,44 +329,47 @@
               }))
             });
 
-            this.log('サンプルデータを確認中...');
-            const cur = await apiReq('GET', `${base}/values/cash_flow!A2:A6`);
-            if (!cur.values || cur.values.length === 0) {
-              this.log('サンプルデータを追加中...');
-              await apiReq('POST', `${base}/values:batchUpdate`, {
-                valueInputOption: 'RAW',
-                data: [{ range: 'cash_flow!A2', values: SAMPLE_ROWS }]
-              });
-            } else {
-              this.log('既存データがあるためサンプル追加をスキップ');
-            }
-
-            const curCand = await apiReq('GET', `${base}/values/transaction_candidates!A2:A6`);
-            if (!curCand.values || curCand.values.length === 0) {
-              await apiReq('POST', `${base}/values:batchUpdate`, {
-                valueInputOption: 'RAW',
-                data: [{ range: 'transaction_candidates!A2', values: SAMPLE_CANDIDATES }]
-              });
-            }
-
-            const sampleSheets = [
-              { sheet: 'securities',       range: 'securities!A2:A3',         data: SAMPLE_SECURITIES },
-              { sheet: 'crypto',           range: 'crypto!A2:A2',             data: SAMPLE_CRYPTO },
-              { sheet: 'real_estate',      range: 'real_estate!A2:A3',        data: SAMPLE_REAL_ESTATE },
-              { sheet: 'precious_metal',   range: 'precious_metal!A2:A2',     data: SAMPLE_PRECIOUS_METAL },
-              { sheet: 'loan',             range: 'loan!A2:A2',               data: SAMPLE_LOAN },
-              { sheet: 'contact_network',  range: 'contact_network!A2:A5',      data: SAMPLE_CONTACT_NETWORK },
-              { sheet: 'medical_info',     range: 'medical_info!A2:A5',         data: SAMPLE_MEDICAL_INFO },
-              { sheet: 'funeral_memorial', range: 'funeral_memorial!A2:A3',     data: SAMPLE_FUNERAL_MEMORIAL },
-              { sheet: 'will_documents',   range: 'will_documents!A2:A3',       data: SAMPLE_WILL_DOCUMENTS },
-            ];
-            for (const s of sampleSheets) {
-              const cur = await apiReq('GET', `${base}/values/${s.range}`);
+            // サンプルデータは新規作成時のみ。既存シート接続時はデータに一切触れない
+            if (this.isNew) {
+              this.log('サンプルデータを確認中...');
+              const cur = await apiReq('GET', `${base}/values/cash_flow!A2:A6`);
               if (!cur.values || cur.values.length === 0) {
+                this.log('サンプルデータを追加中...');
                 await apiReq('POST', `${base}/values:batchUpdate`, {
                   valueInputOption: 'RAW',
-                  data: [{ range: `${s.sheet}!A2`, values: s.data }]
+                  data: [{ range: 'cash_flow!A2', values: SAMPLE_ROWS }]
                 });
+              } else {
+                this.log('既存データがあるためサンプル追加をスキップ');
+              }
+
+              const curCand = await apiReq('GET', `${base}/values/transaction_candidates!A2:A6`);
+              if (!curCand.values || curCand.values.length === 0) {
+                await apiReq('POST', `${base}/values:batchUpdate`, {
+                  valueInputOption: 'RAW',
+                  data: [{ range: 'transaction_candidates!A2', values: SAMPLE_CANDIDATES }]
+                });
+              }
+
+              const sampleSheets = [
+                { sheet: 'securities',       range: 'securities!A2:A3',         data: SAMPLE_SECURITIES },
+                { sheet: 'crypto',           range: 'crypto!A2:A2',             data: SAMPLE_CRYPTO },
+                { sheet: 'real_estate',      range: 'real_estate!A2:A3',        data: SAMPLE_REAL_ESTATE },
+                { sheet: 'precious_metal',   range: 'precious_metal!A2:A2',     data: SAMPLE_PRECIOUS_METAL },
+                { sheet: 'loan',             range: 'loan!A2:A2',               data: SAMPLE_LOAN },
+                { sheet: 'contact_network',  range: 'contact_network!A2:A5',      data: SAMPLE_CONTACT_NETWORK },
+                { sheet: 'medical_info',     range: 'medical_info!A2:A5',         data: SAMPLE_MEDICAL_INFO },
+                { sheet: 'funeral_memorial', range: 'funeral_memorial!A2:A3',     data: SAMPLE_FUNERAL_MEMORIAL },
+                { sheet: 'will_documents',   range: 'will_documents!A2:A3',       data: SAMPLE_WILL_DOCUMENTS },
+              ];
+              for (const s of sampleSheets) {
+                const cur = await apiReq('GET', `${base}/values/${s.range}`);
+                if (!cur.values || cur.values.length === 0) {
+                  await apiReq('POST', `${base}/values:batchUpdate`, {
+                    valueInputOption: 'RAW',
+                    data: [{ range: `${s.sheet}!A2`, values: s.data }]
+                  });
+                }
               }
             }
 
@@ -461,16 +468,25 @@
 
       <!-- ステップ2: 確認・初期化 -->
       <div x-show="step === 'confirm'" class="p-8">
-        <p class="font-medium text-center mb-6">このシートを使いますか？</p>
+        <p class="font-medium text-center mb-6" x-text="isNew ? '新しいシートを準備します' : 'このシートを使いますか？'"></p>
 
         <div class="bg-gray-50 rounded-lg p-4 mb-6">
-          <p class="text-xs text-gray-500 mb-1">選択したスプレッドシート</p>
+          <p class="text-xs text-gray-500 mb-1" x-text="isNew ? '作成したスプレッドシート' : '選択したスプレッドシート'"></p>
           <p class="text-sm font-medium text-gray-800 break-all" x-text="selectedName"></p>
         </div>
 
-        <div class="bg-amber-50 rounded-lg p-3 mb-6">
+        <!-- 新規作成時の説明 -->
+        <div x-show="isNew" class="bg-amber-50 rounded-lg p-3 mb-6">
           <p class="text-xs text-gray-600 leading-relaxed">
-            「初期化する」を押すと、必要なシートとヘッダーが自動で作成されます。既存データは上書きされません。
+            必要なシートとヘッダー、お試し用のサンプルデータが自動で作成されます。
+          </p>
+        </div>
+
+        <!-- 既存シート接続時の説明 -->
+        <div x-show="!isNew" class="bg-amber-50 rounded-lg p-3 mb-6">
+          <p class="text-xs text-gray-600 leading-relaxed">
+            不足しているシートやヘッダーがあれば自動で補完されます。<br>
+            <span class="font-medium">既存のデータは変更・削除されません。</span>サンプルデータも追加されません。
           </p>
         </div>
 
@@ -479,8 +495,8 @@
         <div class="space-y-2">
           <button
             @click="initialize()"
-            class="w-full py-3.5 bg-[#4A7C59] text-white rounded-lg text-sm font-medium hover:bg-[#3d6849] transition-colors">
-            初期化する
+            class="w-full py-3.5 bg-[#4A7C59] text-white rounded-lg text-sm font-medium hover:bg-[#3d6849] transition-colors"
+            x-text="isNew ? 'セットアップする' : 'このシートを使う'">
           </button>
           <button
             @click="back()"
@@ -492,7 +508,7 @@
 
       <!-- ステップ3: 初期化中 -->
       <div x-show="step === 'initializing'" class="p-8">
-        <p class="font-medium text-center mb-6">初期化しています...</p>
+        <p class="font-medium text-center mb-6" x-text="isNew ? 'セットアップしています...' : 'シートを確認しています...'"></p>
         <div class="bg-gray-900 rounded-lg p-4 space-y-1 min-h-32">
           <template x-for="log in logs" :key="log">
             <p class="text-xs text-green-400 font-mono" x-text="log"></p>
