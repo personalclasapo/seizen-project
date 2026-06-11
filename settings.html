@@ -126,16 +126,6 @@
           }
         },
 
-        // ── テスト用：端末に保存したスプシ紐付けをクリア ──
-        clearLocalBinding() {
-          if (!confirm('この端末のスプレッドシート紐付けをクリアします。\nデータ自体は消えません（再度 setup から選び直せます）。続けますか？')) return;
-          localStorage.removeItem('sz_spreadsheet_id');
-          localStorage.removeItem('sz_spreadsheet_name');
-          localStorage.removeItem('sz_drive_folder');
-          localStorage.removeItem('sz_drive_folder_name');
-          window.location.href = 'setup.html';
-        },
-
         startEdit(idx) {
           this.editingIdx = idx;
           this.editingName = this.members[idx].display_name;
@@ -303,22 +293,6 @@
         </div>
 
         <p x-show="memberError" class="mt-2 text-xs text-red-500" x-text="memberError"></p>
-      </div>
-
-      <!-- テスト用：端末の紐付けをクリア -->
-      <div class="bg-white rounded-xl p-5 shadow-sm border border-dashed border-amber-300">
-        <p class="text-sm font-medium text-amber-700 mb-1">⚠️ テスト用</p>
-        <p class="text-xs text-gray-500 mb-3">
-          この端末に保存されているスプレッドシートの紐付けを解除し、setup からやり直します。<br>
-          スプレッドシートのデータ自体は削除されません。
-        </p>
-        <p x-show="spreadsheetId" class="text-xs text-gray-400 mb-3 break-all">
-          現在のID: <span x-text="spreadsheetId"></span>
-        </p>
-        <button @click="clearLocalBinding()"
-                class="text-xs px-3 py-1.5 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 border border-amber-300">
-          この端末の紐付けをクリア
-        </button>
       </div>
 
     </div>
