@@ -220,25 +220,30 @@
       <!-- グループが決まっている場合：チップ + フォーム -->
       <div x-show="filterGroup" class="space-y-4">
 
-        <!-- カテゴリチップ（複数シートのグループのみ表示） -->
-        <div x-show="showChips()" class="flex flex-wrap gap-2 pt-1">
-          <template x-for="opt in groupSheets()" :key="opt.key">
-            <button
-              @click="selectSheet(opt.key, true)"
-              :class="sheetKey === opt.key
-                ? 'bg-[#4A7C59] text-white border-[#4A7C59]'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-[#4A7C59] hover:text-[#4A7C59]'"
-              class="px-3 py-1.5 rounded-full text-sm border transition-colors"
-              x-text="opt.label">
-            </button>
-          </template>
-        </div>
-
         <!-- エラー -->
         <div x-show="saveError" class="bg-red-50 text-red-700 rounded-lg p-3 text-sm" x-text="saveError"></div>
 
         <!-- フォームフィールド -->
         <div x-show="sheetKey" class="bg-white rounded-xl p-4 shadow-sm space-y-4">
+
+          <!-- カテゴリ選択（複数シートのグループのみ表示） -->
+          <div x-show="showChips()">
+            <label class="block text-xs text-gray-500 mb-2">カテゴリ</label>
+            <div class="grid grid-cols-2 gap-2">
+              <template x-for="opt in groupSheets()" :key="opt.key">
+                <button
+                  @click="selectSheet(opt.key, true)"
+                  :class="sheetKey === opt.key
+                    ? 'bg-[#4A7C59] text-white border-[#4A7C59] font-medium'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#4A7C59]'"
+                  class="py-2.5 px-2 rounded-lg text-sm border transition-colors focus:outline-none"
+                  x-text="opt.label">
+                </button>
+              </template>
+            </div>
+            <div class="border-b border-gray-100 mt-4"></div>
+          </div>
+
           <template x-for="field in formFields()" :key="field.key">
             <div>
               <label class="block text-xs text-gray-500 mb-1">
