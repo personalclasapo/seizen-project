@@ -18,10 +18,46 @@ function initAuth(onSuccess, onRequired, opts = {}) {
   const token = _getStoredToken();
   if (token) {
     onSuccess();
+    // 期限が近づいていれば裏で先にトークンを更新しておく（画面はブロックしない）
+    if (_isTokenExpiringSoon()) _backgroundRefresh();
   } else if (opts.silent === false) {
     onRequired();
   } else {
     _silentRefresh(onSuccess, onRequired);
+  }
+}
+
+// 期限まで残り10分を切ったら「もうすぐ切れる」とみなす
+function _isTokenExpiringSoon() {
+  try {
+    const d = JSON.parse(localStorage.getItem('sz_token'));
+    return d && (d.exp - Date.now() < 10 * 60 * 1000);
+  } catch { return false; }
+}
+
+// 画面を止めずに裏でトークンだけ更新する。失敗しても従来動作にフォールバック
+let _bgRefreshing = false;
+function _backgroundRefresh() {
+  if (_bgRefreshing) return;
+  if (localStorage.getItem('sz_switch_account') === '1') return;
+  _bgRefreshing = true;
+  try {
+    if (!_tokenClient) {
+      _tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CONFIG.CLIENT_ID,
+        scope: CONFIG.SCOPES,
+        callback: (response) => {
+          _bgRefreshing = false;
+          if (response.error) return;
+          _storeToken(response.access_token);
+          localStorage.setItem('sz_consented', '1');
+          localStorage.removeItem('sz_user_email');
+        }
+      });
+    }
+    _tokenClient.requestAccessToken({ prompt: '' });
+  } catch (e) {
+    _bgRefreshing = false;
   }
 }
 
