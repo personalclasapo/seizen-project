@@ -37,6 +37,7 @@
         membersLoading: false,
         memberError: null,
         savingColorIdx: -1,
+        deletingIdx: -1,
         newMemberName: '',
         newMemberColor: 'blue',
         colorOptions: COLOR_OPTIONS,
@@ -99,12 +100,16 @@
         async deleteMember(idx) {
           const m = this.members[idx];
           if (!m?._row) return;
+          if (!confirm(`「${m.display_name || '（名前なし）'}」を削除します。\nよろしいですか？`)) return;
           this.memberError = null;
+          this.deletingIdx = idx;
           try {
             await deleteRow('family_member', m._row, m.id);
             this.members = await getSheet('family_member');
           } catch (e) {
             this.memberError = e.message;
+          } finally {
+            this.deletingIdx = -1;
           }
         },
 
@@ -255,7 +260,11 @@
 
                 <!-- 削除 -->
                 <button @click="deleteMember(idx)"
-                        class="text-xs text-gray-400 hover:text-red-500 px-1 shrink-0">削除</button>
+                        :disabled="deletingIdx === idx"
+                        class="text-xs text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 rounded-lg px-3 py-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                  <span x-show="deletingIdx !== idx">削除</span>
+                  <span x-show="deletingIdx === idx">削除中...</span>
+                </button>
               </div>
 
               <!-- 色選択行 -->
