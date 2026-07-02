@@ -108,7 +108,9 @@ async function appendObj(sheetName, obj, schemaCols) {
 async function appendRow(sheetName, values) {
   const range = `${sheetName}!A1`;
   const url = `${_apiBase()}/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-  return _req('POST', url, { values: [values] });
+  const res = await _req('POST', url, { values: [values] });
+  _clearCache(sheetName);
+  return res;
 }
 
 // 行を更新（rowIndex は 1始まり）
