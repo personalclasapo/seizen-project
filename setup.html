@@ -362,13 +362,15 @@
                 this.log('既存データがあるためサンプル追加をスキップ');
               }
 
-              const curCand = await apiReq('GET', `${base}/values/transaction_candidates!A2:A6`);
-              if (!curCand.values || curCand.values.length === 0) {
-                await apiReq('POST', `${base}/values:batchUpdate`, {
-                  valueInputOption: 'RAW',
-                  data: [{ range: 'transaction_candidates!A2', values: SAMPLE_CANDIDATES }]
-                });
-              }
+              // 「明細から検出された定期支払い」のサンプルは通常は投入しない。
+              // テストで入れたいときは以下のブロックのコメントを外す（SAMPLE_CANDIDATES の定義は上部に保持）。
+              // const curCand = await apiReq('GET', `${base}/values/transaction_candidates!A2:A6`);
+              // if (!curCand.values || curCand.values.length === 0) {
+              //   await apiReq('POST', `${base}/values:batchUpdate`, {
+              //     valueInputOption: 'RAW',
+              //     data: [{ range: 'transaction_candidates!A2', values: SAMPLE_CANDIDATES }]
+              //   });
+              // }
 
               const sampleSheets = [
                 { sheet: 'securities',       range: 'securities!A2:A3',         data: SAMPLE_SECURITIES },
