@@ -38,6 +38,7 @@
         memberError: null,
         savingColorIdx: -1,
         deletingIdx: -1,
+        showAddForm: false,
         newMemberName: '',
         newMemberColor: 'blue',
         colorOptions: COLOR_OPTIONS,
@@ -79,6 +80,20 @@
             this.members = [];
           }
           this.membersLoading = false;
+        },
+
+        openAddForm() {
+          this.memberError = null;
+          this.newMemberName = '';
+          this.newMemberColor = 'blue';
+          this.showAddForm = true;
+        },
+
+        closeAddForm() {
+          this.showAddForm = false;
+          this.newMemberName = '';
+          this.newMemberColor = 'blue';
+          this.memberError = null;
         },
 
         async addMember() {
@@ -286,25 +301,51 @@
           </template>
         </div>
 
-        <!-- 追加フォーム -->
-        <div class="flex items-center gap-2 pt-3 border-t border-gray-100">
-          <input type="text" x-model="newMemberName"
-                 @keydown.enter="if (!$event.isComposing) addMember()"
-                 placeholder="名前を入力"
-                 class="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-300">
-          <div class="flex gap-1.5 shrink-0">
-            <template x-for="c in colorOptions" :key="c.key">
-              <button @click="newMemberColor = c.key"
-                      :class="[c.dot, newMemberColor === c.key ? 'ring-2 ring-offset-1 ring-gray-500 scale-110' : 'opacity-70 hover:opacity-100']"
-                      class="w-6 h-6 rounded-full transition-all"></button>
-            </template>
-          </div>
-          <button @click="addMember()"
-                  :disabled="!newMemberName.trim()"
-                  class="shrink-0 text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">追加</button>
-        </div>
+        <!-- 追加：新規登録ボタン -->
+        <div class="pt-3 border-t border-gray-100">
+          <button x-show="!showAddForm"
+                  @click="openAddForm()"
+                  class="w-full flex items-center justify-center gap-1.5 text-sm text-[#4A7C59] border border-dashed border-[#4A7C59]/40 hover:bg-[#4A7C59]/5 rounded-lg py-2.5 transition-colors">
+            <span class="text-base leading-none">＋</span>
+            <span>家族を追加</span>
+          </button>
 
-        <p x-show="memberError" class="mt-2 text-xs text-red-500" x-text="memberError"></p>
+          <!-- 追加フォーム（アコーディオン） -->
+          <div x-show="showAddForm" x-collapse class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <p class="text-sm font-medium text-gray-700">家族を追加</p>
+              <button @click="closeAddForm()"
+                      class="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                閉じる
+              </button>
+            </div>
+
+            <input type="text" x-model="newMemberName"
+                   @keydown.enter="if (!$event.isComposing) addMember()"
+                   placeholder="名前を入力"
+                   class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-300">
+
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-400 shrink-0">カラー</span>
+              <div class="flex gap-2 flex-wrap flex-1">
+                <template x-for="c in colorOptions" :key="c.key">
+                  <button @click="newMemberColor = c.key"
+                          :class="[c.dot, newMemberColor === c.key ? 'ring-2 ring-offset-1 ring-gray-500 scale-110' : 'opacity-70 hover:opacity-100']"
+                          class="w-7 h-7 rounded-full transition-all"></button>
+                </template>
+              </div>
+            </div>
+
+            <button @click="addMember()"
+                    :disabled="!newMemberName.trim()"
+                    class="w-full text-sm px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">追加</button>
+
+            <p x-show="memberError" class="text-xs text-red-500" x-text="memberError"></p>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -390,6 +431,7 @@
     })();
   </script>
 
+  <script src="https://unpkg.com/@alpinejs/collapse@3/dist/cdn.min.js" defer></script>
   <script src="https://unpkg.com/alpinejs@3/dist/cdn.min.js" defer></script>
 </body>
 </html>
