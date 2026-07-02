@@ -431,9 +431,15 @@
           情報はあなたのGoogleスプレッドシートに<br>直接保存されます
         </p>
 
-        <!-- 現在の紐付け -->
-        <div x-show="currentId" class="bg-[#F0EDE4] rounded-lg p-3 mb-6">
-          <p class="text-xs text-gray-500 mb-1">現在この端末に紐付いているスプレッドシート</p>
+        <!-- 現在の状態 -->
+        <p class="text-xs text-gray-400 mb-1.5">現在の状態</p>
+
+        <!-- 紐付けあり -->
+        <div x-show="currentId" class="border border-[#4A7C59]/30 bg-[#F0EDE4] rounded-lg p-3 mb-6">
+          <div class="flex items-center gap-1.5 mb-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#4A7C59]"></span>
+            <p class="text-xs text-[#4A7C59] font-medium">紐付け済み</p>
+          </div>
           <p class="text-sm font-medium text-gray-800 break-all" x-text="currentName || currentId"></p>
           <p x-show="currentName" class="text-[10px] text-gray-400 break-all mt-0.5" x-text="currentId"></p>
           <button
@@ -445,9 +451,16 @@
         </div>
 
         <!-- 未紐付け -->
-        <div x-show="!currentId" class="bg-gray-50 rounded-lg p-3 mb-6">
-          <p class="text-sm text-gray-500">まだスプレッドシートが紐付いていません</p>
+        <div x-show="!currentId" class="border border-gray-200 bg-gray-50 rounded-lg p-3 mb-6">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-gray-300"></span>
+            <p class="text-sm text-gray-500">まだ紐付いていません</p>
+          </div>
         </div>
+
+        <!-- 操作の見出し -->
+        <div class="border-t border-gray-100 pt-5">
+          <p class="text-xs text-gray-400 mb-3" x-text="currentId ? '別の保存先に切り替える' : '保存先を選ぶ'"></p>
 
         <div class="space-y-3">
           <button
@@ -479,6 +492,7 @@
         </div>
 
         <div x-show="error" class="mt-4 bg-red-50 text-red-700 rounded-lg p-3 text-xs" x-text="error"></div>
+        </div>
       </div>
 
       <!-- ステップ2: 確認・初期化 -->
