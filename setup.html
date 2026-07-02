@@ -242,7 +242,7 @@
         error: null,
         userEmail: '',
         isNew: false,  // 新規作成 or 既存シート接続かでフローを分ける
-        currentId: '',    // 現在この端末に紐付いているスプシID
+        currentId: '',    // 現在この端末に紐付いているスプレッドシートID
         currentName: '',  // 同上の名前（無ければID）
 
         async init() {
@@ -294,6 +294,15 @@
           this.isNew = false;
           this.addSample = false;
           this.step = 'confirm';
+        },
+
+        clearBinding() {
+          if (!confirm('この端末のスプレッドシート紐付けを解除します。\nスプレッドシートのデータは消えません。続けますか？')) return;
+          localStorage.removeItem('sz_spreadsheet_id');
+          localStorage.removeItem('sz_spreadsheet_name');
+          localStorage.removeItem('sz_drive_folder');
+          localStorage.removeItem('sz_drive_folder_name');
+          location.reload();
         },
 
         back() {
@@ -424,9 +433,20 @@
 
         <!-- 現在の紐付け -->
         <div x-show="currentId" class="bg-[#F0EDE4] rounded-lg p-3 mb-6">
-          <p class="text-xs text-gray-500 mb-1">現在この端末に紐付いているシート</p>
+          <p class="text-xs text-gray-500 mb-1">現在この端末に紐付いているスプレッドシート</p>
           <p class="text-sm font-medium text-gray-800 break-all" x-text="currentName || currentId"></p>
           <p x-show="currentName" class="text-[10px] text-gray-400 break-all mt-0.5" x-text="currentId"></p>
+          <button
+            @click="clearBinding()"
+            class="mt-2.5 text-xs px-3 py-1.5 bg-white text-gray-600 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors">
+            この端末の紐付けを解除
+          </button>
+          <p class="text-[10px] text-gray-400 mt-1.5">解除してもスプレッドシートのデータは消えません</p>
+        </div>
+
+        <!-- 未紐付け -->
+        <div x-show="!currentId" class="bg-gray-50 rounded-lg p-3 mb-6">
+          <p class="text-sm text-gray-500">まだスプレッドシートが紐付いていません</p>
         </div>
 
         <div class="space-y-3">
@@ -459,24 +479,6 @@
         </div>
 
         <div x-show="error" class="mt-4 bg-red-50 text-red-700 rounded-lg p-3 text-xs" x-text="error"></div>
-
-        <!-- テスト用 -->
-        <div class="mt-6 pt-4 border-t border-dashed border-amber-300">
-          <p class="text-xs text-amber-600 font-medium mb-1">⚠️ テスト用</p>
-          <p class="text-xs text-gray-400 mb-2">この端末に保存されたスプシ紐付けをクリアします（データは消えません）</p>
-          <button
-            @click="() => {
-              if (!confirm('この端末のスプレッドシート紐付けをクリアします。\nデータ自体は消えません。続けますか？')) return;
-              localStorage.removeItem('sz_spreadsheet_id');
-              localStorage.removeItem('sz_spreadsheet_name');
-              localStorage.removeItem('sz_drive_folder');
-              localStorage.removeItem('sz_drive_folder_name');
-              location.reload();
-            }"
-            class="text-xs px-3 py-1.5 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 border border-amber-300">
-            この端末の紐付けをクリア
-          </button>
-        </div>
       </div>
 
       <!-- ステップ2: 確認・初期化 -->
