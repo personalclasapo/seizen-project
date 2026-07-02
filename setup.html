@@ -237,13 +237,17 @@
         selectedId: '',
         selectedName: '',
         manualId: '',
-        showManual: false,
+        addSample: false,  // 既存シート接続時にサンプルデータを追加するか
         logs: [],
         error: null,
         userEmail: '',
         isNew: false,  // 新規作成 or 既存シート接続かでフローを分ける
+        currentId: '',    // 現在この端末に紐付いているスプシID
+        currentName: '',  // 同上の名前（無ければID）
 
         async init() {
+          this.currentId = getSpreadsheetId();
+          this.currentName = getSpreadsheetName();
           await waitForGsi();
           initAuth(
             () => { fetchUserEmail().then(e => { this.userEmail = e; }); },
@@ -259,6 +263,7 @@
             this.selectedId = result.id;
             this.selectedName = result.name;
             this.isNew = false;
+            this.addSample = false;
             this.step = 'confirm';
           } catch (e) {
             this.error = e.message;
@@ -287,7 +292,7 @@
           this.selectedId = id;
           this.selectedName = id;
           this.isNew = false;
-          this.showManual = false;
+          this.addSample = false;
           this.step = 'confirm';
         },
 
@@ -306,6 +311,7 @@
           this.logs = [];
           this.error = null;
           setSpreadsheetId(this.selectedId);
+          setSpreadsheetName(this.selectedName);
           const base = `https://sheets.googleapis.com/v4/spreadsheets/${this.selectedId}`;
           try {
             this.log('シート一覧を確認中...');
@@ -332,8 +338,9 @@
               }))
             });
 
-            // サンプルデータは新規作成時のみ。既存シート接続時はデータに一切触れない
-            if (this.isNew) {
+            // サンプルデータ：新規作成時、または既存接続でユーザーが希望した時。
+            // いずれも「空のシートだけ追加」で、既存データには一切触れない。
+            if (this.isNew || this.addSample) {
               this.log('サンプルデータを確認中...');
               const cur = await apiReq('GET', `${base}/values/cash_flow!A2:A6`);
               if (!cur.values || cur.values.length === 0) {
@@ -411,9 +418,16 @@
       <!-- ステップ1: スプレッドシートを選ぶ -->
       <div x-show="step === 'choose'" class="p-8">
         <p class="font-medium text-center mb-1">データの保存先を設定</p>
-        <p class="text-sm text-gray-500 text-center mb-8 leading-relaxed">
+        <p class="text-sm text-gray-500 text-center mb-6 leading-relaxed">
           情報はあなたのGoogleスプレッドシートに<br>直接保存されます
         </p>
+
+        <!-- 現在の紐付け -->
+        <div x-show="currentId" class="bg-[#F0EDE4] rounded-lg p-3 mb-6">
+          <p class="text-xs text-gray-500 mb-1">現在この端末に紐付いているシート</p>
+          <p class="text-sm font-medium text-gray-800 break-all" x-text="currentName || currentId"></p>
+          <p x-show="currentName" class="text-[10px] text-gray-400 break-all mt-0.5" x-text="currentId"></p>
+        </div>
 
         <div class="space-y-3">
           <button
@@ -429,13 +443,9 @@
           </button>
         </div>
 
-        <div class="mt-4">
-          <button
-            @click="showManual = !showManual"
-            class="w-full text-xs text-gray-400 hover:text-gray-600 py-1 transition-colors">
-            スプレッドシートIDを直接入力
-          </button>
-          <div x-show="showManual" class="mt-2 flex gap-2">
+        <div class="mt-5 pt-4 border-t border-gray-100">
+          <p class="text-xs text-gray-500 mb-2">スプレッドシートIDを直接入力</p>
+          <div class="flex gap-2">
             <input
               x-model="manualId"
               type="text"
@@ -444,7 +454,7 @@
               @keyup.enter="applyManual()" />
             <button
               @click="applyManual()"
-              class="px-3 py-2 bg-gray-700 text-white rounded-lg text-xs">決定</button>
+              class="px-3 py-2 bg-gray-700 text-white rounded-lg text-xs whitespace-nowrap">決定</button>
           </div>
         </div>
 
@@ -486,11 +496,20 @@
         </div>
 
         <!-- 既存シート接続時の説明 -->
-        <div x-show="!isNew" class="bg-amber-50 rounded-lg p-3 mb-6">
-          <p class="text-xs text-gray-600 leading-relaxed">
-            不足しているシートやヘッダーがあれば自動で補完されます。<br>
-            <span class="font-medium">既存のデータは変更・削除されません。</span>サンプルデータも追加されません。
-          </p>
+        <div x-show="!isNew" class="mb-6">
+          <div class="bg-amber-50 rounded-lg p-3">
+            <p class="text-xs text-gray-600 leading-relaxed">
+              不足しているシートやヘッダーがあれば自動で補完されます。<br>
+              <span class="font-medium">既存のデータは変更・削除されません。</span>
+            </p>
+          </div>
+          <label class="flex items-start gap-2 mt-3 px-1 cursor-pointer">
+            <input type="checkbox" x-model="addSample" class="mt-0.5 accent-[#4A7C59]" />
+            <span class="text-xs text-gray-600 leading-relaxed">
+              お試し用のサンプルデータも追加する<br>
+              <span class="text-gray-400">（データが1件も入っていない空のシートにのみ追加されます）</span>
+            </span>
+          </label>
         </div>
 
         <div x-show="error" class="bg-red-50 text-red-700 rounded-lg p-3 mb-4 text-xs" x-text="error"></div>
