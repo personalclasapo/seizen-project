@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 52 52" role="img" aria-labelledby="title desc">
+  <title id="title">B 厚みのある開いた本</title><desc id="desc">少し斜め上から見た、生成りのページと緑の厚い表紙を持つ開いた本</desc>
+  <circle cx="26" cy="26" r="26" fill="#e5eee1"/>
+  <g transform="translate(1.3 .3) scale(.95)">
+  <path d="m10.7 23.3 14.8-6.5 15.8 4.4-.2 15.2-15.6 3-14.6-5.2-.2-10.9Z" fill="#456b50" stroke="#3d6248" stroke-width="1" stroke-linejoin="round"/>
+  <path d="m12.4 20.9 13.2-5.5.2 19.6-13.4-4.2V20.9Z" fill="#fff9e9" stroke="#607b62" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="m25.6 15.4 14.1 3.6-.2 10.7L25.8 35l-.2-19.6Z" fill="#fff9e9" stroke="#607b62" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="m12.4 30.8 13.4 4.2 13.7-5.3v3L25.7 38 12.4 33.6v-2.8Z" fill="#e9ddc5" stroke="#607b62" stroke-width=".9" stroke-linejoin="round"/>
+  <path d="m25.6 15.5.2 19.4M15.4 22.4l7.3-2.7M15.4 25.5l7.3-2.7M29.1 20.3l7.4 1.9M29.1 23.5l7.4 1.9" fill="none" stroke="#9ba795" stroke-width=".8" stroke-linecap="round"/>
+  </g>
+</svg>
