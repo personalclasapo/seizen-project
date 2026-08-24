@@ -1,0 +1,190 @@
+/* SeiZen｜銀行口座の成果物UI
+   ------------------------------------------------------------------
+   通帳を連想するデジタル記録UI（正本§4-2）。この領域にしか出て
+   こない造形だけをここに置く。左のガイドブック・見出し・意味説明
+   は shared/shell.css の担当。
+
+   正本§13により、ここで作った形を他領域へ機械的に持ち出さない。 */
+
+/* 通帳は読む幅を優先して細く保つ。索引を並べる契約・デジタルとは
+   別の値でよい。                                                  */
+.sec{max-width:840px}
+
+/* ── カード：1銀行=1カード。白背景・フラット・淡い枠線。 ── */
+/* 外枠は浮いた板。ぼかし0のオフセット無し影で全周に光を回し、
+   そこへ下方向の影を重ねて厚みを出す。上辺は内側ハイライトで起こす。 */
+.pb{position:relative;border-radius:18px;margin-bottom:32px;background:#fff;border:1px solid #d5cdb6;box-shadow:inset 0 1px 0 #fff,inset 0 0 0 1px #ffffffa6,0 0 0 1px #ffffff5c,0 2px 3px #4b422b24,0 6px 12px -2px #4b422b33}
+/* 台紙が一枚下に敷いてあり、右と下にわずかに覗く。カード本体との
+   段差そのものが立体感を作る。影はこの下地パネル側にだけ落とす。 */
+.pb:before{content:"";position:absolute;inset:7px -8px -9px 8px;z-index:-1;border-radius:16px;background:linear-gradient(180deg,#f6f1e3,#ede4cc);border:1px solid #ddd0ac;box-shadow:0 10px 20px -8px #4b422b45,0 22px 36px -16px #4b422b40}
+/* ゴールド罫はヘッダーの緑に挟む。内側シャドウを緑→金→緑の順で
+   重ね、罫の下に緑を3px残す。 */
+.cv{position:relative;display:flex;align-items:baseline;gap:12px;padding:18px 24px 22px;background:linear-gradient(180deg,#3c7455,#2e6146 55%,#26523b);border-radius:18px 18px 0 0;box-shadow:inset 0 1px 0 #ffffff59,inset 0 -3px 0 #26523b,inset 0 -6px 0 var(--gold),inset 0 -22px 16px -14px #00000038;color:#fff}
+.pb.gy .cv{background:linear-gradient(180deg,#9d9384,#8b8172 55%,#7a7166)}
+.cv .nm{font-size:18px;font-weight:700;letter-spacing:.02em}
+.cv .kd{font-size:12px;color:#ffffffb8}
+.cv .bd{margin-left:auto;font-size:11.5px;font-weight:700;padding:5px 13px;border-radius:20px;background:var(--or-bg);color:#a35a0d}
+.cv .bd.off{background:#ffffff26;color:#ffffffd9;font-weight:600}
+.cv .del{align-self:center;display:grid;place-items:center;width:30px;height:30px;flex:none;border:0;border-radius:8px;background:transparent;color:#ffffffa6;cursor:pointer}
+.cv .del:hover{background:#ffffff26;color:#fff}
+.cv .del svg{width:15px}
+.body{padding:22px 24px 6px}
+
+/* 番号見出し：①②③。インク色でひと回り大きく。 */
+.blk{margin-bottom:26px}
+.blk-h{display:flex;align-items:baseline;gap:9px;margin-bottom:13px}
+.blk-h .num{flex:none;color:#454b44;font-size:17px;font-weight:700}
+.blk-h b{font-size:16px;font-weight:700;color:#3a3f38}
+.blk-h span{font-size:11.5px;color:var(--ink3)}
+
+/* ① 必要時の対応：2枚並列カード。カード自体はクリックの的にせず、
+   バッジ・対象者・補足のそれぞれをクリックした場所だけが入力欄に
+   なる（口座情報・持ち物と同じ作法）。背景は白のまま、進捗は
+   バッジで右上に置く。カード全体を状態色で塗ると読みにくいので避ける。 */
+/* stretch で両カードの高さを揃える。片方のメモが伸びても、もう
+   片方が置いていかれない。                                       */
+.sit-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
+/* 制度そのものが主役なので、枠線を太く色づけて立たせる。地は白の
+   まま。枠の色は進捗と連動し、急ぐものほど強く出る。            */
+.sit{position:relative;border:3px solid #d9d5c8;border-radius:12px;padding:16px 17px;background:#fff}
+.sit.s-r-urg{border-color:#e8b878}
+.sit.s-r-gr{border-color:#9dc0a6}
+.sit.s-r-or{border-color:#e8b878}
+.sit.s-r-gy{border-color:#d9d5c8}
+/* バッジが1段でも2段でもヘッダーの高さを変えない。左右のカードで
+   点線から下の位置がずれないための固定。                        */
+.sit-row{display:flex;align-items:center;gap:12px;min-height:62px}
+/* 大きめのアイコンの右に、状況と制度名を縦に積む。 */
+.sit-head{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.sit-ic{flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:#eeefe9;color:#5c6b5c}
+.sit-ic svg{width:26px;height:26px}
+.sit-headtx{min-width:0}
+.sit-cap{font-size:11.5px;color:var(--ink3);line-height:1.5;white-space:nowrap}
+.sit-mean{margin:2px 0 0;font-size:16px;font-weight:700;color:#2f342d;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 進捗バッジはボタン化。ステータス自体をクリックすると select に変わる。
+   「今のうちだけ」の注釈はそのバッジの真下に添える。本文の流れを
+   分断しないので、左右のカードで点線から下の位置が揃う。          */
+.sit-badge-wrap{flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px;align-self:stretch}
+.sit-badge{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;border:0;font-family:inherit;cursor:pointer;white-space:nowrap}
+.sit-badge:hover{filter:brightness(.96)}
+.sit-badge.r-gr{background:#e3ede5;color:#2f6a48}
+.sit-badge.r-or{background:var(--or-bg);color:#a35a0d}
+.sit-badge.r-gy{background:#f0eee7;color:var(--gy)}
+/* 期限つき（今のうちの対応が必要）。幅が広がって左右のカードが
+   ずれるので、期限と進捗は横に並べず2段に積む。                 */
+.sit-badge.r-urg{background:var(--or-bg);color:#a35a0d}
+.sit-badge.two{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 12px;line-height:1.35}
+.sit-badge-lead{white-space:nowrap}
+.sit-badge-tail{font-size:10.5px;font-weight:700;color:#3f77a8;white-space:nowrap}
+select.sit-badge-ef{font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:20px;border:1px solid #b6c6b8;background:#fff;cursor:pointer}
+/* バッジ下は対応日の置き場。空のときも同じ高さを取るので左右が揃う。 */
+.sit-sub{height:16px;font-size:11px;line-height:16px;text-align:right;color:#a09b8c;white-space:nowrap}
+.sit-sub.empty{visibility:hidden}
+/* 制度の説明が本体、その下の補足は一段控えめに。 */
+.sit-about{margin-top:13px;font-size:12.5px;color:#454b44;line-height:1.75}
+.sit-when{margin-top:6px;font-size:11.5px;color:#8e8b82;line-height:1.7}
+/* 対象者とメモは点線の下に、ラベルと値の明細として並べる。 */
+/* ラベルと値は同じ行送りに揃える。文字サイズが違っても1行目の
+   高さが一致するので、値が複数行に伸びてもラベルは頭に残る。     */
+.sit-dl{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;align-items:start;margin:12px 0 0;padding-top:12px;border-top:1px dashed #e6e1d3}
+.sit-dl dt{font-size:11.5px;color:var(--ink3);white-space:nowrap;line-height:21px}
+.sit-dl dd{margin:0;min-width:0}
+.sit-val{display:inline-block;font-size:13px;line-height:21px;color:#3a3f38;cursor:pointer;border-radius:4px;padding:0 6px;margin:0 -6px;transition:background .12s}
+.sit-val:hover{background:#f2f0e8}
+.sit-val.ph{color:#b6b1a5}
+.sit-who-ef,.sit-note-ef{width:100%;font-size:13px;padding:2px 6px;line-height:21px;border:1px solid #b6c6b8;border-radius:5px}
+
+/* ② 手続きに必要なもの：制度ごとの列。アイコンは地色なし。
+   1行目に名前と状態、2行目に保管場所を置く2段組み。            */
+.kit-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.kit-col{border:1px solid #e4dfd0;border-radius:12px;overflow:hidden;background:#fff}
+.kit-col-h{display:flex;align-items:center;gap:9px;padding:12px 17px;border-bottom:1px solid #e8e3d3;background:#f4f6f1}
+.kit-col-h .ic{flex:none;color:var(--gr2)}
+.kit-col-h .ic svg{width:18px;height:18px}
+.kit-col-h .nm{font-size:14.5px;font-weight:700;color:#3a3f38}
+.kit ul{list-style:none;margin:0;padding:4px 8px}
+/* 項目の切れ目は「必要時の対応」と同じ点線でそろえる。 */
+.kit li{display:block;padding:11px 9px;border-top:1px dashed #e6e1d3}
+.kit li:first-child{border-top:0}
+.kit-l1{display:flex;align-items:center;gap:12px}
+.kit .ic2{flex:none;color:#6b6963}
+.kit .ic2 svg{width:19px;height:19px}
+.ok .ic2{color:var(--gr2)}.no .ic2{color:var(--or)}
+.kit .nm2{flex:1;min-width:0;font-size:13px;font-weight:600;color:#3a3f38}
+/* 状態と保管場所のそれぞれが的。行全体はクリックさせない。 */
+.kit .st{flex:none;font-size:12px;font-weight:700;white-space:nowrap;border:0;background:none;font-family:inherit;cursor:pointer;padding:3px 7px;margin:-3px -7px;border-radius:5px;transition:background .12s}
+.kit .st:hover{background:#f2f0e8}
+.ok .st{color:var(--gr2)}.no .st{color:var(--or)}.na .st{color:#a9a498;font-weight:500}
+select.kit-st-ef{flex:none;font-size:12px;padding:3px 6px;border:1px solid #b6c6b8;border-radius:5px;background:#fff;cursor:pointer}
+.kit-l2{margin:5px 0 0 31px}
+.kit .wh{display:inline-block;font-size:12px;color:var(--ink3);cursor:pointer;border-radius:4px;padding:2px 6px;margin:-2px -6px;transition:background .12s}
+.kit .wh:hover{background:#f2f0e8}
+.kit .wh.ph{color:#c3bfb4}
+.kit-wh-ef{width:100%;font-size:12px;padding:4px 7px;border:1px solid #b6c6b8;border-radius:5px}
+.kit-empty{padding:16px 17px;font-size:12.5px;color:#a9a498}
+
+/* ③ 口座情報：見出し行がグレー、値行が白の素朴な表。行はクリックで編集。 */
+.acctinfo{border:1px solid #e4dfd0;border-radius:12px;overflow:hidden}
+.acctinfo table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
+.acctinfo th:nth-child(1),.acctinfo td:nth-child(1){width:16%}
+.acctinfo th:nth-child(2),.acctinfo td:nth-child(2){width:16%}
+.acctinfo th:nth-child(3),.acctinfo td:nth-child(3){width:16%}
+.acctinfo th:nth-child(4),.acctinfo td:nth-child(4){width:16%}
+.acctinfo th:nth-child(5),.acctinfo td:nth-child(5){width:36%}
+.acctinfo th{padding:10px 17px;background:#f2f0e8;text-align:left;font-size:11.5px;font-weight:700;color:var(--gy)}
+.acctinfo td{padding:12px 17px;border-top:1px solid #eee9dc;font-size:13.5px;color:#3a3f38;background:#fff}
+.acctinfo tr:first-child td{border-top:0}
+.acctinfo tr:not(.edit){cursor:pointer;transition:background .12s}
+.acctinfo tr:not(.edit):hover td{background:#f9f8f2}
+.acctinfo td .u{font-size:11px;background:#e3edee;color:var(--gr);border-radius:3px;padding:2px 9px;margin-right:5px;white-space:nowrap;display:inline-block}
+.acctinfo td .u.q{background:#efece4;color:var(--ink3)}
+.acctinfo tr.edit td{vertical-align:top;padding:10px 12px}
+.acctinfo td .ef{width:100%}
+.acctinfo td select.ef{flex:none}
+.acctinfo .ed{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.acctinfo .roles{display:flex;gap:5px;flex-wrap:wrap;padding:0}
+.acctinfo .eact{width:100%;margin:6px 0 0;justify-content:flex-end}
+
+.ft{margin:2px 24px 20px;padding:12px 16px;background:#f7f4ea;border-radius:9px;font-size:12px;color:#6b6963;display:flex;gap:9px;align-items:flex-start}
+.ft svg{flex:0 0 14px;margin-top:2px}
+
+/* 記帳行（口座の追加・編集フォーム）。①の上、カード本体の外に出す。 */
+.ent{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid #e4dfd0;border-radius:9px;margin-bottom:8px;cursor:pointer;transition:background .12s}
+.ent:hover{background:#f9f8f2}
+.ent .no{width:16px;flex:0 0 16px;color:#b6b1a5;font-size:11px;text-align:center}
+.ent .k{font-size:13.5px;font-weight:600;flex:0 0 88px}
+.ent .d{font-size:12.5px;color:#7d7a76;flex:0 0 auto}
+.ent .uwrap{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.ent .u{font-size:11px;background:#e3edee;color:var(--gr);border-radius:3px;padding:2px 9px;white-space:nowrap}
+.ent .u.q{background:#efece4;color:var(--ink3)}
+.ent .ar{color:var(--ink3);font-size:14px}
+.ent.editing{flex-wrap:wrap;row-gap:9px;align-items:center;background:#fdfbf3;cursor:default}
+.f{padding:4px 7px;border:0;border-bottom:1px solid #b6c6b8;background:#fffefa;color:#28382d;font-family:inherit;font-size:13px}.f:focus{outline:none;border-bottom-color:var(--gr);background:#fff}.f::placeholder{color:#b4b0a5}
+.f-kind{flex:0 0 104px;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#71836f 50%),linear-gradient(135deg,#71836f 50%,transparent 50%);background-position:calc(100% - 12px) 52%,calc(100% - 7px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:22px;cursor:pointer}
+.f-branch{flex:0 0 116px}.f-no{flex:0 0 112px;font-variant-numeric:tabular-nums}
+.roles{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1 1 100%;padding-left:28px}.roles .rl{font-size:10.5px;color:var(--ink3);letter-spacing:.08em;margin-right:2px}
+.rtag{font-size:11px;padding:2px 9px;border:1px dashed #cdd6cd;border-radius:3px;background:none;color:#7d8a7e;font-family:inherit;cursor:pointer}.rtag:hover{border-color:#9db39f;color:var(--gr)}.rtag.on{border-style:solid;border-color:#cfe0d1;background:#e3edee;color:var(--gr);font-weight:500}
+.rowact{display:flex;gap:8px;margin-left:auto}.rowact button{padding:6px 14px;border-radius:6px;font-family:inherit;font-size:12px;cursor:pointer}.btn-ok{border:1px solid var(--gr);background:var(--gr);color:#fff;font-weight:600}.btn-ok:hover{background:var(--gr-d)}.btn-no{border:1px solid #ded8ca;background:#fff;color:#8a8578}.btn-no:hover{background:#f5f3ec}
+.addrow{display:flex;align-items:center;gap:9px;width:100%;font-family:inherit;font-size:12.5px;color:var(--gr2);text-align:left;cursor:pointer;margin:0 0 24px;padding:12px 16px;border:1px dashed #dad5c8;border-radius:9px;background:#fffefa;transition:background .15s,border-color .15s}
+.addrow .plus{display:grid;place-items:center;width:19px;height:19px;flex:none;border:1px dashed #b9c9ba;border-radius:3px;color:#6b8e70;font-size:13px;line-height:1}
+.addrow:hover{background:#f6faf6;border-color:#a9c0ac}
+.pb.draft .cv{background:linear-gradient(180deg,#6e8a77,#5f7d6b 55%,#4a6857)}
+.pb.draft{overflow:visible}.pb.draft .cv{overflow:visible;position:relative}
+.namewrap{position:static;flex:1;min-width:0;max-width:280px}
+.f-bank{width:100%;padding:5px 9px;border:0;border-bottom:1px solid #ffffff8c;background:#ffffff1f;color:#fff;font-family:inherit;font-size:16px;font-weight:700;border-radius:3px 3px 0 0}.f-bank:focus{outline:none;border-bottom-color:#fff;background:#ffffff2e}.f-bank::placeholder{color:#ffffff8f;font-weight:400}
+.sug{position:absolute;z-index:5;top:60px;left:26px;width:280px;padding:4px;border:1px solid #e3ded0;border-radius:8px;background:#fff;box-shadow:0 8px 20px #4a412c2e;list-style:none;margin:0}.sug:empty{display:none}
+.sug li{padding:8px 11px;border-radius:5px;color:var(--ink);font-size:13px;cursor:pointer}.sug li:hover,.sug li.hot{background:#eff5f0;color:var(--gr-d)}.sug li small{display:block;margin-top:2px;color:var(--ink3);font-size:10.5px}
+.pending{padding:13px 24px 4px;color:var(--ink3);font-size:11.5px;display:flex;gap:8px;align-items:flex-start}.pending svg{flex:0 0 13px;margin-top:3px}
+
+/* 編集中の入力欄。値のあった場所がそのまま入力欄になる。 */
+.ed{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%}
+.ef{padding:5px 8px;border:1px solid #d8d3c3;border-radius:5px;background:#fff;color:#28382d;font-family:inherit;font-size:12.5px}
+.ef:focus{outline:none;border-color:var(--gr);box-shadow:0 0 0 2px #1E5A3D22}
+select.ef{appearance:none;padding-right:24px;cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,#71836f 50%),linear-gradient(135deg,#71836f 50%,transparent 50%);background-position:calc(100% - 13px) 52%,calc(100% - 8px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.ef-wide{flex:1;min-width:150px}
+.eact{display:flex;gap:7px;margin-left:auto}
+.eact button{padding:5px 12px;border-radius:5px;font-family:inherit;font-size:11.5px;cursor:pointer}
+.e-ok{border:1px solid var(--gr);background:var(--gr);color:#fff;font-weight:600}.e-ok:hover{background:var(--gr-d)}
+.e-no{border:1px solid #ded8ca;background:#fff;color:#8a8578}.e-no:hover{background:#f5f3ec}
+.e-del{border:1px solid #e8cabb;background:#fff;color:#b45c3a;margin-right:auto}.e-del:hover{background:#fdf3ee;border-color:#dba385}
+

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SeiZen | 整理対象を選ぶ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared/tokens.css">
+  <link rel="stylesheet" href="shared/shell.css">
+  <link rel="stylesheet" href="shared/site.css">
+</head>
+<!-- サイトの入口。data-area を持たないので、ナビはどれも現在地に
+     ならない。左から領域へ入るのが基本（正本§5）で、この一覧は
+     まだ何も選んでいないときの置き場所。 -->
+<body data-root="">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+    <header class="top"><div class="title">
+      <span class="title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h7v5H4zM13 6h7v5h-7zM4 13h7v5H4zM13 13h7v5h-7z"/></svg></span>
+      <div><h2>整理対象</h2><p>左のガイドから入っても同じところへ着きます。いまはどの領域からでも始められます。</p></div>
+    </div></header>
+
+    <section class="why" id="why">
+      <div class="why-tx">
+        <button class="why-toggle" type="button" id="whyToggle" aria-expanded="true" aria-controls="whyBody">
+          <span class="why-ic"><svg viewBox="8 14 36 26" role="img" aria-labelledby="wat wad"><title id="wat">開いたノート</title><desc id="wad">生成りのページと緑の表紙を持つ開いたノート</desc><path d="M10.8 18.6c4.8-2.7 10-2.4 15.2.7 5.2-3.1 10.4-3.4 15.2-.7v19.2c-4.7-2.1-9.8-1.7-15.2 1.2-5.4-2.9-10.5-3.3-15.2-1.2V18.6Z" fill="#4f7558"/><path d="M12.4 16.3c4.3-2.1 8.7-1.6 13.6 1.5v18.8c-4.8-2.6-9.3-3-13.6-1.1V16.3Z" fill="#fff9eb" stroke="#607b62" stroke-width="1.15" stroke-linejoin="round"/><path d="M39.6 16.3c-4.3-2.1-8.7-1.6-13.6 1.5v18.8c4.8-2.6 9.3-3 13.6-1.1V16.3Z" fill="#fff9eb" stroke="#607b62" stroke-width="1.15" stroke-linejoin="round"/><path d="M26 18v18.5M15.6 21.4c2.8-.6 5.2-.2 7.6 1M15.6 25.2c2.8-.5 5.2-.1 7.6 1M36.4 21.4c-2.8-.6-5.2-.2-7.6 1M36.4 25.2c-2.8-.5-5.2-.1-7.6 1" fill="none" stroke="#9ba795" stroke-width=".85" stroke-linecap="round"/></svg></span>
+          <h3>なぜ整理するのか</h3>
+          <svg class="why-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="why-body" id="whyBody">
+          <p>項目を埋めるためではなく、<b>必要になったとき家族が判断できる状態</b>を、領域ごとに一つずつ成立させます。<br>
+          何から手をつけてもかまいません。前の整理で分かったことは、次の整理の材料になります。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="sec-h">
+      <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
+      <h3>どこから整理しますか</h3>
+    </div>
+    <div class="sec">
+      <div class="arealist" id="arealist"></div>
+    </div>
+  </div></main>
+</div>
+<div class="toast" id="toast"></div>
+<script src="shared/areas.js"></script>
+<script src="shared/shell.js"></script>
+<script>
+/* 一覧はナビと同じ shared/areas.js から作る。行き先が2か所で
+   食い違わないよう、リンクの組み立ても shell.js のものを使う。 */
+(function () {
+  const esc = SeiZen.esc;
+  document.getElementById('arealist').innerHTML = SeiZenAreas.all().map(a => {
+    const ready = a.status === 'ready';
+    const href  = ready ? a.path : 'preparing.html?area=' + encodeURIComponent(a.id);
+    return '<a class="areacard' + (ready ? '' : ' soon') + '" href="' + href + '">' +
+      '<span class="ic"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">' +
+        a.icon + '</svg></span>' +
+      '<span class="tx"><b>' + esc(a.label) + '</b><small>' + esc(a.lead) + '</small></span>' +
+      '<span class="go">' + (ready ? '整理する ›' : '準備中') + '</span></a>';
+  }).join('');
+})();
+</script>
+</body>
+</html>

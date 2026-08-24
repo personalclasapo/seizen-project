@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SeiZen | 準備中の領域</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared/tokens.css">
+  <link rel="stylesheet" href="shared/shell.css">
+  <link rel="stylesheet" href="shared/site.css">
+</head>
+<!-- どの領域を開こうとしたかは ?area= で渡ってくる。ナビの現在地も
+     それに合わせるので、data-area は shell.js より前に埋める。 -->
+<body data-root="">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+    <header class="top"><div class="title">
+      <span class="title-icon" id="areaIcon"></span>
+      <div><h2 id="areaName">準備中</h2><p>この領域は、まだ整理画面を作っていません。</p></div>
+    </div></header>
+
+    <div class="notice">
+      <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 1.8"/></svg></span>
+      <h2 id="noticeTitle">この領域は準備中です</h2>
+      <p>整理対象としては扱いますが、成果物UIをまだ設計していません。<br>
+      正本§13のとおり、領域ごとに別々に設計するため、<br>
+      銀行口座や契約・デジタルの画面をそのまま流用しません。</p>
+      <a class="back" href="index.html">整理対象の一覧へ戻る</a>
+    </div>
+  </div></main>
+</div>
+<div class="toast" id="toast"></div>
+<script src="shared/areas.js"></script>
+<script>
+/* shell.js がナビを描く前に、開こうとした領域を body へ移しておく。 */
+(function () {
+  var id = new URLSearchParams(location.search).get('area') || '';
+  var area = window.SeiZenAreas.find(id);
+  if (!area) return;
+  document.body.dataset.area = area.id;
+  document.getElementById('areaName').textContent = area.label;
+  document.getElementById('noticeTitle').textContent = area.label + 'は準備中です';
+  document.getElementById('areaIcon').innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' + area.icon + '</svg>';
+  document.title = 'SeiZen | ' + area.label + '（準備中）';
+})();
+</script>
+<script src="shared/shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,716 @@
+/* SeiZen プロトタイプ｜契約・デジタルの描画（2軸版）
+   ------------------------------------------------------------------
+   索引は3ブロック（今のうちに準備が必要／必要になってから対応できる／
+   支払いのつながり）。行を押すと、索引の上に詳細が重なって開く。索引は
+   消えるのではなく背後に残るので、閉じれば元のスクロール位置に戻る。
+
+   詳細は左に綴じ代（リング金具・契約ファイルNo.）、右に6セクション。
+   先頭の「いまの状況」が対応方針・アカウント情報・手続き方法の
+   ○△✕を3枚のタイルで示し、押すとその節へ飛ぶ。以降の節は読む場所
+   なので、状態はここへ集め、各節では重ねて言わない。
+   カード上部のバッジは家族側（情報と手順）だけを映す。
+
+   オーバーレイは開くたびに毎回選んで押している最中なので、セクションは
+   既定ですべて開く。開閉はこの画面だけの見え方。                       */
+(function (S) {
+  'use strict';
+
+  /* エスケープとトーストは領域固有ではないので shared/shell.js が持つ。 */
+  const esc  = SeiZen.esc;
+  const show = SeiZen.toast;
+
+  const idxgrid = document.getElementById('idxgrid');
+  const scrim   = document.getElementById('scrim');
+  const sheet   = document.getElementById('sheet');
+
+  let openId = null;
+  let closedSections = new Set();
+  /* 書いてある場所がそのまま入力欄になる。銀行口座プロトタイプと
+     同じ手つきで、値の置き場所を動かさずに書き換える。            */
+  let editing = null;      // { path, kind } … 欄ひとつだけを開く
+  let editSection = null;  // 節ごとにまとめて開く
+
+  /* ── 小物 ─────────────────────────────────────────── */
+
+  const IC = {
+    check: '<svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>',
+    alert: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
+    warn:  '<svg viewBox="0 0 24 24"><path d="M12 4 3 20h18z"/><path d="M12 10v4M12 17h.01"/></svg>',
+    cal:   '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+    user:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>',
+    mail:  '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+    phone: '<svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>',
+    folder:'<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>',
+    flag:  '<svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+    person:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>',
+    doc:   '<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M9 12h6M9 16h4"/></svg>',
+    wrench:'<svg viewBox="0 0 24 24"><path d="M15 6a4 4 0 0 1 5 5l-9 9-4-4 9-9a4 4 0 0 1-1-1Z"/></svg>',
+    pen:   '<svg viewBox="0 0 24 24"><path d="m4 20 4-1 11-11-3-3L5 16z"/></svg>',
+    link:  '<svg viewBox="0 0 24 24"><path d="M10 13a4 4 0 0 0 6 .5l2-2a4 4 0 0 0-6-6l-1 1"/><path d="M14 11a4 4 0 0 0-6-.5l-2 2a4 4 0 0 0 6 6l1-1"/></svg>',
+    pin:   '<svg viewBox="0 0 24 24"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/></svg>',
+    open:  '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+    card:  '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg>',
+    bag:   '<svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="14" rx="2"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>',
+    book:  '<svg viewBox="0 0 24 24"><path d="M6 4h11a1 1 0 0 1 1 1v15l-6-3-6 3V5a1 1 0 0 1 1-1Z"/></svg>',
+    box:   '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg>',
+    loop:  '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-13.7 5.6M4 12a8 8 0 0 1 13.7-5.6"/><path d="M17 3v4h-4M7 21v-4h4"/></svg>',
+    power: '<svg viewBox="0 0 24 24"><path d="M12 3.5v8"/><path d="M7.3 6.6a7.2 7.2 0 1 0 9.4 0"/></svg>',
+    swap:  '<svg viewBox="0 0 24 24"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg>',
+    scale: '<svg viewBox="0 0 24 24"><path d="M12 4v16M7 20h10M12 7 5 9l-2.2 5a3.6 3.6 0 0 0 7 0L7.6 8.4M12 7l7 2 2.2 5a3.6 3.6 0 0 1-7 0L16.4 8.4"/></svg>',
+    quest: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.8c0 1.7-2.4 2-2.4 3.6M12 17h.01"/></svg>',
+    clip:  '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/></svg>',
+    tick:  '<svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>',
+    info:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg>',
+    gate:  '<svg viewBox="0 0 24 24"><path d="M4 21V4M4 4h12l-2.5 4L16 12H4"/></svg>'
+  };
+
+  /* どの節が、どの path を受け持つか。節ごとの編集で使う。 */
+  const SEC_OF = { policy: 'policy.', account: 'account.', info: 'contract.', memo: 'memo', proc: 'procedure.', cardinfo: 'info.' };
+
+  /* path は 'policy.reason' / 'account.2.value' のような場所の指定。 */
+  function getByPath(it, path) {
+    return path.split('.').reduce((o, k) => o[k], it);
+  }
+  function setByPath(it, path, val) {
+    const parts = path.split('.');
+    const last = parts.pop();
+    parts.reduce((o, k) => o[k], it)[last] = val;
+  }
+
+  /* 値を、その場で書き換えられる形で出す。開いていれば入力欄になる。 */
+  function ev(path, value, kind, placeholder) {
+    const secOn = editSection && path.indexOf(SEC_OF[editSection] || '\u0000') === 0;
+    if ((editing && editing.path === path) || secOn) {
+      /* ヒントは HTML の placeholder 属性として添えるだけなので、
+         書きかけの値には混ざらない。確定するのは打ち込んだ文字だけ。   */
+      const ph = placeholder ? ' placeholder="' + esc(placeholder) + '"' : '';
+      if (kind === 'area')
+        return '<textarea class="ef ef-area" data-ef="1" data-path="' + path + '"' + ph + '>' + esc(value) + '</textarea>';
+      return '<input class="ef" data-ef="1" data-path="' + path + '"' + ph + ' value="' + esc(value) + '">';
+    }
+    const empty = value === '' || value == null;
+    return '<span class="ev' + (empty ? ' ev-empty' : '') + '" data-edit="' + path +
+      '" data-kind="' + (kind || 'line') + '">' +
+      (empty ? esc(placeholder || '未入力') : esc(value)) + '</span>';
+  }
+
+  /* 選択肢から選ぶ値。開いた瞬間からセレクトを出す。 */
+  function evSelect(path, value, options) {
+    const secOn = editSection && path.indexOf(SEC_OF[editSection] || '\u0000') === 0;
+    if ((editing && editing.path === path) || secOn) {
+      return '<select class="ef ef-sel" data-ef="1" data-path="' + path + '">' +
+        options.map(o => '<option value="' + esc(o.value) + '"' +
+          (o.value === value ? ' selected' : '') + '>' + esc(o.label) + '</option>').join('') +
+        '</select>';
+    }
+    const cur = options.find(o => o.value === value);
+    return '<span class="ev" data-edit="' + path + '" data-kind="select">' +
+      esc(cur ? cur.label : value) + '</span>';
+  }
+
+  function markHTML(name, cls) {
+    const m = S.markOf(name);
+    const border = m.border ? ';border:1px solid ' + m.border : '';
+    return '<span class="mark ' + (cls || '') + '" style="background:' + m.bg + ';color:' + m.fg + border + '">' +
+      esc(m.ch) + '</span>';
+  }
+
+  /* ── 索引 ─────────────────────────────────────────── */
+
+  function idxRowHTML(it) {
+    const b = S.itemBadge(it);
+    const txt = b.kind === 'open' ? b.text + '　' + b.n + '件' : b.text;
+    return '<button class="irow" type="button" data-open="' + it.id + '">' +
+      markHTML(it.name) +
+      '<span class="nm"><b>' + esc(it.name) + '</b><small>' + esc(it.category) + '</small></span>' +
+      '<span class="st-badge sb-' + b.tone + '">' + esc(txt) + '</span>' +
+      '<span class="arw">›</span></button>';
+  }
+
+  /* 事前・事後は同じ骨格で描く。変わるのは言い回しと色だけ。 */
+  function groupBlock(g) {
+    const ui = S.GROUP_UI[g], list = S.byGroup(g), t = S.groupSummary(g);
+    return '<div class="iblock ib-' + g + '">' +
+      '<div class="ib-h"><span class="ib-ic ic-' + g + '">' + (g === 'pre' ? IC.bag : IC.book) + '</span>' +
+        '<h4>' + esc(ui.title) + '</h4><span class="ib-n n-' + g + '">' + list.length + '件</span></div>' +
+      '<p class="ib-lead">' + ui.lead + '</p>' +
+      '<div class="tally">' +
+        '<div><span class="tl">' + esc(ui.badges.ready) + '</span><span class="tv tv-gr">' + t.ready + '件</span></div>' +
+        '<div><span class="tl">' + esc(ui.badges.open) + '</span><span class="tv tv-or">' + t.open + '件</span></div>' +
+      '</div>' +
+      list.map(idxRowHTML).join('') +
+    '</div>';
+  }
+
+  /* チップは横幅を3等分に固定。4件目以降は行を増やして続ける。 */
+  function payChips(linked) {
+    return linked.map(it =>
+      '<span class="chip2">' + markHTML(it.name) + '<span class="cl">' + esc(it.name) + '</span></span>').join('');
+  }
+
+  function payBlock() {
+    const cardsHTML = S.cards.map(c => {
+      const f = S.cardFacts(c.id);
+      const chips = payChips(f.linked);
+      return '<button class="paycard" type="button" data-open="' + c.id + '">' +
+        '<div class="pc-h"><b>' + esc(c.name) + '</b>' +
+          '<span class="lnk">' + f.linked.length + '契約</span></div>' +
+        '<div class="pc-tail">•••• ' + esc(c.info.tail) + '</div>' +
+        '<div class="pc-warn">' + IC.warn + 'このカードを止めると、' + f.linked.length + '件の支払いが止まります</div>' +
+        '<div class="chips">' + chips + '</div>' +
+      '</button>';
+    }).join('');
+    return '<div class="iblock ib-pay">' +
+      '<div class="ib-h"><span class="ib-ic ic-pay">' + IC.card + '</span>' +
+        '<h4>支払いのつながり</h4><span class="ib-n n-pay">' + S.cards.length + '件の経路</span></div>' +
+      '<p class="ib-lead">支払い方法ごとに、紐づく契約をまとめています。支払い手段を変更・停止する前にご確認ください。</p>' +
+      '<div class="paycards">' + cardsHTML + '</div>' +
+    '</div>';
+  }
+
+  /* ── 詳細：セクション ─────────────────────────────── */
+
+  /* editable を渡した節は、見出しの右に編集ボタンを持つ。開閉の的の
+     中に置くので、その部分だけクリックを止めて開閉に伝えない。     */
+  function sectionHTML(key, tone, icon, title, sub, body, alwaysOpen, editable, state) {
+    const closed = !alwaysOpen && closedSections.has(key);
+    const on = editSection === key;
+    const stateBtn = state
+      ? '<span class="ast ' + (state.ok ? 'cv-ok' : 'cv-ng') + '" data-proc="1">' +
+        (state.ok ? IC.check : IC.alert) + (state.ok ? '確認済み' : '確認が必要') + '</span>'
+      : '';
+    const editBtn = editable
+      ? '<span class="sc-edit' + (on ? ' on' : '') + '" data-editsec="' + key + '">' +
+        (on ? IC.check + '入力を終える' : IC.pen + '編集する') + '</span>'
+      : '';
+    return '<div class="sect' + (on ? ' editing' : '') + '">' +
+      '<button class="sc-h ' + tone + (closed ? ' closed' : '') + '" type="button" data-sect="' + key + '">' +
+        '<span class="sc-bar"></span>' + icon.replace('<svg', '<svg class="sic"') +
+        '<h5>' + esc(title) + '</h5>' + (sub ? '<span class="sub">' + esc(sub) + '</span>' : '') +
+        '<span class="sc-tail">' + stateBtn + editBtn +
+        (alwaysOpen ? '' : '<span class="chev">▲</span>') + '</span></button>' +
+      (closed ? '' : '<div class="sc-body">' + body + '</div>') +
+    '</div>';
+  }
+
+  /* いまの状況｜左にリングで到達度、右に3項目を並べる。押すとその節へ
+     飛ぶ。各項目は「アイコン＋見出し」「大きな○△✕」「補足」の3段。
+     アイコンの色は対応方針＝紫／アカウント状況＝緑／手続き方法＝赤で
+     固定し、各節の見出し色とそろえる。○△✕の色はその項目の色ではなく、
+     済んでいるか（緑）／途中か（橙）／手つかずか（赤）という状態の色。 */
+  const STATUS_CAT = {
+    policy:  { icon: 'flag',   tone: 'pu' },
+    account: { icon: 'person', tone: 'gr' },
+    proc:    { icon: 'clip',   tone: 'rd' }
+  };
+  const STATUS_MARK = { ok: '◎', partial: '△', none: '✕' };
+
+  function statusHTML(it, who) {
+    const rows = S.statusRows(it, who);
+    const total = rows.length;
+    const okCount = rows.filter(r => r.mark === 'ok').length;
+    const done = okCount === total;
+    const rad = 42, c = 2 * Math.PI * rad;
+    const offset = c * (1 - okCount / total);
+
+    const items = rows.map(r => {
+      const cat = STATUS_CAT[r.key];
+      return '<button class="stat-item stat-' + cat.tone + '" type="button" data-goto="' + r.key + '">' +
+        '<span class="stat-top"><span class="stat-ic">' + IC[cat.icon] + '</span>' +
+        '<span class="stat-label">' + esc(r.title) + '</span></span>' +
+        '<span class="stat-mark mk-' + r.mark + '">' + STATUS_MARK[r.mark] + '</span>' +
+        '<span class="stat-note">' + esc(r.note) + '</span></button>';
+    }).join('');
+
+    return '<div class="status-panel">' +
+      '<div class="status-ring">' +
+        '<svg class="ring-svg" viewBox="0 0 100 100">' +
+          '<circle class="ring-bg" cx="50" cy="50" r="' + rad + '"/>' +
+          '<circle class="ring-fg' + (done ? ' done' : '') + '" cx="50" cy="50" r="' + rad +
+            '" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '"/>' +
+        '</svg>' +
+        '<div class="ring-tx' + (done ? ' done' : '') + '"><b>' + (done ? '準備完了' : '確認中') + '</b>' +
+        '<span>' + okCount + '/' + total + '</span></div>' +
+      '</div>' +
+      '<div class="status-items">' + items + '</div>' +
+    '</div>';
+  }
+
+  /* 意思と、その理由。判断状態のバッジは廃止し、意思の値そのものが
+     「検討中」「未確認」まで含めて答えになるようにした。囲みは持たず、
+     セクションの白地の上に、細い縦罫だけで左右を分ける。          */
+  function policyHTML(it, label) {
+    const p = it.policy, intent = S.intentOf(it);
+    const opts = Object.keys(S.INTENTS).map(k => ({ value: k, label: S.INTENTS[k].label }));
+    const intentOpen = editSection === 'policy' || (editing && editing.path === 'policy.intent');
+    const intentBody = intentOpen
+      ? evSelect('policy.intent', p.intent, opts)
+      : '<span class="ev ev-big" data-edit="policy.intent" data-kind="select">' +
+        esc(S.intentLabel(it)) + '</span>';
+    return '<div class="policy">' +
+      '<div class="pol-l">' +
+        '<span class="pol-lb">' + esc(label || '本人の意思') + '</span>' +
+        '<div class="intent">' + IC[intent.icon].replace('<svg', '<svg class="i-' + intent.tone + '"') +
+          intentBody + '</div>' +
+      '</div>' +
+      '<div class="pol-r">' +
+        '<span class="pol-lb">理由・背景</span>' +
+        '<div class="pol-reason">' + ev('policy.reason', p.reason, 'area', '例：利用予定がないため、解約します。') + '</div>' +
+        '<div class="pol-next">' + IC.cal +
+          '<span>次回判断のタイミング：' +
+          ev('policy.nextTiming', p.nextTiming, 'line', '例：次回の帰省時（2024年8月）') + '</span></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* 未入力欄のヒント。ラベルごとに何を書けばいいかが伝わる例を出す。
+     暗証番号など秘匿情報は、値そのものではなく置き場所の例にする
+     （銀行口座の WHERE_HINT と同じ考え方）。                        */
+  const ACCOUNT_HINT = {
+    'ログインID / パスワード': '例：書類ケース「デジタル情報」に保管',
+    '登録メールアドレス':      '例：taro***@gmail.com',
+    '認証端末（2段階認証）':    '例：本人のスマートフォン',
+    'お客様番号':              '例：1234-5678-90',
+    'お客様ID':                '例：SN-2201987',
+    '契約番号':                '例：D-88213456',
+    '手続き窓口':              '例：カスタマーセンター 0120-000-000',
+    '検針票・請求書のありか':   '例：自宅・リビングの書類ケース',
+    '契約書類のありか':        '例：自宅・リビングの書類ケース',
+    '本人の端末のありか':      '例：自宅・本人の部屋',
+    'カード本体':              '例：自宅・本人の財布',
+    '暗証番号':                '例：自宅の金庫にメモを保管',
+    'ネット明細のログイン':    '例：書類ケース「デジタル情報」に保管'
+  };
+
+  function accountHTML(it) {
+    const rows = it.account.map((a, i) =>
+      '<div class="arow"><span class="aic">' + IC[a.icon] + '</span>' +
+        '<span class="alb">' + esc(a.label) + '</span>' +
+        '<span class="avl">' + ev('account.' + i + '.value', a.value, 'line', ACCOUNT_HINT[a.label] || '例：未確認') + '</span>' +
+        '<button class="ast ' + (a.ok ? 'cv-ok' : 'cv-ng') + '" type="button" data-ok="' + i + '">' +
+          (a.ok ? IC.check : IC.alert) + (a.ok ? '確認済み' : '確認が必要') + '</button></div>').join('');
+    return '<div class="acc-list">' + rows + '</div>';
+  }
+
+  function contractHTML(it) {
+    const c = it.contract;
+    const payOpts = S.cards.map(k => ({ value: k.id, label: k.name }))
+      .concat([{ value: 'acct', label: 'ゆうちょ銀行 自動振替' }, { value: 'none', label: '費用なし' }]);
+    const payVal = c.paymentCard || (c.paymentLabel === '費用なし' ? 'none' : 'acct');
+    const card = c.paymentCard ? S.findCard(c.paymentCard) : null;
+    const amtLabel = c.cycle === 'yearly' ? '年額料金' : '月額料金';
+    const amt = (!c.paymentCard && c.amount === 0) ? '費用なし' : S.yen(c.amount);
+    return '<div class="cinfo">' +
+      '<div><small>契約者</small><b>' + ev('contract.holder', c.holder, 'line', '例：父 太郎') + '</b></div>' +
+      '<div><small>支払い方法</small><b>' + evSelect('contract.paymentCard', payVal, payOpts) +
+        (card ? '<em>•••• ' + esc(card.info.tail) + '</em>' : '') + '</b></div>' +
+      '<div><small>' + amtLabel + '</small><b>' +
+        ((editing && editing.path === 'contract.amount') || editSection === 'info'
+          ? ev('contract.amount', String(c.amount), 'line')
+          : '<span class="ev" data-edit="contract.amount" data-kind="line">' + esc(amt) + '</span>') +
+        '</b></div>' +
+      '<div><small>契約開始時期</small><b>' + ev('contract.started', c.started, 'line', '例：2020年頃') + '</b></div>' +
+      '<div><small>次回請求日</small><b>' + ev('contract.nextBill', c.nextBill, 'line', '例：毎月〇日頃') + '</b></div>' +
+    '</div>';
+  }
+
+  /* 参考リンクは値の入力欄であると同時に、押せばそこへ向かう場所でも
+     ある。読む場所ではリンクとして見せ、鉛筆の的だけを編集に割り当てる
+     （テキストを直接押すと編集に化けるほかの ev() とは分ける）。       */
+  function linkField(path, value, placeholder) {
+    const secOn = editSection === 'proc';
+    if ((editing && editing.path === path) || secOn) {
+      const ph = placeholder ? ' placeholder="' + esc(placeholder) + '"' : '';
+      return '<input class="ef" data-ef="1" data-path="' + path + '"' + ph + ' value="' + esc(value) + '">';
+    }
+    if (!value)
+      return '<span class="ev ev-empty" data-edit="' + path + '" data-kind="line">' + esc(placeholder || '未入力') + '</span>';
+    return '<a class="ev-link" href="#" data-linkclick="1">' + esc(value) + ' ↗</a>' +
+      '<button class="ev-editbtn" type="button" data-edit="' + path + '" data-kind="line" aria-label="参考リンクを編集">' + IC.pen + '</button>';
+  }
+
+  function procedureHTML(it) {
+    const p = it.procedure;
+    /* 手順は1本のテキストにまとめず、1行＝1項目のまま個別に編集する。
+       節を編集中は、SEC_OF の prefix 一致で全行が同時に入力欄になる。
+       ＋は既存の番号の続きとして末尾に足す。✕は行ごとの削除で、
+       どちらも編集中だけ出す。                                      */
+    const secOn = editSection === 'proc';
+    const stepsBody = '<ul class="steps">' +
+      p.steps.map((s, i) => '<li><span class="sn">' + (i + 1) + '</span>' +
+        ev('procedure.steps.' + i, s, 'line', '例：ログインする') +
+        (secOn ? '<button class="step-del" type="button" data-delstep="' + i + '" aria-label="この手順を削除">✕</button>' : '') +
+        '</li>').join('') +
+      '</ul>' +
+      (secOn ? '<button class="step-add" type="button" data-addstep="1">＋ 手順を追加</button>' : '');
+    return '<div class="proc2">' +
+      '<div><span class="pr-lb">《 手続き先</span>' +
+        '<p class="pr-where">' + ev('procedure.where', p.where, 'area', '例：Netflix ＞ アカウント ＞ メンバーシップ') + '</p>' +
+        '<span class="pr-lb">手続きの流れ</span>' +
+        stepsBody + '</div>' +
+      '<div>' +
+        '<div class="proc-status-row"><button class="proc-status ' + (S.procChecked(it) ? 'cv-ok' : 'cv-ng') +
+          '" type="button" data-proc="1">' + (S.procChecked(it) ? IC.check + '確認済み' : IC.alert + '確認が必要') +
+        '</button></div>' +
+        '<div class="prbox"><div class="ph">' + IC.link + '参考リンク</div>' +
+          linkField('procedure.link', p.link, '例：〇〇 解約方法ヘルプ') + '</div>' +
+        '<div class="prbox pt"><div class="ph">' + IC.pin + 'ポイント</div>' +
+          ev('procedure.point', p.point, 'area', '例：解約はいつでも可能です。次回請求日の前日までに手続きします。') + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function memoHTML(it) {
+    return '<div class="memo">' +
+      ev('memo', it.memo, 'area', '例：家族が対応する際に伝えておきたいこと') + '</div>';
+  }
+
+  /* 事前・事後のどちらも同じ5セクション。中身の言葉だけが変わる。 */
+  function procSub(it) {
+    if (it.group === 'post') return '（必要になったときの手順）';
+    return it.policy.intent === 'continue' ? '（継続時の注意）' : '（解約の手順）';
+  }
+
+  function sheetHTML(it) {
+    const rule = it.group === 'post' ? ';background:#5da37b' : '';
+    const b = S.itemBadge(it);
+    const bTxt = b.kind === 'open' ? b.text + '　' + b.n + '件' : b.text;
+    return '<button class="close" type="button" data-close="1">✕</button>' +
+      '<div class="rings">' +
+        '<span class="ring r1"></span><span class="ring r2"></span>' +
+        '<div class="filecard"><small>契約ファイル</small><b>No.<i>' + esc(it.no) + '</i></b>' +
+          '<div class="rule" style="' + rule + '"></div></div>' +
+        '<div class="rmeta"><small>登録日</small><b>' + esc(it.registered) + '</b>' +
+          '<small>最終更新日</small><b>' + esc(it.updated) + '</b></div>' +
+        '<div class="rfoot">' + IC.box + '<span>家族のための<br>契約・アカウント記録</span></div>' +
+      '</div>' +
+      '<div class="page">' +
+        '<div class="pg-h"><span class="nm">' + esc(it.name) + '</span>' +
+          '<span class="cat">' + esc(it.category) + '</span>' +
+          '<span class="pol hb-' + b.tone + '">' + esc(bTxt) + '</span></div>' +
+        '<div class="pg-body">' +
+          statusHTML(it) +
+          sectionHTML('policy', 't-pu', IC.flag, '対応方針', '', policyHTML(it), false, true) +
+          sectionHTML('account', 't-gr', IC.person, S.GROUP_UI[it.group].accountTitle,
+            S.GROUP_UI[it.group].accountSub, accountHTML(it), false, true) +
+          sectionHTML('proc', 't-rd', IC.clip, '手続き方法', procSub(it), procedureHTML(it), false, true) +
+          sectionHTML('info', 't-cr', IC.doc, '契約情報', '', contractHTML(it), false, true) +
+          sectionHTML('memo', 't-cr', IC.pen, 'メモ', '', memoHTML(it), false, true) +
+        '</div>' +
+      '</div>';
+  }
+
+  /* ── 詳細：支払いカード ───────────────────────────
+     契約・アカウントの詳細と丸ごと同じ骨格（いまの状況／対応方針／
+     アカウント情報／手続き方法／メモ）を、そのまま同じ関数で描く。
+     policyHTML の「本人の意思」だけ、家族が決める話であることが
+     伝わるよう「家族の方針」に言い換える。カード情報は契約情報の
+     代わりで、連絡先は手続き方法の「手続き先」と二重に持たないので
+     省く。末尾に、このカードで支払っている契約の一覧を足す。         */
+
+  function cardInfoHTML(card) {
+    const c = card.info;
+    return '<div class="cinfo" style="grid-template-columns:repeat(4,1fr)">' +
+      '<div><small>カード会社</small><b>' + ev('info.issuer', c.issuer, 'line', '例：楽天カード株式会社') + '</b></div>' +
+      '<div><small>名義人</small><b>' + ev('info.holder', c.holder, 'line', '例：父 太郎') + '</b></div>' +
+      '<div><small>下4桁</small><b>•••• ' + ev('info.tail', c.tail, 'line', '例：1234') + '</b></div>' +
+      '<div><small>有効期限</small><b>' + ev('info.expiry', c.expiry, 'line', '例：2027/03') + '</b></div>' +
+    '</div>';
+  }
+
+  function linkedRowHTML(it) {
+    return '<button class="irow" type="button" data-open="' + it.id + '">' +
+      markHTML(it.name) +
+      '<span class="nm"><b>' + esc(it.name) + '</b><small>' + esc(it.category) + '</small></span>' +
+      '<span class="st-badge" style="background:#f4f2eb;color:#6d7169">' + esc(S.amountText(it)) + '</span>' +
+      '<span class="arw">›</span></button>';
+  }
+
+  function clinkedHTML(card) {
+    const f = S.cardFacts(card.id);
+    if (!f.linked.length) return '<p class="memo">この支払い方法に紐づく契約はありません。</p>';
+    return '<div class="linked-list">' + f.linked.map(linkedRowHTML).join('') + '</div>';
+  }
+
+  function cardSheetHTML(card) {
+    const f = S.cardFacts(card.id);
+    const b = S.itemBadge(card);
+    const bTxt = b.kind === 'open' ? b.text + '　' + b.n + '件' : b.text;
+    return '<button class="close" type="button" data-close="1">✕</button>' +
+      '<div class="rings">' +
+        '<span class="ring r1"></span><span class="ring r2"></span>' +
+        '<div class="filecard"><small>支払いカード</small><b>' + esc(card.name) + '</b>' +
+          '<div class="rule" style="background:#4681a0"></div></div>' +
+        '<div class="rmeta"><small>下4桁</small><b>•••• ' + esc(card.info.tail) + '</b>' +
+          '<small>名義人</small><b>' + esc(card.info.holder) + '</b></div>' +
+        '<div class="rfoot">' + IC.card + '<span>支払いの経路を<br>まとめて記録</span></div>' +
+      '</div>' +
+      '<div class="page">' +
+        '<div class="pg-h"><span class="nm">' + esc(card.name) + '</span>' +
+          '<span class="cat">' + esc(card.info.issuer) + '</span>' +
+          '<span class="pol hb-' + b.tone + '">' + esc(bTxt) + '</span></div>' +
+        '<div class="pg-body">' +
+          (f.linked.length ? '<div class="pc-warn" style="margin:0 4px 18px">' + IC.warn +
+            'このカードを止めると、' + f.linked.length + '件の支払いが止まります</div>' : '') +
+          statusHTML(card, '家族') +
+          sectionHTML('policy', 't-pu', IC.flag, '対応方針', '', policyHTML(card, '家族の方針'), false, true) +
+          sectionHTML('account', 't-gr', IC.person, S.GROUP_UI.card.accountTitle, '', accountHTML(card), false, true) +
+          sectionHTML('proc', 't-rd', IC.clip, '手続き方法', procSub(card), procedureHTML(card), false, true) +
+          sectionHTML('cardinfo', 't-cr', IC.card, 'カード情報', '', cardInfoHTML(card), false, true) +
+          sectionHTML('clinked', 't-cr', IC.link, '紐づく契約一覧', '（' + f.linked.length + '件）', clinkedHTML(card), true, false) +
+          sectionHTML('memo', 't-cr', IC.pen, 'メモ', '', memoHTML(card), false, true) +
+        '</div>' +
+      '</div>';
+  }
+
+  /* いま開いているのが契約か、支払いカードかは openId から引く。
+     どちらもこの1つの sheet を共有するので、編集の書き込み先を
+     ここで一本化する。                                            */
+  function currentEntity() {
+    return S.findItem(openId) || S.findCard(openId);
+  }
+
+  function render() {
+    document.getElementById('cnt').textContent = S.items.length + '件';
+    /* ナビの件数は外殻の持ち物。描き直すたびに知らせておく。 */
+    SeiZen.setNavCount('contract-digital', S.items.length + '件');
+    idxgrid.innerHTML = groupBlock('pre') + groupBlock('post') + payBlock();
+    if (openId) renderSheet();
+  }
+
+  function renderSheet() {
+    const it = S.findItem(openId);
+    if (it) { sheet.innerHTML = sheetHTML(it); focusEditor(); return; }
+    const c = S.findCard(openId);
+    if (c) { sheet.innerHTML = cardSheetHTML(c); focusEditor(); return; }
+  }
+
+  /* 開いた欄に手を置いたままにする。セレクトは開いた瞬間に選ばせる。 */
+  function focusEditor() {
+    if (editSection) {
+      const first = sheet.querySelector('.sect.editing [data-ef]');
+      if (first) { first.focus(); openIfSelect(first); }
+      return;
+    }
+    if (!editing) return;
+    const el = sheet.querySelector('[data-ef]');
+    if (!el) { editing = null; return; }
+    el.focus();
+    if (el.tagName === 'SELECT') { openIfSelect(el); return; }
+    el.setSelectionRange(el.value.length, el.value.length);
+  }
+
+  /* 選択肢のある項目は、押した瞬間に選択肢まで開く。フォーカスだけ
+     ではブラウザが自動で開かないため、明示的に開く（銀行口座と同じ）。 */
+  function openIfSelect(el) {
+    if (el.tagName === 'SELECT' && el.showPicker) {
+      try { el.showPicker(); } catch (e) { /* 対応していない環境は無視 */ }
+    }
+  }
+
+  /* 節ごとの編集を閉じるとき、開いていた欄をすべて書き戻す。 */
+  function commitSection() {
+    if (!editSection) return;
+    const it = currentEntity();
+    if (it) sheet.querySelectorAll('[data-ef]').forEach(el => applyValue(it, el.dataset.path, el.value));
+    editSection = null;
+    render();
+  }
+
+  function applyValue(it, path, val) {
+    if (!path) return;
+    if (path === 'contract.amount') {
+      const n = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
+      setByPath(it, path, isNaN(n) ? 0 : n);
+    } else if (path === 'policy.intent') {
+      it.policy.intent = val;
+      delete it.policy.intentLabel;
+    } else if (path === 'contract.paymentCard') {
+      if (val === 'acct')      { it.contract.paymentCard = null; it.contract.paymentLabel = 'ゆうちょ銀行 自動振替'; }
+      else if (val === 'none') { it.contract.paymentCard = null; it.contract.paymentLabel = '費用なし'; }
+      else                     { it.contract.paymentCard = val;  delete it.contract.paymentLabel; }
+    } else {
+      setByPath(it, path, String(val).trim());
+    }
+  }
+
+  function commitEdit() {
+    if (!editing) return;
+    const el = sheet.querySelector('[data-ef]');
+    const it = currentEntity();
+    if (el && it) applyValue(it, editing.path, el.value);
+    editing = null;
+    render();
+  }
+
+  function openSheet(id) {
+    openId = id;
+    editing = null;
+    editSection = null;
+    closedSections = new Set();
+    renderSheet();
+    scrim.classList.add('show');
+    scrim.scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSheet() {
+    openId = null;
+    scrim.classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  /* ── 操作 ─────────────────────────────────────────── */
+
+  idxgrid.addEventListener('click', e => {
+    const row = e.target.closest('[data-open]');
+    if (row) openSheet(row.dataset.open);
+  });
+
+  scrim.addEventListener('click', e => {
+    if (e.target === scrim) { closeSheet(); return; }
+    if (e.target.closest('[data-close]')) { closeSheet(); return; }
+
+    /* 紐づく契約一覧の行。押した契約の詳細へ、同じオーバーレイの
+       中身を差し替えて進む（索引には戻らない）。                  */
+    const openRow = e.target.closest('.linked-list [data-open]');
+    if (openRow) { openSheet(openRow.dataset.open); return; }
+
+    /* 参考リンク。実際のURLを持たないプロトタイプなので、遷移の代わりに
+       準備中を知らせる。編集は隣の鉛筆ボタンが受け持つ。            */
+    if (e.target.closest('[data-linkclick]')) {
+      e.preventDefault(); e.stopPropagation();
+      show('外部サイトを開く準備中です');
+      return;
+    }
+    /* 節ごとの編集ボタン。見出しの的の中にあるので、開閉には渡さない。 */
+    const secBtn = e.target.closest('[data-editsec]');
+    if (secBtn) {
+      e.stopPropagation();
+      const key = secBtn.dataset.editsec;
+      if (editSection === key) { commitSection(); return; }
+      if (editSection) commitSection();
+      if (editing) commitEdit();
+      editSection = key;
+      closedSections.delete(key);
+      renderSheet();
+      return;
+    }
+
+    /* 手続き方法の確認。これも見出しの中なので開閉には渡さない。 */
+    if (e.target.closest('[data-proc]')) {
+      e.stopPropagation();
+      const it = currentEntity();
+      it.procedure.checked = !it.procedure.checked;
+      render();
+      return;
+    }
+
+    /* 手順を1つ足す。既存の番号の下に置いた「＋」から、空の手順を
+       末尾に追加してすぐ書き込めるようにする。編集中のみ出る。      */
+    if (e.target.closest('[data-addstep]')) {
+      e.stopPropagation();
+      const it = currentEntity();
+      it.procedure.steps.push('');
+      renderSheet();
+      const inputs = sheet.querySelectorAll('.steps li .ef');
+      const last = inputs[inputs.length - 1];
+      if (last) last.focus();
+      return;
+    }
+
+    /* 手順を1つ消す。行ごとの✕で、その場から即削除する。 */
+    const delStep = e.target.closest('[data-delstep]');
+    if (delStep) {
+      e.stopPropagation();
+      const it = currentEntity();
+      it.procedure.steps.splice(+delStep.dataset.delstep, 1);
+      renderSheet();
+      return;
+    }
+
+    /* 別の欄を押したら、開いていた欄はそこで確定する。 */
+    const inEditor = e.target.closest('[data-ef]');
+    if (editing && !inEditor) commitEdit();
+    /* 節の編集中に、その節の外を押したら閉じる。 */
+    if (editSection && !inEditor && !e.target.closest('.sect.editing')) commitSection();
+
+    const okBtn = e.target.closest('[data-ok]');
+    if (okBtn) {
+      const it = currentEntity();
+      const a = it.account[+okBtn.dataset.ok];
+      a.ok = !a.ok;
+      render();
+      return;
+    }
+
+    const edit = e.target.closest('[data-edit]');
+    if (edit && !editSection) {
+      editing = { path: edit.dataset.edit, kind: edit.dataset.kind };
+      renderSheet();
+      return;
+    }
+
+    const goto = e.target.closest('[data-goto]');
+    if (goto) {
+      closedSections.delete(goto.dataset.goto);
+      renderSheet();
+      const el = sheet.querySelector('[data-sect="' + goto.dataset.goto + '"]');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.closest('.sect').classList.add('flash');
+        setTimeout(() => { const c = sheet.querySelector('.sect.flash'); if (c) c.classList.remove('flash'); }, 1100);
+      }
+      return;
+    }
+    const sc = e.target.closest('[data-sect]');
+    if (sc) {
+      const key = sc.dataset.sect;
+      if (closedSections.has(key)) closedSections.delete(key); else closedSections.add(key);
+      renderSheet();
+    }
+  });
+
+  sheet.addEventListener('change', e => {
+    const el = e.target.closest('[data-ef]');
+    if (!el || el.tagName !== 'SELECT') return;
+    /* 節ごとの編集中は、選んだ場でその値を反映する（例：支払い方法を
+       変えたら、隣の下4桁もその場で連動して変わる）。節は閉じない。 */
+    if (editSection) {
+      const it = currentEntity();
+      if (it && el.dataset.path) applyValue(it, el.dataset.path, el.value);
+      renderSheet();
+      return;
+    }
+    commitEdit();
+  });
+
+  sheet.addEventListener('focusout', e => {
+    if (editSection) return;
+    if (!editing || !e.target.closest('[data-ef]')) return;
+    /* 同じ欄の中での移動では閉じない。 */
+    setTimeout(() => { if (editing && !sheet.contains(document.activeElement)) commitEdit(); }, 0);
+  });
+
+  sheet.addEventListener('keydown', e => {
+    if (editSection && e.key === 'Escape') { e.stopPropagation(); editSection = null; render(); return; }
+    if (editSection) return;
+    if (!editing) return;
+    if (e.key === 'Escape') { e.stopPropagation(); editing = null; renderSheet(); return; }
+    if (e.key === 'Enter' && (editing.kind !== 'area' || e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      commitEdit();
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && openId && !editing && !editSection) closeSheet();
+  });
+
+  document.getElementById('add-manual').addEventListener('click', () =>
+    show('直接入力の追加フォームは準備中です'));
+  document.getElementById('add-ocr').addEventListener('click', () =>
+    show('明細からの取り込みは準備中です'));
+
+  render();
+})(window.SeiZenContract);

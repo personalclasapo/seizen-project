@@ -1,0 +1,282 @@
+/* SeiZen｜契約・デジタルの成果物UI
+   ------------------------------------------------------------------
+   索引（対応のタイミング×支払いのつながり）と、その上に開く詳細
+   シート。この領域にしか出てこない造形だけをここに置く。
+   左のガイドブック・見出し・意味説明は shared/shell.css の担当。
+
+   通帳（銀行口座）とは別の骨格でよい。正本§13により、片方の形を
+   もう片方へ合わせにいかない。                                    */
+
+/* 索引を2列で並べるので、通帳より広い作業幅を取る。 */
+.sec{max-width:1080px}
+/* 見出しの下に説明を1行置くので、見出し自身の下余白は詰める。 */
+.sec-h{margin:34px 0 6px}
+.sec-h .cnt{background:none;padding:4px 11px}
+.sec-h .rt{margin-left:auto;font-size:11.5px;color:var(--ink3);white-space:nowrap}
+
+/* ── 索引：対応のタイミングで2列、支払いのつながりはその下 ─── */
+.idxgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.ib-pay{grid-column:1 / -1}
+.paycards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.iblock{background:#fff;border:1px solid #eae5da;border-radius:14px;padding:18px 18px 16px;display:flex;flex-direction:column}
+.ib-h{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.ib-ic{display:grid;place-items:center;width:32px;height:32px;flex:none;border-radius:9px}
+.ib-ic svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}
+.ic-pre{background:#fdf0e2;color:#c9781d}.ic-post{background:#e9f1ea;color:#4a8161}.ic-pay{background:#e7f0f3;color:#4681a0}
+.ib-h h4{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.ib-n{margin-left:auto;padding:3px 10px;border-radius:11px;font-size:11px;font-weight:700}
+.n-pre{color:#b96f1c}.n-post{color:#4a8161}.n-pay{color:#42768f}
+.ib-lead{margin:0 0 13px;font-size:11.5px;color:var(--ink3);line-height:1.75}
+
+.tally{display:flex;border:1px solid #eee9de;border-radius:9px;overflow:hidden;margin-bottom:13px}
+.tally div{flex:1;padding:8px 4px;text-align:center;border-right:1px solid #eee9de}
+.tally div:last-child{border-right:0}
+.tally .tl{display:block;font-size:10.5px;color:var(--ink3);margin-bottom:3px}
+.tally .tv{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700}
+.tally .tv:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.tv-gr{color:#3b8a5c}.tv-or{color:#d18017}.tv-rd{color:#d0574f}
+
+.irow{display:flex;align-items:center;gap:11px;width:100%;padding:11px 4px;border:0;border-bottom:1px solid #f1ece2;background:none;font-family:inherit;text-align:left;cursor:pointer}
+.irow:last-of-type{border-bottom:0}
+.irow:hover{background:#fbfaf5}
+.mark{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:7px;font-size:14px;font-weight:800;line-height:1}
+.irow .nm{flex:1;min-width:0}
+.irow .nm b{display:block;font-size:13px;font-weight:700;color:var(--ink);line-height:1.35}
+.irow .nm small{display:block;margin-top:1px;font-size:10.5px;color:#a5a199}
+.st-badge{flex:none;display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:11px;font-size:10.5px;font-weight:700;white-space:nowrap}
+.st-badge:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.sb-gr{background:#e8f2ea;color:#3b8a5c}.sb-or{background:#fdf0e2;color:#c9781d}.sb-rd{background:#fbeceb;color:#c9544b}
+.irow .arw{flex:none;color:#c3bfb5;font-size:13px}
+.irow:hover .arw{color:#8fa88f}
+
+/* button は display:block を指定しても、中身がブラウザ既定の
+   アンカー用フレックスで縦中央に寄ることがある（Chromium の癖）。
+   flex 縦積みだと明示して、揃えを flex-start に固定する。       */
+.paycard{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;width:100%;border:1px solid #eee9de;border-radius:11px;padding:14px 15px;background:#fff;font-family:inherit;text-align:left;cursor:pointer;transition:box-shadow .12s,border-color .12s}
+.paycard:hover{border-color:#c7d8de;box-shadow:0 3px 9px rgba(70,129,160,.12)}
+.pc-h{display:flex;align-items:baseline;gap:8px}
+.pc-h b{font-size:13.5px;font-weight:700}
+.pc-h .lnk{margin-left:auto;font-size:11.5px;color:#4681a0;font-weight:700;white-space:nowrap}
+.pc-tail{margin:3px 0 9px;font-size:11px;color:#a5a199;letter-spacing:.08em}
+.pc-warn{display:flex;gap:7px;align-items:flex-start;font-size:11px;color:#c9781d;line-height:1.6;margin-bottom:10px}
+.pc-warn svg{flex:0 0 13px;margin-top:1px;stroke:#d18017;fill:none;stroke-width:2}
+/* 横幅を3等分に固定し、件数によって並びがばらつかないようにする。
+   4件目からは行を増やして続ける。                              */
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.chip2{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:5px 11px 5px 6px;border:1px solid #eee9de;border-radius:8px;background:#fff;font-size:11.5px;color:#454b44}
+.chip2 .cl{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.chip2 .mark{flex:none;width:20px;height:20px;border-radius:5px;font-size:10px}
+
+/* ── 詳細：オーバーレイ ───────────────────────────── */
+.scrim{position:fixed;inset:0;z-index:40;background:rgba(40,44,38,.42);backdrop-filter:blur(2px);display:none;align-items:flex-start;justify-content:center;padding:34px 20px;overflow-y:auto}
+.scrim.show{display:flex}
+.sheet{position:relative;display:flex;width:100%;max-width:1040px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 26px 60px rgba(30,34,28,.35)}
+.close{position:absolute;top:14px;right:16px;z-index:3;width:32px;height:32px;border:1px solid #eae5da;border-radius:50%;background:#fff;color:#8a8578;font-size:16px;line-height:1;display:grid;place-items:center}
+.close:hover{background:#f5f2ea;color:#454b44}
+
+/* 左：リング金具のある綴じ代 */
+.rings{position:relative;flex:0 0 190px;background:linear-gradient(180deg,#f2efe6,#eae6da);padding:26px 20px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.rings:after{content:"";position:absolute;top:0;right:0;bottom:0;width:1px;background:rgba(70,64,50,.13)}
+.ring{position:absolute;left:-13px;width:44px;height:13px}
+.ring:before{content:"";position:absolute;inset:0;border-radius:7px;background:linear-gradient(180deg,#6b7079,#3c4149 45%,#23262b);box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.ring:after{content:"";position:absolute;left:2px;top:2px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#8b9099 60%,#4a4f57)}
+.ring.r1{top:200px}.ring.r2{top:calc(50% + 130px)}
+.filecard{width:126px;padding:13px 8px 15px;background:#fff;border-radius:5px;box-shadow:0 2px 7px rgba(70,64,50,.16)}
+.filecard small{display:block;font-size:10.5px;color:#8a8578;letter-spacing:.02em}
+.filecard b{display:block;margin-top:5px;font-size:14px;font-weight:700;color:#454b44}
+.filecard b i{font-style:normal;font-size:25px;letter-spacing:.03em;margin-left:3px}
+.filecard .rule{margin:9px auto 0;width:56px;height:2px;border-radius:2px;background:#e8933c}
+.rmeta{margin-top:26px}
+.rmeta small{display:block;font-size:10px;color:var(--ink3)}
+.rmeta b{display:block;margin:3px 0 20px;font-size:12.5px;font-weight:700;color:#5c594d;letter-spacing:.02em}
+.rfoot{margin-top:auto;color:#a09b8d}
+.rfoot svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5}
+.rfoot span{display:block;margin-top:8px;font-size:10px;line-height:1.7}
+
+/* 右：本体 */
+.page{flex:1;min-width:0;background:#fff}
+.pg-h{display:flex;align-items:center;gap:14px;padding:22px 60px 18px 28px;border-bottom:1px solid #f0ece3}
+.pg-h .nm{font-size:27px;font-weight:800;letter-spacing:-.03em}
+.pg-h .cat{padding-left:14px;border-left:1px solid #e2ddd0;font-size:13px;color:#7d7a76}
+.pg-h .pol{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;white-space:nowrap}
+.pg-h .pol:before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
+.pg-h .pol{padding:4px 12px;border-radius:11px;font-size:11.5px}
+.pg-h .pol:before{width:7px;height:7px}
+.hb-gr{background:#e8f2ea;color:#3b8a5c}.hb-or{background:#fdf0e2;color:#c9781d}.hb-rd{background:#fbeceb;color:#c9544b}
+.pg-body{padding:14px 22px 24px}
+
+/* 見出しに薄く色を敷いて「帯」にする。中身は白のままにして、
+   押せる場所（帯）と読む場所（白）を面の切り替わりで分ける。 */
+.sect{margin-bottom:13px;border:1px solid #efe9dc;border-radius:11px;overflow:hidden;background:#fff}
+.sect.editing{border-color:#bfd3c3;box-shadow:0 0 0 3px #1E5A3D14}
+.sc-h{display:flex;align-items:center;gap:9px;width:100%;padding:12px 15px;border:0;border-bottom:1px solid rgba(74,64,45,.07);font-family:inherit;text-align:left;cursor:pointer;transition:filter .12s}
+.sc-h.closed{border-bottom:0}
+.sc-h:hover{filter:brightness(.975)}
+.sc-bar{width:4px;height:19px;border-radius:2px;flex:none}
+.sc-h .sic{width:19px;height:19px;flex:none;fill:none;stroke-width:1.8}
+.sc-h h5{margin:0;font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.sc-h .sub{font-size:12.5px;color:#8a8578;font-weight:600}
+.sc-tail{margin-left:auto;display:flex;align-items:center;gap:12px}
+.sc-edit{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid #e0dbcd;border-radius:7px;background:#fff;font-size:11.5px;font-weight:700;color:#6b6963}
+.sc-edit svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.9}
+.sc-edit:hover{border-color:#c3bcaa;background:#fdfcf8}
+.sc-edit.on{border-color:var(--gr);background:var(--gr);color:#fff}
+.sc-tail .ast{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid transparent;border-radius:7px;font-size:11.5px;font-weight:700}
+.sc-tail .ast:hover{border-color:#e0dbcd;background:#fff}
+.sc-tail .ast svg{width:13px;height:13px;fill:none;stroke-width:2.4}
+.sc-h .chev{color:#a9a294;font-size:11px;transition:transform .15s}
+/* 開いていれば「たたむ▲」、閉じていれば「開く▼」。横向きにしない。 */
+.sc-h.closed .chev{transform:rotate(180deg)}
+/* 節の地色は、いまの状況の3項目とそろえる：対応方針＝紫、
+   アカウント状況＝緑、手続き方法＝赤。契約情報・メモは補足なので
+   クリーム。いまの状況そのものは中立のグレーのまま。            */
+.sc-h.t-gy{background:#f6f5f1}.t-gy .sc-bar{background:#a9a294}.t-gy .sic{stroke:#8a8578}.t-gy h5{color:#5c594d}
+.sc-h.t-pu{background:#f9f3f9}.t-pu .sc-bar{background:#b356b3}.t-pu .sic{stroke:#8d3f8d}.t-pu h5{color:#8d3f8d}
+.sc-h.t-gr{background:#eff7f1}.t-gr .sc-bar{background:#6fae82}.t-gr .sic{stroke:#2f6a48}.t-gr h5{color:#2f6a48}
+.sc-h.t-rd{background:#fbeeed}.t-rd .sc-bar{background:#dc8e87}.t-rd .sic{stroke:#c9544b}.t-rd h5{color:#c9544b}
+.sc-h.t-cr{background:#faf6ea}.t-cr .sc-bar{background:#cbb37a}.t-cr .sic{stroke:#8a6c3d}.t-cr h5{color:#8a6c3d}
+.sc-body{padding:16px 15px 17px}
+
+/* いまの状況｜見出しも囲みも持たない。ページ上部に直接、左に
+   リングで到達度、右に3項目を並べるだけ。押すとその節へ飛ぶ。
+   各項目は「アイコン＋見出し」「大きな○△✕」「補足」の3段で
+   積む（横並びの1行にしない）。アイコンの色は対応方針＝紫／
+   アカウント状況＝緑／手続き方法＝赤の固定色（各節の色とそろえる）。
+   ○△✕の色は項目の色ではなく、済み＝緑／途中＝橙／手つかず＝赤
+   という状態そのものの色。                                      */
+.status-panel{display:flex;align-items:center;gap:36px;padding:8px 6px 26px;margin-bottom:9px;border-bottom:1px solid #f0ece3}
+.status-ring{position:relative;flex:none;width:98px;height:98px}
+.ring-svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:#eee9de;stroke-width:9}
+.ring-fg{fill:none;stroke:#d18017;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .3s}
+.ring-fg.done{stroke:#3b8a5c}
+.ring-tx{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ring-tx b{font-size:12px;font-weight:700;color:#454b44}
+.ring-tx span{margin-top:2px;font-size:15px;font-weight:800;color:#d18017}
+.ring-tx.done span{color:#3b8a5c}
+.status-items{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat-item{display:flex;flex-direction:column;align-items:center;gap:9px;padding:8px 6px;border:0;border-radius:9px;background:none;font-family:inherit;text-align:center;transition:opacity .12s}
+.stat-item:hover{opacity:.78}
+.stat-top{display:flex;align-items:center;gap:7px}
+.stat-ic{flex:none;width:17px;height:17px}
+.stat-ic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8}
+.stat-label{font-size:13px;font-weight:700;color:#454b44}
+.stat-mark{font-size:30px;font-weight:800;line-height:1}
+.stat-mark.mk-ok{color:#3b8a5c}.stat-mark.mk-partial{color:#d18017}.stat-mark.mk-none{color:#c9544b}
+.stat-note{font-size:11.5px;line-height:1.5;color:var(--ink3)}
+.stat-pu .stat-ic{color:#8d3f8d}
+.stat-gr .stat-ic{color:#2f6a48}
+.stat-rd .stat-ic{color:#c9544b}
+.sect.flash{animation:sflash 1.1s ease}
+@keyframes sflash{0%{box-shadow:0 0 0 0 #c19b6100}30%{box-shadow:0 0 0 3px #c19b6199}100%{box-shadow:0 0 0 0 #c19b6100}}
+
+/* 対応方針｜背景で囲まない。白地の上に、細い縦罫だけで左右を分ける。 */
+.policy{display:grid;grid-template-columns:0.72fr 1.28fr;gap:0}
+.pol-l{padding-right:22px;border-right:1px solid #efe9dc}
+.pol-r{padding-left:22px}
+.pol-lb{display:block;margin-bottom:8px;font-size:11px;font-weight:700;color:#8a8578;letter-spacing:.01em}
+.intent{display:flex;align-items:center;gap:10px}
+.intent svg{width:21px;height:21px;flex:none;fill:none;stroke-width:1.7}
+.intent b{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.i-gr{stroke:#3b8a5c}.i-or{stroke:#c9781d}.i-gy{stroke:var(--gy)}
+.pol-reason{margin:0;font-size:12.5px;line-height:1.85;color:#4a4d47}
+.pol-next{display:flex;gap:9px;align-items:flex-start;margin-top:13px;padding-top:12px;border-top:1px solid #f2ece0;font-size:12.5px;color:#4a4d47;line-height:1.6}
+.pol-next svg{flex:0 0 14px;margin-top:2px;fill:none;stroke:#b6a894;stroke-width:1.8}
+.pol-next b{font-weight:700;color:var(--ink)}
+.fmemo{margin-top:14px;padding:12px 14px;border-radius:8px;background:#f4f4f8;display:flex;gap:10px}
+.fmemo > svg{flex:0 0 15px;margin-top:1px;fill:none;stroke:#7f88b8;stroke-width:1.8}
+.fmemo .fm{flex:1;min-width:0}
+.fmemo b{display:block;margin-bottom:4px;font-size:12px;font-weight:700;color:#5f6cae}
+.fmemo p{margin:0;font-size:12px;line-height:1.75;color:#63677a}
+
+/* アカウント情報｜状態は「いまの状況」が持つので、ここは事実の行だけ。 */
+.acc-list .arow:first-child{padding-top:2px}
+.arow{display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid #f2eee5;font-size:12.5px}
+.arow:last-child{border-bottom:0;padding-bottom:2px}
+.arow .aic{display:grid;place-items:center;width:26px;height:26px;flex:none;border-radius:7px;background:#f4f2eb}
+.arow .aic svg{width:14px;height:14px;fill:none;stroke:#8a8578;stroke-width:1.7}
+.arow .alb{flex:0 0 168px;color:#454b44}
+.arow .avl{flex:1;min-width:0;color:#454b44;padding-left:14px;border-left:1px solid #f2eee5}
+.arow .ast{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700}
+.arow .ast svg{width:13px;height:13px;fill:none;stroke-width:2.4}
+.cv-ok{color:#3b8a5c}.cv-ok svg{stroke:#3b8a5c}
+.cv-ng{color:#c9781d}.cv-ng svg{stroke:#e0951f}
+
+/* 契約情報 */
+.cinfo{display:grid;grid-template-columns:repeat(5,1fr);padding:6px 0}
+.cinfo > div{padding:6px 15px;border-right:1px dashed #e6e1d3;text-align:center}
+.cinfo > div:first-child{padding-left:6px}
+.cinfo > div:last-child{border-right:0}
+.cinfo small{display:block;margin-bottom:6px;font-size:11px;color:var(--ink3)}
+.cinfo b{font-size:13.5px;font-weight:700;color:var(--ink)}
+.cinfo b em{display:block;font-style:normal;font-size:11.5px;color:#7d7a76;letter-spacing:.08em;margin-top:2px}
+
+/* 手続き方法｜確認状況はヘッダーではなくカード内右上に置く。
+   ヘッダーには他の節と同じ「編集する」が来る。                  */
+.proc-status-row{display:flex;justify-content:flex-end;margin-bottom:10px}
+.proc-status{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:0;border-radius:20px;background:#f4f2eb;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer}
+.proc-status svg{width:13px;height:13px;fill:none;stroke-width:2.4}
+.proc-status.cv-ok{background:#e8f2ea}.proc-status.cv-ng{background:#fdf0e2}
+.proc2{display:grid;grid-template-columns:1.1fr 1fr;gap:20px;padding:4px 0}
+.pr-lb{display:block;margin-bottom:6px;font-size:12px;font-weight:700;color:#8a6c3d}
+.pr-where{margin:0 0 15px;padding-bottom:11px;border-bottom:1px solid #eef1f5;font-size:12.5px;color:#454b44}
+.pr-where .ef-area{min-height:40px;line-height:1.6}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.steps li{display:flex;gap:11px;align-items:center;font-size:12.5px;color:#454b44}
+.steps li .sn{display:grid;place-items:center;width:19px;height:19px;flex:none;border-radius:50%;background:#a9926a;color:#fff;font-size:10.5px;font-weight:700}
+.steps li .ev,.steps li .ef{flex:1;min-width:0}
+.step-add{display:flex;align-items:center;gap:11px;width:100%;margin-top:9px;padding:7px 0 7px 30px;border:1px dashed #d8d2c2;border-radius:7px;background:none;font-family:inherit;font-size:12.5px;color:var(--gr2);text-align:left;cursor:pointer}
+.step-add:hover{background:#fbfaf5;border-color:#c3bcaa}
+.step-del{flex:none;display:grid;place-items:center;width:22px;height:22px;border:0;border-radius:6px;background:none;color:#c3bcaa;font-size:12px;cursor:pointer}
+.step-del:hover{background:#fbeceb;color:#c9544b}
+.prbox{background:#faf7f1;border-radius:9px;padding:13px 15px;margin-bottom:11px}
+.prbox:last-child{margin-bottom:0}
+.prbox .ph{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:12px;font-weight:700;color:#8a6c3d}
+.prbox .ph svg{width:14px;height:14px;fill:none;stroke:#b08e5c;stroke-width:1.8}
+.prbox .ev{font-size:12.5px;color:#7a6134;font-weight:700}
+.prbox.pt .ev{display:block;font-size:12px;color:#5c6673;font-weight:400;line-height:1.8;white-space:pre-line}
+.prbox.pt{background:#f5f4ef}
+.prbox.pt .ph{color:#6b6963}.prbox.pt .ph svg{stroke:#a9a294}
+/* 参考リンク｜読む場所では実際にリンクらしく見せ、鉛筆だけを編集の的にする。 */
+.ev-link{font-size:12.5px;color:#4681a0;font-weight:700;text-decoration:underline;text-underline-offset:2px}
+.ev-link:hover{color:#35637d}
+.ev-editbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:4px;padding:0;border:0;background:none;color:#c3bcaa;cursor:pointer;vertical-align:middle}
+.ev-editbtn svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2}
+.ev-editbtn:hover{color:#6b6963}
+/* 編集｜値の置き場所がそのまま入力欄になる。押せる場所は、ホバーで
+   下線が出ることで分かる。常時下線にすると、下線が地の状態になって
+   意味を失うので出さない。                                      */
+.ev{border-bottom:1px dashed transparent;cursor:text;transition:border-color .12s,background .12s}
+.ev:hover{border-bottom-color:#c3bcaa;background:#faf9f4}
+.ev-big{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+/* 未入力の欄だけ、空欄がそこにあることを枠で見せる。 */
+.ev-empty{display:inline-block;padding:2px 9px;border:1px dashed #d8d2c2;border-radius:5px;color:#b3ada0;font-size:11.5px;font-weight:400;letter-spacing:0}
+.ev-empty:hover{border-color:#b0a893;background:#fdfcf8}
+.ev-big.ev-empty{font-size:13px}
+.ef{padding:5px 8px;border:1px solid var(--gr);border-radius:6px;background:#fff;font-family:inherit;font-size:12.5px;color:#2c3a56;box-shadow:0 0 0 3px #1E5A3D18}
+.ef:focus{outline:none}
+.ef-area{width:100%;min-height:72px;line-height:1.8;resize:vertical}
+.ef-sel{padding-right:26px;cursor:pointer;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#71836f 50%),linear-gradient(135deg,#71836f 50%,transparent 50%);background-position:calc(100% - 13px) 52%,calc(100% - 8px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.intent .ef-sel{font-size:16px;font-weight:700}
+.cinfo .ef{width:100%;text-align:center;font-size:12.5px}
+.arow .ef{width:100%}
+/* 確認済み／確認が必要は押して切り替える。節を編集中は、押せる
+   ボタンだとひと目で分かるよう枠を出す。それ以外は静かにしておく。 */
+.arow .ast{border:1px solid transparent;border-radius:6px;padding:4px 8px;background:none;font-family:inherit;cursor:pointer}
+.arow .ast:hover{border-color:#e2ddd0;background:#faf9f4}
+.sect.editing .arow .ast{border-color:#e2ddd0;background:#fdfcf8}
+.sect.editing .arow .ast:hover{border-color:#c3bcaa}
+.sect.editing .arow .ast.cv-ok{border-color:#d6e6da}
+.sect.editing .arow .ast.cv-ng{border-color:#f0ddbc}
+
+/* メモ */
+.memo{padding:13px 15px;border-radius:9px;font-size:12.5px;color:#454b44;line-height:1.8}
+
+/* 支払いカードの詳細｜契約・アカウントと丸ごと同じ骨格・見た目を
+   使い回すので、専用のCSSは紐づく契約一覧の行間だけ。           */
+.linked-list{margin-top:2px}
+
+/* 洗い出しの入口 */
+.addrow2{display:flex;gap:12px}
+.addrow2 .addbtn{flex:1}
+.addbtn.ghost{color:#8a8578}

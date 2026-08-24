@@ -1,0 +1,184 @@
+/* SeiZen｜外殻
+   ------------------------------------------------------------------
+   どの領域を開いても変わらない部分だけを持つ。左のガイドブック、
+   作業面、見出し、「なぜ整理するのか」、トースト。
+
+   ここに領域固有のものを足さない。通帳（銀行口座）や索引
+   （契約・デジタル）の造形は、各領域の area.css の担当。
+
+   もとは2枚のindex.htmlへ同じものが写してあり、あとから足した
+   上書きが .guide / .menu-card / .help へ5〜7重に積まれていた。
+   ここでは最終的に効いていた値だけを1回で書く。                  */
+
+*{box-sizing:border-box}
+body{margin:0;min-width:1120px;background:var(--backdrop);color:var(--ink);
+  font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid #91ad8a88;outline-offset:2px}
+
+.shell{display:flex;width:calc(100vw - 32px);max-width:1280px;
+  min-height:calc(100vh - 32px);margin:16px auto;
+  background:linear-gradient(135deg,#f5f2ea,#eee9de)}
+
+/* ── 左：ガイドブック ───────────────────────────────
+   緑の表紙の上に、生成りの紙が一枚かぶさっている。メニューと
+   アカウントは、その紙の一部として並ぶ。                        */
+.guide{position:sticky;top:16px;z-index:3;align-self:flex-start;
+  display:flex;flex-direction:column;
+  width:258px;flex:0 0 258px;height:calc(100vh - 32px);min-height:620px;
+  padding:21px 12px 12px;overflow:hidden;
+  background:linear-gradient(155deg,var(--gr-d),var(--gr) 62%,#17402C);
+  border-radius:12px 0 0 12px;color:#fffdf4;
+  box-shadow:10px 0 24px rgba(25,57,39,.18),2px 0 5px rgba(25,57,39,.12)}
+/* 表紙の額縁。 */
+.guide:before{content:"";position:absolute;inset:8px;border:1px solid #e2d29c55;
+  border-radius:7px;pointer-events:none}
+/* 作業面との段差は、線ではなく影でつける。 */
+.guide:after{content:"";position:absolute;z-index:4;top:13px;right:0;bottom:13px;width:7px;
+  background:linear-gradient(90deg,rgba(10,40,25,.2),transparent);pointer-events:none}
+
+.brand{position:relative;display:flex;align-items:center;gap:11px;padding:13px 11px 24px}
+.brand-mark{display:inline-grid;place-items:center;width:34px;height:34px;flex:none;
+  border:1px solid #d7c89c;border-radius:50%;color:#e6dbbb}
+.brand-mark svg{width:19px;height:19px}
+.brand-tx{min-width:0}
+.brand h1{margin:0;font-family:Georgia,serif;font-size:21px;font-weight:400;
+  letter-spacing:.03em;line-height:1.15}
+.brand p{margin:2px 0 0;color:#e9e5d2;font-size:10.5px;letter-spacing:.06em}
+
+.menu-card{position:relative;display:flex;flex-direction:column;flex:1;min-height:0;
+  margin:0 -12px;padding:16px 14px 12px;overflow:hidden;
+  border-radius:12px 0 0 0;background:linear-gradient(100deg,#faf8f1,#fffdf8);
+  color:#334034;box-shadow:0 -2px 8px #15372415}
+.menu-scroll{flex:1;min-height:0;overflow-y:auto;padding-right:2px;
+  scrollbar-width:thin;scrollbar-color:#d9d2c0 transparent}
+
+.menu{position:relative;z-index:1;display:grid;gap:5px}
+.menu a{display:flex;align-items:center;gap:10px;width:100%;min-height:47px;
+  padding:6px 10px;border:1px solid transparent;border-radius:9px;
+  color:#39443a;background:none;text-align:left;text-decoration:none;
+  font-weight:650;font-size:13px}
+.menu a:hover{background:#f1f1e7}
+.menu .on{background:#eaf1e7;border-color:#d9e6d4;color:#294e38;box-shadow:inset 0 1px #fff}
+.menu .menu-icon{display:grid;place-items:center;width:26px;height:26px;flex:none;color:#39443a}
+.menu .menu-icon svg{width:20px;height:20px;stroke:currentColor;fill:none}
+.menu .on .menu-icon{color:#294e38}
+.menu .menu-label{white-space:nowrap}
+/* まだ画面のない領域。行は残す。到達できないことを隠さない。 */
+.menu .soon{color:#9a9a8f;font-weight:500}
+.menu .soon .menu-icon{color:#b3b2a5}
+/* 件数。各領域が shell.js の setNavCount で入れる。値がなければ出ない。 */
+.count{margin-left:auto;padding:1px 6px;border-radius:10px;
+  background:#e2eadc;color:#49654d;font-size:10px;white-space:nowrap}
+.sep{margin:11px 7px;border:0;border-top:1px dashed #cfcab9}
+
+/* はじめての方へ。本文はホバーで浮く吹き出しにして、常時は畳む。 */
+.help{position:relative;z-index:1;margin:20px 3px 10px;padding:14px 14px 15px;
+  border:1px solid #e4dccb;border-radius:8px;
+  background:linear-gradient(145deg,#fbf8ef,#f2eee2);
+  box-shadow:inset 0 1px #fff,0 3px 7px rgba(92,78,47,.08);color:#5c594d}
+.help-heading{position:relative;display:inline-flex;align-items:center;gap:9px;cursor:default}
+.help-heading strong{padding:0;border:0;color:var(--gold-d);
+  font-family:var(--font-serif);font-size:15px;letter-spacing:.02em}
+.guide-mini{width:26px;height:19.5px;flex:none}
+.help p{position:absolute;z-index:5;left:0;bottom:calc(100% + 9px);width:210px;
+  margin:0;padding:10px 12px;border:1px solid #e2dfd0;border-radius:8px;
+  background:#fffdf8;color:#6b675a;font-size:11px;line-height:1.7;
+  box-shadow:0 6px 16px rgba(35,30,15,.14);
+  opacity:0;visibility:hidden;transform:translateY(4px);
+  transition:opacity .15s,transform .15s,visibility .15s}
+.help-heading:hover p,.help-heading:focus-within p{opacity:1;visibility:visible;transform:translateY(0)}
+.guide-cta{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;
+  gap:9px;width:100%;margin-top:12px;padding:10px;border:1px solid #e8e1d1;border-radius:7px;
+  background:#fffdf8;color:#4c6c52;font-size:12px;font-weight:750;
+  box-shadow:0 1px 3px rgba(67,59,41,.06)}
+.guide-cta:hover{background:#f7fbf4}
+.guide-cta svg{width:19px;height:19px}
+
+/* 家族の切替。正本§5により、この1か所にだけ置く。 */
+.profile{position:relative;z-index:1;flex:0 0 auto;display:flex;align-items:center;gap:9px;
+  margin:10px 3px 0;padding:11px 8px;border:0;border-top:1px solid #ded8ca;border-radius:7px;
+  background:#f8f7f1;color:#314234;text-align:left}
+.profile:hover{background:#f0f0e8}
+.avatar{position:relative;display:grid;place-items:center;width:32px;height:32px;
+  overflow:hidden;border-radius:50%;
+  background:linear-gradient(145deg,#d4dfcf,#8ba08b);color:transparent}
+.avatar:before{content:"";position:absolute;top:6px;left:10px;width:12px;height:12px;
+  border-radius:50%;background:#f4d9c5}
+.avatar:after{content:"";position:absolute;bottom:-4px;left:5px;width:23px;height:20px;
+  border-radius:12px 12px 0 0;background:#597765}
+.profile span:nth-child(2){flex:1}
+.profile small,.profile strong{display:block;line-height:1.25}
+.profile small{font-size:9px;color:#807b6e}
+.profile strong{font-size:12px}
+.profile svg{width:16px;height:16px;color:#77796f}
+
+/* ── 右：作業面 ─────────────────────────────────── */
+.work{position:relative;z-index:1;display:flex;flex:1;min-width:0;
+  min-height:calc(100vh - 32px);margin-left:-1px;overflow:hidden;
+  background:#fbfaf5;border:1px solid #e2ddd0;border-left:0;border-radius:0 13px 13px 0;
+  box-shadow:inset 8px 0 16px rgba(62,54,37,.055),0 4px 15px rgba(72,62,42,.1)}
+.inner{width:100%;padding:29px 44px 40px}
+
+.top{display:flex;justify-content:space-between;gap:18px;padding-bottom:18px;
+  border-bottom:1px solid #e6e1d5}
+.title{display:flex;gap:12px}
+.title-icon{display:grid;place-items:center;width:34px;height:34px;margin-top:2px;
+  border-radius:8px;color:var(--gr)}
+.title-icon svg{width:21px}
+.title h2{margin:0;font-size:24px;letter-spacing:-.035em}
+.title p{max-width:430px;margin:6px 0 0;font-size:12px;line-height:1.7}
+
+/* ── 意味説明（正本§6）。畳んだ状態を覚えるのは shell.js。 ─── */
+.why{background:#fbf9f3;border:1px solid #ece5d3;border-radius:13px;padding:18px 26px}
+.why-tx{display:flex;flex-direction:column}
+.why-toggle{display:flex;align-items:center;gap:12px;width:100%;padding:0;border:0;
+  background:none;font-family:inherit;text-align:left;cursor:pointer}
+.why-ic{width:36px;height:27px;flex:none;display:flex;align-items:center;justify-content:center}
+.why-ic svg{width:100%;height:100%}
+.why-toggle h3{flex:1;min-width:0;margin:0;font-size:15px;font-weight:700}
+.why-chev{flex:none;width:18px;height:18px;color:var(--ink3);transition:transform .18s}
+.why-body{display:flex;align-items:center;gap:20px;overflow:hidden;max-height:280px;
+  margin-top:14px;transition:max-height .22s ease,opacity .18s ease,margin-top .22s ease}
+.why.collapsed .why-body{max-height:0;margin-top:0;opacity:0;pointer-events:none}
+.why.collapsed .why-chev{transform:rotate(-90deg)}
+.why-body p{flex:1;min-width:0;margin:0;font-size:13px;color:var(--ink2);line-height:1.95}
+.why-body p b{font-weight:700;color:var(--or);background:linear-gradient(transparent 68%,#f4dfb9 68%)}
+.why-img{width:172px;flex:0 0 172px;align-self:center;mix-blend-mode:multiply;
+  margin:-16px -6px -20px 0}
+
+/* ── 節の見出しと、領域ページの共通部品 ─────────────── */
+.sec-h{display:flex;align-items:center;gap:12px;margin:34px 0 18px}
+.sec-h .sec-icon{display:grid;place-items:center;width:32px;height:32px;flex:none;
+  border-radius:9px;color:var(--gr)}
+.sec-h .sec-icon svg{width:18px}
+.sec-h h3{margin:0;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.sec-h .cnt{font-size:12px;font-weight:700;color:#a35a0d;
+  background:var(--or-bg);padding:4px 11px;border-radius:11px}
+.sec-h .rt{margin-left:auto;font-size:12.5px;color:var(--gr2)}
+.sec-h .addbtn{width:auto;margin-left:auto;display:flex;align-items:center;gap:6px;padding:9px 17px;
+  border:1px solid #d7d4c9;border-radius:8px;background:#fff;color:var(--gr2);
+  font-family:inherit;font-size:12.5px;font-weight:700}
+.sec-h .addbtn:hover{background:#f6faf6;border-color:#a9c0ac}
+.sec-lead{margin:0 0 18px 44px;font-size:12px;color:var(--ink3)}
+.sec{margin:0 auto}
+
+.alert{background:var(--or-bg);border:1px solid #eedcb9;border-radius:10px;padding:14px 18px;
+  margin-bottom:22px;font-size:12.5px;color:#77480a;display:flex;gap:10px;align-items:flex-start}
+.alert svg{flex:0 0 16px;margin-top:3px}
+.alert b{font-weight:700}
+
+.addbtn{width:100%;background:#fff;border:1px dashed var(--line2);border-radius:11px;
+  padding:14px;font-family:inherit;font-size:13px;color:var(--gr2)}
+.addbtn:hover{background:#fbfaf5;border-color:#c3bcaa}
+
+.toast{position:fixed;right:24px;bottom:24px;z-index:99;padding:12px 16px;border-radius:7px;
+  background:#294c37;color:#fff;box-shadow:0 7px 20px #203f2a38;font-size:12px;
+  opacity:0;transform:translateY(12px);transition:.2s}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ブランドはホームへのリンク。見た目は表紙の一部のまま。 */
+.brand{text-decoration:none;color:inherit}
+.brand:hover .brand-mark{border-color:#e6dbbb}

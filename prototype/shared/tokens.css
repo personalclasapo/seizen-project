@@ -1,0 +1,35 @@
+/* SeiZen｜色と字
+   ------------------------------------------------------------------
+   サイト全体で使う値をここだけに置く。領域ごとのCSSは、この名前を
+   参照する。色を直接書くのは、その領域の造形にしか出てこない質感
+   （通帳の表紙のグラデーション等）に限る。
+
+   値は「領域トップv4」（設計/モック/銀行口座-領域トップv4.html）
+   の体系を正とした。銀行口座・契約デジタルの2枚が持っていた
+   --green:#315d45 系は、ここへ寄せて廃止した。                    */
+:root{
+  /* 文字。ink が本文、ink2 が補足、ink3 が添え物。 */
+  --ink:#32322E; --ink2:#6B6963; --ink3:#9B988E;
+
+  /* 面。page が作業面、card が記録物の地、line が仕切り。 */
+  --page:#F6F4EE; --card:#FFFFFF; --line:#E8E5DB; --line2:#DAD5C8;
+  --paper:#FDFCF8; --paper2:#F7F4EA;
+  --backdrop:#EBE8E0;
+
+  /* 緑＝SeiZenの地の色。gr が主、gr-d が陰、gr2 が文字に載る明るい緑。 */
+  --gr:#1E5A3D; --gr-d:#164630; --gr2:#3B7855;
+  --gr-bg:#EFF5F0; --gr-bg2:#E3EDE6;
+
+  /* 橙＝「今のうちだけ」「対応が必要」。急かす色なので他へ流用しない。 */
+  --or:#BE7017; --or-bg:#FBF1E1; --or-ln:#E5C07F;
+
+  /* 補助色。bl は参照・リンク、gy は対象外、rd は取り返しのつかない側。 */
+  --bl:#3C6084; --gy:#8C8880; --rd:#C9544B;
+
+  /* ガイドブック（左）の紙と金具。 */
+  --gold:#C5AA70; --gold-d:#866534;
+  --cream:#FDFAF2; --cream2:#F4F2EA;
+
+  --font:"Noto Sans JP",-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --font-serif:"Hiragino Mincho ProN","Yu Mincho",serif;
+}

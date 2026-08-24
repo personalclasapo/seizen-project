@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>SeiZen | 銀行口座を整理する</title>
+  <title>SeiZen | 契約・デジタルを整理する</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,11 +13,12 @@
 </head>
 <!-- data-area がナビの現在地、data-root が prototype/ までの相対パス。
      左のガイドブックは shared/shell.js が下の空の aside へ描く。 -->
-<body data-area="bank-account" data-root="../">
+<body data-area="contract-digital" data-root="../">
 <div class="shell">
   <aside class="guide"></aside>
   <main class="work"><div class="inner">
-    <header class="top"><div class="title"><span class="title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 20h18M5 20V9l7-5 7 5v11M8 20v-7h8v7M3 9h18"/></svg></span><div><h2>銀行口座</h2><p>この口座が、何のために使われているのか、どこにあるのか、いざという時の対応まで整理しておきましょう。</p></div></div></header>
+    <header class="top"><div class="title"><span class="title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="3" width="11" height="17" rx="1"/><path d="M7 7h5M7 11h5M18 8v8m-3-3 3 3 3-3"/></svg></span><div><h2>契約・デジタル</h2><p>続いている契約と、家族が困らないためのアカウント・データを、同じ記録としてまとめて整理しましょう。</p></div></div></header>
+
     <section class="why" id="why">
       <div class="why-tx">
         <button class="why-toggle" type="button" id="whyToggle" aria-expanded="true" aria-controls="whyBody">
@@ -26,28 +27,40 @@
           <svg class="why-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
         </button>
         <div class="why-body" id="whyBody">
-          <p>口座の使い道や通帳のありかが分からないと、いざというとき家族が動けません。<br>
-          本人が扱えなくなったとき家族が代わりに手続きできるかどうかは、<br>銀行ごとに用意されている仕組みによって変わります。<br><br>
-          その仕組みの多くは、<b>本人の判断能力があるうちにしか申し込めません。</b></p>
-          <img class="why-img" src="../assets/why-family.jpg" alt="">
+          <p>契約は、本人が亡くなっても自動では止まりません。引き落としは続き、家族が気づくまで支払いが発生します。<br>
+          スマートフォンやメールが開けなければ、何を契約しているかを調べることもできません。<br>
+          <b>一部のサービスは、本人が元気なうちにしか家族が使えるようにできません。</b></p>
         </div>
       </div>
     </section>
+
     <div class="sec-h">
       <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
-      <h3>銀行口座ごとの記録</h3>
-      <button class="addbtn" id="addbank">＋ 銀行口座登録</button>
+      <h3>契約・アカウントの一覧</h3><span class="cnt" id="cnt"></span>
+      <span class="rt">最終更新日：2024/05/20</span>
     </div>
+    <p class="sec-lead">大切な契約やアカウントを、対応のタイミングや支払いのつながりで整理しています。</p>
+
     <div class="sec">
-      <div class="alert" id="alert">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BE7017" stroke-width="1.8"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>
-        <div></div>
+      <div class="idxgrid" id="idxgrid"></div>
+
+      <div class="sec-h" style="margin-top:38px">
+        <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v16M4 12h16"/></svg></span>
+        <h3>サービスの追加</h3>
       </div>
-      <!-- 通帳はここに state.js の事実から描かれる。 -->
-      <div id="books"></div>
+
+      <div class="addrow2">
+        <button class="addbtn" id="add-manual">＋ 直接入力で追加する</button>
+        <button class="addbtn ghost" id="add-ocr">明細から取り込む（準備中）</button>
+      </div>
+
     </div>
   </div></main>
 </div>
+
+<!-- 詳細：索引の上に重なって開く。索引は背後に残る。 -->
+<div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+
 <div class="toast" id="toast"></div>
 <script src="../shared/areas.js"></script>
 <script src="../shared/shell.js"></script>

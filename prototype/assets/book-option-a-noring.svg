@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="27" viewBox="10 15 32 24" role="img" aria-labelledby="title desc">
+  <title id="title">開いたノート</title><desc id="desc">生成りのページと緑の表紙を持つ開いたノート</desc>
+  <path d="M10.8 18.6c4.8-2.7 10-2.4 15.2.7 5.2-3.1 10.4-3.4 15.2-.7v19.2c-4.7-2.1-9.8-1.7-15.2 1.2-5.4-2.9-10.5-3.3-15.2-1.2V18.6Z" fill="#4f7558"/>
+  <path d="M12.4 16.3c4.3-2.1 8.7-1.6 13.6 1.5v18.8c-4.8-2.6-9.3-3-13.6-1.1V16.3Z" fill="#fff9eb" stroke="#607b62" stroke-width="1.15" stroke-linejoin="round"/>
+  <path d="M39.6 16.3c-4.3-2.1-8.7-1.6-13.6 1.5v18.8c4.8-2.6 9.3-3 13.6-1.1V16.3Z" fill="#fff9eb" stroke="#607b62" stroke-width="1.15" stroke-linejoin="round"/>
+  <path d="M26 18v18.5M15.6 21.4c2.8-.6 5.2-.2 7.6 1M15.6 25.2c2.8-.5 5.2-.1 7.6 1M36.4 21.4c-2.8-.6-5.2-.2-7.6 1M36.4 25.2c-2.8-.5-5.2-.1-7.6 1" fill="none" stroke="#9ba795" stroke-width=".85" stroke-linecap="round"/>
+</svg>
