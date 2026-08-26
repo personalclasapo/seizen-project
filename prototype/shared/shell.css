@@ -11,14 +11,16 @@
    ここでは最終的に効いていた値だけを1回で書く。                  */
 
 *{box-sizing:border-box}
-body{margin:0;min-width:1120px;background:var(--backdrop);color:var(--ink);
+body{margin:0;background:var(--backdrop);color:var(--ink);
   font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit}
 button{cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
   outline:3px solid #91ad8a88;outline-offset:2px}
 
-.shell{display:flex;width:calc(100vw - 32px);max-width:1280px;
+/* min-width はデスクトップ固定の間だけここに置く。スマホ対応時は
+   この1行を外すかブレークポイントで上書きすれば足りる。          */
+.shell{display:flex;width:calc(100vw - 32px);max-width:var(--shell-max);min-width:var(--shell-min);
   min-height:calc(100vh - 32px);margin:16px auto;
   background:linear-gradient(135deg,#f5f2ea,#eee9de)}
 
@@ -27,7 +29,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
    アカウントは、その紙の一部として並ぶ。                        */
 .guide{position:sticky;top:16px;z-index:3;align-self:flex-start;
   display:flex;flex-direction:column;
-  width:258px;flex:0 0 258px;height:calc(100vh - 32px);min-height:620px;
+  width:var(--guide-w);flex:0 0 var(--guide-w);height:calc(100vh - 32px);min-height:620px;
   padding:21px 12px 12px;overflow:hidden;
   background:linear-gradient(155deg,var(--gr-d),var(--gr) 62%,#17402C);
   border-radius:12px 0 0 12px;color:#fffdf4;
@@ -38,6 +40,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 /* 作業面との段差は、線ではなく影でつける。 */
 .guide:after{content:"";position:absolute;z-index:4;top:13px;right:0;bottom:13px;width:7px;
   background:linear-gradient(90deg,rgba(10,40,25,.2),transparent);pointer-events:none}
+/* 左端も同じ段差にする。:after の鏡像で、紙との境目側を濃くする。
+   疑似要素は :before（額縁）と :after（右端）で埋まっているので、
+   shell.js が .guide の末尾へ置く一枚をここで帯にする。          */
+.guide-edge{position:absolute;z-index:4;top:13px;left:0;bottom:13px;width:7px;
+  background:linear-gradient(270deg,rgba(10,40,25,.2),transparent);pointer-events:none}
 
 .brand{position:relative;display:flex;align-items:center;gap:11px;padding:13px 11px 24px}
 .brand-mark{display:inline-grid;place-items:center;width:34px;height:34px;flex:none;

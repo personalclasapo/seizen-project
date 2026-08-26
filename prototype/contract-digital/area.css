@@ -13,13 +13,60 @@
 .sec-h{margin:34px 0 6px}
 .sec-h .cnt{background:none;padding:4px 11px}
 .sec-h .rt{margin-left:auto;font-size:11.5px;color:var(--ink3);white-space:nowrap}
+/* 「契約・アカウントの一覧」の見出しアイコンは銀行口座と同じ大きさに
+   揃える。同じ .sec-h を使う「サービスの追加」は対象にしないので、
+   HTML側で .sec-h-lg を付けて絞る。                                */
+.sec-h-lg .sec-icon{width:38px;height:38px}
+.sec-h-lg .sec-icon svg{width:22px}
+.inner>#indexView>.sec-h:first-child{margin-top:0}
 
 /* ── 索引：対応のタイミングで2列、支払いのつながりはその下 ─── */
-.idxgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+/* タブと台紙がブロックの外へ出るので、上と列間にその分の逃げを取る。 */
+.idxgrid{display:grid;grid-template-columns:1fr 1fr;column-gap:26px;row-gap:44px;margin-top:36px}
+/* 支払いのつながりは「対応のタイミング」の軸に乗らない別の見方なので、
+   束のモチーフは着せない（耳も台紙も持たせない）。               */
 .ib-pay{grid-column:1 / -1}
+.ib-pay:before{display:none}
 .paycards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.iblock{background:#fff;border:1px solid #eae5da;border-radius:14px;padding:18px 18px 16px;display:flex;flex-direction:column}
-.ib-h{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+/* 索引ブロックは「仕分けされた書類の束」を借りる。借りるのは束の
+   質感だけで、入れ物（箱・バインダー）は作らない。箱は中身が有限に
+   見える形なので、件数が伸びる索引と相性が悪い。造形はタブ・台紙・
+   奥行きの3つに限り、意味を持たない小物は置かない。正本4-2により、
+   借りるのは外形ではなく情報階層＝「分類済みの束」であること。   */
+/* 束の表紙。通帳の .pb と同じ組み立てで、全周に回した光（ぼかし0の
+   オフセット無し影）に下方向の影を重ね、上辺を内側ハイライトで起こす。
+   板が浮いていること自体はここで作る。                            */
+.iblock{position:relative;background:#fff;border:1px solid var(--bk-ln);border-radius:14px;padding:18px 18px 16px;display:flex;flex-direction:column;
+  box-shadow:inset 0 1px 0 #fff,inset 0 0 0 1px #ffffffa6,0 0 0 1px #ffffff5c,0 2px 3px #4b422b1f,0 6px 12px -2px #4b422b2b}
+
+/* 台紙。上と左は内側、右と下は外へ。四方均等に出すと縁取りに見えて
+   しまうので、ずらして「下に敷いた紙」にする。影は台紙側にだけ落とし、
+   段差そのものに厚みを持たせる。通帳の .pb:before と同じ手つき。  */
+.iblock:before{content:"";position:absolute;z-index:-1;inset:7px -9px -10px 9px;border-radius:12px;
+  border:1px solid var(--bk-ln2);background:linear-gradient(180deg,var(--bk-mat),var(--bk-mat2))}
+
+/* タブ。台紙から立ち上がる耳で、この束が何かを名指す。空の札は
+   「それらしさ」だけの飾りになるので、必ず語を持たせる。台紙と同じ
+   紙なので、地・枠・陰影は台紙にそろえる。                       */
+.ib-tab{position:absolute;z-index:-1;top:-17px;left:20px;min-width:104px;height:26px;padding:0 14px 8px;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:9px 9px 0 0;border:1px solid var(--bk-ln2);border-bottom:0;
+  background:linear-gradient(180deg,var(--bk-mat2),var(--bk-mat3));
+  box-shadow:0 -2px 6px -2px #4b422b2e;
+  font-size:11px;font-weight:700;letter-spacing:.04em}
+
+/* 「今のうちに」は手前へ、「必要になってから」は奥へ沈める。急ぎの
+   差を装飾の量ではなく奥行きで言う。色は橙＝いま／緑＝あとで、
+   トークンの意味づけのまま使う。                                 */
+.ib-pre{--bk-mat:#F7EAD6;--bk-mat2:#EEDCBE;--bk-mat3:#E3CBA1;--bk-ln:#E0D3B8;--bk-ln2:#D3B87E}
+.ib-pre:before{box-shadow:0 10px 20px -8px #7a5a2a45,0 22px 36px -16px #7a5a2a40}
+.ib-pre .ib-tab{color:#8F5D13}
+.ib-post{--bk-mat:#E9EFE9;--bk-mat2:#DDE6DE;--bk-mat3:#CCD9CE;--bk-ln:#DDE2DA;--bk-ln2:#BECDC1}
+.ib-post:before{box-shadow:0 7px 14px -7px #2f4a3730,0 16px 26px -14px #2f4a372b}
+.ib-post .ib-tab{color:#456B52}
+
+/* 束の中身は箱に入れず、平らなまま置く。件数が伸びても崩れない。 */
+.ib-h{position:relative;display:flex;align-items:center;gap:10px;margin-bottom:9px}
 .ib-ic{display:grid;place-items:center;width:32px;height:32px;flex:none;border-radius:9px}
 .ib-ic svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}
 .ic-pre{background:#fdf0e2;color:#c9781d}.ic-post{background:#e9f1ea;color:#4a8161}.ic-pay{background:#e7f0f3;color:#4681a0}
@@ -34,31 +81,85 @@
 .tally .tl{display:block;font-size:10.5px;color:var(--ink3);margin-bottom:3px}
 .tally .tv{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700}
 .tally .tv:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
-.tv-gr{color:#3b8a5c}.tv-or{color:#d18017}.tv-rd{color:#d0574f}
+.tv-gr{color:#3b8a5c}.tv-or{color:#d18017}.tv-rd{color:#d0574f}.tv-gy{color:#8a8578}
 
-.irow{display:flex;align-items:center;gap:11px;width:100%;padding:11px 4px;border:0;border-bottom:1px solid #f1ece2;background:none;font-family:inherit;text-align:left;cursor:pointer}
-.irow:last-of-type{border-bottom:0}
+/* 行の区切りは全行に引かない。等間隔の罫は表に見えて、目が滑る。
+   線は済みの塊が始まる位置（.cut）にだけ引き、そこで意味を持たせる。 */
+.irow{display:flex;align-items:center;gap:11px;width:100%;padding:11px 4px;border:0;background:none;font-family:inherit;text-align:left;cursor:pointer}
+.irow.cut{margin-top:7px;padding-top:14px;border-top:1px solid #ece6da}
+
+/* 済んだ行は沈める。家族が目を留めるべきなのは「確認が必要」の側
+   だけなので、済みは読めるが前に出ない濃さにする。押せることは
+   変わらないので、hover では通常の濃さへ戻す。                  */
+.irow.done{opacity:.62}
+.irow.done:hover{opacity:1}
 .irow:hover{background:#fbfaf5}
 .mark{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:7px;font-size:14px;font-weight:800;line-height:1}
+.mark-logo svg{width:56%;height:56%}
 .irow .nm{flex:1;min-width:0}
 .irow .nm b{display:block;font-size:13px;font-weight:700;color:var(--ink);line-height:1.35}
 .irow .nm small{display:block;margin-top:1px;font-size:10.5px;color:#a5a199}
 .st-badge{flex:none;display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:11px;font-size:10.5px;font-weight:700;white-space:nowrap}
 .st-badge:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
-.sb-gr{background:#e8f2ea;color:#3b8a5c}.sb-or{background:#fdf0e2;color:#c9781d}.sb-rd{background:#fbeceb;color:#c9544b}
+.sb-gr{background:#e8f2ea;color:#3b8a5c}.sb-or{background:#fdf0e2;color:#c9781d}.sb-rd{background:#fbeceb;color:#c9544b}.sb-gy{background:#f4f2eb;color:#6d7169}
 .irow .arw{flex:none;color:#c3bfb5;font-size:13px}
 .irow:hover .arw{color:#8fa88f}
+
+/* 束を畳んでいるときだけ出る、続きを見る／閉じるボタン。行の並びを
+   崩さないよう .irow と同じ横幅・左右余白で、束の一番下に足す。   */
+.ib-more{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;margin-top:2px;padding:9px 4px;border:0;border-top:1px solid #f2ede0;background:none;font-family:inherit;font-size:11.5px;font-weight:700;color:#8a8578;cursor:pointer}
+.ib-more:hover{color:#54627a}
+.ib-more .chev{font-size:8px;color:#b6b09f;transition:transform .15s}
+.ib-more .chev.up{transform:rotate(180deg)}
 
 /* button は display:block を指定しても、中身がブラウザ既定の
    アンカー用フレックスで縦中央に寄ることがある（Chromium の癖）。
    flex 縦積みだと明示して、揃えを flex-start に固定する。       */
-.paycard{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;width:100%;border:1px solid #eee9de;border-radius:11px;padding:14px 15px;background:#fff;font-family:inherit;text-align:left;cursor:pointer;transition:box-shadow .12s,border-color .12s}
-.paycard:hover{border-color:#c7d8de;box-shadow:0 3px 9px rgba(70,129,160,.12)}
+/* 支払いカードは、上半分を券面として立てる。カードは現実に手で持つ
+   ものなので、ここだけは形をそのまま借りたほうが早い。ただし実ロゴは
+   使わず、地の色と配置だけで「カードである」ことを言う。         */
+/* カード1枚が紙の上に浮いている厚みを、影を2枚重ねて作る。近い影
+   （ぼかし小）でカード直下の接地感、遠い影（ぼかし大）で紙から
+   浮いた分の空気を出す。束の台紙（覗く2枚目の紙）とは別の手で、
+   ここは1枚のカードが持ち上がって見えればよい。                  */
+.paycard{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;width:100%;border:1px solid #e7e1d4;border-radius:12px;padding:0;background:#fff;font-family:inherit;text-align:left;cursor:pointer;overflow:hidden;
+  box-shadow:inset 0 1px 0 #fff,0 1px 1px #4b422b29,0 3px 6px -1px #4b422b2e,0 12px 22px -10px #4b422b40;
+  transition:box-shadow .16s,transform .16s}
+.paycard:hover{transform:translateY(-2px);
+  box-shadow:inset 0 1px 0 #fff,0 2px 3px #4b422b26,0 6px 12px -2px #4b422b33,0 20px 32px -14px #4b422b52}
+
+/* 券面。上辺の内側ハイライトと下辺の陰で、平らな面に厚みを出す。
+   斜めの艶（グロス）を1本重ね、プラスチックの反射を足す。         */
+.pc-face{position:relative;padding:12px 15px 13px;color:#fff;overflow:hidden;
+  box-shadow:inset 0 1px 0 #ffffff4d,inset 0 -1px 0 #00000026}
+.pc-face:before{content:"";position:absolute;top:0;left:0;width:70%;height:100%;
+  background:linear-gradient(115deg,#ffffff33 0%,#ffffff00 32%,#ffffff00 100%);
+  pointer-events:none}
+/* 彩度は落として置く。ここは索引より下位の情報なので、券面が画面の
+   主役になってはいけない。実物の色を借りつつ、紙面へなじむ濃さに。 */
+.pf-rakuten{background:linear-gradient(145deg,#8a4a44,#73393a 55%,#613033)}
+.pf-smbc{background:linear-gradient(145deg,#4a7059,#3b5c48 55%,#314c3c)}
 .pc-h{display:flex;align-items:baseline;gap:8px}
-.pc-h b{font-size:13.5px;font-weight:700}
-.pc-h .lnk{margin-left:auto;font-size:11.5px;color:#4681a0;font-weight:700;white-space:nowrap}
-.pc-tail{margin:3px 0 9px;font-size:11px;color:#a5a199;letter-spacing:.08em}
-.pc-warn{display:flex;gap:7px;align-items:flex-start;font-size:11px;color:#c9781d;line-height:1.6;margin-bottom:10px}
+.pc-h b{font-size:13.5px;font-weight:700;letter-spacing:.01em}
+.pc-h .lnk{margin-left:auto;font-size:11px;color:#ffffffd1;font-weight:700;white-space:nowrap;
+  padding:2px 8px;border-radius:20px;background:#ffffff26}
+
+/* 券面に載るものは横一列。段を作ると券面が間延びし、下に余白が残る。
+   番号は下4桁だけ分かればよい。                                 */
+.pc-mid{display:flex;align-items:center;gap:18px;margin-top:11px}
+/* ICチップ。券面で唯一の絵柄なので、線を1本入れるだけに留める。 */
+.pc-chip{flex:none;width:26px;height:19px;border-radius:4px;
+  background:linear-gradient(160deg,#e8d9a8,#c9b170);box-shadow:inset 0 0 0 1px #ffffff40}
+.pc-chip:after{content:"";display:block;margin:8.5px 4px 0;height:1px;background:#00000026}
+.pc-tail{font-size:13px;color:#fffffff2;letter-spacing:.1em;font-weight:600;white-space:nowrap}
+
+/* 名義と有効期限は番号の後ろへ続ける。片方を右端へ飛ばすと間が空く。 */
+.pc-nm,.pc-exp{font-size:11.5px;color:#ffffffe0;letter-spacing:.03em;white-space:nowrap}
+.pc-nm i,.pc-exp i{display:block;margin-bottom:1px;font-style:normal;font-size:8.5px;color:#ffffff8a;letter-spacing:.06em}
+
+/* 記録側。券面と地続きに見えないよう、白い紙の上へ戻す。 */
+.pc-body{padding:12px 15px 13px}
+.pc-warn{display:flex;gap:7px;align-items:flex-start;font-size:11px;color:#c9781d;line-height:1.6;margin:0 0 10px}
 .pc-warn svg{flex:0 0 13px;margin-top:1px;stroke:#d18017;fill:none;stroke-width:2}
 /* 横幅を3等分に固定し、件数によって並びがばらつかないようにする。
    4件目からは行を増やして続ける。                              */
@@ -67,42 +168,115 @@
 .chip2 .cl{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .chip2 .mark{flex:none;width:20px;height:20px;border-radius:5px;font-size:10px}
 
-/* ── 詳細：オーバーレイ ───────────────────────────── */
-.scrim{position:fixed;inset:0;z-index:40;background:rgba(40,44,38,.42);backdrop-filter:blur(2px);display:none;align-items:flex-start;justify-content:center;padding:34px 20px;overflow-y:auto}
-.scrim.show{display:flex}
-.sheet{position:relative;display:flex;width:100%;max-width:1040px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 26px 60px rgba(30,34,28,.35)}
-.close{position:absolute;top:14px;right:16px;z-index:3;width:32px;height:32px;border:1px solid #eae5da;border-radius:50%;background:#fff;color:#8a8578;font-size:16px;line-height:1;display:grid;place-items:center}
-.close:hover{background:#f5f2ea;color:#454b44}
+/* ── 詳細：画面 ───────────────────────────────────
+   索引の上に重ねるオーバーレイではなく、?id= を持つ別画面として
+   本文の中に描く。背景を暗くする幕（scrim）と閉じるボタンは
+   持たない。1件のファイルという実体感を、背後にもう1枚の台紙が
+   右・下へ覗く形で出す（索引の .iblock:before と同じ手つき。
+   シートの中の白／ベージュに紛れないよう、外側の地の上に置く）。 */
+.dtl-file{position:relative}
+.dtl-file:before{content:"";position:absolute;z-index:0;inset:10px -10px -10px 10px;
+  border-radius:14px;border:1px solid #ddd3ab;background:linear-gradient(180deg,#f7f2e2,#efe6cd);
+  box-shadow:0 14px 26px -14px rgba(70,64,50,.4)}
+/* そのとき（post）の項目は、索引の .ib-post と同じグレーグリーンに
+   揃える。台紙の色そのものが「いま／そのとき」を言うので、ここも
+   索引と同じ値をそのまま使う。                                    */
+.dtl-file.dtl-post:before{border-color:#BECDC1;background:linear-gradient(180deg,#E9EFE9,#DDE6DE);
+  box-shadow:0 14px 26px -14px rgba(47,74,55,.4)}
+.sheet{position:relative;z-index:1;display:flex;width:100%;background:#fff;border:1px solid #e7e1d4;border-radius:14px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(62,54,37,.08),0 18px 34px -12px rgba(62,54,37,.22)}
 
-/* 左：リング金具のある綴じ代 */
-.rings{position:relative;flex:0 0 190px;background:linear-gradient(180deg,#f2efe6,#eae6da);padding:26px 20px;display:flex;flex-direction:column;align-items:center;text-align:center}
-.rings:after{content:"";position:absolute;top:0;right:0;bottom:0;width:1px;background:rgba(70,64,50,.13)}
+/* 前へ｜戻る｜次へ を1行に収める。grid の 1fr auto 1fr で、前へ／次への
+   有無や長さに関わらず「戻る」を画面の真ん中に固定する。前へ／次へは
+   白いシートの左右の縁に寄り、ページをめくる位置に手を誘う。       */
+/* #detailView は .inner の29px上余白をそのまま引き継ぐと、見出しの
+   ない詳細画面では間延びして見えるので、ここだけ少し引き上げる。 */
+#detailView{margin-top:-14px}
+#detailNav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;margin-bottom:10px}
+/* 戻るは前へ／次へより意味の重い操作（ファイルそのものを離れる）
+   なので、白い囲みで少しだけ存在感を出す。                        */
+.dtl-back{justify-self:center;display:inline-flex;align-items:center;gap:5px;border:1px solid #e6e0d0;border-radius:20px;background:#fff;padding:6px 14px 6px 10px;font-family:inherit;font-size:12px;font-weight:700;color:#6b6963;cursor:pointer;white-space:nowrap;box-shadow:0 1px 2px rgba(62,54,37,.06)}
+.dtl-back:hover{border-color:#c3bcaa;background:#fdfcf8;color:#454b44}
+.dtl-back svg{width:12px;height:12px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2}
+/* 前へ／次へは中身の大きさぴったりに収め、grid の 1fr 列いっぱいに
+   伸びた当たり判定がそのまま帯状の背景に見えてしまわないようにする。 */
+.dtl-pbtn{justify-self:start;display:flex;align-items:center;gap:6px;min-width:0;max-width:100%;padding:5px 8px;border:0;border-radius:7px;background:none;font-family:inherit;cursor:pointer;color:#6b6963}
+.dtl-pbtn[data-next]{justify-self:end}
+.dtl-pbtn:hover{background:#eee7d6}
+.dtl-pbtn[disabled]{opacity:.35;cursor:default;pointer-events:none}
+.dtl-arw{flex:none;display:inline-flex;color:#a9a294}
+.dtl-arw svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2}
+.dtl-lb{min-width:0;flex:1;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px;font-weight:700}
+.dtl-lb-r{text-align:right}
+.dtl-lb small{display:block;font-size:9px;font-weight:600;color:#a5a199}
+
+/* 左：リング金具のある綴じ代。変わらない事実（ファイルNo.・契約情報・
+   登録日）を持つ。ページが長くなっても読んでいる間ずっと見えるよう、
+   sticky で追従させる。綴じ目には薄い影を足し、リングがページを
+   押さえている厚みを出す。                                      */
+.rings{position:sticky;top:16px;flex:0 0 236px;background:linear-gradient(180deg,#f2efe6,#eae6da);padding:26px 20px;display:flex;flex-direction:column;align-items:stretch;text-align:center}
+.rings:after{content:"";position:absolute;top:0;right:-1px;bottom:0;width:1px;background:rgba(70,64,50,.16)}
 .ring{position:absolute;left:-13px;width:44px;height:13px}
 .ring:before{content:"";position:absolute;inset:0;border-radius:7px;background:linear-gradient(180deg,#6b7079,#3c4149 45%,#23262b);box-shadow:0 1px 3px rgba(0,0,0,.35)}
 .ring:after{content:"";position:absolute;left:2px;top:2px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#8b9099 60%,#4a4f57)}
-.ring.r1{top:200px}.ring.r2{top:calc(50% + 130px)}
-.filecard{width:126px;padding:13px 8px 15px;background:#fff;border-radius:5px;box-shadow:0 2px 7px rgba(70,64,50,.16)}
+.ring.r1{top:16%}.ring.r2{top:32%}.ring.r3{top:48%}.ring.r4{top:64%}.ring.r5{top:80%}
+.filecard{width:126px;margin:0 auto;padding:13px 8px 15px;background:#fff;border-radius:5px;box-shadow:0 2px 7px rgba(70,64,50,.16)}
 .filecard small{display:block;font-size:10.5px;color:#8a8578;letter-spacing:.02em}
 .filecard b{display:block;margin-top:5px;font-size:14px;font-weight:700;color:#454b44}
 .filecard b i{font-style:normal;font-size:25px;letter-spacing:.03em;margin-left:3px}
 .filecard .rule{margin:9px auto 0;width:56px;height:2px;border-radius:2px;background:#e8933c}
-.rmeta{margin-top:26px}
+/* 契約情報／カード情報。rmeta と同じ中央寄せに揃え、飛び出した
+   リング金具（左端）と地の色が近い左寄せでは起きていた衝突を、
+   そもそも左端に文字を置かないことで避ける。編集ボタンだけは
+   右上隅に置くので、そこだけ絶対配置で中央寄せの外へ出す。       */
+.rspine{position:relative;margin-top:22px;padding-top:18px;border-top:1px dashed #d8d0bc}
+.rsp-h{margin-bottom:10px}
+.rsp-h span{font-size:11px;font-weight:700;color:#8a8578;letter-spacing:.04em}
+.rsp-edit{position:absolute;top:14px;right:0;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid transparent;border-radius:6px;background:none;padding:0;color:#a5a199;cursor:pointer}
+.rsp-edit svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.9}
+.rsp-edit:hover{border-color:#d8d0bc;background:#fdfcf8;color:#6b6963}
+.rsp-edit.on{border-color:var(--gr);background:var(--gr);color:#fff}
+.rsp-row{margin-bottom:13px}
+.rsp-row:last-child{margin-bottom:0}
+.rsp-row small{display:block;font-size:10px;color:var(--ink3)}
+.rsp-row b{display:block;margin-top:3px;font-size:12.5px;font-weight:700;color:#454b44;letter-spacing:.01em}
+.rsp-row b em{display:block;font-style:normal;font-size:11px;color:#7d7a76;letter-spacing:.06em;margin-top:1px}
+.rsp-row .ef{width:100%;font-size:12px}
+.rsp-row .ev{display:inline-block}
+.rmeta{margin-top:22px;padding-top:18px;border-top:1px dashed #d8d0bc}
 .rmeta small{display:block;font-size:10px;color:var(--ink3)}
 .rmeta b{display:block;margin:3px 0 20px;font-size:12.5px;font-weight:700;color:#5c594d;letter-spacing:.02em}
-.rfoot{margin-top:auto;color:#a09b8d}
+.rfoot{margin-top:auto;padding-top:18px;color:#a09b8d}
 .rfoot svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5}
 .rfoot span{display:block;margin-top:8px;font-size:10px;line-height:1.7}
 
-/* 右：本体 */
-.page{flex:1;min-width:0;background:#fff}
-.pg-h{display:flex;align-items:center;gap:14px;padding:22px 60px 18px 28px;border-bottom:1px solid #f0ece3}
+/* 右：本体。綴じ目側の縁に薄い影を落とし、リングに押さえられた
+   ページの厚みを出す。                                          */
+.page{flex:1;min-width:0;background:#fff;box-shadow:inset 9px 0 12px -10px rgba(56,50,34,.16)}
+.pg-h{display:flex;align-items:center;gap:14px;padding:22px 28px 18px;border-bottom:1px solid #f0ece3}
 .pg-h .nm{font-size:27px;font-weight:800;letter-spacing:-.03em}
 .pg-h .cat{padding-left:14px;border-left:1px solid #e2ddd0;font-size:13px;color:#7d7a76}
-.pg-h .pol{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;white-space:nowrap}
+/* バッジは名前・カテゴリと同じ「この項目について」の並びに置く。
+   右端は開閉ボタンだけの場所にする。                              */
+.pg-h .pol{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;white-space:nowrap}
 .pg-h .pol:before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
 .pg-h .pol{padding:4px 12px;border-radius:11px;font-size:11.5px}
 .pg-h .pol:before{width:7px;height:7px}
-.hb-gr{background:#e8f2ea;color:#3b8a5c}.hb-or{background:#fdf0e2;color:#c9781d}.hb-rd{background:#fbeceb;color:#c9544b}
+.hb-gr{background:#e8f2ea;color:#3b8a5c}.hb-or{background:#fdf0e2;color:#c9781d}.hb-rd{background:#fbeceb;color:#c9544b}.hb-gy{background:#f4f2eb;color:#6d7169}
+/* 対応完了の切り替え。バッジのすぐ隣に置く軽いピル。押した後の
+   「戻す」も含め、右端の開閉ボタン（.pg-collapse）とは役割も見た目も
+   分けるので、色は付けずグレーの縁取りだけで存在を示す。          */
+.complete-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border:1px solid #e2ddd0;border-radius:20px;background:#fff;font-family:inherit;font-size:11px;font-weight:700;color:#8a8578;cursor:pointer}
+.complete-btn svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4}
+.complete-btn:hover{background:#f8f6f0}
+.complete-btn.on{background:#f4f2eb;border-color:#e5e1d3;color:#6d7169}
+/* 対応方針／アカウント情報／手続き方法／メモをまとめて開閉する。
+   内容ではなく見え方の操作なので、前へ／次へと同じ軽いゴースト
+   ボタンにして、行の右端だけに独立して置く。                      */
+.pg-collapse{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border:0;border-radius:6px;background:none;font-family:inherit;font-size:10.5px;font-weight:700;color:#8a8578;cursor:pointer;white-space:nowrap}
+.pg-collapse:hover{background:#f4f2ea;color:#6b6963}
+.pg-collapse .chev{color:#a9a294;font-size:9px;transition:transform .15s}
+.pg-collapse .chev.closed{transform:rotate(180deg)}
 .pg-body{padding:14px 22px 24px}
 
 /* 見出しに薄く色を敷いて「帯」にする。中身は白のままにして、
@@ -201,15 +375,15 @@
 .arow .ast svg{width:13px;height:13px;fill:none;stroke-width:2.4}
 .cv-ok{color:#3b8a5c}.cv-ok svg{stroke:#3b8a5c}
 .cv-ng{color:#c9781d}.cv-ng svg{stroke:#e0951f}
+.cv-na{color:#8a8578}.cv-na svg{stroke:#8a8578}
 
-/* 契約情報 */
-.cinfo{display:grid;grid-template-columns:repeat(5,1fr);padding:6px 0}
-.cinfo > div{padding:6px 15px;border-right:1px dashed #e6e1d3;text-align:center}
-.cinfo > div:first-child{padding-left:6px}
-.cinfo > div:last-child{border-right:0}
-.cinfo small{display:block;margin-bottom:6px;font-size:11px;color:var(--ink3)}
-.cinfo b{font-size:13.5px;font-weight:700;color:var(--ink)}
-.cinfo b em{display:block;font-style:normal;font-size:11.5px;color:#7d7a76;letter-spacing:.08em;margin-top:2px}
+/* 「設定なし」を選択肢に持つ行。見た目は他の行と同じ ast ボタンの
+   ままにし、実体（クリックを受ける本体）だけを透明な select として
+   ボタンの上に重ねる。押すとネイティブの選択肢がその場で開くので、
+   ボタンの絵は変えずに3択だけを足せる。                            */
+.arow .ast-wrap{position:relative;flex:none;display:inline-flex}
+.arow .ast-pick{pointer-events:none}
+.arow .ast-sel{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0;font-size:11.5px;cursor:pointer;appearance:none}
 
 /* 手続き方法｜確認状況はヘッダーではなくカード内右上に置く。
    ヘッダーには他の節と同じ「編集する」が来る。                  */
@@ -258,7 +432,6 @@
 .ef-area{width:100%;min-height:72px;line-height:1.8;resize:vertical}
 .ef-sel{padding-right:26px;cursor:pointer;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#71836f 50%),linear-gradient(135deg,#71836f 50%,transparent 50%);background-position:calc(100% - 13px) 52%,calc(100% - 8px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
 .intent .ef-sel{font-size:16px;font-weight:700}
-.cinfo .ef{width:100%;text-align:center;font-size:12.5px}
 .arow .ef{width:100%}
 /* 確認済み／確認が必要は押して切り替える。節を編集中は、押せる
    ボタンだとひと目で分かるよう枠を出す。それ以外は静かにしておく。 */
@@ -268,6 +441,10 @@
 .sect.editing .arow .ast:hover{border-color:#c3bcaa}
 .sect.editing .arow .ast.cv-ok{border-color:#d6e6da}
 .sect.editing .arow .ast.cv-ng{border-color:#f0ddbc}
+.sect.editing .arow .ast.cv-na{border-color:#e2ddd0}
+/* 設定なし＝該当なしの行。値欄は入力欄にせず、静かな表示だけにする。 */
+.arow-na .avl{color:#9a968a}
+.ev-na{color:#9a968a;font-style:normal}
 
 /* メモ */
 .memo{padding:13px 15px;border-radius:9px;font-size:12.5px;color:#454b44;line-height:1.8}
@@ -277,6 +454,21 @@
 .linked-list{margin-top:2px}
 
 /* 洗い出しの入口 */
-.addrow2{display:flex;gap:12px}
-.addrow2 .addbtn{flex:1}
-.addbtn.ghost{color:#8a8578}
+.addlead{margin:0 0 18px 44px;font-size:12px;color:var(--ink3)}
+
+.addcards{display:flex;gap:16px}
+.addcard{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:32px 28px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;
+  box-shadow:0 2px 8px rgba(50,45,25,.04)}
+.addcard-ic{display:block;width:128px;height:128px;flex:none;margin:0 auto 22px}
+.addcard-ic svg{width:100%;height:100%}
+.addcard h4{margin:0 0 8px;font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
+.addcard p{margin:0 0 20px;font-size:12.5px;line-height:1.75;color:var(--ink2)}
+.addcard-btn{margin-top:auto;width:250px;max-width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:13px;border-radius:9px;border:1px solid var(--gr);background:var(--gr);color:#fff;
+  font-family:inherit;font-size:13.5px;font-weight:700;text-decoration:none;box-sizing:border-box}
+.addcard-btn:hover{background:var(--gr-d);border-color:var(--gr-d)}
+.addcard-btn svg{width:15px}
+
+.addnote{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px 0 0;font-size:12px;color:var(--ink3)}
+.addnote svg{width:15px;flex:none}

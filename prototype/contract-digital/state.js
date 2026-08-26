@@ -53,17 +53,21 @@
   /* ブロックごとの言い回し。同じ骨格を、その領域の言葉で見せる。 */
   const GROUP_UI = {
     pre: {
+      /* タブに出す短い名。束の耳なので、見出しの言い換えではなく
+         時間の軸そのものを名指す。長い語は入らない。            */
+      tab: 'いまのうち',
       title: '今のうちに準備が必要',
       lead: 'ご本人が亡くなった後に困らないよう、事前に<br>済ませておくと安心な契約です。',
-      badges: { ready: '準備済み', open: '確認が必要' },
+      badges: { ready: '準備済み', open: '確認が必要', done: '対応完了' },
       accountTitle: 'アカウント情報', accountSub: '（対応可能か）',
       accountLead: '対応可能状態', accountNeed: '対応に必要なもの',
       okTitle: '対応できます', okNote: '必要な情報はそろっています。'
     },
     post: {
+      tab: 'そのとき',
       title: '必要になってから対応できる',
       lead: '今すぐの準備は不要です。必要になったときに、<br>各窓口で手続きを行えます。',
-      badges: { ready: '記録済み', open: '確認が必要' },
+      badges: { ready: '準備済み', open: '確認が必要', done: '対応完了' },
       accountTitle: '手続きに必要なもの', accountSub: '（必要時に使えるか）',
       accountLead: '記録の状態', accountNeed: '手続きに必要なもの',
       okTitle: '必要時に対応できます', okNote: '手続きに必要な情報はそろっています。'
@@ -73,8 +77,20 @@
        バッジの言い回しだけ、ここから引く。                          */
     card: {
       accountTitle: 'アカウント情報',
-      badges: { ready: '準備済み', open: '確認が必要' }
+      badges: { ready: '準備済み', open: '確認が必要', done: '対応完了' }
     }
+  };
+
+  /* 実ロゴが確認できるブランドだけ、catalog.js の LOGOS（パスデータ）を
+     モノクロで流用する。ブランドカラーでは塗らず、頭文字マークと同じ
+     地色・同じインク色に揃えるので、実ロゴの有無で見た目の重さが
+     変わらない。ロゴを持たないブランド（地域の電力・ガス・水道など、
+     正確な意匠を確認できないもの）は、従来どおり頭文字マークのまま。 */
+  const LOGO_ALIAS = {
+    'Googleアカウント（メール・写真）': 'google',
+    'Google One（100GB）':           'google',
+    'iCloud+（200GB）':              'apple',
+    'Amazonプライム':                'amazon'
   };
 
   /* ブランドの代替マーク。実ロゴは使わず、頭文字とブランド色で識別する。 */
@@ -94,14 +110,6 @@
     'NHK受信契約':                   { ch: 'N', bg: '#eef2f6', fg: '#6b7a89' }
   };
 
-  const CATEGORIES = [
-    { id: 'video',   label: '動画・音楽配信', hint: '例：Netflix、Amazonプライム、Spotify、Hulu、U-NEXT' },
-    { id: 'cloud',   label: 'クラウド・ストレージ', hint: '例：Google One、iCloud+、Dropbox' },
-    { id: 'news',    label: '新聞・雑誌・宅配', hint: '例：新聞購読、定期宅配、ミールキット' },
-    { id: 'fitness', label: '会費制のサービス', hint: '例：ジム、習い事、会員制の駐車場' },
-    { id: 'sns',     label: 'SNS・無料アカウント', hint: '例：X、LINE、Facebook、各種ポイント会員' }
-  ];
-
   /* ── 事実：カード（支払いの経路） ─────────────────── */
 
   /* カードの詳細は、契約・アカウントと丸ごと同じ骨格（対応方針／
@@ -114,15 +122,17 @@
   const cards = [
     { id: 'card-rakuten', name: '楽天カード',
       group: 'card',
+      /* 券面の地の色。実ロゴは使わないので、色だけで見分ける。 */
+      brand: 'rakuten',
       policy: {
         intent: 'continue',
         reason: '複数の契約の支払いに使っているため、当面はこのカードのまま使い続けます。',
         nextTiming: ''
       },
       account: [
-        { label: 'カード本体',           value: '保管場所：自宅・本人の財布', ok: true,  icon: 'card' },
-        { label: '暗証番号',             value: '',      ok: false, icon: 'user' },
-        { label: 'ネット明細のログイン', value: '未確認', ok: false, icon: 'mail' }
+        { label: 'カード本体',           value: '保管場所：自宅・本人の財布', state: 'ok',   icon: 'card' },
+        { label: '暗証番号',             value: '',      state: 'none', icon: 'user' },
+        { label: 'ネット明細のログイン', value: '',      state: 'none', icon: 'mail' }
       ],
       info: { issuer: '楽天カード株式会社', holder: '父 太郎', tail: '5678', expiry: '2027/03' },
       procedure: {
@@ -136,15 +146,16 @@
     },
     { id: 'card-smbc', name: '三井住友カード（NL）',
       group: 'card',
+      brand: 'smbc',
       policy: {
         intent: 'unknown',
         reason: '',
         nextTiming: ''
       },
       account: [
-        { label: 'カード本体',           value: '', ok: false, icon: 'card' },
-        { label: '暗証番号',             value: '', ok: false, icon: 'user' },
-        { label: 'ネット明細のログイン', value: '', ok: false, icon: 'mail' }
+        { label: 'カード本体',           value: '', state: 'none', icon: 'card' },
+        { label: '暗証番号',             value: '', state: 'none', icon: 'user' },
+        { label: 'ネット明細のログイン', value: '', state: 'none', icon: 'mail' }
       ],
       info: { issuer: '三井住友カード株式会社', holder: '父 太郎', tail: '1234', expiry: '2026/11' },
       procedure: {
@@ -171,9 +182,9 @@
         nextTiming: ''
       },
       account: [
-        { label: 'ログインID / パスワード', value: '保管場所：書類ケース「デジタル情報」', ok: true,  icon: 'user' },
-        { label: '登録メールアドレス',      value: 'taro***@gmail.com（父スマホ）',        ok: true,  icon: 'mail' },
-        { label: '認証端末（2段階認証）',    value: '父のスマートフォン',                   ok: false, icon: 'phone' }
+        { label: 'ログインID / パスワード', value: '保管場所：書類ケース「デジタル情報」', state: 'ok',   icon: 'user' },
+        { label: '登録メールアドレス',      value: 'taro***@gmail.com（父スマホ）',        state: 'ok',   icon: 'mail' },
+        { label: '認証端末（2段階認証）',    value: '父のスマートフォン',                   state: 'none', icon: 'phone' }
       ],
       contract: { holder: '父 太郎', paymentCard: 'card-rakuten', amount: 1980, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
@@ -194,9 +205,9 @@
         nextTiming: ''
       },
       account: [
-        { label: 'ログインID / パスワード', value: '保管場所：書類ケース「デジタル情報」', ok: true, icon: 'user' },
-        { label: '登録メールアドレス',      value: 'taro***@gmail.com（父スマホ）',        ok: true, icon: 'mail' },
-        { label: '認証端末（2段階認証）',    value: '設定なし',                            ok: true, icon: 'phone' }
+        { label: 'ログインID / パスワード', value: '保管場所：書類ケース「デジタル情報」', state: 'ok', icon: 'user' },
+        { label: '登録メールアドレス',      value: 'taro***@gmail.com（父スマホ）',        state: 'ok', icon: 'mail' },
+        { label: '認証端末（2段階認証）',    value: '',                                    state: 'na', icon: 'phone' }
       ],
       contract: { holder: '父 太郎', paymentCard: 'card-rakuten', amount: 980, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
@@ -217,9 +228,9 @@
         nextTiming: '次回の帰省時（2024年8月）'
       },
       account: [
-        { label: 'ログインID / パスワード', value: '保管場所：書類ケース「デジタル情報」', ok: true,  icon: 'user' },
-        { label: '登録メールアドレス',      value: 'taro***@gmail.com（父スマホ）',        ok: true,  icon: 'mail' },
-        { label: '認証端末（2段階認証）',    value: '父のスマートフォン',                   ok: false, icon: 'phone' }
+        { label: 'ログインID / パスワード', value: '保管場所：書類ケース「デジタル情報」', state: 'ok',   icon: 'user' },
+        { label: '登録メールアドレス',      value: 'taro***@gmail.com（父スマホ）',        state: 'ok',   icon: 'mail' },
+        { label: '認証端末（2段階認証）',    value: '父のスマートフォン',                   state: 'none', icon: 'phone' }
       ],
       contract: { holder: '父 太郎', paymentCard: 'card-rakuten', amount: 5900, cycle: 'yearly', started: '不明', nextBill: '毎年〇月頃' },
       procedure: {
@@ -240,9 +251,9 @@
         nextTiming: '移行先が決まり次第'
       },
       account: [
-        { label: 'ログインID / パスワード', value: 'Googleアカウントの記録を参照',         ok: false, icon: 'user' },
-        { label: '登録メールアドレス',      value: 'taro.terasun@gmail.com',              ok: true,  icon: 'mail' },
-        { label: '認証端末（2段階認証）',    value: '父のスマートフォン',                   ok: false, icon: 'phone' }
+        { label: 'ログインID / パスワード', value: '',                                     state: 'none', icon: 'user' },
+        { label: '登録メールアドレス',      value: 'taro.terasun@gmail.com',              state: 'ok',   icon: 'mail' },
+        { label: '認証端末（2段階認証）',    value: '父のスマートフォン',                   state: 'none', icon: 'phone' }
       ],
       contract: { holder: '父 太郎', paymentCard: 'card-smbc', amount: 250, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
@@ -264,9 +275,9 @@
         nextTiming: ''
       },
       account: [
-        { label: 'ログインID / パスワード', value: '保管場所：書類ケース「デジタル情報」', ok: true, icon: 'user' },
-        { label: '登録メールアドレス',      value: 'taro.terasun@icloud.com',             ok: true, icon: 'mail' },
-        { label: '認証端末（2段階認証）',    value: '父のスマートフォン・iPad',             ok: true, icon: 'phone' }
+        { label: 'ログインID / パスワード', value: '保管場所：書類ケース「デジタル情報」', state: 'ok', icon: 'user' },
+        { label: '登録メールアドレス',      value: 'taro.terasun@icloud.com',             state: 'ok', icon: 'mail' },
+        { label: '認証端末（2段階認証）',    value: '父のスマートフォン・iPad',             state: 'ok', icon: 'phone' }
       ],
       contract: { holder: '父 太郎', paymentCard: 'card-smbc', amount: 400, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
@@ -288,9 +299,9 @@
         nextTiming: '次回の帰省時（2024年8月）'
       },
       account: [
-        { label: 'ログインID / パスワード', value: '未確認',                    ok: false, icon: 'user' },
-        { label: '登録メールアドレス',      value: 'taro.terasun@gmail.com',    ok: true,  icon: 'mail' },
-        { label: '認証端末（2段階認証）',    value: '未確認',                    ok: false, icon: 'phone' }
+        { label: 'ログインID / パスワード', value: '',                          state: 'none', icon: 'user' },
+        { label: '登録メールアドレス',      value: 'taro.terasun@gmail.com',    state: 'ok',   icon: 'mail' },
+        { label: '認証端末（2段階認証）',    value: '',                          state: 'none', icon: 'phone' }
       ],
       contract: { holder: '父 太郎', paymentCard: null, paymentLabel: '費用なし', amount: 0, cycle: 'none', started: '不明', nextBill: '—' },
       procedure: {
@@ -302,6 +313,80 @@
       },
       memo: '契約は他社にもわたるため、ここが開けないと調べる手段自体が失われます。',
       dataLoss: true
+    },
+
+    /* --- サンプル：一覧が6件を超えたときの「＋N件を見る」確認用 ---
+       登録機能がまだないため、確認が必要／準備済み／対応完了が
+       それぞれ揃うよう3件を仮に足しておく。実装が済んだら削除してよい。 */
+    {
+      id: 'svc-hulu', no: '013', name: 'Hulu', category: '動画配信', group: 'pre',
+      registered: '2024.06.02', updated: '2024.06.02',
+      policy: {
+        intent: 'unknown',
+        reason: '',
+        nextTiming: ''
+      },
+      account: [
+        { label: 'ログインID / パスワード', value: '',    state: 'none', icon: 'user' },
+        { label: '登録メールアドレス',      value: '',    state: 'none', icon: 'mail' },
+        { label: '認証端末（2段階認証）',    value: '',    state: 'none', icon: 'phone' }
+      ],
+      contract: { holder: '父 太郎', paymentCard: 'card-rakuten', amount: 1026, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
+      procedure: {
+        checked: false,
+        where: 'Hulu ＞ アカウント ＞ 契約内容の確認・解約',
+        steps: ['Huluにログインする', '「アカウント」を開く', '「契約内容の確認・解約」を選択', '解約手続きを進める'],
+        link: 'Hulu 解約方法ヘルプ',
+        point: ''
+      },
+      memo: ''
+    },
+    {
+      id: 'svc-dropbox', no: '014', name: 'Dropbox', category: 'クラウド保存', group: 'pre',
+      registered: '2024.06.02', updated: '2024.06.02',
+      policy: {
+        intent: 'continue',
+        reason: '仕事の資料の保存に使っているため、当面は継続します。',
+        nextTiming: ''
+      },
+      account: [
+        { label: 'ログインID / パスワード', value: '保管場所：書類ケース「デジタル情報」', state: 'ok', icon: 'user' },
+        { label: '登録メールアドレス',      value: 'taro.terasun@gmail.com',             state: 'ok', icon: 'mail' },
+        { label: '認証端末（2段階認証）',    value: '父のスマートフォン',                  state: 'ok', icon: 'phone' }
+      ],
+      contract: { holder: '父 太郎', paymentCard: 'card-smbc', amount: 1500, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
+      procedure: {
+        checked: true,
+        where: 'Dropbox ＞ 設定 ＞ プラン',
+        steps: ['Dropboxにログインする', '設定の「プラン」を開く', '「プランを変更」から解約する'],
+        link: 'Dropbox 解約方法ヘルプ',
+        point: ''
+      },
+      memo: ''
+    },
+    {
+      id: 'svc-disneyplus', no: '015', name: 'Disney+', category: '動画配信', group: 'pre',
+      registered: '2024.06.02', updated: '2024.06.02',
+      policy: {
+        intent: 'cancel',
+        reason: 'ほとんど利用していないため解約します。',
+        nextTiming: ''
+      },
+      account: [
+        { label: 'ログインID / パスワード', value: '保管場所：書類ケース「デジタル情報」', state: 'ok', icon: 'user' },
+        { label: '登録メールアドレス',      value: 'taro.terasun@gmail.com',             state: 'ok', icon: 'mail' },
+        { label: '認証端末（2段階認証）',    value: '',                                    state: 'na',   icon: 'phone' }
+      ],
+      contract: { holder: '父 太郎', paymentCard: 'card-rakuten', amount: 990, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
+      procedure: {
+        checked: true,
+        where: 'Disney+ ＞ アカウント ＞ サブスクリプション',
+        steps: ['Disney+にログインする', '「アカウント」を開く', '「サブスクリプション」から解約する'],
+        link: 'Disney+ 解約方法ヘルプ',
+        point: ''
+      },
+      memo: '解約済み（2024年6月に手続き完了）。',
+      completed: true
     },
 
     /* --- 必要になってから対応できる ---
@@ -317,9 +402,9 @@
         nextTiming: ''
       },
       account: [
-        { label: 'お客様番号',           value: '1234-5678-90',              ok: true, icon: 'doc' },
-        { label: '手続き窓口',           value: 'カスタマーセンター 0120-995-113', ok: true, icon: 'phone' },
-        { label: '検針票・請求書のありか', value: '自宅・リビングの書類ケース',   ok: true, icon: 'folder' }
+        { label: 'お客様番号',           value: '1234-5678-90',              state: 'ok', icon: 'doc' },
+        { label: '手続き窓口',           value: 'カスタマーセンター 0120-995-113', state: 'ok', icon: 'phone' },
+        { label: '検針票・請求書のありか', value: '自宅・リビングの書類ケース',   state: 'ok', icon: 'folder' }
       ],
       contract: { holder: '父 太郎', paymentCard: null, paymentLabel: 'ゆうちょ銀行 自動振替', amount: 8500, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
@@ -340,9 +425,9 @@
         nextTiming: ''
       },
       account: [
-        { label: 'お客様番号',           value: '9012-3456-78',               ok: true, icon: 'doc' },
-        { label: '手続き窓口',           value: 'お客さまセンター 0570-002-211', ok: true, icon: 'phone' },
-        { label: '検針票・請求書のありか', value: '自宅・リビングの書類ケース',    ok: true, icon: 'folder' }
+        { label: 'お客様番号',           value: '9012-3456-78',               state: 'ok', icon: 'doc' },
+        { label: '手続き窓口',           value: 'お客さまセンター 0570-002-211', state: 'ok', icon: 'phone' },
+        { label: '検針票・請求書のありか', value: '自宅・リビングの書類ケース',    state: 'ok', icon: 'folder' }
       ],
       contract: { holder: '父 太郎', paymentCard: null, paymentLabel: 'ゆうちょ銀行 自動振替', amount: 4200, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
@@ -363,9 +448,9 @@
         nextTiming: ''
       },
       account: [
-        { label: 'お客様番号',           value: '5647-0192',                  ok: true,  icon: 'doc' },
-        { label: '手続き窓口',           value: 'お客さまセンター 03-5326-1100', ok: true,  icon: 'phone' },
-        { label: '検針票・請求書のありか', value: '未確認',                       ok: false, icon: 'folder' }
+        { label: 'お客様番号',           value: '5647-0192',                  state: 'ok',   icon: 'doc' },
+        { label: '手続き窓口',           value: 'お客さまセンター 03-5326-1100', state: 'ok',   icon: 'phone' },
+        { label: '検針票・請求書のありか', value: '',                            state: 'none', icon: 'folder' }
       ],
       contract: { holder: '父 太郎', paymentCard: null, paymentLabel: 'ゆうちょ銀行 自動振替', amount: 3100, cycle: 'monthly', started: '不明', nextBill: '隔月〇日頃' },
       procedure: {
@@ -386,9 +471,9 @@
         nextTiming: ''
       },
       account: [
-        { label: '契約番号',      value: 'D-88213456',            ok: true,  icon: 'doc' },
-        { label: '手続き窓口',    value: 'ドコモショップ（要来店）', ok: true,  icon: 'phone' },
-        { label: '本人の端末のありか', value: '未確認',              ok: false, icon: 'folder' }
+        { label: '契約番号',      value: 'D-88213456',            state: 'ok',   icon: 'doc' },
+        { label: '手続き窓口',    value: 'ドコモショップ（要来店）', state: 'ok',   icon: 'phone' },
+        { label: '本人の端末のありか', value: '',                    state: 'none', icon: 'folder' }
       ],
       contract: { holder: '父 太郎', paymentCard: 'card-smbc', amount: 6480, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
@@ -409,9 +494,9 @@
         nextTiming: '次回の家族会議'
       },
       account: [
-        { label: 'お客様ID',         value: 'SN-2201987',                ok: true, icon: 'doc' },
-        { label: '手続き窓口',       value: 'サポートデスク 0120-80-7761', ok: true, icon: 'phone' },
-        { label: '契約書類のありか', value: '自宅・リビングの書類ケース',  ok: true, icon: 'folder' }
+        { label: 'お客様ID',         value: 'SN-2201987',                state: 'ok', icon: 'doc' },
+        { label: '手続き窓口',       value: 'サポートデスク 0120-80-7761', state: 'ok', icon: 'phone' },
+        { label: '契約書類のありか', value: '自宅・リビングの書類ケース',  state: 'ok', icon: 'folder' }
       ],
       contract: { holder: '父 太郎', paymentCard: 'card-smbc', amount: 5200, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
@@ -432,9 +517,9 @@
         nextTiming: '次回の帰省時（2024年8月）'
       },
       account: [
-        { label: 'お客様番号',           value: '未確認',                     ok: false, icon: 'doc' },
-        { label: '手続き窓口',           value: 'ふれあいセンター 0120-151515', ok: true,  icon: 'phone' },
-        { label: '検針票・請求書のありか', value: '未確認',                     ok: false, icon: 'folder' }
+        { label: 'お客様番号',           value: '',                           state: 'none', icon: 'doc' },
+        { label: '手続き窓口',           value: 'ふれあいセンター 0120-151515', state: 'ok',   icon: 'phone' },
+        { label: '検針票・請求書のありか', value: '',                           state: 'none', icon: 'folder' }
       ],
       contract: { holder: '父 太郎', paymentCard: null, paymentLabel: 'ゆうちょ銀行 自動振替', amount: 1225, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
@@ -456,11 +541,23 @@
 
   const intentOf   = it => INTENTS[it.policy.intent];
   const intentLabel = it => it.policy.intentLabel || intentOf(it).label;
-  const markOf = name => MARKS[name] || { ch: name.charAt(0), bg: '#eef2f6', fg: '#6b7a89' };
+  const markOf = name => {
+    const alias = LOGO_ALIAS[name];
+    const logo = alias && global.SeiZenCatalog && global.SeiZenCatalog.LOGOS[alias];
+    if (logo) return { logo: logo.path, bg: '#eef2f6', fg: '#6b7a89' };
+    return MARKS[name] || { ch: name.charAt(0), bg: '#eef2f6', fg: '#6b7a89' };
+  };
+
+  /* account 行の状態は3段階。ok＝確認済み、na＝そもそも設定・該当が
+     ない（2段階認証を設定していない、など）、none＝未確認。
+     na は ok と同じく対応完了として数えるが、バッジの言い回しは
+     分けるので、ここでは真偽ではなく値そのものを返す。            */
+  const accountState = a => a.state || (a.ok ? 'ok' : 'none');
+  const accountDone  = a => accountState(a) !== 'none';
 
   /* 到達状態。「確認が必要」の残数がそのまま索引のバッジになる。 */
   function openCount(it) {
-    return it.account.filter(a => !a.ok).length;
+    return it.account.filter(a => !accountDone(a)).length;
   }
 
   /* 手続きの手順を家族が確認したか。情報が揃っていても、どこへ
@@ -499,28 +596,36 @@
   /* 索引とカード上部のバッジ。家族側の軸だけから引く。本人が決めた
      かどうかは、ここには一切混ぜない。欠けているものの数は、必要な
      情報の不足と、手順が未確認であることの合計。未着手＝どちらも
-     欠けていて、家族側の準備もまだ何ひとつ動いていない状態。      */
+     欠けていて、家族側の準備もまだ何ひとつ動いていない状態。
+
+     「準備済み」は必要な情報がそろっただけで、まだ実際に対応した
+     わけではない。索引を薄めて沈めるのは、対応が完了した（it.completed）
+     ときだけにする。completed は準備済みのときだけ詳細画面から
+     手で切り替える、取り消し可能なフラグ（家族側の3値とは別の軸）。 */
   function itemBadge(it) {
     const ui = GROUP_UI[it.group], open = openCount(it);
     const remain = open + (procChecked(it) ? 0 : 1);
+    if (it.completed) return { kind: 'done', text: ui.badges.done, tone: 'gy' };
     if (remain === 0) return { kind: 'ready', text: ui.badges.ready, tone: 'gr' };
     return { kind: 'open', text: ui.badges.open, tone: 'or', n: remain };
   }
 
   function groupSummary(g) {
-    let ready = 0, open = 0;
+    let ready = 0, open = 0, done = 0;
     byGroup(g).forEach(it => {
       const b = itemBadge(it);
-      if (b.kind === 'ready') ready++; else open++;
+      if (b.kind === 'ready') ready++;
+      else if (b.kind === 'done') done++;
+      else open++;
     });
-    return { ready, open };
+    return { ready, open, done };
   }
 
   /* 「対応できるか」のまとめ。必要な情報と手順の両方を見る。
      ひとつでも欠けていれば一部確認が必要。                       */
   function accountSummary(it) {
     const ui = GROUP_UI[it.group];
-    const missing = it.account.filter(a => !a.ok).map(a => a.label.replace(/（.*）/, ''));
+    const missing = it.account.filter(a => !accountDone(a)).map(a => a.label.replace(/（.*）/, ''));
     if (!procChecked(it)) missing.push('手続き方法');
     if (!missing.length) return { ok: true, title: ui.okTitle, note: ui.okNote };
     return { ok: false, title: '一部確認が必要です', note: missing.join('・') + 'の確認が必要です。' };
@@ -556,13 +661,28 @@
 
   function yen(n) { return '¥' + Math.round(n).toLocaleString('ja-JP'); }
 
+  /* 詳細画面で値を書き換えたら、その項目の「最終更新日」を今日にそろえる。
+     綴じ代（rmeta）の表示は registered / updated をそのまま出しているので、
+     seed と同じドット区切りの日付に整える。                          */
+  function today() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate());
+  }
+
+  /* 契約・カードのどちらにも updated を持たせ、変更のたびにここを通す。
+     カードの seed には updated が無いので、初回の書き換え時に生える。 */
+  function touch(entity) {
+    if (entity) entity.updated = today();
+  }
+
   global.SeiZenContract = {
-    INTENTS, MARKS3, GROUP_UI, MARKS, CATEGORIES,
+    INTENTS, MARKS3, GROUP_UI, MARKS, LOGO_ALIAS,
     cards, items,
     byGroup, preItems, postItems,
-    intentOf, intentLabel, markOf, openCount, procChecked, accountMark, statusRows,
+    intentOf, intentLabel, markOf, openCount, procChecked, accountMark, accountState, accountDone, statusRows,
     itemBadge, groupSummary, accountSummary,
     paymentDisplay, amountText, findItem, findCard, linkedItems, cardFacts,
-    yen
+    yen, today, touch
   };
 })(window);

@@ -1,17 +1,18 @@
 /* SeiZen プロトタイプ｜契約・デジタルの描画（2軸版）
    ------------------------------------------------------------------
    索引は3ブロック（今のうちに準備が必要／必要になってから対応できる／
-   支払いのつながり）。行を押すと、索引の上に詳細が重なって開く。索引は
-   消えるのではなく背後に残るので、閉じれば元のスクロール位置に戻る。
+   支払いのつながり）。行を押すと、索引の画面から詳細の画面へ遷移する
+   （オーバーレイではなく ?id= を持つ別画面。history で戻れる）。
 
-   詳細は左に綴じ代（リング金具・契約ファイルNo.）、右に6セクション。
-   先頭の「いまの状況」が対応方針・アカウント情報・手続き方法の
-   ○△✕を3枚のタイルで示し、押すとその節へ飛ぶ。以降の節は読む場所
-   なので、状態はここへ集め、各節では重ねて言わない。
-   カード上部のバッジは家族側（情報と手順）だけを映す。
+   詳細は左に綴じ代（リング金具・契約ファイルNo.・契約情報）、右に
+   5セクション。契約情報は「変わらない事実」として綴じ代へ置き、右は
+   「どう対応するか」の流れだけにする。先頭の「いまの状況」が対応方針・
+   アカウント情報・手続き方法の○△✕を3枚のタイルで示し、押すとその節へ
+   飛ぶ。以降の節は読む場所なので、状態はここへ集め、各節では重ねて
+   言わない。カード上部のバッジは家族側（情報と手順）だけを映す。
 
-   オーバーレイは開くたびに毎回選んで押している最中なので、セクションは
-   既定ですべて開く。開閉はこの画面だけの見え方。                       */
+   詳細の画面は毎回選んで押している最中なので、セクションは既定で
+   すべて開く。開閉はこの画面だけの見え方。                       */
 (function (S) {
   'use strict';
 
@@ -19,12 +20,37 @@
   const esc  = SeiZen.esc;
   const show = SeiZen.toast;
 
-  const idxgrid = document.getElementById('idxgrid');
-  const scrim   = document.getElementById('scrim');
-  const sheet   = document.getElementById('sheet');
+  const idxgrid    = document.getElementById('idxgrid');
+  const indexView  = document.getElementById('indexView');
+  const detailView = document.getElementById('detailView');
+  const detailNav  = document.getElementById('detailNav');
+  const sheet      = document.getElementById('sheet');
+  const dtlFile    = document.querySelector('.dtl-file');
 
   let openId = null;
+  /* 索引の各束（いまのうち／そのとき）は、既定では上から COLLAPSE_LIMIT
+     件だけを見せる。件数がそれ以下なら今まで通り全件そのまま。開いた
+     ことのある束は Set に覚えておき、索引を描き直しても開いたまま。 */
+  const COLLAPSE_LIMIT = 6;
+  const expandedGroups = new Set();
   let closedSections = new Set();
+  /* 節ごとの開閉は対象（契約・アカウント）ごとに覚える。前へ／次へ・
+     索引からの選び直しをまたいでも、同じ対象に戻ればさっき閉じた
+     形のまま。まだ開いたことのない対象は「すべて閉じる」の好みを
+     初期値として引き継ぐ。                                        */
+  const itemClosedSections = new Map();
+  /* 「すべて閉じる」は対象ごとに覚えるのではなく、閉じ方そのものの
+     好みとして扱う。前へ／次へ・索引からの選び直しをまたいでも次に
+     開いた項目へ引き継ぎ、ブラウザの再読み込みをまたいでも消えない
+     よう localStorage に置く（読めなければ既定の「開く」に倒す）。 */
+  const COLLAPSE_PREF_KEY = 'seizen-contract-collapseAll';
+  let collapseAllPref = false;
+  try { collapseAllPref = localStorage.getItem(COLLAPSE_PREF_KEY) === '1'; } catch (e) { /* 無視 */ }
+  function setCollapseAllPref(v) {
+    collapseAllPref = v;
+    try { localStorage.setItem(COLLAPSE_PREF_KEY, v ? '1' : '0'); } catch (e) { /* 無視 */ }
+  }
+  const COLLAPSIBLE_KEYS = ['policy', 'account', 'proc', 'memo'];
   /* 書いてある場所がそのまま入力欄になる。銀行口座プロトタイプと
      同じ手つきで、値の置き場所を動かさずに書き換える。            */
   let editing = null;      // { path, kind } … 欄ひとつだけを開く
@@ -33,6 +59,8 @@
   /* ── 小物 ─────────────────────────────────────────── */
 
   const IC = {
+    chevL: '<svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>',
+    chevR: '<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
     check: '<svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>',
     alert: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
     warn:  '<svg viewBox="0 0 24 24"><path d="M12 4 3 20h18z"/><path d="M12 10v4M12 17h.01"/></svg>',
@@ -61,7 +89,8 @@
     clip:  '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/></svg>',
     tick:  '<svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>',
     info:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg>',
-    gate:  '<svg viewBox="0 0 24 24"><path d="M4 21V4M4 4h12l-2.5 4L16 12H4"/></svg>'
+    gate:  '<svg viewBox="0 0 24 24"><path d="M4 21V4M4 4h12l-2.5 4L16 12H4"/></svg>',
+    dash:  '<svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg>'
   };
 
   /* どの節が、どの path を受け持つか。節ごとの編集で使う。 */
@@ -111,16 +140,28 @@
   function markHTML(name, cls) {
     const m = S.markOf(name);
     const border = m.border ? ';border:1px solid ' + m.border : '';
-    return '<span class="mark ' + (cls || '') + '" style="background:' + m.bg + ';color:' + m.fg + border + '">' +
+    const style = 'background:' + m.bg + ';color:' + m.fg + border;
+    if (m.logo)
+      return '<span class="mark mark-logo ' + (cls || '') + '" style="' + style + '">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor"><path d="' + m.logo + '"/></svg></span>';
+    return '<span class="mark ' + (cls || '') + '" style="' + style + '">' +
       esc(m.ch) + '</span>';
   }
 
   /* ── 索引 ─────────────────────────────────────────── */
 
-  function idxRowHTML(it) {
+  /* done は対応が完了した行。沈めて、まだ完了していない行（確認が
+     必要／準備済みのどちらも）を前に出す。準備済みは情報がそろった
+     だけで対応済みではないので、ここでは薄めない。first は済みの
+     塊の先頭で、そこにだけ区切りを置く。全行に等間隔で線を引くと
+     表に見えるが、状態が変わる位置にだけ引けば線が意味を持つ。    */
+  function idxRowHTML(it, i, arr) {
     const b = S.itemBadge(it);
+    const done = b.kind === 'done';
+    const first = done && (i === 0 || S.itemBadge(arr[i - 1]).kind !== 'done');
     const txt = b.kind === 'open' ? b.text + '　' + b.n + '件' : b.text;
-    return '<button class="irow" type="button" data-open="' + it.id + '">' +
+    return '<button class="irow' + (done ? ' done' : '') + (first ? ' cut' : '') +
+      '" type="button" data-open="' + it.id + '">' +
       markHTML(it.name) +
       '<span class="nm"><b>' + esc(it.name) + '</b><small>' + esc(it.category) + '</small></span>' +
       '<span class="st-badge sb-' + b.tone + '">' + esc(txt) + '</span>' +
@@ -128,17 +169,42 @@
   }
 
   /* 事前・事後は同じ骨格で描く。変わるのは言い回しと色だけ。 */
+  /* 確認が必要→準備済み→対応完了の3段階で並べる。家族が見るとき目を
+     留めるべき順そのものなので、件数を絞って見せるときもこの並びの
+     頭から切ればよい。同じ状態の中では登録順のまま（sort は安定な
+     ので並べ替えない）。                                          */
+  const KIND_RANK = { open: 0, ready: 1, done: 2 };
+  function idxOrder(list) {
+    return list.slice().sort((a, b) =>
+      KIND_RANK[S.itemBadge(a).kind] - KIND_RANK[S.itemBadge(b).kind]);
+  }
+
   function groupBlock(g) {
-    const ui = S.GROUP_UI[g], list = S.byGroup(g), t = S.groupSummary(g);
+    const ui = S.GROUP_UI[g], t = S.groupSummary(g);
+    const full = idxOrder(S.byGroup(g));
+    const expanded = expandedGroups.has(g);
+    const over = full.length > COLLAPSE_LIMIT;
+    const list = over && !expanded ? full.slice(0, COLLAPSE_LIMIT) : full;
+    /* 畳んでいるときだけ「＋N件を見る」。開いたら束の下端に「閉じる」
+       を出し、今の見た目（全件そのまま並ぶ）を壊さずに戻せるようにする。 */
+    const moreBtn = over
+      ? (expanded
+          ? '<button class="ib-more" type="button" data-expand="' + g + '">閉じる<span class="chev up">▲</span></button>'
+          : '<button class="ib-more" type="button" data-expand="' + g + '">＋' + (full.length - COLLAPSE_LIMIT) + '件を見る<span class="chev">▼</span></button>')
+      : '';
     return '<div class="iblock ib-' + g + '">' +
+      /* 束の耳。台紙から立ち上がって、この束が何かを名指す。 */
+      '<span class="ib-tab">' + esc(ui.tab) + '</span>' +
       '<div class="ib-h"><span class="ib-ic ic-' + g + '">' + (g === 'pre' ? IC.bag : IC.book) + '</span>' +
-        '<h4>' + esc(ui.title) + '</h4><span class="ib-n n-' + g + '">' + list.length + '件</span></div>' +
+        '<h4>' + esc(ui.title) + '</h4><span class="ib-n n-' + g + '">' + full.length + '件</span></div>' +
       '<p class="ib-lead">' + ui.lead + '</p>' +
       '<div class="tally">' +
-        '<div><span class="tl">' + esc(ui.badges.ready) + '</span><span class="tv tv-gr">' + t.ready + '件</span></div>' +
         '<div><span class="tl">' + esc(ui.badges.open) + '</span><span class="tv tv-or">' + t.open + '件</span></div>' +
+        '<div><span class="tl">' + esc(ui.badges.ready) + '</span><span class="tv tv-gr">' + t.ready + '件</span></div>' +
+        '<div><span class="tl">' + esc(ui.badges.done) + '</span><span class="tv tv-gy">' + t.done + '件</span></div>' +
       '</div>' +
       list.map(idxRowHTML).join('') +
+      moreBtn +
     '</div>';
   }
 
@@ -152,12 +218,26 @@
     const cardsHTML = S.cards.map(c => {
       const f = S.cardFacts(c.id);
       const chips = payChips(f.linked);
+      /* 上半分はカードの券面そのもの。ICチップ・番号・名義・有効期限を
+         実物と同じ位置に置く。下半分は SeiZen 側の記録（止めたときに
+         何が止まるか、どの契約がぶら下がるか）。券面を再現すること自体
+         が目的ではないので、券面には状態を持ち込まない。            */
       return '<button class="paycard" type="button" data-open="' + c.id + '">' +
-        '<div class="pc-h"><b>' + esc(c.name) + '</b>' +
-          '<span class="lnk">' + f.linked.length + '契約</span></div>' +
-        '<div class="pc-tail">•••• ' + esc(c.info.tail) + '</div>' +
-        '<div class="pc-warn">' + IC.warn + 'このカードを止めると、' + f.linked.length + '件の支払いが止まります</div>' +
-        '<div class="chips">' + chips + '</div>' +
+        '<div class="pc-face pf-' + esc(c.brand) + '">' +
+          '<div class="pc-h"><b>' + esc(c.name) + '</b>' +
+            '<span class="lnk">' + f.linked.length + '契約</span></div>' +
+          /* チップ・番号・名義・期限を横一列に置く。券面に載る情報は
+             これだけなので、段を作らずに1行で収める。            */
+          '<div class="pc-mid"><span class="pc-chip"></span>' +
+            '<span class="pc-tail">•••• ' + esc(c.info.tail) + '</span>' +
+            '<span class="pc-nm"><i>名義</i>' + esc(c.info.holder) + '</span>' +
+            '<span class="pc-exp"><i>有効期限</i>' + esc(c.info.expiry) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pc-body">' +
+          '<div class="pc-warn">' + IC.warn + 'このカードを止めると、' + f.linked.length + '件の支払いが止まります</div>' +
+          '<div class="chips">' + chips + '</div>' +
+        '</div>' +
       '</button>';
     }).join('');
     return '<div class="iblock ib-pay">' +
@@ -169,6 +249,29 @@
   }
 
   /* ── 詳細：セクション ─────────────────────────────── */
+
+  /* バッジの隣に置く、対応完了の切り替えボタン。準備済みのときだけ
+     「対応完了にする」を出し、対応完了の後は「準備済みに戻す」に
+     変わる。確認が必要（open）のときはそもそも出さない＝完了は
+     準備済みからしか踏めない。                                    */
+  function completeToggleHTML(b) {
+    if (b.kind === 'ready')
+      return '<button type="button" class="complete-btn" data-complete="1">' + IC.check + '対応完了にする</button>';
+    if (b.kind === 'done')
+      return '<button type="button" class="complete-btn on" data-complete="1">' + IC.loop + '準備済みに戻す</button>';
+    return '';
+  }
+
+  /* 見出し行の右端に置く、開閉をまとめて切り替えるボタン。個別の
+     節の開閉状態から「今すべて閉じているか」をその都度読み、逆を
+     押せる形にする（別に真偽値を持たない）。押した結果はそのまま
+     collapseAllPref として、次に開く項目にも引き継がれる。         */
+  function pgCollapseHTML() {
+    const allClosed = COLLAPSIBLE_KEYS.every(k => closedSections.has(k));
+    return '<button type="button" class="pg-collapse" data-collapseall="1">' +
+      (allClosed ? 'すべて開く' : 'すべて閉じる') +
+      '<span class="chev' + (allClosed ? ' closed' : '') + '">▲</span></button>';
+  }
 
   /* editable を渡した節は、見出しの右に編集ボタンを持つ。開閉の的の
      中に置くので、その部分だけクリックを止めて開閉に伝えない。     */
@@ -282,17 +385,51 @@
     'ネット明細のログイン':    '例：書類ケース「デジタル情報」に保管'
   };
 
+  /* account 行の状態。ok＝確認済み、none＝確認が必要の2値が基本。
+     「設定なし」は、その項目自体が存在しないことがあり得るラベル
+     （2段階認証など）だけが持つ第3の選択肢で、地の文の言い換えでは
+     ないので、対象ラベルに限りボタンではなく選択肢（セレクト）で
+     選ぶ。それ以外の行は押すたびに確認済み⇄確認が必要の2値だけを
+     行き来する。                                                    */
+  const ACCOUNT_STATE_UI = {
+    ok:   { cls: 'cv-ok', icon: 'check', text: '確認済み' },
+    na:   { cls: 'cv-na', icon: 'dash',  text: '設定なし' },
+    none: { cls: 'cv-ng', icon: 'alert', text: '確認が必要' }
+  };
+  const NA_CAPABLE = ['認証端末（2段階認証）'];
+
   function accountHTML(it) {
-    const rows = it.account.map((a, i) =>
-      '<div class="arow"><span class="aic">' + IC[a.icon] + '</span>' +
+    const rows = it.account.map((a, i) => {
+      const st = S.accountState(a);
+      const ui = ACCOUNT_STATE_UI[st];
+      const naDim = st === 'na' ? ' arow-na' : '';
+      const naCapable = NA_CAPABLE.indexOf(a.label) !== -1;
+      /* 見た目は全行共通のボタン。na対応行だけ、同じボタンの上に透明な
+         select を重ねて実体にする（class="ast" は共有し、ast-pick で
+         セレクトだけを狙って矢印とクリック域を足す）。押した瞬間に
+         ネイティブの選択肢が開くので、ボタンの絵のまま3択になる。   */
+      const ctrl = naCapable
+        ? '<span class="ast-wrap"><button class="ast ast-pick ' + ui.cls + '" type="button" tabindex="-1">' +
+          IC[ui.icon] + ui.text + '</button>' +
+          '<select class="ast-sel" data-ok="' + i + '" aria-label="' + esc(a.label) + 'の状態">' +
+          ['ok', 'none', 'na'].map(k => '<option value="' + k + '"' + (k === st ? ' selected' : '') +
+            '>' + ACCOUNT_STATE_UI[k].text + '</option>').join('') + '</select></span>'
+        : '<button class="ast ' + ui.cls + '" type="button" data-ok="' + i + '">' +
+          IC[ui.icon] + ui.text + '</button>';
+      return '<div class="arow' + naDim + '"><span class="aic">' + IC[a.icon] + '</span>' +
         '<span class="alb">' + esc(a.label) + '</span>' +
-        '<span class="avl">' + ev('account.' + i + '.value', a.value, 'line', ACCOUNT_HINT[a.label] || '例：未確認') + '</span>' +
-        '<button class="ast ' + (a.ok ? 'cv-ok' : 'cv-ng') + '" type="button" data-ok="' + i + '">' +
-          (a.ok ? IC.check : IC.alert) + (a.ok ? '確認済み' : '確認が必要') + '</button></div>').join('');
+        '<span class="avl">' + (st === 'na'
+          ? '<span class="ev ev-na">設定なし</span>'
+          : ev('account.' + i + '.value', a.value, 'line', ACCOUNT_HINT[a.label] || '例：未確認')) + '</span>' +
+        ctrl + '</div>';
+    }).join('');
     return '<div class="acc-list">' + rows + '</div>';
   }
 
-  function contractHTML(it) {
+  /* 契約情報は綴じ代（左）へ置く「変わらない事実」。右の本体は
+     「どう対応するか」だけにするので、ここでは cinfo の横並びグリッド
+     ではなく、綴じ代の rmeta と同じ縦積みの1カラムで描く。          */
+  function spineContractHTML(it) {
     const c = it.contract;
     const payOpts = S.cards.map(k => ({ value: k.id, label: k.name }))
       .concat([{ value: 'acct', label: 'ゆうちょ銀行 自動振替' }, { value: 'none', label: '費用なし' }]);
@@ -300,17 +437,21 @@
     const card = c.paymentCard ? S.findCard(c.paymentCard) : null;
     const amtLabel = c.cycle === 'yearly' ? '年額料金' : '月額料金';
     const amt = (!c.paymentCard && c.amount === 0) ? '費用なし' : S.yen(c.amount);
-    return '<div class="cinfo">' +
-      '<div><small>契約者</small><b>' + ev('contract.holder', c.holder, 'line', '例：父 太郎') + '</b></div>' +
-      '<div><small>支払い方法</small><b>' + evSelect('contract.paymentCard', payVal, payOpts) +
+    const on = editSection === 'info';
+    return '<div class="rspine">' +
+      '<div class="rsp-h"><span>契約情報</span>' +
+        '<button type="button" class="rsp-edit' + (on ? ' on' : '') + '" data-editsec="info" aria-label="契約情報を編集">' +
+          (on ? IC.check : IC.pen) + '</button></div>' +
+      '<div class="rsp-row"><small>契約者</small><b>' + ev('contract.holder', c.holder, 'line', '例：父 太郎') + '</b></div>' +
+      '<div class="rsp-row"><small>支払い方法</small><b>' + evSelect('contract.paymentCard', payVal, payOpts) +
         (card ? '<em>•••• ' + esc(card.info.tail) + '</em>' : '') + '</b></div>' +
-      '<div><small>' + amtLabel + '</small><b>' +
-        ((editing && editing.path === 'contract.amount') || editSection === 'info'
+      '<div class="rsp-row"><small>' + amtLabel + '</small><b>' +
+        ((editing && editing.path === 'contract.amount') || on
           ? ev('contract.amount', String(c.amount), 'line')
           : '<span class="ev" data-edit="contract.amount" data-kind="line">' + esc(amt) + '</span>') +
         '</b></div>' +
-      '<div><small>契約開始時期</small><b>' + ev('contract.started', c.started, 'line', '例：2020年頃') + '</b></div>' +
-      '<div><small>次回請求日</small><b>' + ev('contract.nextBill', c.nextBill, 'line', '例：毎月〇日頃') + '</b></div>' +
+      '<div class="rsp-row"><small>契約開始時期</small><b>' + ev('contract.started', c.started, 'line', '例：2020年頃') + '</b></div>' +
+      '<div class="rsp-row"><small>次回請求日</small><b>' + ev('contract.nextBill', c.nextBill, 'line', '例：毎月〇日頃') + '</b></div>' +
     '</div>';
   }
 
@@ -375,11 +516,12 @@
     const rule = it.group === 'post' ? ';background:#5da37b' : '';
     const b = S.itemBadge(it);
     const bTxt = b.kind === 'open' ? b.text + '　' + b.n + '件' : b.text;
-    return '<button class="close" type="button" data-close="1">✕</button>' +
-      '<div class="rings">' +
-        '<span class="ring r1"></span><span class="ring r2"></span>' +
-        '<div class="filecard"><small>契約ファイル</small><b>No.<i>' + esc(it.no) + '</i></b>' +
+    return '<div class="rings">' +
+        '<span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>' +
+        '<span class="ring r4"></span><span class="ring r5"></span>' +
+        '<div class="filecard"><small>' + esc(S.GROUP_UI[it.group].tab) + '</small><b>No.<i>' + esc(it.no) + '</i></b>' +
           '<div class="rule" style="' + rule + '"></div></div>' +
+        spineContractHTML(it) +
         '<div class="rmeta"><small>登録日</small><b>' + esc(it.registered) + '</b>' +
           '<small>最終更新日</small><b>' + esc(it.updated) + '</b></div>' +
         '<div class="rfoot">' + IC.box + '<span>家族のための<br>契約・アカウント記録</span></div>' +
@@ -387,14 +529,15 @@
       '<div class="page">' +
         '<div class="pg-h"><span class="nm">' + esc(it.name) + '</span>' +
           '<span class="cat">' + esc(it.category) + '</span>' +
-          '<span class="pol hb-' + b.tone + '">' + esc(bTxt) + '</span></div>' +
+          '<span class="pol hb-' + b.tone + '">' + esc(bTxt) + '</span>' +
+          completeToggleHTML(b) +
+          pgCollapseHTML() + '</div>' +
         '<div class="pg-body">' +
           statusHTML(it) +
           sectionHTML('policy', 't-pu', IC.flag, '対応方針', '', policyHTML(it), false, true) +
           sectionHTML('account', 't-gr', IC.person, S.GROUP_UI[it.group].accountTitle,
             S.GROUP_UI[it.group].accountSub, accountHTML(it), false, true) +
           sectionHTML('proc', 't-rd', IC.clip, '手続き方法', procSub(it), procedureHTML(it), false, true) +
-          sectionHTML('info', 't-cr', IC.doc, '契約情報', '', contractHTML(it), false, true) +
           sectionHTML('memo', 't-cr', IC.pen, 'メモ', '', memoHTML(it), false, true) +
         '</div>' +
       '</div>';
@@ -408,13 +551,17 @@
      代わりで、連絡先は手続き方法の「手続き先」と二重に持たないので
      省く。末尾に、このカードで支払っている契約の一覧を足す。         */
 
-  function cardInfoHTML(card) {
+  function spineCardInfoHTML(card) {
     const c = card.info;
-    return '<div class="cinfo" style="grid-template-columns:repeat(4,1fr)">' +
-      '<div><small>カード会社</small><b>' + ev('info.issuer', c.issuer, 'line', '例：楽天カード株式会社') + '</b></div>' +
-      '<div><small>名義人</small><b>' + ev('info.holder', c.holder, 'line', '例：父 太郎') + '</b></div>' +
-      '<div><small>下4桁</small><b>•••• ' + ev('info.tail', c.tail, 'line', '例：1234') + '</b></div>' +
-      '<div><small>有効期限</small><b>' + ev('info.expiry', c.expiry, 'line', '例：2027/03') + '</b></div>' +
+    const on = editSection === 'cardinfo';
+    return '<div class="rspine">' +
+      '<div class="rsp-h"><span>カード情報</span>' +
+        '<button type="button" class="rsp-edit' + (on ? ' on' : '') + '" data-editsec="cardinfo" aria-label="カード情報を編集">' +
+          (on ? IC.check : IC.pen) + '</button></div>' +
+      '<div class="rsp-row"><small>カード会社</small><b>' + ev('info.issuer', c.issuer, 'line', '例：楽天カード株式会社') + '</b></div>' +
+      '<div class="rsp-row"><small>名義人</small><b>' + ev('info.holder', c.holder, 'line', '例：父 太郎') + '</b></div>' +
+      '<div class="rsp-row"><small>下4桁</small><b>•••• ' + ev('info.tail', c.tail, 'line', '例：1234') + '</b></div>' +
+      '<div class="rsp-row"><small>有効期限</small><b>' + ev('info.expiry', c.expiry, 'line', '例：2027/03') + '</b></div>' +
     '</div>';
   }
 
@@ -436,19 +583,20 @@
     const f = S.cardFacts(card.id);
     const b = S.itemBadge(card);
     const bTxt = b.kind === 'open' ? b.text + '　' + b.n + '件' : b.text;
-    return '<button class="close" type="button" data-close="1">✕</button>' +
-      '<div class="rings">' +
-        '<span class="ring r1"></span><span class="ring r2"></span>' +
+    return '<div class="rings">' +
+        '<span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>' +
+        '<span class="ring r4"></span><span class="ring r5"></span>' +
         '<div class="filecard"><small>支払いカード</small><b>' + esc(card.name) + '</b>' +
           '<div class="rule" style="background:#4681a0"></div></div>' +
-        '<div class="rmeta"><small>下4桁</small><b>•••• ' + esc(card.info.tail) + '</b>' +
-          '<small>名義人</small><b>' + esc(card.info.holder) + '</b></div>' +
+        spineCardInfoHTML(card) +
         '<div class="rfoot">' + IC.card + '<span>支払いの経路を<br>まとめて記録</span></div>' +
       '</div>' +
       '<div class="page">' +
         '<div class="pg-h"><span class="nm">' + esc(card.name) + '</span>' +
           '<span class="cat">' + esc(card.info.issuer) + '</span>' +
-          '<span class="pol hb-' + b.tone + '">' + esc(bTxt) + '</span></div>' +
+          '<span class="pol hb-' + b.tone + '">' + esc(bTxt) + '</span>' +
+          completeToggleHTML(b) +
+          pgCollapseHTML() + '</div>' +
         '<div class="pg-body">' +
           (f.linked.length ? '<div class="pc-warn" style="margin:0 4px 18px">' + IC.warn +
             'このカードを止めると、' + f.linked.length + '件の支払いが止まります</div>' : '') +
@@ -456,7 +604,6 @@
           sectionHTML('policy', 't-pu', IC.flag, '対応方針', '', policyHTML(card, '家族の方針'), false, true) +
           sectionHTML('account', 't-gr', IC.person, S.GROUP_UI.card.accountTitle, '', accountHTML(card), false, true) +
           sectionHTML('proc', 't-rd', IC.clip, '手続き方法', procSub(card), procedureHTML(card), false, true) +
-          sectionHTML('cardinfo', 't-cr', IC.card, 'カード情報', '', cardInfoHTML(card), false, true) +
           sectionHTML('clinked', 't-cr', IC.link, '紐づく契約一覧', '（' + f.linked.length + '件）', clinkedHTML(card), true, false) +
           sectionHTML('memo', 't-cr', IC.pen, 'メモ', '', memoHTML(card), false, true) +
         '</div>' +
@@ -478,11 +625,42 @@
     if (openId) renderSheet();
   }
 
+  /* 背後に覗く台紙の色は、索引の束（.ib-pre/.ib-post）と同じ軸で
+     出し分ける。カードはどちらの軸にも乗らないので、今はどちらの
+     クラスも付けない（クリームのまま）。                          */
   function renderSheet() {
+    detailNav.innerHTML = detailNavHTML();
     const it = S.findItem(openId);
-    if (it) { sheet.innerHTML = sheetHTML(it); focusEditor(); return; }
+    if (it) {
+      dtlFile.classList.toggle('dtl-post', it.group === 'post');
+      sheet.innerHTML = sheetHTML(it); focusEditor(); return;
+    }
     const c = S.findCard(openId);
-    if (c) { sheet.innerHTML = cardSheetHTML(c); focusEditor(); return; }
+    if (c) {
+      dtlFile.classList.remove('dtl-post');
+      sheet.innerHTML = cardSheetHTML(c); focusEditor(); return;
+    }
+  }
+
+  /* 前へ／次へは、いま開いているのが契約かカードかで別の並びをたどる。
+     契約は索引と同じ並び（事前→事後、確認が必要なものが先）、カードは
+     支払いのつながりの並びのまま。                                  */
+  function navList() {
+    const it = S.findItem(openId);
+    if (it) return { list: idxOrder(S.byGroup('pre')).concat(idxOrder(S.byGroup('post'))), idx: -1, id: openId };
+    return { list: S.cards, idx: -1, id: openId };
+  }
+
+  function detailNavHTML() {
+    const nav = navList();
+    const idx = nav.list.findIndex(x => x.id === nav.id);
+    const prev = idx > 0 ? nav.list[idx - 1] : null;
+    const next = (idx >= 0 && idx < nav.list.length - 1) ? nav.list[idx + 1] : null;
+    return '<button type="button" class="dtl-pbtn" data-prev="1"' + (prev ? '' : ' disabled') + '>' +
+        '<span class="dtl-arw">' + IC.chevL + '</span><span class="dtl-lb"><small>前へ</small>' + (prev ? esc(prev.name) : '') + '</span></button>' +
+      '<button type="button" class="dtl-back" data-back="1">' + IC.chevL + '契約・デジタルの一覧に戻る</button>' +
+      '<button type="button" class="dtl-pbtn" data-next="1"' + (next ? '' : ' disabled') + '>' +
+        '<span class="dtl-lb dtl-lb-r"><small>次へ</small>' + (next ? esc(next.name) : '') + '</span><span class="dtl-arw">' + IC.chevR + '</span></button>';
   }
 
   /* 開いた欄に手を置いたままにする。セレクトは開いた瞬間に選ばせる。 */
@@ -512,25 +690,44 @@
   function commitSection() {
     if (!editSection) return;
     const it = currentEntity();
-    if (it) sheet.querySelectorAll('[data-ef]').forEach(el => applyValue(it, el.dataset.path, el.value));
+    if (it) {
+      let changed = false;
+      sheet.querySelectorAll('[data-ef]').forEach(el => {
+        if (applyValue(it, el.dataset.path, el.value)) changed = true;
+      });
+      if (changed) S.touch(it);
+    }
     editSection = null;
     render();
   }
 
+  /* 実際に値が変わったときだけ true を返す。呼び出し側はこれを見て、
+     変更がなければ「最終更新日」を動かさない（欄を開いて何も打たずに
+     閉じただけで日付が飛ぶのを防ぐ）。                                */
   function applyValue(it, path, val) {
-    if (!path) return;
+    if (!path) return false;
     if (path === 'contract.amount') {
       const n = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
-      setByPath(it, path, isNaN(n) ? 0 : n);
+      const next = isNaN(n) ? 0 : n;
+      if (getByPath(it, path) === next) return false;
+      setByPath(it, path, next);
+      return true;
     } else if (path === 'policy.intent') {
+      if (it.policy.intent === val && !it.policy.intentLabel) return false;
       it.policy.intent = val;
       delete it.policy.intentLabel;
+      return true;
     } else if (path === 'contract.paymentCard') {
+      const before = it.contract.paymentCard + '|' + (it.contract.paymentLabel || '');
       if (val === 'acct')      { it.contract.paymentCard = null; it.contract.paymentLabel = 'ゆうちょ銀行 自動振替'; }
       else if (val === 'none') { it.contract.paymentCard = null; it.contract.paymentLabel = '費用なし'; }
       else                     { it.contract.paymentCard = val;  delete it.contract.paymentLabel; }
+      return before !== it.contract.paymentCard + '|' + (it.contract.paymentLabel || '');
     } else {
-      setByPath(it, path, String(val).trim());
+      const next = String(val).trim();
+      if (getByPath(it, path) === next) return false;
+      setByPath(it, path, next);
+      return true;
     }
   }
 
@@ -538,41 +735,111 @@
     if (!editing) return;
     const el = sheet.querySelector('[data-ef]');
     const it = currentEntity();
-    if (el && it) applyValue(it, editing.path, el.value);
+    if (el && it && applyValue(it, editing.path, el.value)) S.touch(it);
     editing = null;
     render();
   }
 
-  function openSheet(id) {
+  /* 索引→詳細は画面遷移として history に積む（?id= を持つ別画面）。
+     索引から出るときの読んでいた位置だけ覚えておき、戻ったら戻す。
+     前へ／次へは同じ詳細画面の中の移動なので、履歴は積み替える
+     （replace）。索引は消えずスクロール位置を覚えているのではなく、
+     ブラウザの戻る操作と同じ形で位置を戻す。                        */
+  let savedScroll = 0;
+
+  /* 新しく開く項目の初期の開閉状態。「すべて閉じる」を押した好みが
+     あれば、それを引き継いで最初から閉じた状態で開く。              */
+  function applyCollapsePref() {
+    if (itemClosedSections.has(openId)) {
+      closedSections = itemClosedSections.get(openId);
+      return;
+    }
+    closedSections = collapseAllPref ? new Set(COLLAPSIBLE_KEYS) : new Set();
+    itemClosedSections.set(openId, closedSections);
+  }
+
+  function openSheet(id, opts) {
+    opts = opts || {};
+    if (!openId) savedScroll = window.scrollY;
     openId = id;
     editing = null;
     editSection = null;
-    closedSections = new Set();
-    renderSheet();
-    scrim.classList.add('show');
-    scrim.scrollTop = 0;
-    document.body.style.overflow = 'hidden';
+    applyCollapsePref();
+    const url = '?id=' + encodeURIComponent(id);
+    if (opts.replace) history.replaceState({ id: id }, '', url);
+    else history.pushState({ id: id }, '', url);
+    showDetail();
   }
 
   function closeSheet() {
     openId = null;
-    scrim.classList.remove('show');
-    document.body.style.overflow = '';
+    history.pushState(null, '', location.pathname);
+    showIndex();
   }
+
+  function showDetail() {
+    indexView.hidden = true;
+    detailView.hidden = false;
+    renderSheet();
+    window.scrollTo(0, 0);
+  }
+
+  function showIndex() {
+    detailView.hidden = true;
+    indexView.hidden = false;
+    window.scrollTo(0, savedScroll);
+  }
+
+  /* ブラウザの戻る／進むボタンにも同じ画面遷移として応答する。 */
+  window.addEventListener('popstate', () => {
+    const id = new URLSearchParams(location.search).get('id');
+    if (id && (S.findItem(id) || S.findCard(id))) {
+      openId = id;
+      editing = null;
+      editSection = null;
+      applyCollapsePref();
+      showDetail();
+    } else {
+      openId = null;
+      showIndex();
+    }
+  });
 
   /* ── 操作 ─────────────────────────────────────────── */
 
   idxgrid.addEventListener('click', e => {
+    const expandBtn = e.target.closest('[data-expand]');
+    if (expandBtn) {
+      const g = expandBtn.dataset.expand;
+      if (expandedGroups.has(g)) expandedGroups.delete(g); else expandedGroups.add(g);
+      render();
+      return;
+    }
     const row = e.target.closest('[data-open]');
     if (row) openSheet(row.dataset.open);
   });
 
-  scrim.addEventListener('click', e => {
-    if (e.target === scrim) { closeSheet(); return; }
-    if (e.target.closest('[data-close]')) { closeSheet(); return; }
+  detailView.addEventListener('click', e => {
+    if (e.target.closest('[data-back]')) { closeSheet(); return; }
 
-    /* 紐づく契約一覧の行。押した契約の詳細へ、同じオーバーレイの
-       中身を差し替えて進む（索引には戻らない）。                  */
+    /* 前へ／次へ。同じ詳細画面の中の移動なので history は積み替える。 */
+    const prevBtn = e.target.closest('[data-prev]:not([disabled])');
+    if (prevBtn) {
+      const nav = navList();
+      const idx = nav.list.findIndex(x => x.id === nav.id);
+      if (idx > 0) openSheet(nav.list[idx - 1].id, { replace: true });
+      return;
+    }
+    const nextBtn = e.target.closest('[data-next]:not([disabled])');
+    if (nextBtn) {
+      const nav = navList();
+      const idx = nav.list.findIndex(x => x.id === nav.id);
+      if (idx >= 0 && idx < nav.list.length - 1) openSheet(nav.list[idx + 1].id, { replace: true });
+      return;
+    }
+
+    /* 紐づく契約一覧の行。押した契約の詳細へ、新しい画面として進む
+       （戻ればカードの詳細に戻る）。                                */
     const openRow = e.target.closest('.linked-list [data-open]');
     if (openRow) { openSheet(openRow.dataset.open); return; }
 
@@ -581,6 +848,20 @@
     if (e.target.closest('[data-linkclick]')) {
       e.preventDefault(); e.stopPropagation();
       show('外部サイトを開く準備中です');
+      return;
+    }
+
+    /* すべて閉じる／開く。押した結果を好み（collapseAllPref）として
+       残すので、次に開く項目にもそのまま引き継がれる。編集中の節を
+       畳んで消してしまわないよう、閉じる前にいったん確定する。      */
+    if (e.target.closest('[data-collapseall]')) {
+      if (editSection) commitSection();
+      if (editing) commitEdit();
+      const allClosed = COLLAPSIBLE_KEYS.every(k => closedSections.has(k));
+      setCollapseAllPref(!allClosed);
+      closedSections = collapseAllPref ? new Set(COLLAPSIBLE_KEYS) : new Set();
+      itemClosedSections.set(openId, closedSections);
+      renderSheet();
       return;
     }
     /* 節ごとの編集ボタン。見出しの的の中にあるので、開閉には渡さない。 */
@@ -602,6 +883,18 @@
       e.stopPropagation();
       const it = currentEntity();
       it.procedure.checked = !it.procedure.checked;
+      S.touch(it);
+      render();
+      return;
+    }
+
+    /* 対応完了の切り替え。準備済み⇄対応完了を行き来するだけで、
+       家族側の確認状態そのもの（account／procedure）はいじらない。 */
+    if (e.target.closest('[data-complete]')) {
+      e.stopPropagation();
+      const it = currentEntity();
+      it.completed = !it.completed;
+      S.touch(it);
       render();
       return;
     }
@@ -612,6 +905,7 @@
       e.stopPropagation();
       const it = currentEntity();
       it.procedure.steps.push('');
+      S.touch(it);
       renderSheet();
       const inputs = sheet.querySelectorAll('.steps li .ef');
       const last = inputs[inputs.length - 1];
@@ -625,6 +919,7 @@
       e.stopPropagation();
       const it = currentEntity();
       it.procedure.steps.splice(+delStep.dataset.delstep, 1);
+      S.touch(it);
       renderSheet();
       return;
     }
@@ -635,11 +930,15 @@
     /* 節の編集中に、その節の外を押したら閉じる。 */
     if (editSection && !inEditor && !e.target.closest('.sect.editing')) commitSection();
 
-    const okBtn = e.target.closest('[data-ok]');
+    /* ボタンは確認済み⇄確認が必要の2値だけを行き来する。「設定なし」を
+       持つ行はボタンではなく選択肢（change ハンドラ側）で切り替える。 */
+    const okBtn = e.target.closest('button[data-ok]');
     if (okBtn) {
       const it = currentEntity();
       const a = it.account[+okBtn.dataset.ok];
-      a.ok = !a.ok;
+      a.state = S.accountState(a) === 'ok' ? 'none' : 'ok';
+      delete a.ok;
+      S.touch(it);
       render();
       return;
     }
@@ -672,13 +971,24 @@
   });
 
   sheet.addEventListener('change', e => {
+    /* 「設定なし」を持つ行の状態選択肢。account.state を直接差し替える。 */
+    const stSel = e.target.closest('select[data-ok]');
+    if (stSel) {
+      const it = currentEntity();
+      const a = it.account[+stSel.dataset.ok];
+      a.state = stSel.value;
+      delete a.ok;
+      S.touch(it);
+      render();
+      return;
+    }
     const el = e.target.closest('[data-ef]');
     if (!el || el.tagName !== 'SELECT') return;
     /* 節ごとの編集中は、選んだ場でその値を反映する（例：支払い方法を
        変えたら、隣の下4桁もその場で連動して変わる）。節は閉じない。 */
     if (editSection) {
       const it = currentEntity();
-      if (it && el.dataset.path) applyValue(it, el.dataset.path, el.value);
+      if (it && el.dataset.path && applyValue(it, el.dataset.path, el.value)) S.touch(it);
       renderSheet();
       return;
     }
@@ -707,10 +1017,17 @@
     if (e.key === 'Escape' && openId && !editing && !editSection) closeSheet();
   });
 
-  document.getElementById('add-manual').addEventListener('click', () =>
-    show('直接入力の追加フォームは準備中です'));
   document.getElementById('add-ocr').addEventListener('click', () =>
-    show('明細からの取り込みは準備中です'));
+    show('支払い明細から探す機能は準備中です'));
+
+  /* ?id= を持つURLで直接開いたときは、最初から詳細画面を表示する
+     （共有リンクや再読み込みでも同じ場所に戻れる）。               */
+  const initialId = new URLSearchParams(location.search).get('id');
+  if (initialId && (S.findItem(initialId) || S.findCard(initialId))) {
+    openId = initialId;
+    applyCollapsePref();
+  }
 
   render();
+  if (openId) showDetail();
 })(window.SeiZenContract);

@@ -17,26 +17,10 @@
 <div class="shell">
   <aside class="guide"></aside>
   <main class="work"><div class="inner">
-    <header class="top"><div class="title"><span class="title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="3" width="11" height="17" rx="1"/><path d="M7 7h5M7 11h5M18 8v8m-3-3 3 3 3-3"/></svg></span><div><h2>契約・デジタル</h2><p>続いている契約と、家族が困らないためのアカウント・データを、同じ記録としてまとめて整理しましょう。</p></div></div></header>
-
-    <section class="why" id="why">
-      <div class="why-tx">
-        <button class="why-toggle" type="button" id="whyToggle" aria-expanded="true" aria-controls="whyBody">
-          <span class="why-ic"><svg viewBox="8 14 36 26" role="img" aria-labelledby="wat wad"><title id="wat">開いたノート</title><desc id="wad">生成りのページと緑の表紙を持つ開いたノート</desc><path d="M10.8 18.6c4.8-2.7 10-2.4 15.2.7 5.2-3.1 10.4-3.4 15.2-.7v19.2c-4.7-2.1-9.8-1.7-15.2 1.2-5.4-2.9-10.5-3.3-15.2-1.2V18.6Z" fill="#4f7558"/><path d="M12.4 16.3c4.3-2.1 8.7-1.6 13.6 1.5v18.8c-4.8-2.6-9.3-3-13.6-1.1V16.3Z" fill="#fff9eb" stroke="#607b62" stroke-width="1.15" stroke-linejoin="round"/><path d="M39.6 16.3c-4.3-2.1-8.7-1.6-13.6 1.5v18.8c4.8-2.6 9.3-3 13.6-1.1V16.3Z" fill="#fff9eb" stroke="#607b62" stroke-width="1.15" stroke-linejoin="round"/><path d="M26 18v18.5M15.6 21.4c2.8-.6 5.2-.2 7.6 1M15.6 25.2c2.8-.5 5.2-.1 7.6 1M36.4 21.4c-2.8-.6-5.2-.2-7.6 1M36.4 25.2c-2.8-.5-5.2-.1-7.6 1" fill="none" stroke="#9ba795" stroke-width=".85" stroke-linecap="round"/></svg></span>
-          <h3>なぜ整理するのか</h3>
-          <svg class="why-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
-        <div class="why-body" id="whyBody">
-          <p>契約は、本人が亡くなっても自動では止まりません。引き落としは続き、家族が気づくまで支払いが発生します。<br>
-          スマートフォンやメールが開けなければ、何を契約しているかを調べることもできません。<br>
-          <b>一部のサービスは、本人が元気なうちにしか家族が使えるようにできません。</b></p>
-        </div>
-      </div>
-    </section>
-
-    <div class="sec-h">
+    <div id="indexView">
+    <div class="sec-h sec-h-lg">
       <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
-      <h3>契約・アカウントの一覧</h3><span class="cnt" id="cnt"></span>
+      <h3>契約・デジタルの一覧</h3><span class="cnt" id="cnt"></span>
       <span class="rt">最終更新日：2024/05/20</span>
     </div>
     <p class="sec-lead">大切な契約やアカウントを、対応のタイミングや支払いのつながりで整理しています。</p>
@@ -49,21 +33,58 @@
         <h3>サービスの追加</h3>
       </div>
 
-      <div class="addrow2">
-        <button class="addbtn" id="add-manual">＋ 直接入力で追加する</button>
-        <button class="addbtn ghost" id="add-ocr">明細から取り込む（準備中）</button>
+      <p class="addlead">思い当たるサービスから探すか、支払い明細から探せます。</p>
+      <div class="addcards">
+        <div class="addcard">
+          <span class="addcard-ic">
+            <svg viewBox="0 0 96 96" role="img" aria-labelledby="aat aad"><title id="aat">一覧と検索</title><desc id="aad">項目の並ぶ書類とチェックマーク、重なる虫眼鏡</desc>
+              <circle cx="48" cy="48" r="48" fill="var(--paper2)"/>
+              <rect x="24" y="26" width="40" height="46" rx="4" fill="#fff9eb" stroke="#607b62" stroke-width="1.6"/>
+              <circle cx="30.5" cy="37" r="2.1" fill="var(--gr)"/><path d="M35.5 37h19" stroke="#9ba795" stroke-width="1.6" stroke-linecap="round"/>
+              <circle cx="30.5" cy="45.5" r="2.1" fill="var(--gr)"/><path d="M35.5 45.5h19" stroke="#9ba795" stroke-width="1.6" stroke-linecap="round"/>
+              <circle cx="30.5" cy="54" r="2.1" fill="var(--gr)"/><path d="M35.5 54h13" stroke="#9ba795" stroke-width="1.6" stroke-linecap="round"/>
+              <circle cx="52" cy="66" r="9" fill="var(--gr)"/><path d="m48 66 2.8 2.8L56.5 63" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="63" cy="55" r="10.5" fill="none" stroke="var(--gr-d)" stroke-width="3"/><path d="m70.8 62.8 5.6 5.6" stroke="var(--gr-d)" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <h4>サービスから探す</h4>
+          <p>思い当たるサービスを、一覧や検索から選びます。</p>
+          <a class="addcard-btn" href="add.html">サービスを探す <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a>
+        </div>
+        <div class="addcard">
+          <span class="addcard-ic">
+            <svg viewBox="0 0 96 96" role="img" aria-labelledby="abt abd"><title id="abt">支払い明細</title><desc id="abd">金額の並ぶ明細書と重なるカード</desc>
+              <circle cx="48" cy="48" r="48" fill="var(--paper2)"/>
+              <rect x="19" y="21" width="40" height="50" rx="4" fill="#fff9eb" stroke="#607b62" stroke-width="1.6"/>
+              <path d="M25 30h20" stroke="#607b62" stroke-width="1.8" stroke-linecap="round"/>
+              <circle cx="26.3" cy="41" r="2" fill="var(--gr)"/><path d="M31 41h13" stroke="#9ba795" stroke-width="1.6" stroke-linecap="round"/>
+              <circle cx="26.3" cy="49.5" r="2" fill="var(--gr)"/><path d="M31 49.5h13" stroke="#9ba795" stroke-width="1.6" stroke-linecap="round"/>
+              <circle cx="26.3" cy="58" r="2" fill="var(--gr)"/><path d="M31 58h9" stroke="#9ba795" stroke-width="1.6" stroke-linecap="round"/>
+              <rect x="47" y="52" width="34" height="22" rx="3.4" fill="var(--gr)"/><rect x="51.5" y="58.5" width="9" height="6.5" rx="1.2" fill="#e8dfa9"/><path d="M47 68h34" stroke="#3f6b52" stroke-width="1.2"/>
+            </svg>
+          </span>
+          <h4>支払い明細から探す</h4>
+          <p>カードや口座の明細から、継続している契約を見つけます。</p>
+          <button class="addcard-btn" id="add-ocr">支払い明細から探す <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
+        </div>
       </div>
+      <p class="addnote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 8v.01"/></svg>あとからいつでも追加・変更できます。</p>
 
+    </div>
+    </div>
+
+    <!-- 詳細：契約・カード1件の画面。?id= を持つ別画面として遷移する。 -->
+    <div id="detailView" hidden>
+      <div id="detailNav"></div>
+      <div class="dtl-file"><div class="sheet" id="sheet"></div></div>
     </div>
   </div></main>
 </div>
 
-<!-- 詳細：索引の上に重なって開く。索引は背後に残る。 -->
-<div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
-
 <div class="toast" id="toast"></div>
 <script src="../shared/areas.js"></script>
 <script src="../shared/shell.js"></script>
+<script src="catalog.js"></script>
 <script src="state.js"></script>
 <script src="render.js"></script>
 </body>

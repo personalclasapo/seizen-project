@@ -17,32 +17,26 @@
 <div class="shell">
   <aside class="guide"></aside>
   <main class="work"><div class="inner">
-    <header class="top"><div class="title"><span class="title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 20h18M5 20V9l7-5 7 5v11M8 20v-7h8v7M3 9h18"/></svg></span><div><h2>銀行口座</h2><p>この口座が、何のために使われているのか、どこにあるのか、いざという時の対応まで整理しておきましょう。</p></div></div></header>
-    <section class="why" id="why">
-      <div class="why-tx">
-        <button class="why-toggle" type="button" id="whyToggle" aria-expanded="true" aria-controls="whyBody">
-          <span class="why-ic"><svg viewBox="8 14 36 26" role="img" aria-labelledby="wat wad"><title id="wat">開いたノート</title><desc id="wad">生成りのページと緑の表紙を持つ開いたノート</desc><path d="M10.8 18.6c4.8-2.7 10-2.4 15.2.7 5.2-3.1 10.4-3.4 15.2-.7v19.2c-4.7-2.1-9.8-1.7-15.2 1.2-5.4-2.9-10.5-3.3-15.2-1.2V18.6Z" fill="#4f7558"/><path d="M12.4 16.3c4.3-2.1 8.7-1.6 13.6 1.5v18.8c-4.8-2.6-9.3-3-13.6-1.1V16.3Z" fill="#fff9eb" stroke="#607b62" stroke-width="1.15" stroke-linejoin="round"/><path d="M39.6 16.3c-4.3-2.1-8.7-1.6-13.6 1.5v18.8c4.8-2.6 9.3-3 13.6-1.1V16.3Z" fill="#fff9eb" stroke="#607b62" stroke-width="1.15" stroke-linejoin="round"/><path d="M26 18v18.5M15.6 21.4c2.8-.6 5.2-.2 7.6 1M15.6 25.2c2.8-.5 5.2-.1 7.6 1M36.4 21.4c-2.8-.6-5.2-.2-7.6 1M36.4 25.2c-2.8-.5-5.2-.1-7.6 1" fill="none" stroke="#9ba795" stroke-width=".85" stroke-linecap="round"/></svg></span>
-          <h3>なぜ整理するのか</h3>
-          <svg class="why-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
-        <div class="why-body" id="whyBody">
-          <p>口座の使い道や通帳のありかが分からないと、いざというとき家族が動けません。<br>
-          本人が扱えなくなったとき家族が代わりに手続きできるかどうかは、<br>銀行ごとに用意されている仕組みによって変わります。<br><br>
-          その仕組みの多くは、<b>本人の判断能力があるうちにしか申し込めません。</b></p>
-          <img class="why-img" src="../assets/why-family.jpg" alt="">
-        </div>
-      </div>
-    </section>
     <div class="sec-h">
       <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
-      <h3>銀行口座ごとの記録</h3>
+      <h3>銀行口座の一覧</h3><span class="cnt" id="cntShelf"></span>
       <button class="addbtn" id="addbank">＋ 銀行口座登録</button>
     </div>
+    <p class="sec-lead">どの銀行に何があり、必要な対応が済んでいるかを一目で確認できます。</p>
     <div class="sec">
       <div class="alert" id="alert">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BE7017" stroke-width="1.8"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>
         <div></div>
       </div>
+      <!-- 通帳の表紙を並べた目次。押すと下の該当通帳へ送る。 -->
+      <div class="shelf" id="shelf"></div>
+    </div>
+    <div class="sec-h">
+      <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4.5h11a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2Z"/><path d="M8 4.5V20M8 8.5h6M8 12h4"/></svg></span>
+      <h3>銀行口座ごとの記録</h3><span class="cnt" id="cntBooks"></span>
+    </div>
+    <p class="sec-lead">口座情報・必要な持ち物・いざという時の対応を、銀行ごとにまとめています。</p>
+    <div class="sec">
       <!-- 通帳はここに state.js の事実から描かれる。 -->
       <div id="books"></div>
     </div>

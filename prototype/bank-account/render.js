@@ -14,6 +14,7 @@
   const show = SeiZen.toast;
 
   const sec = document.getElementById('books');
+  const shelf = document.getElementById('shelf');
   /* 編集中の場所を覚えておく。描き直しても同じ行が開いたままになる。 */
   let editing = null;   // {type:'acc'|'prep'|'kit', bank, index}
 
@@ -253,9 +254,7 @@
     return '<div class="pb' + (bank.dormant ? ' gy' : '') + '" data-bank="' + bank.id + '">' +
       '<div class="cv"><span class="nm">' + esc(bank.name) + '</span>' +
       '<span class="kd">口座 ' + count + '件</span>' +
-      '<span class="bd' + (badge.cls === 'warn' ? '' : ' off') + '">' + badge.text.replace(/\s/g, '') + '</span>' +
-      '<button class="del" type="button" data-bank="' + bank.id + '" title="' + esc(bank.name) + 'を削除" aria-label="' + esc(bank.name) + 'を削除">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/></svg></button></div>' +
+      '<span class="bd' + (badge.cls === 'warn' ? '' : ' off') + '">' + badge.text.replace(/\s/g, '') + '</span></div>' +
 
       '<div class="body">' +
 
@@ -272,9 +271,112 @@
       (bank.note ? '<div class="ft"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" ' +
         'stroke="#6B6963" stroke-width="1.8"><circle cx="12" cy="12" r="9"/>' +
         '<path d="M12 8v5M12 16h.01"/></svg>' + esc(bank.note) + '</div>' : '') +
-      '</div></div>' +
+      '</div>' +
       '<button class="addrow" data-add="' + bank.id + '"><span class="plus">＋</span>' +
-        esc(bank.name) + 'に口座を追加</button>';
+        esc(bank.name) + 'に口座を追加</button>' +
+      '<button class="del" type="button" data-bank="' + bank.id + '" title="' + esc(bank.name) + 'を削除" aria-label="' + esc(bank.name) + 'を削除">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/></svg></button>' +
+      '</div>';
+  }
+
+  /* ── 口座一覧（目次） ─────────────────────────────
+     上部に通帳の表紙を並べる。契約・デジタルの支払いカードから
+     借りたのは「券面＋記録」の二層構造だけで、載る事実は銀行口座
+     のもの。上層は通帳を見れば分かること（銀行名・口座数・名義・
+     用途）、下層は SeiZen が記録していること（代理の仕組み2つと
+     その進捗、持ち物の数）。口座番号や支店名は一覧に出さない。
+
+     ここは読むための場所なので、編集はしない。押すと下の該当
+     通帳へ送る。詳細は下にそのまま在るので、一覧は目次に徹する。 */
+
+  /* 表紙に出す用途。口座ごとの roles を銀行単位で畳む。生活に
+     直に響くもの（年金の受取・生活費・公共料金）を先に出す。      */
+  function shelfRoles(bank) {
+    const crit = S.criticalRoles(bank);
+    const rest = [];
+    bank.accounts.forEach(a => a.roles.forEach(r => {
+      if (!crit.includes(r) && !rest.includes(r)) rest.push(r);
+    }));
+    return crit.concat(rest);
+  }
+
+  /* 口座の種別を数える。「普通預金 ×2」まで出すと表紙が混むので、
+     種別名だけを重複なく並べる。                                  */
+  function shelfKinds(bank) {
+    const out = [];
+    bank.accounts.forEach(a => { if (!out.includes(a.kind)) out.push(a.kind); });
+    return out;
+  }
+
+  /* 制度の1行。「代理人指名手続 …… 未対応」。制度名は銀行が決める
+     固有名詞で、家族が知らないもの。ここが一覧の背骨なので、
+     状態バッジより先に名前を読ませる。仕組みが無い銀行は、その
+     ことこそが一覧で一番効く情報なので、はっきり書く。            */
+  function shelfSitRow(bank, p) {
+    const means = S.prepMeans(bank, p);
+    const sit = S.situation(p.situation);
+    /* 仕組みが無い銀行は、その事実自体が一覧で一番効く情報。ただし
+       別の手を検討していることが記録されていれば、バッジをそちらに
+       替える。「不可」で終わらせると次の一手が一覧から消えるので。
+       検討の中身（任意後見など）はこの行に入れると状況の説明ごと
+       切れてしまうため、下の通帳で読ませる。                       */
+    if (!means) {
+      const alt = p.state === '別の方法を検討';
+      return '<li class="sh-sit none">' +
+        '<span class="ic">' + svg(sitIcon(p), 17) + '</span>' +
+        '<span class="nm">仕組みなし</span>' +
+        '<span class="cap">' + esc(sit.label.replace(/とき$/, '場合')) + '</span>' +
+        '<span class="st ' + (alt ? 'alt' : 'na') + '">' +
+          (alt ? '別の方法を検討' : 'この銀行では不可') + '</span></li>';
+    }
+    const st = S.prepState(p), lb = S.prepStateLabel(p);
+    const tone = lb.lead ? 'r-urg' : st.tone;
+    /* 期限つきの行は「今のうちに・未対応」と点で繋ぐ。詳細カードの
+       2段バッジを、1行に畳んだ形。                                */
+    const text = lb.lead ? (lb.lead + (lb.tail ? '・' + lb.tail : '')) : lb.tail;
+    return '<li class="sh-sit">' +
+      '<span class="ic">' + svg(sitIcon(p), 17) + '</span>' +
+      '<span class="nm">' + esc(means) + '</span>' +
+      '<span class="cap">' + esc(sit.label.replace(/とき$/, '場合')) + '</span>' +
+      '<span class="st ' + tone + '">' + esc(text) + '</span></li>';
+  }
+
+  function shelfCard(bank) {
+    const badge = S.bankBadge(bank);
+    const t = S.tally(bank);
+    const kinds = shelfKinds(bank);
+    const roles = shelfRoles(bank);
+
+    /* 上層＝通帳の表紙。銀行名・口座数・名義だけを置く。「預金通帳」
+       の箔押しは名乗りとして読み手に要らない情報で、その1行のぶん
+       だけカードが縦に伸びていたので外した。                      */
+    const owner = (bank.accounts.find(a => a.owner) || {}).owner || '';
+    const face =
+      '<div class="sh-face">' +
+        '<div class="sh-nm">' + esc(bank.name) + '</div>' +
+        '<div class="sh-meta">' +
+          '<span class="sh-cnt">口座 ' + bank.accounts.length + '件</span>' +
+          (kinds.length ? '<span class="sh-kd">' + esc(kinds.join('・')) + '</span>' : '') +
+          (owner ? '<span class="sh-ow"><i>名義</i>' + esc(owner) + '</span>' : '') +
+        '</div>' +
+        '<span class="sh-bd' + (badge.cls === 'warn' ? '' : ' off') + '">' +
+          esc(badge.text.replace(/\s/g, '')) + '</span>' +
+      '</div>';
+
+    /* 下層＝SeiZen の記録。制度2行のあとに、持ち物の数と用途。
+       期限の警告は制度ごとのバッジ（今のうちの対応が必要）に
+       もう出ているので、カード上部でも繰り返さない。              */
+    const body =
+      '<div class="sh-body">' +
+        '<ul class="sh-sits">' + displayOrder(bank).map(i => shelfSitRow(bank, bank.prep[i])).join('') + '</ul>' +
+        '<div class="sh-foot">' +
+          '<span class="sh-kit' + (t.open ? ' open' : '') + '">持ち物 ' + t.done + '/' + (t.done + t.open) + ' 確認済み</span>' +
+          '<span class="sh-use">' + (roles.length ? esc(roles.join('・')) : '用途 未入力') + '</span>' +
+        '</div>' +
+      '</div>';
+
+    return '<button class="shbook' + (bank.dormant ? ' gy' : '') + '" type="button" data-goto="' + bank.id + '">' +
+      face + body + '</button>';
   }
 
   /* 上部の警告は、事実から引き直す。 */
@@ -290,7 +392,13 @@
   function render() {
     sec.innerHTML = S.banks.map(bookHTML).join('');
     if (draft) sec.appendChild(draftEl());
+    if (shelf) shelf.innerHTML = S.banks.map(shelfCard).join('');
     chromeHTML();
+    const cntTx = S.banks.length + '件';
+    const cntShelf = document.getElementById('cntShelf');
+    const cntBooks = document.getElementById('cntBooks');
+    if (cntShelf) cntShelf.textContent = cntTx;
+    if (cntBooks) cntBooks.textContent = cntTx;
     /* ナビの件数は外殻の持ち物。描き直すたびに知らせておく。 */
     SeiZen.setNavCount('bank-account', S.banks.length + '件');
     focusEditor();
@@ -425,7 +533,7 @@
     if (t.classList.contains('rtag')) { t.classList.toggle('on'); return; }
 
     /* 銀行ごと削除。カード内のどこよりも先に拾う。 */
-    const delBtn = t.closest('.cv .del');
+    const delBtn = t.closest('.pb > .del');
     if (delBtn) return deleteBank(delBtn.dataset.bank);
 
     /* 口座情報の行 -------------------------------------------- */
@@ -558,6 +666,19 @@
     if (draft.query) suggest();
     return book;
   }
+
+  /* 一覧は目次。押すと下の該当通帳へ送り、着いたことが分かるよう
+     一瞬だけ縁を光らせる。開閉も編集もしない。                    */
+  if (shelf) shelf.addEventListener('click', e => {
+    const btn = e.target.closest('[data-goto]');
+    if (!btn) return;
+    const book = sec.querySelector('.pb[data-bank="' + btn.dataset.goto + '"]');
+    if (!book) return;
+    book.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    book.classList.remove('hit');
+    void book.offsetWidth;
+    book.classList.add('hit');
+  });
 
   /* 見出し横の登録ボタンは #books の外にあるので、専用に配線する。 */
   const addBtn = document.getElementById('addbank');

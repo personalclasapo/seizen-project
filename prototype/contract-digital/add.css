@@ -1,0 +1,73 @@
+/* SeiZen プロトタイプ｜サービスを追加（サービスから探す）専用スタイル
+   ------------------------------------------------------------------
+   契約・デジタルの一覧（area.css）とは別画面なので、ヘッダーや
+   グリッドはここに閉じて持つ。色や間隔は tokens.css / shell.css の
+   値をそのまま使い、この画面だけの値を増やさない。                */
+
+.addback{display:inline-flex;align-items:center;gap:4px;margin:2px 0 18px;
+  font-size:12.5px;color:var(--ink3);text-decoration:none}
+.addback svg{width:15px}
+.addback:hover{color:var(--gr2)}
+
+.addhead{margin-bottom:22px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.addhead h2{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.addhead p{margin:0;font-size:12.5px;color:var(--ink3)}
+
+.addtoolbar{display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+.addsearch{flex:1;display:flex;align-items:center;gap:9px;background:var(--card);
+  border:1px solid var(--line2);border-radius:10px;padding:12px 16px}
+.addsearch svg{width:17px;flex:none;color:var(--ink3)}
+.addsearch input{flex:1;border:0;outline:0;background:none;font-family:inherit;
+  font-size:13px;color:var(--ink)}
+.addsearch input::placeholder{color:#b3ae9f}
+
+.addexpand{flex:none;display:flex;align-items:center;gap:7px;padding:11px 16px;
+  border:1px solid var(--line2);border-radius:10px;background:var(--card);
+  font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink);cursor:pointer}
+.addexpand:hover{background:#fbfaf5;border-color:#c3bcaa}
+.addexpand svg{width:14px;color:var(--ink3)}
+.addexpand:disabled{opacity:.4;pointer-events:none}
+
+.addselcount{flex:none;display:flex;align-items:center;gap:6px;padding:11px 18px;
+  border:1px solid var(--line2);border-radius:10px;background:var(--card);
+  font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink)}
+.addselcount:hover{background:#fbfaf5;border-color:#c3bcaa}
+.addselcount svg{width:14px}
+
+.cataloggrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:start}
+@media (max-width:1080px){.cataloggrid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:820px){.cataloggrid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.cataloggrid{grid-template-columns:1fr}}
+
+.ccard{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:18px 18px 14px;display:flex;flex-direction:column}
+/* 見出しの下に、どのカードも同じ位置で線を1本引く。ふつうのカードは
+   最初の cgroup 側の border-top を消してここで代わりに引く。       */
+.ccard-h{display:flex;align-items:center;gap:10px;margin-bottom:14px;
+  padding-bottom:13px;border-bottom:1px solid var(--line)}
+.cic{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;
+  background:var(--gr-bg);color:var(--gr2)}
+.cic svg{width:17px;height:17px}
+.ccard-h h3{margin:0;font-size:13.5px;font-weight:700;letter-spacing:-.01em;color:var(--ink);
+  line-height:1.35;min-height:calc(1.35em * 2);display:flex;align-items:center}
+
+.cgroup{margin:0 0 14px;padding-top:12px;border-top:1px solid var(--line)}
+.ccard-h + .cgroup{padding-top:0;border-top:0}
+.cgroup-h{margin:0 0 8px;font-size:11px;font-weight:700;color:var(--ink3)}
+
+.citem{display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer;font-size:12.5px;color:var(--ink2)}
+.citem input{position:absolute;opacity:0;width:1px;height:1px}
+.cbox{flex:none;display:grid;place-items:center;width:17px;height:17px;border-radius:5px;
+  border:1.5px solid var(--line2);color:#fff;background:#fff}
+.cbox svg{width:11px;opacity:0}
+.citem input:checked + .cbox{background:var(--gr);border-color:var(--gr)}
+.citem input:checked + .cbox svg{opacity:1}
+.citem input:focus-visible + .cbox{outline:2px solid var(--gr2);outline-offset:1px}
+.clabel{flex:1}
+.citem[hidden], .cgroup[hidden], .ccard[hidden], .cmorebtn[hidden]{display:none}
+
+.cmorebtn{margin-top:auto;display:flex;align-items:center;gap:6px;padding:9px 2px 4px;
+  border:0;background:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--gr2)}
+.cmorebtn svg{width:13px}
+
+.catalogfoot{margin:24px 0 0;text-align:center;font-size:12px;color:var(--ink3)}

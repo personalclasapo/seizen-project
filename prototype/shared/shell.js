@@ -111,7 +111,8 @@
           '<span class="avatar" aria-label="' + esc(PERSON.name) + 'のプロフィール写真"></span>' +
           '<span><small>' + esc(PERSON.role) + '</small><strong>' + esc(PERSON.name) + '</strong></span>' +
           CHEVRON + '</button>' +
-      '</section>';
+      '</section>' +
+      '<span class="guide-edge" aria-hidden="true"></span>';
 
     el.querySelector('.guide-cta')
       .addEventListener('click', () => toast('使い方ガイドを開く準備中です'));

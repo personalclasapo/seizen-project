@@ -32,4 +32,8 @@
 
   --font:"Noto Sans JP",-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",system-ui,sans-serif;
   --font-serif:"Hiragino Mincho ProN","Yu Mincho",serif;
+
+  /* 外殻の構造寸法。デスクトップ固定の間の値。スマホ対応時は
+     ここを基点にブレークポイント別の値へ差し替える。 */
+  --shell-max:1280px; --shell-min:1120px; --guide-w:258px;
 }

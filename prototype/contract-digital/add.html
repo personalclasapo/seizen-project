@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SeiZen | サービスを追加</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <link rel="stylesheet" href="../shared/shell.css">
+  <link rel="stylesheet" href="area.css">
+  <link rel="stylesheet" href="add.css">
+</head>
+<!-- data-area がナビの現在地、data-root が prototype/ までの相対パス。
+     左のガイドブックは shared/shell.js が下の空の aside へ描く。 -->
+<body data-area="contract-digital" data-root="../">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+    <a class="addback" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg>契約・デジタルに戻る</a>
+
+    <header class="addhead">
+      <h2>サービスを追加</h2>
+      <p>思い当たるものにチェックしてください（あとから編集できます）</p>
+    </header>
+
+    <div class="addtoolbar">
+      <div class="addsearch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="catalogSearch" placeholder="サービス名を検索（例：Netflix、docomo、Google One など）" autocomplete="off">
+      </div>
+      <button class="addexpand" type="button" id="expandAllBtn" aria-pressed="false">
+        <svg id="expandAllIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+        <span id="expandAllText">すべての候補を表示</span>
+      </button>
+      <button class="addselcount" type="button" id="selCountBtn">
+        <span id="selCountText">選択したサービス 0件</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div class="cataloggrid" id="cataloggrid"></div>
+
+    <p class="catalogfoot">※ ここにないサービスも、検索から追加できます。</p>
+
+  </div></main>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="../shared/areas.js"></script>
+<script src="../shared/shell.js"></script>
+<script src="catalog.js"></script>
+<script src="add.js"></script>
+</body>
+</html>

@@ -7,8 +7,110 @@
    正本§13により、ここで作った形を他領域へ機械的に持ち出さない。 */
 
 /* 通帳は読む幅を優先して細く保つ。索引を並べる契約・デジタルとは
-   別の値でよい。                                                  */
+   別の値でよい。見出しの位置・幅は shared のまま（作業面の左端）で、
+   幅を絞って中央へ寄せるのは記録の側だけ。                        */
 .sec{max-width:840px}
+
+/* 見出しアイコンをこの領域だけ一回り大きくする。契約・デジタルと
+   共有の .sec-icon には手を入れず、ここで上書きするだけに留める。 */
+.sec-h .sec-icon{width:38px;height:38px}
+.sec-h .sec-icon svg{width:22px}
+.inner>.sec-h:first-child{margin-top:0}
+.sec-h .cnt{background:none;padding:4px 11px}
+/* 見出しの下にリード文を1行置くので、見出し自身の下余白は詰める。 */
+.sec-h{margin:34px 0 6px}
+
+/* ── 口座一覧：通帳の表紙を並べた目次 ─────────────────
+   契約・デジタルの支払いカードから借りたのは「券面＋記録」の
+   二層構造だけ。上層は通帳の表紙そのもの（緑グラデ＋ゴールド罫は
+   下の .cv と同じ質感）、下層は白地に SeiZen の記録。上下の造形を
+   揃えることで、押した先の通帳と地続きに見える。
+
+   通帳らしさは2つで作る：左端の背表紙の折り目、下に覗く台紙。
+   リング綴じは下の .pb が持たない造形なので入れない。              */
+/* minmax(0,1fr) で左右を厳密に等分する。既定の 1fr は最小値が auto
+   なので、nowrap の制度名（例：ゆうちょ代理人カード）が列を押し広げ、
+   左右で幅が変わってしまう。溢れる説明は .cap 側で省略させる。     */
+.shelf{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px 22px;margin-bottom:8px}
+
+/* 台紙の覗きは影だけで作る（.pb のように箱を2枚重ねない）。
+   ボタン本体のクリック域と見た目の外形を一致させるため、地の紙は
+   輪郭の外へはみ出させず、ドロップシャドウとして枠内に収める。   */
+.shbook{position:relative;display:flex;flex-direction:column;align-items:stretch;width:100%;padding:0;
+  border:1px solid #d5cdb6;border-radius:12px;background:#fff;font-family:inherit;text-align:left;cursor:pointer;
+  box-shadow:inset 0 1px 0 #fff,0 1px 2px #4b422b1f,0 6px 14px -6px #4b422b3d,3px 5px 0 -1px #ede4cc,3px 5px 0 0 #ddd0ac;
+  transition:transform .14s,box-shadow .14s}
+.shbook:hover{transform:translateY(-2px);
+  box-shadow:inset 0 1px 0 #fff,0 2px 4px #4b422b24,0 12px 24px -8px #4b422b45,3px 5px 0 -1px #ede4cc,3px 5px 0 0 #ddd0ac}
+.shbook:focus-visible{outline:2px solid var(--gr2);outline-offset:3px}
+
+/* 表紙。下の .cv と同じ緑とゴールド罫。角丸は上だけ。 */
+.sh-face{position:relative;padding:15px 17px 15px 26px;color:#fff;border-radius:11px 11px 0 0;
+  background:linear-gradient(180deg,#3c7455,#2e6146 55%,#26523b);
+  box-shadow:inset 0 1px 0 #ffffff59,inset 0 -3px 0 #26523b,inset 0 -6px 0 var(--gold),inset 0 -20px 15px -14px #00000038}
+.shbook.gy .sh-face{background:linear-gradient(180deg,#9d9384,#8b8172 55%,#7a7166)}
+/* 背表紙の折り目。左端に細い陰と光を1本ずつ立てる。表紙が一枚の
+   紙ではなく、綴じられた冊子であることの最小の記号。            */
+.sh-face:before{content:"";position:absolute;left:0;top:0;bottom:0;width:14px;
+  background:linear-gradient(90deg,#0000004d,#00000012 42%,#ffffff3d 62%,#00000021);
+  border-radius:11px 0 0 0}
+/* 折り目の頂点に細い光を1本。紙が山折りになっている縁。 */
+.sh-face:after{content:"";position:absolute;left:8.5px;top:0;bottom:0;width:1px;background:#ffffff54}
+.sh-nm{font-size:17px;font-weight:700;letter-spacing:.02em;line-height:1.3}
+.sh-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-top:7px;
+  font-size:11px;color:#ffffffc4}
+.sh-cnt{font-weight:700;color:#ffffffe8}
+.sh-ow i{font-style:normal;margin-right:5px;font-size:9px;color:#ffffff8a;letter-spacing:.06em}
+/* 状態は表紙の右上。下の .cv .bd と同じ形。 */
+.sh-bd{position:absolute;top:14px;right:15px;font-size:10.5px;font-weight:700;padding:4px 11px;
+  border-radius:20px;background:var(--or-bg);color:#a35a0d;white-space:nowrap}
+.sh-bd.off{background:#ffffff26;color:#ffffffd9;font-weight:600}
+
+/* 記録側。期限の警告は制度の行に既にバッジで出るので、ここでは
+   繰り返さない。                                                  */
+.sh-body{padding:13px 14px 14px}
+
+/* 制度2行。制度名を先に読ませ、状況の言い添えを挟んで、右端に進捗。 */
+.sh-sits{list-style:none;margin:0;padding:0}
+.sh-sit{display:flex;align-items:center;gap:7px;padding:9px 0;border-top:1px dashed #e6e1d3}
+.sh-sit:first-child{border-top:0;padding-top:0}
+/* 最後の行は下パディングを持たせない。持ち物の帯（.sh-foot）が
+   すぐ下に自分の余白を持つので、二重に空くのを避ける。            */
+.sh-sit:last-child{padding-bottom:2px}
+.sh-sit .ic{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;
+  background:#eeefe9;color:#5c6b5c}
+.sh-sit .nm{font-size:12.5px;font-weight:700;color:#3a3f38;white-space:nowrap}
+.sh-sit .cap{flex:1;min-width:0;font-size:10.5px;color:var(--ink3);
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sh-sit .st{flex:none;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap}
+.sh-sit .st.r-gr{background:#e3ede5;color:#2f6a48}
+.sh-sit .st.r-or{background:var(--or-bg);color:#a35a0d}
+.sh-sit .st.r-gy{background:#f0eee7;color:var(--gy)}
+.sh-sit .st.r-urg{background:var(--or-bg);color:#a35a0d}
+.sh-sit .st.na{background:#f0eee7;color:#a9a498;font-weight:600}
+/* 仕組みは無いが別の手を検討している、という状態。対象外の灰とは
+   分ける。参照・検討の色（bl）を薄く敷く。                       */
+.sh-sit .st.alt{background:#eaf0f5;color:var(--bl);font-weight:600}
+/* 仕組みが無い銀行は、その事実自体が読ませどころ。名前だけ落とす。 */
+.sh-sit.none .ic{background:#f2f0ea;color:#b0aca0}
+.sh-sit.none .nm{color:#a9a498}
+
+/* 持ち物の数と用途。表紙ではなく記録側に置く。用途はバッジ（丸背景
+   のピル）にすると進捗バッジと見分けがつかないので、地の文字だけの
+   ラベル＋値にする。ここは状態ではなく素性の説明なので、状態と
+   同じ見た目にしない。                                            */
+.sh-foot{display:flex;align-items:baseline;gap:10px;margin-top:8px;padding-top:10px;
+  border-top:1px solid #efece2}
+.sh-kit{flex:none;font-size:11px;font-weight:700;color:var(--gr2)}
+.sh-kit.open{color:var(--or)}
+.sh-use{margin-left:auto;min-width:0;font-size:11px;color:var(--ink3);
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:right}
+
+/* 目次から送られてきた通帳は、一瞬だけ縁が光る。着いた先が
+   どれかを、位置だけに頼らせない。                              */
+@keyframes pbhit{from{box-shadow:inset 0 1px 0 #fff,0 0 0 3px #3b785566,0 2px 3px #4b422b24,0 6px 12px -2px #4b422b33}
+  to{box-shadow:inset 0 1px 0 #fff,0 0 0 3px #3b785500,0 2px 3px #4b422b24,0 6px 12px -2px #4b422b33}}
+.pb.hit{animation:pbhit 1.6s ease-out}
 
 /* ── カード：1銀行=1カード。白背景・フラット・淡い枠線。 ── */
 /* 外枠は浮いた板。ぼかし0のオフセット無し影で全周に光を回し、
@@ -19,15 +121,12 @@
 .pb:before{content:"";position:absolute;inset:7px -8px -9px 8px;z-index:-1;border-radius:16px;background:linear-gradient(180deg,#f6f1e3,#ede4cc);border:1px solid #ddd0ac;box-shadow:0 10px 20px -8px #4b422b45,0 22px 36px -16px #4b422b40}
 /* ゴールド罫はヘッダーの緑に挟む。内側シャドウを緑→金→緑の順で
    重ね、罫の下に緑を3px残す。 */
-.cv{position:relative;display:flex;align-items:baseline;gap:12px;padding:18px 24px 22px;background:linear-gradient(180deg,#3c7455,#2e6146 55%,#26523b);border-radius:18px 18px 0 0;box-shadow:inset 0 1px 0 #ffffff59,inset 0 -3px 0 #26523b,inset 0 -6px 0 var(--gold),inset 0 -22px 16px -14px #00000038;color:#fff}
+.cv{position:relative;display:flex;align-items:baseline;gap:12px;padding:18px 48px 22px 24px;background:linear-gradient(180deg,#3c7455,#2e6146 55%,#26523b);border-radius:18px 18px 0 0;box-shadow:inset 0 1px 0 #ffffff59,inset 0 -3px 0 #26523b,inset 0 -6px 0 var(--gold),inset 0 -22px 16px -14px #00000038;color:#fff}
 .pb.gy .cv{background:linear-gradient(180deg,#9d9384,#8b8172 55%,#7a7166)}
 .cv .nm{font-size:18px;font-weight:700;letter-spacing:.02em}
 .cv .kd{font-size:12px;color:#ffffffb8}
 .cv .bd{margin-left:auto;font-size:11.5px;font-weight:700;padding:5px 13px;border-radius:20px;background:var(--or-bg);color:#a35a0d}
 .cv .bd.off{background:#ffffff26;color:#ffffffd9;font-weight:600}
-.cv .del{align-self:center;display:grid;place-items:center;width:30px;height:30px;flex:none;border:0;border-radius:8px;background:transparent;color:#ffffffa6;cursor:pointer}
-.cv .del:hover{background:#ffffff26;color:#fff}
-.cv .del svg{width:15px}
 .body{padding:22px 24px 6px}
 
 /* 番号見出し：①②③。インク色でひと回り大きく。 */
@@ -165,9 +264,12 @@ select.kit-st-ef{flex:none;font-size:12px;padding:3px 6px;border:1px solid #b6c6
 .roles{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1 1 100%;padding-left:28px}.roles .rl{font-size:10.5px;color:var(--ink3);letter-spacing:.08em;margin-right:2px}
 .rtag{font-size:11px;padding:2px 9px;border:1px dashed #cdd6cd;border-radius:3px;background:none;color:#7d8a7e;font-family:inherit;cursor:pointer}.rtag:hover{border-color:#9db39f;color:var(--gr)}.rtag.on{border-style:solid;border-color:#cfe0d1;background:#e3edee;color:var(--gr);font-weight:500}
 .rowact{display:flex;gap:8px;margin-left:auto}.rowact button{padding:6px 14px;border-radius:6px;font-family:inherit;font-size:12px;cursor:pointer}.btn-ok{border:1px solid var(--gr);background:var(--gr);color:#fff;font-weight:600}.btn-ok:hover{background:var(--gr-d)}.btn-no{border:1px solid #ded8ca;background:#fff;color:#8a8578}.btn-no:hover{background:#f5f3ec}
-.addrow{display:flex;align-items:center;gap:9px;width:100%;font-family:inherit;font-size:12.5px;color:var(--gr2);text-align:left;cursor:pointer;margin:0 0 24px;padding:12px 16px;border:1px dashed #dad5c8;border-radius:9px;background:#fffefa;transition:background .15s,border-color .15s}
+.addrow{display:flex;align-items:center;gap:9px;width:100%;font-family:inherit;font-size:12.5px;color:var(--gr2);text-align:left;cursor:pointer;margin:0 0 24px;padding:12px 52px 12px 16px;border:1px dashed #dad5c8;border-radius:9px;background:#fffefa;transition:background .15s,border-color .15s}
 .addrow .plus{display:grid;place-items:center;width:19px;height:19px;flex:none;border:1px dashed #b9c9ba;border-radius:3px;color:#6b8e70;font-size:13px;line-height:1}
 .addrow:hover{background:#f6faf6;border-color:#a9c0ac}
+.pb>.del{position:absolute;right:14px;bottom:32px;display:grid;place-items:center;width:30px;height:30px;flex:none;border:0;border-radius:8px;background:transparent;color:#a39c8a;cursor:pointer}
+.pb>.del:hover{background:#f5f0e4;color:#b23b3b}
+.pb>.del svg{width:15px}
 .pb.draft .cv{background:linear-gradient(180deg,#6e8a77,#5f7d6b 55%,#4a6857)}
 .pb.draft{overflow:visible}.pb.draft .cv{overflow:visible;position:relative}
 .namewrap{position:static;flex:1;min-width:0;max-width:280px}
