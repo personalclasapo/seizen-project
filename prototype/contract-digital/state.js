@@ -569,14 +569,28 @@
       Math.random().toString(36).slice(2, 7);
   }
 
-  /* 追加サービス1件のひな形。名前・カテゴリ・時期・id を受け取り、
+  /* 通し番号（No.）。人が見る番号で、id とは別。本番ではサーバが登録
+     を受け付けた順に1回だけ振る値なので、プロトタイプでも採番は
+     commitAdded の中（＝サーバ役）だけで行い、他では生成しない。
+     一度振った番号は動かさない（削除で欠番が出るのは正常）。       */
+  const NO_START = (function () {
+    const max = items.reduce((m, it) => {
+      const n = parseInt(it.no, 10);
+      return isNaN(n) ? m : Math.max(m, n);
+    }, 0);
+    return max + 1;
+  })();
+  let nextNo = NO_START;
+  const padNo = n => String(n).padStart(3, '0');
+
+  /* 追加サービス1件のひな形。名前・カテゴリ・時期・id・no を受け取り、
      詳細画面の骨格が壊れないよう残りを未記入で埋める。              */
   function buildAddedItem(rec) {
     const g = rec.group === 'pre' || rec.group === 'post' ? rec.group : 'undecided';
     const day = rec.added || today();
     return {
       id: rec.id || newServiceId(),
-      no: '—',
+      no: rec.no || '—',
       name: String(rec.name).trim(),
       category: rec.category || '未分類',
       group: g,
@@ -594,16 +608,17 @@
     };
   }
 
-  /* 保存：いまの items / cards をまるごと書き出す。 */
+  /* 保存：いまの items / cards と、次に振る No. をまるごと書き出す。 */
   function save() {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ items: items, cards: cards }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ items: items, cards: cards, nextNo: nextNo }));
     } catch (e) { /* 無視 */ }
   }
 
   /* 読み込み：保存済みがあれば、その中身で items / cards の要素を
      入れ替える（配列そのものは作り直さない＝外へ渡した参照を保つ）。
-     無ければ初期データのまま一度保存して、以後の基準にする。        */
+     No. のカウンタも引き継ぐ（無ければ、いま並んでいる最大＋1）。
+     保存が無ければ初期データのまま一度保存して、以後の基準にする。  */
   (function loadStore() {
     let saved = null;
     try {
@@ -614,6 +629,11 @@
     if (!saved) { save(); return; }
     items.splice(0, items.length, ...saved.items);
     cards.splice(0, cards.length, ...saved.cards);
+    const savedNo = parseInt(saved.nextNo, 10);
+    nextNo = !isNaN(savedNo) && savedNo >= NO_START ? savedNo : items.reduce((m, it) => {
+      const n = parseInt(it.no, 10);
+      return isNaN(n) ? m : Math.max(m, n + 1);
+    }, NO_START);
   })();
 
   /* 既に一覧にある名前か。追加画面の「登録済み」判定と、確定時の
@@ -635,8 +655,10 @@
       const key = name.toLowerCase();
       if (!name || seen.has(key)) { skipped.push(rec.name); return; }
       seen.add(key);
+      /* No. はここ（サーバ役）で1回だけ確定し、以後は動かさない。 */
       items.push(buildAddedItem({
-        name: name, group: rec.group, category: rec.category || '未分類', added: today()
+        name: name, group: rec.group, category: rec.category || '未分類',
+        added: today(), no: padNo(nextNo++)
       }));
       added.push(name);
     });
