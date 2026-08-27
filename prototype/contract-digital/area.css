@@ -283,13 +283,11 @@
 .filecard b{display:block;margin-top:5px;font-size:14px;font-weight:700;color:#454b44}
 .filecard b i{font-style:normal;font-size:25px;letter-spacing:.03em;margin-left:3px}
 .filecard .rule{margin:9px auto 0;width:56px;height:2px;border-radius:2px;background:#e8933c}
-/* 時期ラベルの鉛筆。ふだんは薄く、ラベルにホバーで色が出る。 */
+/* 時期ラベル。pre/post は押すとセレクトに化ける。押せることは、
+   ホバー（フォーカス）で点線が出ることで示す（.ev と同じ手つき）。 */
 .filecard small{position:relative}
-.fc-groupedit{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;
-  margin-left:3px;padding:0;border:0;background:none;color:#c3bcaa;cursor:pointer;vertical-align:-2px}
-.fc-groupedit svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2}
-.filecard small:hover .fc-groupedit{color:#8a8578}
-.fc-groupedit:hover{color:#6b6963}
+.fc-grouplabel{border-bottom:1px dashed transparent;cursor:pointer;transition:border-color .12s,color .12s}
+.fc-grouplabel:hover,.fc-grouplabel:focus-visible{border-bottom-color:#b0a893;color:#6b6963;outline:none}
 /* 編集中は時期セレクトをラベルの場所にそのまま出す。 */
 .fc-groupsel{width:100%;padding:3px 4px;border:1px solid var(--gr);border-radius:5px;background:#fff;
   font-family:inherit;font-size:11px;font-weight:700;color:#454b44;text-align:center;

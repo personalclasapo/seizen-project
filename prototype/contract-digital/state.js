@@ -548,48 +548,39 @@
     }
   ];
 
-  /* ── 追加分のマージ ───────────────────────────────────
-     「サービスを追加」画面で確定したサービスは localStorage に貯める。
-     seed（上の items）はプロトタイプの初期データとして常にあり、その
-     後ろへ追加分を足して一覧を作る。将来はここがサーバから来る。
+  /* ── 永続化（プロトタイプ用の1本の置き場） ───────────────
+     本番はここが1つのサーバAPI（GET /services, PATCH /services/:id …）
+     になる。プロトタイプでは、その代わりに localStorage の1キーへ
+     items / cards をまるごと持つ。上の const items / cards は「初期
+     データ（工場出荷）」で、保存済みの状態が無いときだけ使う。
 
-     追加分は名前と対応時期（group）だけを持つので、詳細画面の骨格が
-     壊れないよう最小の構造をここで補う（account 3行すべて未確認、
-     対応方針は未確認、手続きは未確認）。                            */
-  const ADDED_KEY = 'seizen.contract.added';
+     設計の要点：
+       ・置き場は1つ（STORE_KEY）。追加分・変更分を別管理しない。
+       ・id が同一性の基準。名前・カテゴリはただの編集できる項目。
+       ・追加サービスの id は採番したその場で確定させ、以後は動かさない
+         （ロード順に依存する連番はやめる）。
+       ・詳細画面のどの書き換えも S.touch() を通るので、保存はそこで
+         一度だけ行えばよい（render 側の各操作は既に touch を呼ぶ）。 */
+  const STORE_KEY = 'seizen.contract.v1';
 
-  function loadAdded() {
-    try {
-      const raw = localStorage.getItem(ADDED_KEY);
-      if (!raw) return [];
-      const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr : [];
-    } catch (e) { return []; }
+  /* 追加サービスの id を1つ作る。時刻＋乱数で、採番順に依存しない。 */
+  function newServiceId() {
+    return 'svc-added-' + Date.now().toString(36) + '-' +
+      Math.random().toString(36).slice(2, 7);
   }
 
-  function saveAdded(arr) {
-    try { localStorage.setItem(ADDED_KEY, JSON.stringify(arr)); } catch (e) { /* 無視 */ }
-  }
-
-  /* 既に一覧にある名前か（seed・追加分の両方を見る）。追加画面が
-     「登録済み」を判定するのにも使う。                              */
-  function hasService(name) {
-    const n = String(name).trim().toLowerCase();
-    return items.some(it => it.name.trim().toLowerCase() === n);
-  }
-
-  let addedSeq = 0;
+  /* 追加サービス1件のひな形。名前・カテゴリ・時期・id を受け取り、
+     詳細画面の骨格が壊れないよう残りを未記入で埋める。              */
   function buildAddedItem(rec) {
-    addedSeq += 1;
     const g = rec.group === 'pre' || rec.group === 'post' ? rec.group : 'undecided';
     const day = rec.added || today();
     return {
-      id: 'svc-added-' + addedSeq,
+      id: rec.id || newServiceId(),
       no: '—',
-      name: rec.name,
+      name: String(rec.name).trim(),
       category: rec.category || '未分類',
       group: g,
-      added: true,               /* 追加分の目印。索引のハイライトに使う */
+      added: true,               /* 追加分の目印。索引のハイライト・削除口に使う */
       registered: day, updated: day,
       policy: { intent: 'unknown', reason: '', nextTiming: '' },
       account: [
@@ -597,80 +588,106 @@
         { label: '登録メールアドレス',      value: '', state: 'none', icon: 'mail' },
         { label: '認証端末（2段階認証）',    value: '', state: 'none', icon: 'phone' }
       ],
-      /* 追加直後はどの事実も未記入。契約者と同じく、点線＋例で見せる
-         （'費用なし'／'不明' のような確定表現を初期値に入れない）。   */
       contract: { holder: '', paymentCard: null, amount: null, cycle: 'monthly', started: '', nextBill: '' },
       procedure: { checked: false, where: '', steps: [], link: '', point: '' },
       memo: ''
     };
   }
 
-  /* seed の後ろへ追加分を差し込む。名前が seed と重複するものは
-     足さない（確認画面側でも弾くが、二重の歯止め）。                */
-  (function mergeAdded() {
-    const seedNames = new Set(items.map(it => it.name.trim().toLowerCase()));
-    loadAdded().forEach(rec => {
-      if (!rec || !rec.name) return;
-      if (seedNames.has(String(rec.name).trim().toLowerCase())) return;
-      items.push(buildAddedItem(rec));
-    });
+  /* 保存：いまの items / cards をまるごと書き出す。 */
+  function save() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ items: items, cards: cards }));
+    } catch (e) { /* 無視 */ }
+  }
+
+  /* 読み込み：保存済みがあれば、その中身で items / cards の要素を
+     入れ替える（配列そのものは作り直さない＝外へ渡した参照を保つ）。
+     無ければ初期データのまま一度保存して、以後の基準にする。        */
+  (function loadStore() {
+    let saved = null;
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      const obj = raw ? JSON.parse(raw) : null;
+      if (obj && Array.isArray(obj.items) && Array.isArray(obj.cards)) saved = obj;
+    } catch (e) { saved = null; }
+    if (!saved) { save(); return; }
+    items.splice(0, items.length, ...saved.items);
+    cards.splice(0, cards.length, ...saved.cards);
   })();
 
+  /* 既に一覧にある名前か。追加画面の「登録済み」判定と、確定時の
+     二重登録の歯止めに使う（同一性の基準ではない。あくまで入力の
+     うっかりを弾くための名前一致）。                                */
+  function hasService(name) {
+    const n = String(name).trim().toLowerCase();
+    return items.some(it => it.name.trim().toLowerCase() === n);
+  }
+
   /* 確認画面から呼ぶ。records は [{ name, group, category }]。
-     既存（seed も追加済みも）と重複する名前は skipped に回す。     */
+     名前が既存と重複するものは skipped に回す。追加できたものは
+     その場で id を確定し、items へ足して保存する。                  */
   function commitAdded(records) {
-    const store = loadAdded();
-    const storeNames = new Set(store.map(r => String(r.name).trim().toLowerCase()));
+    const seen = new Set(items.map(it => it.name.trim().toLowerCase()));
     const added = [], skipped = [];
     records.forEach(rec => {
-      const key = String(rec.name).trim().toLowerCase();
-      if (hasService(rec.name) || storeNames.has(key)) { skipped.push(rec.name); return; }
-      const clean = { name: rec.name.trim(), group: rec.group, category: rec.category || '未分類', added: today() };
-      store.push(clean);
-      storeNames.add(key);
-      items.push(buildAddedItem(clean));
-      added.push(rec.name.trim());
+      const name = String(rec.name).trim();
+      const key = name.toLowerCase();
+      if (!name || seen.has(key)) { skipped.push(rec.name); return; }
+      seen.add(key);
+      items.push(buildAddedItem({
+        name: name, group: rec.group, category: rec.category || '未分類', added: today()
+      }));
+      added.push(name);
     });
-    saveAdded(store);
+    if (added.length) save();
     return { added, skipped };
   }
 
   /* 追加したサービス1件を取り消す。詳細画面の削除ボタンから呼ぶ。
-     seed のサービス（id が svc-added- で始まらない）は対象外。      */
+     seed のサービス（it.added が無い）は対象外。                    */
   function removeAdded(id) {
-    const it = items.find(x => x.id === id);
-    if (!it || !it.added) return false;
-    const idx = items.indexOf(it);
-    if (idx !== -1) items.splice(idx, 1);
-    const key = it.name.trim().toLowerCase();
-    saveAdded(loadAdded().filter(r => String(r.name).trim().toLowerCase() !== key));
-    /* 持ち越し（patch）に残ったこの項目ぶんも捨てる。 */
-    const patch = loadPatch();
-    if (patch[id]) { delete patch[id]; savePatch(patch); }
+    const idx = items.findIndex(x => x.id === id && x.added);
+    if (idx === -1) return false;
+    items.splice(idx, 1);
+    save();
     return true;
   }
 
+  /* 追加サービスの名前・カテゴリを書き換える。詳細画面のインライン
+     編集から呼ぶ。id で引くので、名前が変わっても同じサービスのまま。
+     seed（it.added が無い）は対象外。値が変わったときだけ true。     */
+  function renameService(id, patch) {
+    const it = items.find(x => x.id === id && x.added);
+    if (!it) return false;
+    let changed = false;
+    if (patch && 'name' in patch) {
+      const v = String(patch.name).trim();
+      if (v && v !== it.name) { it.name = v; changed = true; }
+    }
+    if (patch && 'category' in patch) {
+      const v = String(patch.category).trim() || '未分類';
+      if (v !== it.category) { it.category = v; changed = true; }
+    }
+    if (changed) touch(it);
+    return changed;
+  }
+
   /* 振り分け前のサービスを「いまのうち（pre）」「そのとき（post）」の
-     いずれかへ動かす。詳細画面の振り分けカードから呼ぶ。追加分は
-     localStorage 側の group も書き換えて、再読み込み後も維持する。   */
+     いずれかへ動かす。詳細画面の振り分けカードから呼ぶ。            */
   function setGroup(id, group) {
     if (group !== 'pre' && group !== 'post') return false;
     const it = items.find(x => x.id === id);
     if (!it || it.group === group) return false;
     it.group = group;
-    if (it.added) {
-      const key = it.name.trim().toLowerCase();
-      const store = loadAdded();
-      const rec = store.find(r => String(r.name).trim().toLowerCase() === key);
-      if (rec) { rec.group = group; saveAdded(store); }
-    }
     touch(it);
     return true;
   }
 
-  /* デモをまっさらに戻すための1行。コンソールから SeiZen…resetAdded()。 */
-  function resetAdded() {
-    try { localStorage.removeItem(ADDED_KEY); } catch (e) { /* 無視 */ }
+  /* デモをまっさらに戻す1行。コンソールから SeiZen…resetAll()。
+     保存を消してから、初期データで書き戻す（次のロードは工場出荷）。 */
+  function resetAll() {
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 無視 */ }
   }
 
   /* ── 引き出し ─────────────────────────────────────── */
@@ -812,67 +829,22 @@
     return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate());
   }
 
-  /* ── 変更の持ち越し（プロトタイプ用） ─────────────────
-     seed（items / cards）はコード内のハードコード。詳細画面で確認状態
-     や対応方針を書き換えても、本番のサーバがまだ無いので、そのままだと
-     別ページ（list.html など）へ移った瞬間に消える。
-
-     そこで「詳細画面での書き換え」を sessionStorage に patch として貯め、
-     読み込み時に seed の上へ重ねる。id ごとに、書き換わりうるフィールド
-     だけを丸ごと保存する（policy / account / procedure / contract /
-     memo / info / completed / group / updated）。タブを閉じるまでの
-     一時的な持ち越しで、再読み込みでも残るが、別タブには漏らさない。   */
-  const PATCH_KEY = 'seizen.contract.patch';
-  const PATCH_FIELDS = ['policy', 'account', 'procedure', 'contract', 'memo', 'info', 'completed', 'group', 'updated'];
-
-  function loadPatch() {
-    try {
-      const raw = sessionStorage.getItem(PATCH_KEY);
-      const obj = raw ? JSON.parse(raw) : null;
-      return obj && typeof obj === 'object' ? obj : {};
-    } catch (e) { return {}; }
-  }
-  function savePatch(obj) {
-    try { sessionStorage.setItem(PATCH_KEY, JSON.stringify(obj)); } catch (e) { /* 無視 */ }
-  }
-
-  /* 読み込み時に一度だけ、貯めてある patch を seed へ重ねる。 */
-  (function applyPatch() {
-    const patch = loadPatch();
-    const all = items.concat(cards);
-    Object.keys(patch).forEach(id => {
-      const ent = all.find(x => x.id === id);
-      if (!ent) return;
-      PATCH_FIELDS.forEach(f => {
-        if (f in patch[id]) ent[f] = patch[id][f];
-      });
-    });
-  })();
-
   /* 契約・カードのどちらにも updated を持たせ、変更のたびにここを通す。
      カードの seed には updated が無いので、初回の書き換え時に生える。
-     あわせて、この項目の今の状態を patch へ書き出しておく（別ページへ
-     移っても同じ状態で開けるように）。                              */
+     詳細画面のどの書き換え（確認状態・対応方針・時期・名前…）も
+     ここを通るので、保存もここで一度だけ行う。別ページ（list.html
+     など）へ移っても、次のロードで同じ状態から開ける。            */
   function touch(entity) {
     if (!entity) return;
     entity.updated = today();
-    const patch = loadPatch();
-    const rec = {};
-    PATCH_FIELDS.forEach(f => { if (f in entity) rec[f] = entity[f]; });
-    patch[entity.id] = rec;
-    savePatch(patch);
-  }
-
-  /* デモをまっさらに戻すもう1行。コンソールから SeiZen…resetPatch()。 */
-  function resetPatch() {
-    try { sessionStorage.removeItem(PATCH_KEY); } catch (e) { /* 無視 */ }
+    save();
   }
 
   global.SeiZenContract = {
     INTENTS, MARKS3, GROUP_UI, MARKS, LOGO_ALIAS,
     cards, items,
     byGroup, preItems, postItems, undecidedItems,
-    hasService, commitAdded, removeAdded, setGroup, resetAdded, resetPatch,
+    hasService, commitAdded, removeAdded, renameService, setGroup, resetAll,
     intentOf, intentLabel, markOf, openCount, procChecked, accountMark, accountState, accountDone, statusRows,
     itemBadge, groupSummary, accountSummary,
     paymentDisplay, amountText, findItem, findCard, linkedItems, cardFacts,

@@ -584,8 +584,9 @@
   }
 
   /* 綴じ代の時期ラベル。undecided は本体の振り分けブロックが受け持つ
-     ので鉛筆は出さない。pre/post は、鉛筆を押すとその場でセレクト
-     （いまのうち／そのとき）に化け、選び直したらすぐ反映する。      */
+     ので触らせない。pre/post は、ラベルそのものを押すとその場でセレクト
+     （いまのうち／そのとき）に化け、選び直したらすぐ反映する（鉛筆は
+     出さず、他の項目と同じインラインの手つきにそろえる）。          */
   function fileCardHTML(it) {
     const undecided = it.group === 'undecided';
     const rule = undecided ? ';background:#8a8578' : it.group === 'post' ? ';background:#5da37b' : '';
@@ -595,10 +596,11 @@
         [['pre', 'いまのうち'], ['post', 'そのとき']].map(([v, t]) =>
           '<option value="' + v + '"' + (it.group === v ? ' selected' : '') + '>' + t + '</option>').join('') +
         '</select>';
+    } else if (undecided) {
+      label = '<small>' + esc(S.GROUP_UI[it.group].tab) + '</small>';
     } else {
-      label = '<small>' + esc(S.GROUP_UI[it.group].tab) +
-        (undecided ? '' : '<button type="button" class="fc-groupedit" data-groupedit="1" aria-label="対応時期を変更">' + IC.pen + '</button>') +
-        '</small>';
+      label = '<small class="fc-grouplabel" data-groupedit="1" role="button" tabindex="0" ' +
+        'aria-label="対応時期を変更">' + esc(S.GROUP_UI[it.group].tab) + '</small>';
     }
     return '<div class="filecard' + (editingGroup && !undecided ? ' fc-editing' : '') + '">' +
       label + '<b>No.<i>' + esc(it.no) + '</i></b>' +
@@ -620,8 +622,15 @@
         deleteZoneHTML(it) +
       '</div>' +
       '<div class="page">' +
-        '<div class="pg-h"><span class="nm">' + esc(it.name) + '</span>' +
-          '<span class="cat">' + esc(it.category) + '</span>' +
+        /* 追加したサービスは、名前・カテゴリを他の項目と同じインライン
+           編集にする（押すと入力欄）。seed は markOf のロゴ判定が名前
+           に依存するので、読み取り専用のまま。                        */
+        '<div class="pg-h">' +
+          (it.added
+            ? '<span class="nm">' + ev('name', it.name, 'line', '例：DHC 定期便') + '</span>' +
+              '<span class="cat">' + ev('category', it.category, 'line', '例：化粧品') + '</span>'
+            : '<span class="nm">' + esc(it.name) + '</span>' +
+              '<span class="cat">' + esc(it.category) + '</span>') +
           '<span class="pol hb-' + b.tone + '">' + esc(bTxt) + '</span>' +
           completeToggleHTML(b) +
           pgCollapseHTML() + '</div>' +
@@ -844,6 +853,14 @@
       else if (val === 'unknown') { it.contract.paymentCard = null; delete it.contract.paymentLabel; }
       else                        { it.contract.paymentCard = val;  delete it.contract.paymentLabel; }
       return before !== it.contract.paymentCard + '|' + (it.contract.paymentLabel || '');
+    } else if (path === 'name' || path === 'category') {
+      /* サービス名・カテゴリは空にできない。空欄で閉じたら元のまま。
+         カテゴリは空欄なら「未分類」に戻す。                        */
+      let next = String(val).trim();
+      if (path === 'category' && !next) next = '未分類';
+      if (!next || getByPath(it, path) === next) return false;
+      setByPath(it, path, next);
+      return true;
     } else {
       const next = String(val).trim();
       if (getByPath(it, path) === next) return false;
@@ -1197,6 +1214,16 @@
   });
 
   sheet.addEventListener('keydown', e => {
+    /* 綴じ代の時期ラベル（role=button）をキーボードでも開ける。 */
+    const gl = e.target.closest('.fc-grouplabel');
+    if (gl && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      if (editing) commitEdit();
+      if (editSection) commitSection();
+      editingGroup = true;
+      renderSheet();
+      return;
+    }
     if (editSection && e.key === 'Escape') { e.stopPropagation(); editSection = null; render(); return; }
     if (editSection) return;
     if (!editing) return;
