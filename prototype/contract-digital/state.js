@@ -634,6 +634,17 @@
       const n = parseInt(it.no, 10);
       return isNaN(n) ? m : Math.max(m, n + 1);
     }, NO_START);
+
+    /* 移行：No. の採番を入れる前に追加したサービスは no が '—' のまま
+       保存されている。登録日の古い順（＝追加した順）に、いまの nextNo
+       から番号を振り直し、一度だけ保存し直す。1回走れば以降は該当なし。 */
+    const unnumbered = items.filter(it => it.added && (!it.no || it.no === '—'));
+    if (unnumbered.length) {
+      unnumbered
+        .sort((a, b) => String(a.registered).localeCompare(String(b.registered)))
+        .forEach(it => { it.no = padNo(nextNo++); });
+      save();
+    }
   })();
 
   /* 既に一覧にある名前か。追加画面の「登録済み」判定と、確定時の
