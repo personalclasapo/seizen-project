@@ -279,8 +279,8 @@
 .ring:after{content:"";position:absolute;left:2px;top:2px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#8b9099 60%,#4a4f57)}
 .ring.r1{top:16%}.ring.r2{top:32%}.ring.r3{top:48%}.ring.r4{top:64%}.ring.r5{top:80%}
 .filecard{width:126px;margin:0 auto;padding:13px 8px 15px;background:#fff;border-radius:5px;box-shadow:0 2px 7px rgba(70,64,50,.16)}
-.filecard small{display:block;font-size:10.5px;color:#8a8578;letter-spacing:.02em}
-.filecard b{display:block;margin-top:5px;font-size:14px;font-weight:700;color:#454b44}
+.filecard small{display:block;font-size:12.5px;font-weight:700;color:#6b6963;letter-spacing:.02em}
+.filecard b{display:block;margin-top:7px;font-size:14px;font-weight:700;color:#454b44}
 .filecard b i{font-style:normal;font-size:25px;letter-spacing:.03em;margin-left:3px}
 .filecard .rule{margin:9px auto 0;width:56px;height:2px;border-radius:2px;background:#e8933c}
 /* 時期ラベル。pre/post は押すとセレクトに化ける。押せることは、
