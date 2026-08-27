@@ -28,11 +28,11 @@
   const dtlFile    = document.querySelector('.dtl-file');
 
   let openId = null;
-  /* 索引の各束（いまのうち／そのとき）は、既定では上から COLLAPSE_LIMIT
-     件だけを見せる。件数がそれ以下なら今まで通り全件そのまま。開いた
-     ことのある束は Set に覚えておき、索引を描き直しても開いたまま。 */
-  const COLLAPSE_LIMIT = 6;
-  const expandedGroups = new Set();
+  /* 索引の各束は、この一覧（ハブ）では上から一定件数だけを見せる。
+     いまのうち／そのときは10件、振り分け前は5件。これを超えたら
+     束の下端に「すべてを見る」を出し、その束だけの全件画面
+     （list.html?g=…）へ遷移させる。ハブの中では展開しない。       */
+  const LIST_LIMIT = { pre: 10, post: 10, undecided: 5 };
   let closedSections = new Set();
   /* 節ごとの開閉は対象（契約・アカウント）ごとに覚える。前へ／次へ・
      索引からの選び直しをまたいでも、同じ対象に戻ればさっき閉じた
@@ -55,6 +55,7 @@
      同じ手つきで、値の置き場所を動かさずに書き換える。            */
   let editing = null;      // { path, kind } … 欄ひとつだけを開く
   let editSection = null;  // 節ごとにまとめて開く
+  let editingGroup = false; // 綴じ代の「時期」ラベルを編集中か（pre⇄post）
 
   /* ── 小物 ─────────────────────────────────────────── */
 
@@ -90,7 +91,8 @@
     tick:  '<svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>',
     info:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg>',
     gate:  '<svg viewBox="0 0 24 24"><path d="M4 21V4M4 4h12l-2.5 4L16 12H4"/></svg>',
-    dash:  '<svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg>'
+    dash:  '<svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg>',
+    trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 4h4M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>'
   };
 
   /* どの節が、どの path を受け持つか。節ごとの編集で使う。 */
@@ -123,8 +125,11 @@
       (empty ? esc(placeholder || '未入力') : esc(value)) + '</span>';
   }
 
-  /* 選択肢から選ぶ値。開いた瞬間からセレクトを出す。 */
-  function evSelect(path, value, options) {
+  /* 選択肢から選ぶ値。開いた瞬間からセレクトを出す。
+     opts.emptyValue を渡すと、その値のときは読み取り表示を点線＋例
+     （ev の未入力と同じ見た目）にする。編集時は素のセレクトのまま。 */
+  function evSelect(path, value, options, opts) {
+    opts = opts || {};
     const secOn = editSection && path.indexOf(SEC_OF[editSection] || '\u0000') === 0;
     if ((editing && editing.path === path) || secOn) {
       return '<select class="ef ef-sel" data-ef="1" data-path="' + path + '">' +
@@ -132,6 +137,9 @@
           (o.value === value ? ' selected' : '') + '>' + esc(o.label) + '</option>').join('') +
         '</select>';
     }
+    if ('emptyValue' in opts && value === opts.emptyValue)
+      return '<span class="ev ev-empty" data-edit="' + path + '" data-kind="select">' +
+        esc(opts.placeholder || '未入力') + '</span>';
     const cur = options.find(o => o.value === value);
     return '<span class="ev" data-edit="' + path + '" data-kind="select">' +
       esc(cur ? cur.label : value) + '</span>';
@@ -182,27 +190,31 @@
   function groupBlock(g) {
     const ui = S.GROUP_UI[g], t = S.groupSummary(g);
     const full = idxOrder(S.byGroup(g));
-    const expanded = expandedGroups.has(g);
-    const over = full.length > COLLAPSE_LIMIT;
-    const list = over && !expanded ? full.slice(0, COLLAPSE_LIMIT) : full;
-    /* 畳んでいるときだけ「＋N件を見る」。開いたら束の下端に「閉じる」
-       を出し、今の見た目（全件そのまま並ぶ）を壊さずに戻せるようにする。 */
+    const limit = LIST_LIMIT[g] || full.length;
+    const over = full.length > limit;
+    const list = over ? full.slice(0, limit) : full;
+    /* 件数が上限を超えた束は、ここでは上限までを見せ、下端の
+       「すべてを見る」でその束だけの全件画面へ送る。ハブの中で
+       広げる操作（＋N件を見る／閉じる）は持たない。               */
     const moreBtn = over
-      ? (expanded
-          ? '<button class="ib-more" type="button" data-expand="' + g + '">閉じる<span class="chev up">▲</span></button>'
-          : '<button class="ib-more" type="button" data-expand="' + g + '">＋' + (full.length - COLLAPSE_LIMIT) + '件を見る<span class="chev">▼</span></button>')
+      ? '<a class="ib-more" href="list.html?g=' + g + '">すべてを見る（' + full.length + '件）' +
+        '<span class="chev">' + IC.chevR + '</span></a>'
       : '';
-    return '<div class="iblock ib-' + g + '">' +
-      /* 束の耳。台紙から立ち上がって、この束が何かを名指す。 */
-      '<span class="ib-tab">' + esc(ui.tab) + '</span>' +
-      '<div class="ib-h"><span class="ib-ic ic-' + g + '">' + (g === 'pre' ? IC.bag : IC.book) + '</span>' +
-        '<h4>' + esc(ui.title) + '</h4><span class="ib-n n-' + g + '">' + full.length + '件</span></div>' +
-      '<p class="ib-lead">' + ui.lead + '</p>' +
+    /* 振り分け前の束は、pre/post のような「時期の中の進捗」を持たない
+       （振り分け待ちの一時置き場なので）。件数バーは出さず、行だけ並べる。 */
+    const tally = g === 'undecided' ? '' :
       '<div class="tally">' +
         '<div><span class="tl">' + esc(ui.badges.open) + '</span><span class="tv tv-or">' + t.open + '件</span></div>' +
         '<div><span class="tl">' + esc(ui.badges.ready) + '</span><span class="tv tv-gr">' + t.ready + '件</span></div>' +
         '<div><span class="tl">' + esc(ui.badges.done) + '</span><span class="tv tv-gy">' + t.done + '件</span></div>' +
-      '</div>' +
+      '</div>';
+    return '<div class="iblock ib-' + g + '">' +
+      /* 束の耳。台紙から立ち上がって、この束が何かを名指す。 */
+      '<span class="ib-tab">' + esc(ui.tab) + '</span>' +
+      '<div class="ib-h"><span class="ib-ic ic-' + g + '">' + (g === 'pre' ? IC.bag : g === 'post' ? IC.book : IC.quest) + '</span>' +
+        '<h4>' + esc(ui.title) + '</h4><span class="ib-n n-' + g + '">' + full.length + '件</span></div>' +
+      '<p class="ib-lead">' + ui.lead + '</p>' +
+      tally +
       list.map(idxRowHTML).join('') +
       moreBtn +
     '</div>';
@@ -260,6 +272,26 @@
     if (b.kind === 'done')
       return '<button type="button" class="complete-btn on" data-complete="1">' + IC.loop + '準備済みに戻す</button>';
     return '';
+  }
+
+  /* 綴じ代のいちばん下に置く、この記録を削除するための一角。追加した
+     サービス（it.added）だけに出す。seed のサービスには出さない。
+     押すとその場で「削除しますか？」の確認を展開し、もう一段踏んで
+     から実際に消す（画面内の確認。ブラウザ標準ダイアログは使わない）。 */
+  let confirmingDelete = false;
+  function deleteZoneHTML(it) {
+    if (!it || !it.added) return '';
+    if (confirmingDelete) {
+      return '<div class="rdelete confirming">' +
+        '<p>このサービスを削除しますか？<br>元に戻せません。</p>' +
+        '<div class="rdelete-btns">' +
+          '<button type="button" class="rdel-yes" data-delyes="1">削除する</button>' +
+          '<button type="button" class="rdel-no" data-delno="1">やめる</button>' +
+        '</div></div>';
+    }
+    return '<div class="rdelete">' +
+      '<button type="button" class="rdel-open" data-delopen="1">' + IC.trash + 'このサービスを削除</button>' +
+    '</div>';
   }
 
   /* 見出し行の右端に置く、開閉をまとめて切り替えるボタン。個別の
@@ -431,24 +463,34 @@
      ではなく、綴じ代の rmeta と同じ縦積みの1カラムで描く。          */
   function spineContractHTML(it) {
     const c = it.contract;
-    const payOpts = S.cards.map(k => ({ value: k.id, label: k.name }))
+    const payOpts = [{ value: 'unknown', label: '未確認' }]
+      .concat(S.cards.map(k => ({ value: k.id, label: k.name })))
       .concat([{ value: 'acct', label: 'ゆうちょ銀行 自動振替' }, { value: 'none', label: '費用なし' }]);
-    const payVal = c.paymentCard || (c.paymentLabel === '費用なし' ? 'none' : 'acct');
+    /* paymentCard も paymentLabel も無い契約は「未確認」。ラベルの
+       文字列でだけ 費用なし／自動振替 を区別し、それ以外は未確認。 */
+    const payVal = c.paymentCard
+      ? c.paymentCard
+      : c.paymentLabel === '費用なし' ? 'none'
+      : c.paymentLabel === 'ゆうちょ銀行 自動振替' ? 'acct'
+      : 'unknown';
     const card = c.paymentCard ? S.findCard(c.paymentCard) : null;
     const amtLabel = c.cycle === 'yearly' ? '年額料金' : '月額料金';
-    const amt = (!c.paymentCard && c.amount === 0) ? '費用なし' : S.yen(c.amount);
+    const amtUnset = c.amount == null;
+    const amt = amtUnset ? '' : (!c.paymentCard && c.amount === 0) ? '費用なし' : S.yen(c.amount);
     const on = editSection === 'info';
     return '<div class="rspine">' +
       '<div class="rsp-h"><span>契約情報</span>' +
         '<button type="button" class="rsp-edit' + (on ? ' on' : '') + '" data-editsec="info" aria-label="契約情報を編集">' +
           (on ? IC.check : IC.pen) + '</button></div>' +
       '<div class="rsp-row"><small>契約者</small><b>' + ev('contract.holder', c.holder, 'line', '例：父 太郎') + '</b></div>' +
-      '<div class="rsp-row"><small>支払い方法</small><b>' + evSelect('contract.paymentCard', payVal, payOpts) +
+      '<div class="rsp-row"><small>支払い方法</small><b>' +
+        evSelect('contract.paymentCard', payVal, payOpts, { emptyValue: 'unknown', placeholder: '例：楽天カード' }) +
         (card ? '<em>•••• ' + esc(card.info.tail) + '</em>' : '') + '</b></div>' +
       '<div class="rsp-row"><small>' + amtLabel + '</small><b>' +
         ((editing && editing.path === 'contract.amount') || on
-          ? ev('contract.amount', String(c.amount), 'line')
-          : '<span class="ev" data-edit="contract.amount" data-kind="line">' + esc(amt) + '</span>') +
+          ? ev('contract.amount', amtUnset ? '' : String(c.amount), 'line', '例：1980')
+          : '<span class="ev' + (amtUnset ? ' ev-empty' : '') + '" data-edit="contract.amount" data-kind="line">' +
+              esc(amtUnset ? '例：1,980' : amt) + '</span>') +
         '</b></div>' +
       '<div class="rsp-row"><small>契約開始時期</small><b>' + ev('contract.started', c.started, 'line', '例：2020年頃') + '</b></div>' +
       '<div class="rsp-row"><small>次回請求日</small><b>' + ev('contract.nextBill', c.nextBill, 'line', '例：毎月〇日頃') + '</b></div>' +
@@ -509,22 +551,73 @@
   /* 事前・事後のどちらも同じ5セクション。中身の言葉だけが変わる。 */
   function procSub(it) {
     if (it.group === 'post') return '（必要になったときの手順）';
+    if (it.group === 'undecided') return '';
     return it.policy.intent === 'continue' ? '（継続時の注意）' : '（解約の手順）';
   }
 
+  /* 振り分け前｜詳細本体の先頭に置く、いまのうち／そのときへ振り分ける
+     ためのカード。「？」を押すと判断のよりどころを1行で開く（画面内の
+     展開。ほかの ev や削除の確認と同じ手つき）。カードを押した瞬間に
+     it.group が pre/post へ移り、以降は普通の詳細画面に戻る。         */
+  let sortHintOpen = false;
+  const SORT_CARDS = [
+    { g: 'pre',  icon: 'cal',  title: 'いまのうち', sub: '本人しかできない手続きがある' },
+    { g: 'post', icon: 'book', title: 'そのとき',   sub: '家族があとから手続きできる' }
+  ];
+  function sortBlockHTML() {
+    const hint = sortHintOpen
+      ? '<p class="sort-hint">本人による事前の対応が必要かどうかで判断します。' +
+        '事前対応が必要なら「いまのうち」、必要になってから家族が対応できるなら「そのとき」です。</p>'
+      : '';
+    const cards = SORT_CARDS.map(c =>
+      '<button type="button" class="sort-card" data-sort="' + c.g + '">' +
+        '<span class="sort-ic">' + IC[c.icon] + '</span>' +
+        '<span class="sort-tx"><b>' + esc(c.title) + '</b><small>' + esc(c.sub) + '</small></span>' +
+        '<span class="sort-arw">' + IC.chevR + '</span>' +
+      '</button>').join('');
+    return '<div class="sortblock">' +
+      '<div class="sort-h"><h5>対応時期を振り分ける</h5>' +
+        '<button type="button" class="sort-help" data-sorthelp="1" aria-label="振り分けの判断について">' + IC.quest + '</button></div>' +
+      hint +
+      '<div class="sort-cards">' + cards + '</div>' +
+    '</div>';
+  }
+
+  /* 綴じ代の時期ラベル。undecided は本体の振り分けブロックが受け持つ
+     ので鉛筆は出さない。pre/post は、鉛筆を押すとその場でセレクト
+     （いまのうち／そのとき）に化け、選び直したらすぐ反映する。      */
+  function fileCardHTML(it) {
+    const undecided = it.group === 'undecided';
+    const rule = undecided ? ';background:#8a8578' : it.group === 'post' ? ';background:#5da37b' : '';
+    let label;
+    if (editingGroup && !undecided) {
+      label = '<select class="fc-groupsel" data-groupsel="1">' +
+        [['pre', 'いまのうち'], ['post', 'そのとき']].map(([v, t]) =>
+          '<option value="' + v + '"' + (it.group === v ? ' selected' : '') + '>' + t + '</option>').join('') +
+        '</select>';
+    } else {
+      label = '<small>' + esc(S.GROUP_UI[it.group].tab) +
+        (undecided ? '' : '<button type="button" class="fc-groupedit" data-groupedit="1" aria-label="対応時期を変更">' + IC.pen + '</button>') +
+        '</small>';
+    }
+    return '<div class="filecard' + (editingGroup && !undecided ? ' fc-editing' : '') + '">' +
+      label + '<b>No.<i>' + esc(it.no) + '</i></b>' +
+      '<div class="rule" style="' + rule + '"></div></div>';
+  }
+
   function sheetHTML(it) {
-    const rule = it.group === 'post' ? ';background:#5da37b' : '';
+    const undecided = it.group === 'undecided';
     const b = S.itemBadge(it);
     const bTxt = b.kind === 'open' ? b.text + '　' + b.n + '件' : b.text;
     return '<div class="rings">' +
         '<span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>' +
         '<span class="ring r4"></span><span class="ring r5"></span>' +
-        '<div class="filecard"><small>' + esc(S.GROUP_UI[it.group].tab) + '</small><b>No.<i>' + esc(it.no) + '</i></b>' +
-          '<div class="rule" style="' + rule + '"></div></div>' +
+        fileCardHTML(it) +
         spineContractHTML(it) +
         '<div class="rmeta"><small>登録日</small><b>' + esc(it.registered) + '</b>' +
           '<small>最終更新日</small><b>' + esc(it.updated) + '</b></div>' +
         '<div class="rfoot">' + IC.box + '<span>家族のための<br>契約・アカウント記録</span></div>' +
+        deleteZoneHTML(it) +
       '</div>' +
       '<div class="page">' +
         '<div class="pg-h"><span class="nm">' + esc(it.name) + '</span>' +
@@ -533,6 +626,7 @@
           completeToggleHTML(b) +
           pgCollapseHTML() + '</div>' +
         '<div class="pg-body">' +
+          (undecided ? sortBlockHTML() : '') +
           statusHTML(it) +
           sectionHTML('policy', 't-pu', IC.flag, '対応方針', '', policyHTML(it), false, true) +
           sectionHTML('account', 't-gr', IC.person, S.GROUP_UI[it.group].accountTitle,
@@ -621,7 +715,11 @@
     document.getElementById('cnt').textContent = S.items.length + '件';
     /* ナビの件数は外殻の持ち物。描き直すたびに知らせておく。 */
     SeiZen.setNavCount('contract-digital', S.items.length + '件');
-    idxgrid.innerHTML = groupBlock('pre') + groupBlock('post') + payBlock();
+    /* 振り分け前の束は、1件以上あるときだけ pre/post の「上」に全幅で
+       出す。まず振り分けを済ませてから各時期の準備、という順序。
+       0件になったら束ごと消える。 */
+    const undecided = S.undecidedItems().length ? groupBlock('undecided') : '';
+    idxgrid.innerHTML = undecided + groupBlock('pre') + groupBlock('post') + payBlock();
     if (openId) renderSheet();
   }
 
@@ -643,11 +741,12 @@
   }
 
   /* 前へ／次へは、いま開いているのが契約かカードかで別の並びをたどる。
-     契約は索引と同じ並び（事前→事後、確認が必要なものが先）、カードは
-     支払いのつながりの並びのまま。                                  */
+     契約は「いま開いている時期グループ」の中だけを、索引と同じ並び
+     （確認が必要なものが先）でたどる。時期をまたいでは動かさない。
+     カードは支払いのつながりの並びのまま。                          */
   function navList() {
     const it = S.findItem(openId);
-    if (it) return { list: idxOrder(S.byGroup('pre')).concat(idxOrder(S.byGroup('post'))), idx: -1, id: openId };
+    if (it) return { list: idxOrder(S.byGroup(it.group)), idx: -1, id: openId };
     return { list: S.cards, idx: -1, id: openId };
   }
 
@@ -656,15 +755,34 @@
     const idx = nav.list.findIndex(x => x.id === nav.id);
     const prev = idx > 0 ? nav.list[idx - 1] : null;
     const next = (idx >= 0 && idx < nav.list.length - 1) ? nav.list[idx + 1] : null;
+    /* 中央は「戻り先」を3つ並べる。左右の「いまのうち／そのとき」は
+       その束だけの全件画面（list.html?g=…）へ。真ん中はハブ（索引）へ
+       戻るのでこれまで通り SPA 内で閉じる（data-back）。               */
+    /* 3つの戻り先を、1つの枠（ピル）の中に | で仕切って並べる。
+       個別に丸で囲むとクドいので、囲みは共通で1つ。真ん中（ハブ）
+       だけ塗って主にし、両脇の一覧は文字だけで従。               */
+    const backNav =
+      '<nav class="dtl-back">' +
+        '<a class="dtl-back-side" href="list.html?g=pre">「いまのうち」一覧</a>' +
+        '<span class="dtl-back-sep"></span>' +
+        '<button type="button" class="dtl-back-hub" data-back="1">契約・デジタルの一覧</button>' +
+        '<span class="dtl-back-sep"></span>' +
+        '<a class="dtl-back-side" href="list.html?g=post">「そのとき」一覧</a>' +
+      '</nav>';
     return '<button type="button" class="dtl-pbtn" data-prev="1"' + (prev ? '' : ' disabled') + '>' +
         '<span class="dtl-arw">' + IC.chevL + '</span><span class="dtl-lb"><small>前へ</small>' + (prev ? esc(prev.name) : '') + '</span></button>' +
-      '<button type="button" class="dtl-back" data-back="1">' + IC.chevL + '契約・デジタルの一覧に戻る</button>' +
+      backNav +
       '<button type="button" class="dtl-pbtn" data-next="1"' + (next ? '' : ' disabled') + '>' +
         '<span class="dtl-lb dtl-lb-r"><small>次へ</small>' + (next ? esc(next.name) : '') + '</span><span class="dtl-arw">' + IC.chevR + '</span></button>';
   }
 
   /* 開いた欄に手を置いたままにする。セレクトは開いた瞬間に選ばせる。 */
   function focusEditor() {
+    if (editingGroup) {
+      const sel = sheet.querySelector('[data-groupsel]');
+      if (sel) { sel.focus(); openIfSelect(sel); }
+      return;
+    }
     if (editSection) {
       const first = sheet.querySelector('.sect.editing [data-ef]');
       if (first) { first.focus(); openIfSelect(first); }
@@ -707,8 +825,10 @@
   function applyValue(it, path, val) {
     if (!path) return false;
     if (path === 'contract.amount') {
-      const n = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
-      const next = isNaN(n) ? 0 : n;
+      const digits = String(val).replace(/[^0-9]/g, '');
+      /* 空欄のまま閉じたら未確認（null）に戻す。0 は「費用なし」として
+         意味があるので、打ち込まれた 0 とは区別する。                */
+      const next = digits === '' ? null : parseInt(digits, 10);
       if (getByPath(it, path) === next) return false;
       setByPath(it, path, next);
       return true;
@@ -719,9 +839,10 @@
       return true;
     } else if (path === 'contract.paymentCard') {
       const before = it.contract.paymentCard + '|' + (it.contract.paymentLabel || '');
-      if (val === 'acct')      { it.contract.paymentCard = null; it.contract.paymentLabel = 'ゆうちょ銀行 自動振替'; }
-      else if (val === 'none') { it.contract.paymentCard = null; it.contract.paymentLabel = '費用なし'; }
-      else                     { it.contract.paymentCard = val;  delete it.contract.paymentLabel; }
+      if (val === 'acct')         { it.contract.paymentCard = null; it.contract.paymentLabel = 'ゆうちょ銀行 自動振替'; }
+      else if (val === 'none')    { it.contract.paymentCard = null; it.contract.paymentLabel = '費用なし'; }
+      else if (val === 'unknown') { it.contract.paymentCard = null; delete it.contract.paymentLabel; }
+      else                        { it.contract.paymentCard = val;  delete it.contract.paymentLabel; }
       return before !== it.contract.paymentCard + '|' + (it.contract.paymentLabel || '');
     } else {
       const next = String(val).trim();
@@ -764,6 +885,9 @@
     openId = id;
     editing = null;
     editSection = null;
+    editingGroup = false;
+    confirmingDelete = false;
+    sortHintOpen = false;
     applyCollapsePref();
     const url = '?id=' + encodeURIComponent(id);
     if (opts.replace) history.replaceState({ id: id }, '', url);
@@ -797,6 +921,7 @@
       openId = id;
       editing = null;
       editSection = null;
+      editingGroup = false;
       applyCollapsePref();
       showDetail();
     } else {
@@ -808,13 +933,8 @@
   /* ── 操作 ─────────────────────────────────────────── */
 
   idxgrid.addEventListener('click', e => {
-    const expandBtn = e.target.closest('[data-expand]');
-    if (expandBtn) {
-      const g = expandBtn.dataset.expand;
-      if (expandedGroups.has(g)) expandedGroups.delete(g); else expandedGroups.add(g);
-      render();
-      return;
-    }
+    /* 「すべてを見る」は素のリンク（list.html?g=…）なので、ここでは
+       行のクリックだけを詳細遷移として拾う。                       */
     const row = e.target.closest('[data-open]');
     if (row) openSheet(row.dataset.open);
   });
@@ -899,6 +1019,67 @@
       return;
     }
 
+    /* 綴じ代の時期ラベル｜鉛筆でセレクトに化ける。 */
+    if (e.target.closest('[data-groupedit]')) {
+      e.stopPropagation();
+      if (editing) commitEdit();
+      if (editSection) commitSection();
+      editingGroup = true;
+      renderSheet();
+      return;
+    }
+    /* セレクトの外を押したら閉じる（選び直しは change 側で反映）。 */
+    if (editingGroup && !e.target.closest('[data-groupsel]')) {
+      editingGroup = false;
+      renderSheet();
+    }
+
+    /* 振り分け前｜「？」で判断のよりどころを開閉する。 */
+    if (e.target.closest('[data-sorthelp]')) {
+      e.stopPropagation();
+      sortHintOpen = !sortHintOpen;
+      renderSheet();
+      return;
+    }
+    /* 振り分け前｜カードを押した時期へ移す。以降は普通の詳細画面。 */
+    const sortBtn = e.target.closest('[data-sort]');
+    if (sortBtn) {
+      e.stopPropagation();
+      const it = currentEntity();
+      if (it && S.setGroup(it.id, sortBtn.dataset.sort)) {
+        sortHintOpen = false;
+        render();
+        show('「' + it.name + '」を「' + S.GROUP_UI[it.group].tab + '」に振り分けました');
+      }
+      return;
+    }
+
+    /* 追加サービスの削除。まず確認を展開し、もう一段で実際に消す。 */
+    if (e.target.closest('[data-delopen]')) {
+      e.stopPropagation();
+      confirmingDelete = true;
+      renderSheet();
+      return;
+    }
+    if (e.target.closest('[data-delno]')) {
+      e.stopPropagation();
+      confirmingDelete = false;
+      renderSheet();
+      return;
+    }
+    if (e.target.closest('[data-delyes]')) {
+      e.stopPropagation();
+      const it = currentEntity();
+      const name = it ? it.name : '';
+      if (it && S.removeAdded(it.id)) {
+        confirmingDelete = false;
+        closeSheet();
+        render();
+        show('「' + name + '」を削除しました');
+      }
+      return;
+    }
+
     /* 手順を1つ足す。既存の番号の下に置いた「＋」から、空の手順を
        末尾に追加してすぐ書き込めるようにする。編集中のみ出る。      */
     if (e.target.closest('[data-addstep]')) {
@@ -971,6 +1152,19 @@
   });
 
   sheet.addEventListener('change', e => {
+    /* 綴じ代の時期セレクト。選んだ時期へ移して索引も描き直す。 */
+    if (e.target.closest('[data-groupsel]')) {
+      const it = currentEntity();
+      const to = e.target.value;
+      editingGroup = false;
+      if (it && S.setGroup(it.id, to)) {
+        render();
+        show('「' + it.name + '」を「' + S.GROUP_UI[it.group].tab + '」に移しました');
+      } else {
+        renderSheet();
+      }
+      return;
+    }
     /* 「設定なし」を持つ行の状態選択肢。account.state を直接差し替える。 */
     const stSel = e.target.closest('select[data-ok]');
     if (stSel) {
@@ -1028,6 +1222,57 @@
     applyCollapsePref();
   }
 
+  /* ── 追加完了の知らせ ─────────────────────────────
+     「サービスを追加」画面が sessionStorage に結果を置いて遷移して
+     くる。一覧の上にバナーを出し、追加された行を数秒だけ光らせる。
+     一度読んだら消すので、再読み込みでは出ない。                    */
+  function consumeAddResult() {
+    let res = null;
+    try {
+      const raw = sessionStorage.getItem('seizen.contract.addResult');
+      if (raw) { res = JSON.parse(raw); sessionStorage.removeItem('seizen.contract.addResult'); }
+    } catch (e) { return; }
+    if (!res) return;
+    showAddBanner(res);
+    if (res.added && res.added.length) {
+      requestAnimationFrame(() => flashAddedRows(res.added));
+    }
+  }
+
+  function showAddBanner(res) {
+    const added = res.added || [], skipped = res.skipped || [];
+    if (!added.length && !skipped.length) return;
+    const el = document.createElement('div');
+    el.className = 'addbanner';
+    const lines = [];
+    if (added.length)
+      lines.push('<p class="ab-main">' + IC.check + '<span>' + added.length +
+        '件のサービスを追加しました</span></p>' +
+        '<p class="ab-names">' + added.map(esc).join('・') + '</p>');
+    if (skipped.length)
+      lines.push('<p class="ab-skip">' + IC.info + esc(skipped.join('・')) +
+        ' はすでに登録済みです</p>');
+    el.innerHTML = lines.join('') +
+      '<button type="button" class="ab-close" aria-label="閉じる">✕</button>';
+    indexView.insertBefore(el, indexView.firstChild);
+    el.querySelector('.ab-close').addEventListener('click', () => el.remove());
+    setTimeout(() => { el.classList.add('leaving'); }, 8000);
+    setTimeout(() => { el.remove(); }, 8500);
+  }
+
+  function flashAddedRows(names) {
+    const set = new Set(names.map(n => n.trim()));
+    idxgrid.querySelectorAll('.irow .nm b').forEach(b => {
+      if (!set.has(b.textContent.trim())) return;
+      const row = b.closest('.irow');
+      if (row) {
+        row.classList.add('row-added');
+        setTimeout(() => row.classList.remove('row-added'), 2600);
+      }
+    });
+  }
+
   render();
   if (openId) showDetail();
+  consumeAddResult();
 })(window.SeiZenContract);

@@ -80,11 +80,6 @@
     '<path d="M28.2 17.2v13.1l2.2-1.6 2.2 1.2V16.3c-1.5.2-2.9.5-4.4.9Z" fill="#c58c55"/>' +
     '<path d="M15.7 21.6c2.7-.5 5.1-.1 7.4 1M15.7 25.3c2.7-.5 5.1-.1 7.4 1M35.9 21.4c-1.1 0-2.1.2-3 .4M35.9 25.1c-1.1 0-2.1.2-3 .4" fill="none" stroke="#9ba795" stroke-width=".8" stroke-linecap="round"/></svg>';
 
-  const CTA_ICON =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
-    '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21V5.5Z"/>' +
-    '<path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5A2.5 2.5 0 0 1 20 21V5.5Z"/></svg>';
-
   const CHEVRON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
     '<path d="m6 9 6 6 6-6"/></svg>';
@@ -96,28 +91,88 @@
 
     el.setAttribute('aria-label', '整理対象のガイドブック');
     el.innerHTML =
-      '<a class="brand" href="' + root + 'index.html">' +
-        '<span class="brand-mark">' + BRAND_MARK + '</span>' +
-        '<span class="brand-tx"><h1>SeiZen</h1><p>家族の生前整理ガイド</p></span></a>' +
-      '<section class="menu-card">' +
-        '<div class="menu-scroll"><nav class="menu">' + main +
-          (docs ? '<hr class="sep">' + docs : '') +
-        '</nav></div>' +
-        '<div class="help"><div class="help-heading" tabindex="0">' + GUIDE_MINI +
-          '<strong>はじめての方へ</strong>' +
-          '<p>何から始めればよいか迷ったら、このガイドをご覧ください。</p></div>' +
-          '<button class="guide-cta" type="button">' + CTA_ICON + '使い方ガイドを見る</button></div>' +
+      /* 生成りの紙。冊子の全高を覆う1枚。ロゴ・メニュー・足元はこの上に
+         載る。緑の表紙（.guide の地）はこの紙の外周にだけ見える。      */
+      '<div class="guide-paper"></div>' +
+      /* ロゴ＋メニューで一つのまとまり。ページを下へスクロールしても
+         この塊ごと画面上部に留まる（案A）。ロゴは自前で緑地を持つ。   */
+      '<div class="guide-stick">' +
+        '<a class="brand" href="' + root + 'index.html">' +
+          '<span class="brand-mark">' + BRAND_MARK + '</span>' +
+          '<span class="brand-tx"><h1>SeiZen</h1><p>家族の生前整理ガイド</p></span></a>' +
+        '<section class="menu-card">' +
+          '<nav class="menu">' + main +
+            (docs ? '<hr class="sep">' + docs : '') +
+          '</nav>' +
+        '</section>' +
+      '</div>' +
+      /* 「はじめての方へ」と家族切替（＝アカウント・設定の入口）は、
+         冊子の足元。ページを下へスクロールしても画面下に貼り付いて
+         見え続ける。「はじめての方へ」はメニュー項目と同じ体裁の
+         1行リンクにして、縦の占有を抑える。                          */
+      '<div class="guide-foot">' +
+        '<button class="guide-help" type="button">' +
+          '<span class="guide-help-ic">' + GUIDE_MINI + '</span>' +
+          '<span class="guide-help-tx">はじめての方へ</span>' +
+          '<svg class="guide-help-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>' +
+        '</button>' +
         '<button class="profile" type="button">' +
           '<span class="avatar" aria-label="' + esc(PERSON.name) + 'のプロフィール写真"></span>' +
           '<span><small>' + esc(PERSON.role) + '</small><strong>' + esc(PERSON.name) + '</strong></span>' +
           CHEVRON + '</button>' +
-      '</section>' +
+      '</div>' +
+      /* メニュー項目が下に隠れているときだけ出る「スクロールできる」
+         の合図。ビューポート下端に固定し、shell.js が .is-on を切替。 */
+      '<div class="guide-more" aria-hidden="true">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">' +
+        '<path d="m6 9 6 6 6-6"/></svg></div>' +
       '<span class="guide-edge" aria-hidden="true"></span>';
 
-    el.querySelector('.guide-cta')
+    el.querySelector('.guide-help')
       .addEventListener('click', () => toast('使い方ガイドを開く準備中です'));
     el.querySelector('.profile')
       .addEventListener('click', () => toast('家族の切替は準備中です'));
+
+    wireGuide(el);
+  }
+
+  /* 冊子の縦の振る舞い。
+     ・ウィンドウが十分高い → メニュー（.guide-stick）を上に、足元
+       （.guide-foot）を下に貼り付け、どちらも常に見せる。
+     ・ウィンドウが低くて両方を貼り付けると入り切らない（cramped）
+       → 貼り付けをやめて素直に流し、ページのスクロールで全部見せる。
+     合図（∨）は位置ではなく状態で出す：メニュー項目が下に隠れて
+     いる（＝いま全部は見えていない）ときだけ、画面下端に表示する。 */
+  function wireGuide(el) {
+    const menu  = el.querySelector('.menu');
+    const stick = el.querySelector('.guide-stick');
+    const foot  = el.querySelector('.guide-foot');
+    const more  = el.querySelector('.guide-more');
+    if (!menu || !stick || !foot) return;
+
+    const measure = () => {
+      /* ロゴ＋メニュー（.guide-stick）と足元を、上下に貼り付けたとき
+         必要な高さ（+ 余白）。これを下回るウィンドウでは貼り付けない。 */
+      const need = stick.offsetHeight + foot.offsetHeight + 40;
+      el.classList.toggle('is-cramped', window.innerHeight < need);
+    };
+    const hint = () => {
+      if (!more) return;
+      /* メニュー最終項目の下端が画面内に収まっていれば全部見えている。
+         はみ出していれば、まだ下にメニューがある＝スクロールできる。 */
+      const items = menu.querySelectorAll('a');
+      const last = items[items.length - 1];
+      if (!last) { more.classList.remove('is-on'); return; }
+      const hidden = last.getBoundingClientRect().bottom > window.innerHeight - 4;
+      more.classList.toggle('is-on', hidden);
+    };
+    const sync = () => { measure(); hint(); };
+
+    window.addEventListener('scroll', hint, { passive: true });
+    window.addEventListener('resize', sync);
+    sync();
+    /* 描画直後は高さが確定していないことがあるので一度だけ追い判定。 */
+    requestAnimationFrame(sync);
   }
 
   /* 件数は各領域が入れる。事実を持っているのは領域の state だけ
@@ -148,9 +203,28 @@
     });
   }
 
+  /* ── 先頭へ戻る ─────────────────────────────────
+     どのページでも共通。320px ほどスクロールすると右下に現れ、
+     押すと上端へなめらかに戻る。ボタンは body の末尾へ差す。   */
+  function wireBackTop() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'backtop';
+    btn.setAttribute('aria-label', 'ページの先頭へ戻る');
+    btn.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+      '<path d="m7 14 5-5 5 5"/></svg>';
+    body.appendChild(btn);
+    const sync = () => btn.classList.toggle('is-shown', window.scrollY > 320);
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    window.addEventListener('scroll', sync, { passive: true });
+    sync();
+  }
+
   const guide = document.querySelector('.guide');
   if (guide) drawGuide(guide);
   wireWhy();
+  wireBackTop();
 
   global.SeiZen = { esc, toast, setNavCount, root, areaId: currentId, person: PERSON };
 })(window);

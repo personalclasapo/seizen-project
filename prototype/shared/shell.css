@@ -27,10 +27,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 /* ── 左：ガイドブック ───────────────────────────────
    緑の表紙の上に、生成りの紙が一枚かぶさっている。メニューと
    アカウントは、その紙の一部として並ぶ。                        */
-.guide{position:sticky;top:16px;z-index:3;align-self:flex-start;
+/* 冊子は縦にビューポートへ縛らない。作業面と同じ高さまで伸び、内部
+   スクロールは持たない（スクロールはウィンドウ全体だけ）。冊子自体は
+   sticky にしない――中の .guide-stick（上）と .guide-foot（下）が
+   ウィンドウに追従して、メニューと足元を常に見せる。               */
+.guide{position:relative;z-index:3;align-self:stretch;
   display:flex;flex-direction:column;
-  width:var(--guide-w);flex:0 0 var(--guide-w);height:calc(100vh - 32px);min-height:620px;
-  padding:21px 12px 12px;overflow:hidden;
+  width:var(--guide-w);flex:0 0 var(--guide-w);min-height:calc(100vh - 32px);
+  padding:21px 12px 12px;
   background:linear-gradient(155deg,var(--gr-d),var(--gr) 62%,#17402C);
   border-radius:12px 0 0 12px;color:#fffdf4;
   box-shadow:10px 0 24px rgba(25,57,39,.18),2px 0 5px rgba(25,57,39,.12)}
@@ -46,7 +50,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .guide-edge{position:absolute;z-index:4;top:13px;left:0;bottom:13px;width:7px;
   background:linear-gradient(270deg,rgba(10,40,25,.2),transparent);pointer-events:none}
 
-.brand{position:relative;display:flex;align-items:center;gap:11px;padding:13px 11px 24px}
+/* 生成りの紙。冊子（.guide）の全面を1枚で覆う。.guide はページ全高
+   なので、この紙も左カラム全体を常に覆い、ロゴ帯（緑）と足元の紙の
+   「あいだ」も生成りで埋まる。緑の表紙はロゴ帯にだけ残る。          */
+.guide-paper{position:absolute;inset:0;z-index:0;
+  border-radius:12px 0 0 12px;background:linear-gradient(160deg,#faf8f1,#fffdf8)}
+
+/* ロゴ帯。スクロールでメニューごと上へ貼り付くので、背後が生成りに
+   なっても白文字が消えないよう、緑の地を自前で持つ。冊子の上辺まで
+   はみ出して、上に生成りの隙間を作らない。                          */
+.brand{position:relative;z-index:1;display:flex;align-items:center;gap:11px;
+  margin:-21px -12px 0;padding:34px 23px 22px;border-radius:12px 0 0 0;
+  background:linear-gradient(155deg,var(--gr-d),var(--gr) 62%,#17402C)}
 .brand-mark{display:inline-grid;place-items:center;width:34px;height:34px;flex:none;
   border:1px solid #d7c89c;border-radius:50%;color:#e6dbbb}
 .brand-mark svg{width:19px;height:19px}
@@ -55,12 +70,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   letter-spacing:.03em;line-height:1.15}
 .brand p{margin:2px 0 0;color:#e9e5d2;font-size:10.5px;letter-spacing:.06em}
 
-.menu-card{position:relative;display:flex;flex-direction:column;flex:1;min-height:0;
-  margin:0 -12px;padding:16px 14px 12px;overflow:hidden;
-  border-radius:12px 0 0 0;background:linear-gradient(100deg,#faf8f1,#fffdf8);
-  color:#334034;box-shadow:0 -2px 8px #15372415}
-.menu-scroll{flex:1;min-height:0;overflow-y:auto;padding-right:2px;
-  scrollbar-width:thin;scrollbar-color:#d9d2c0 transparent}
+/* ロゴ＋メニューのまとまり（案A）。ページを下へスクロールしても、
+   この塊ごと画面上部へ貼り付いて見え続ける。ロゴの背後は .guide の
+   緑がそのまま透けるので、この要素自体には地を敷かない。            */
+.guide-stick{position:sticky;top:16px;z-index:3;
+  display:flex;flex-direction:column}
+/* 低いウィンドウ（is-cramped）では貼り付けをやめ、素直に流す。 */
+.guide.is-cramped .guide-stick{position:static}
+
+/* メニューの器。地は .guide-paper が持つのでここは余白だけ。 */
+.menu-card{position:relative;z-index:1;display:flex;flex-direction:column;
+  padding:14px 2px 0;color:#334034}
 
 .menu{position:relative;z-index:1;display:grid;gap:5px}
 .menu a{display:flex;align-items:center;gap:10px;width:100%;min-height:47px;
@@ -81,30 +101,45 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   background:#e2eadc;color:#49654d;font-size:10px;white-space:nowrap}
 .sep{margin:11px 7px;border:0;border-top:1px dashed #cfcab9}
 
-/* はじめての方へ。本文はホバーで浮く吹き出しにして、常時は畳む。 */
-.help{position:relative;z-index:1;margin:20px 3px 10px;padding:14px 14px 15px;
-  border:1px solid #e4dccb;border-radius:8px;
-  background:linear-gradient(145deg,#fbf8ef,#f2eee2);
-  box-shadow:inset 0 1px #fff,0 3px 7px rgba(92,78,47,.08);color:#5c594d}
-.help-heading{position:relative;display:inline-flex;align-items:center;gap:9px;cursor:default}
-.help-heading strong{padding:0;border:0;color:var(--gold-d);
-  font-family:var(--font-serif);font-size:15px;letter-spacing:.02em}
+/* はじめての方へ。メニュー項目と同じ体裁の1行リンク。縦の占有を抑える。 */
+.guide-help{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;
+  margin:0 0 4px;padding:6px 10px;border:1px solid transparent;border-radius:9px;
+  background:none;color:var(--gold-d);font-family:inherit;
+  font-weight:650;font-size:13px;text-align:left}
+.guide-help:hover{background:#f5f1e6}
+.guide-help-ic{display:grid;place-items:center;width:26px;height:26px;flex:none}
+.guide-help-ic .guide-mini{width:24px;height:18px}
+.guide-help-tx{flex:1;min-width:0}
+.guide-help-go{width:14px;height:14px;flex:none;color:#b9ac86}
 .guide-mini{width:26px;height:19.5px;flex:none}
-.help p{position:absolute;z-index:5;left:0;bottom:calc(100% + 9px);width:210px;
-  margin:0;padding:10px 12px;border:1px solid #e2dfd0;border-radius:8px;
-  background:#fffdf8;color:#6b675a;font-size:11px;line-height:1.7;
-  box-shadow:0 6px 16px rgba(35,30,15,.14);
-  opacity:0;visibility:hidden;transform:translateY(4px);
-  transition:opacity .15s,transform .15s,visibility .15s}
-.help-heading:hover p,.help-heading:focus-within p{opacity:1;visibility:visible;transform:translateY(0)}
-.guide-cta{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;
-  gap:9px;width:100%;margin-top:12px;padding:10px;border:1px solid #e8e1d1;border-radius:7px;
-  background:#fffdf8;color:#4c6c52;font-size:12px;font-weight:750;
-  box-shadow:0 1px 3px rgba(67,59,41,.06)}
-.guide-cta:hover{background:#f7fbf4}
-.guide-cta svg{width:19px;height:19px}
 
-/* 家族の切替。正本§5により、この1か所にだけ置く。 */
+/* メニュー項目が下に隠れているときだけ出る「スクロールできる」の合図。
+   ビューポート下端に固定し、位置ではなく状態で出す。ゆっくり上下に揺れる。 */
+.guide-more{position:fixed;left:calc((100vw - min(100vw - 32px, var(--shell-max)))/2 + var(--guide-w)/2 - 15px);
+  bottom:14px;z-index:6;
+  display:none;place-items:center;
+  width:30px;height:30px;border-radius:50%;
+  background:#fffdf8;box-shadow:0 3px 12px rgba(25,57,39,.28);color:#5c7a63}
+.guide-more.is-on{display:grid}
+.guide-more svg{width:18px;height:18px;animation:guide-more-bob 1.6s ease-in-out infinite}
+@keyframes guide-more-bob{0%,100%{transform:translateY(-2px)}50%{transform:translateY(2px)}}
+@media (prefers-reduced-motion:reduce){.guide-more svg{animation:none}}
+
+/* 冊子の足元＝「はじめての方へ」＋家族切替。メニューの紙とは別の
+   一枚として、ページを下へスクロールしても画面下に貼り付いて見え
+   続ける。地はこの要素が持つ。冊子の下辺・左右いっぱいまで広げ、
+   下側の角は冊子（.guide）の丸みに合わせて、はみ出す帯や隙間を
+   作らずに冊子の底として終わる。                                  */
+.guide-foot{position:sticky;bottom:0;z-index:2;
+  display:flex;flex-direction:column;
+  margin:auto -12px -12px;padding:8px 14px 12px;
+  border-radius:11px 11px 0 12px;background:linear-gradient(#fffdf8,#f7f3e9);
+  box-shadow:0 -3px 10px #15372412}
+/* 低いウィンドウ（is-cramped）では貼り付けをやめ、素直に流す。 */
+.guide.is-cramped .guide-foot{position:static;margin:22px -12px -12px;
+  box-shadow:none;background:none}
+
+/* 家族の切替＝アカウント・設定の入口。正本§5により、この1か所にだけ置く。 */
 .profile{position:relative;z-index:1;flex:0 0 auto;display:flex;align-items:center;gap:9px;
   margin:10px 3px 0;padding:11px 8px;border:0;border-top:1px solid #ded8ca;border-radius:7px;
   background:#f8f7f1;color:#314234;text-align:left}
@@ -185,6 +220,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   background:#294c37;color:#fff;box-shadow:0 7px 20px #203f2a38;font-size:12px;
   opacity:0;transform:translateY(12px);transition:.2s}
 .toast.show{opacity:1;transform:translateY(0)}
+
+/* ── 先頭へ戻る ─────────────────────────────────────
+   長いページで少しスクロールすると画面の右下に現れ、押すと上端へ戻る。
+   位置はビューポート基準（トーストと同じ）。shell.js が body へ差す。 */
+.backtop{position:fixed;z-index:98;right:24px;bottom:24px;
+  display:grid;place-items:center;width:42px;height:42px;
+  border:1px solid var(--line2);border-radius:50%;background:var(--card);
+  color:var(--ink2);box-shadow:0 6px 18px rgba(72,62,42,.16);
+  opacity:0;visibility:hidden;transform:translateY(8px);
+  transition:opacity .18s,transform .18s,visibility .18s}
+.backtop.is-shown{opacity:1;visibility:visible;transform:translateY(0)}
+.backtop:hover{background:#fbfaf5;border-color:#c3bcaa;color:var(--gr2)}
+.backtop svg{width:18px}
 
 /* ブランドはホームへのリンク。見た目は表紙の一部のまま。 */
 .brand{text-decoration:none;color:inherit}
