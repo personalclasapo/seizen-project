@@ -251,5 +251,45 @@
 
   const findEntry = id => CATALOG.find(c => c.id === id);
 
-  global.SeiZenCatalog = { CATALOG, LOGOS, findEntry, logoFor, descFor };
+  /* ── stable service_id（§14 / §29「支払い明細から探す」と共有） ──
+     「サービスから探す」のカタログ項目（文字列）に安定した service_id を
+     与える。明細解析側（payment-knowledge.js の SERVICE_MASTER）は
+     この ID を正本として参照し、別 ID 体系を作らない。
+     ここに載せるのは、当面 明細解析で到達し得る項目のみ（全項目への
+     一斉付与はしない）。state.js の seed も同じ ID を使う。          */
+  const SERVICE_ID = {
+    'Netflix': 'svc-netflix',
+    'Spotify': 'svc-spotify',
+    'U-NEXT': 'svc-unext',
+    'エニタイムフィットネス': 'svc-anytime',
+    '日本経済新聞': 'svc-nikkei',
+    'iCloud+': 'svc-icloud',
+    'Apple Music': 'svc-apple-music',
+    'Microsoft 365': 'svc-ms365',
+    'フレッツ光': 'svc-flets',
+    'ドコモ光': 'svc-docomo-hikari',
+    'docomo': 'svc-docomo',
+    '電気': 'svc-tepco',            /* seed の東京電力に対応（プロトタイプ簡略） */
+    'ガス': 'svc-tokyo-gas',
+    '水道': 'svc-water-yokohama',
+    'Oisix': 'svc-oisix'
+  };
+  const serviceIdFor = name => SERVICE_ID[String(name).trim()] || null;
+
+  /* サービス名 → カタログ上のカテゴリ名（label）。items / more の
+     どちらに載っていても拾う。完全一致のみ。無ければ null。
+     支払い明細フローで、候補名から所属カテゴリを引くのに使う。 */
+  function categoryFor(name) {
+    const n = String(name).trim().toLowerCase();
+    for (const cat of CATALOG) {
+      for (const g of cat.groups) {
+        const hit = [...(g.items || []), ...(g.more || [])]
+          .some(x => String(x).trim().toLowerCase() === n);
+        if (hit) return cat.label;
+      }
+    }
+    return null;
+  }
+
+  global.SeiZenCatalog = { CATALOG, LOGOS, findEntry, logoFor, descFor, categoryFor, SERVICE_ID, serviceIdFor };
 })(window);

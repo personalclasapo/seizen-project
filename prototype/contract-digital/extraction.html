@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SeiZen | 支払い明細から探す</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <link rel="stylesheet" href="../shared/shell.css">
+  <link rel="stylesheet" href="area.css">
+  <link rel="stylesheet" href="add.css">
+  <link rel="stylesheet" href="extraction.css">
+</head>
+<!-- data-area がナビの現在地、data-root が prototype/ までの相対パス。
+     支払い明細フロー。Step1（口座を選ぶ）と Step2（明細をアップロード）
+     は同じ画面に上下で並べ、「解析をはじめる」で Step3（解析結果）へ
+     切り替える。サービスから探す（add.html）と作法をそろえる。 -->
+<body data-area="contract-digital" data-root="../">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+
+    <!-- 戻るリンク。Step1/2 は「契約・デジタルに戻る」、
+         Step3 は「口座の選択に戻る」（inputView へ）。 -->
+    <a class="addback" href="index.html" id="exBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg><span id="exBackTx">契約・デジタルに戻る</span></a>
+
+    <div class="cftop">
+      <header class="cfhead">
+        <span class="cf-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg></span>
+        <div class="cfhead-tx">
+          <h2>支払い明細から探す</h2>
+          <p id="exLead">口座やカードの支払い明細をもとに、継続している可能性のあるサービスを見つけます。</p>
+        </div>
+      </header>
+
+      <ol class="cfsteps" aria-label="手順" id="exSteps">
+        <li class="now" data-step="1"><span class="cfstep-dot">1</span><span class="cfstep-tx">口座を選ぶ</span></li>
+        <li data-step="2"><span class="cfstep-dot">2</span><span class="cfstep-tx">明細をアップロード</span></li>
+        <li data-step="3"><span class="cfstep-dot">3</span><span class="cfstep-tx">解析結果の確認</span></li>
+      </ol>
+    </div>
+
+    <!-- ── Step1 + Step2（同一ビュー・上下配置） ───────────── -->
+    <div id="inputView">
+
+      <!-- Step1：口座を選ぶ -->
+      <section class="exblock">
+        <div class="exblock-h">
+          <span class="exblock-no">1</span>
+          <div>
+            <h3>口座を選んでください</h3>
+            <p>明細を取得したい口座を選択するか、新しく登録してください。</p>
+          </div>
+        </div>
+
+        <!-- 入手方法の2択。モック画像どおり、アイコン大＋見出し＋説明＋
+             ボタン。デフォルトはどちらも未選択で、下のパネルは出さない。 -->
+        <div class="exsource">
+          <button type="button" class="exsource-card" id="pickExisting" aria-pressed="false">
+            <span class="exsource-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M4 10h16M5 10 12 4l7 6M6 10v11M18 10v11M10 10v11M14 10v11"/></svg></span>
+            <span class="exsource-h">登録済みの口座から選ぶ</span>
+            <span class="exsource-p">これまでに登録した口座・カードから<br>選んで明細をアップロードできます。</span>
+            <span class="exsource-btn">口座を選ぶ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+          </button>
+          <button type="button" class="exsource-card" id="pickNew" aria-pressed="false">
+            <span class="exsource-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span>
+            <span class="exsource-h">新しく口座を登録する</span>
+            <span class="exsource-p">はじめて利用する口座・カードを<br>新しく登録します。</span>
+            <span class="exsource-btn">口座を登録する <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+          </button>
+        </div>
+
+        <!-- 選んだ入手方法の中身。既存＝口座リスト／新規＝登録フォーム。
+             どちらも選ばれるまでは非表示。 -->
+        <div class="expanel" id="exPanel" hidden>
+
+          <!-- 既存：登録済み口座のリスト（銀行・カード・電子マネー） -->
+          <div class="exaccounts" id="exAccounts"></div>
+
+          <!-- 新規：口座の登録フォーム（プロトタイプでも実際に動く） -->
+          <form class="exregform" id="exRegForm" hidden>
+            <div class="exreg-row">
+              <label>種別</label>
+              <div class="exreg-seg" id="regKind">
+                <button type="button" data-kind="銀行口座" class="on">銀行口座</button>
+                <button type="button" data-kind="クレジットカード">クレジットカード</button>
+                <button type="button" data-kind="電子マネー・QR決済">電子マネー・QR決済</button>
+              </div>
+            </div>
+            <div class="exreg-row">
+              <label for="regName" id="regNameLabel">金融機関名</label>
+              <input type="text" id="regName" autocomplete="off" placeholder="例：横浜銀行">
+            </div>
+            <div class="exreg-row" id="regBranchRow">
+              <label for="regBranch">支店名</label>
+              <input type="text" id="regBranch" autocomplete="off" placeholder="例：本店">
+            </div>
+            <div class="exreg-row">
+              <label for="regNumber" id="regNumberLabel">口座番号</label>
+              <input type="text" id="regNumber" autocomplete="off" inputmode="numeric" placeholder="例：1234567">
+            </div>
+            <p class="exreg-note">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 8v.01"/></svg>
+              入力した内容は暗号化して処理され、保存されません。
+            </p>
+            <div class="exreg-actions">
+              <button type="submit" class="exreg-submit" id="regSubmit">この口座を登録する</button>
+            </div>
+          </form>
+
+        </div>
+      </section>
+
+      <!-- Step2：明細をアップロード -->
+      <section class="exblock" id="uploadBlock">
+        <div class="exblock-h">
+          <span class="exblock-no">2</span>
+          <div>
+            <h3>明細をアップロードしてください</h3>
+            <p>選択した口座の支払い明細をアップロードすると、継続している可能性のあるサービスを見つけます。</p>
+          </div>
+        </div>
+
+        <div class="exdrop is-disabled" id="exDrop">
+          <input type="file" id="exFile" accept=".csv,.pdf,.xlsx,.xls" hidden>
+
+          <!-- アップロード対象。ファイル枠の中の上部に小さく置く。 -->
+          <p class="exselected" id="exSelected" hidden>
+            <span class="exselected-lb">対象</span>
+            <span class="exselected-ic" id="exSelectedIc"></span>
+            <span class="exselected-name" id="exSelectedName"></span>
+            <span class="exselected-sub" id="exSelectedSub"></span>
+            <button type="button" class="exselected-change" id="exChange">変更</button>
+          </p>
+
+          <div class="exdrop-body">
+            <span class="exdrop-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13V3M8 7l4-4 4 4"/><path d="M20 17v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/></svg></span>
+            <p class="exdrop-main" id="exDropMain">明細ファイルをここにドラッグ＆ドロップ</p>
+            <p class="exdrop-or" id="exDropOr">または</p>
+            <button type="button" class="exdrop-btn" id="exPick">ファイルを選択する</button>
+            <p class="exdrop-note">対応ファイル：CSV / PDF / Excel（最大10MB）</p>
+          </div>
+        </div>
+
+        <div class="expoints">
+          <b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 8v.01"/></svg>アップロードのポイント</b>
+          <ul>
+            <li>最近6ヶ月〜1年分の明細があると、より正確に解析できます。</li>
+            <li>クレジットカードや電子マネーの明細もアップロード可能です。</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="exactions">
+        <button type="button" class="ex-start" id="exStart" disabled>
+          解析をはじめる
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── 解析中 ─────────────────────────────────────── -->
+    <div id="loadingView" hidden>
+      <div class="exloading">
+        <span class="exloading-spin" aria-hidden="true"></span>
+        <p class="exloading-tx">明細を解析しています…</p>
+        <p class="exloading-sub">継続している可能性のある支払いを探しています。</p>
+      </div>
+    </div>
+
+    <!-- ── Step3：解析結果の確認 ─────────────────────────── -->
+    <div id="resultView" hidden>
+      <div class="sec-h" style="margin-top:26px">
+        <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
+        <h3>見つかった候補</h3>
+      </div>
+
+      <p class="exsummary">
+        <span class="exsummary-total">全 <b><span id="sumTotal">0</span></b> 件</span>
+        <span class="exsummary-sep"></span>
+        <span class="exsummary-item ok"><span class="exsummary-dot"></span>継続利用として特定 <b id="sumReady">0</b></span>
+        <span class="exsummary-item warn"><span class="exsummary-dot"></span>確認が必要 <b id="sumCheck">0</b></span>
+      </p>
+
+      <p class="cf-count-note" id="exCoverageNote"></p>
+
+      <div class="excands" id="exCands"></div>
+
+      <!-- 第1実装増分：契約・デジタルへの実登録・対応時期の選択は未実装。
+           Step3 は実解析結果（payment_candidate）の表示までを完成地点とする。 -->
+      <p class="cf-count-note">この画面は解析結果の表示までです。契約・デジタルへの追加は、この増分では行いません。</p>
+
+      <div class="cfactions">
+        <button type="button" class="cf-reselect" id="exRestart">口座の選択に戻る</button>
+      </div>
+
+      <p class="exfoot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>明細データはブラウザ内だけで解析しています。ファイルはどこにも送信・保存されません。</p>
+    </div>
+
+  </div></main>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="../shared/areas.js"></script>
+<script src="../shared/shell.js"></script>
+<script src="catalog.js"></script>
+<script src="state.js"></script>
+<script src="payment-knowledge.js"></script>
+<script src="payment-adapter-vpass.js"></script>
+<script src="payment-engine.js"></script>
+<script src="extraction.js"></script>
+</body>
+</html>
