@@ -515,9 +515,8 @@
     const covNote = $('exCoverageNote');
     if (covNote) {
       covNote.textContent = (cov.coverage_from && cov.coverage_to)
-        ? '対象期間：' + cov.coverage_from + ' 〜 ' + cov.coverage_to +
-          '（この期間の明細から判定しています）'
-        : '対象期間を明細から特定できませんでした。';
+        ? '対象期間 ' + cov.coverage_from + ' 〜 ' + cov.coverage_to
+        : '対象期間を明細から特定できませんでした';
     }
   }
 

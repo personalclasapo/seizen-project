@@ -163,18 +163,17 @@
         candidate_service_ids: reachable, reachable_service_ids: reachable, reasons };
     }
 
-    /* 複数 reachable → candidates。price_hint で絞り込みは行うが
-       identified へは上げない（§17・指示§17）。 */
+    /* 複数 reachable → candidates。
+       price_hint は候補を「除外」せず「並べ替え」に使う（指示§17）。
+       reachable 候補は全件残し、price_hint 一致を先頭へ寄せる。 */
     reasons.push('merchant_pattern_match', 'multiple_reachable_services');
-    let candidates = reachable;
-    const matchedByPrice = reachable.filter(sid =>
-      priceHintsFor(sid, series.representative_amount).some(h => h.match));
-    if (matchedByPrice.length > 0 && matchedByPrice.length < reachable.length) {
-      candidates = matchedByPrice;
-      reasons.push('price_hint_narrowed');
+    const matched = [], rest = [];
+    for (const sid of reachable) {
+      (priceHintsFor(sid, series.representative_amount).some(h => h.match) ? matched : rest).push(sid);
     }
+    if (matched.length > 0 && matched.length < reachable.length) reasons.push('price_hint_reordered');
     return { service_identification: 'candidates', identified_service_id: null,
-      candidate_service_ids: candidates, reachable_service_ids: reachable, reasons };
+      candidate_service_ids: matched.concat(rest), reachable_service_ids: reachable, reasons };
   }
 
   /* ── contract_assessment（§25） ──────────────────────── */
