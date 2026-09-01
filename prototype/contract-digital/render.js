@@ -244,9 +244,9 @@
      実機で二重に見えるので描かない。                                */
   const PHONE_STATUS =
     '<span class="ph-status">' +
-      '<svg viewBox="0 0 17 12"><rect x="0" y="7.5" width="3" height="4.5" rx="1"/><rect x="4.5" y="5" width="3" height="7" rx="1"/><rect x="9" y="2.5" width="3" height="9.5" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></svg>' +
-      '<svg viewBox="0 0 16 12"><path d="M8 11.5 1 4.6a10 10 0 0 1 14 0L8 11.5Z"/></svg>' +
-      '<svg class="ph-batt" viewBox="0 0 26 13"><rect x=".7" y=".7" width="22" height="11.6" rx="3"/><rect class="ph-batt-fill" x="2.7" y="2.7" width="16" height="7.6" rx="1.6"/><path class="ph-batt-cap" d="M24 4.3v4.4a2 2 0 0 0 0-4.4Z"/></svg>' +
+      '<svg class="ph-sig" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>' +
+      '<svg class="ph-wifi" viewBox="0 0 20 15"><path d="M10 14.2 1.3 5.4a12.3 12.3 0 0 1 17.4 0L10 14.2Z"/></svg>' +
+      '<svg class="ph-batt" viewBox="0 0 27 13"><rect x=".6" y=".6" width="22" height="11.8" rx="3.2"/><rect class="ph-batt-fill" x="2.6" y="2.6" width="16" height="7.8" rx="1.8"/><path class="ph-batt-cap" d="M24.4 4.2v4.6a2 2 0 0 0 0-4.6Z"/></svg>' +
     '</span>';
 
   function phoneWrap(g, inner) {
