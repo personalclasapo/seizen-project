@@ -1,49 +1,53 @@
-/* SeiZen プロトタイプ｜支払い明細から探す（第1実装増分）
+/* SeiZen プロトタイプ｜支払い明細から探す
    ------------------------------------------------------------------
+   設計「支払い明細から探す」§3-4 / §3-5 / §12 / §13 に対応。
+
    1ページで3ステップを扱う。
      ① inputView … Step1（口座を選ぶ）と Step2（明細をアップロード）を
-        上下に並べる。登録済み口座を1つ選び、実際の Vpass CSV を
-        1つ選ぶと「解析をはじめる」が押せる。
+        上下に並べる。登録済み口座を1つ選び、Vpass CSV を1つ選ぶと
+        「解析をはじめる」が押せる。
      ② loadingView … 解析表示。
-     ③ resultView … Step3。実解析結果（payment_candidate）から
-        サービス・支払い系列単位で描画する。第1増分では契約・デジタルへの
-        実登録・対応時期の選択 UI は持たない（対応時期は導出結果を表示のみ）。
+     ③ resultView … Step3。パイプライン（payment/pipeline.js）の結果を
+        単一リスト・金額降順で描く（§12-2）。
+          A … サービス確定。チェックで登録対象
+          B … どのサービスか選ばせる。選ぶと A 相当へ（§12-2）
+          C … 名前（編集可）と対応時期を入力させる（§12-1）
+          registered … 表示するがチェック不可（§11）
+        「契約・デジタルに追加する」で選択分を登録し（§13）、その
+        支払い手段を確認済みにする。
 
-   「解析をはじめる」以降は、固定ダミーではなく解析パイプライン：
-        Vpass Adapter（payment-adapter-vpass.js）
-        → Detection Engine（payment-engine.js）
-        → payment_candidate → Step3 描画
-   をブラウザ内で実行する。知識 DB は payment-knowledge.js（アプリ内静的）。
+   解析パイプライン（ブラウザ内で完結・§15-2）：
+        source/vpass.js → series.js → resolver.js → judge.js
+        → reconcile.js → candidate → Step3 描画 → register.js
+   マスタは payment/master.js（アプリ内静的＋実行時解決の書き戻し）。
 
-   口座マスタ部分は従来どおりプロトタイプ用の固定値。 */
+   口座マスタ部分はプロトタイプ用の固定値。 */
 (function (global) {
   'use strict';
 
   const C = global.SeiZenCatalog;
   const esc = global.SeiZen.esc;
-  const VpassAdapter = global.SeiZenVpassAdapter;
-  const Engine = global.SeiZenPaymentEngine;
-  const KB = global.SeiZenPaymentKnowledge;
+  const Pipeline = global.SeiZenPaymentPipeline;
+  const Master = global.SeiZenPaymentMaster;
 
   /* ── 登録済み口座のダミー ─────────────────────────────
-     銀行は bank-account/state.js と同じ内容（あちらは保存しない設計で
-     契約側から読めないため、ここへ再掲）。本番はサーバ共有。      */
+     カードは contract-digital/state.js の cards と id をそろえる
+     （既登録照合・支払い手段の上書きが id で効くように）。holder は
+     §3-2「契約者名義は支払い手段の登録情報から」に対応。本番はサーバ共有。 */
   const BANK_ICON = '<path d="M3 21h18M4 10h16M5 10 12 4l7 6M6 10v10M18 10v10M10 10v10M14 10v10"/>';
   const CARD_ICON = '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>';
   const EMONEY_ICON = '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20M6 15h4"/>';
 
   const ACCOUNTS = [
     { group: '銀行口座', icon: BANK_ICON, items: [
-      { id: 'bank-smbc-1', name: '三井住友銀行　普通預金', sub: '渋谷支店　口座番号 1234567' },
-      { id: 'bank-smbc-2', name: '三井住友銀行　普通預金', sub: '渋谷支店　口座番号 7654321' },
-      { id: 'bank-jp-1',   name: 'ゆうちょ銀行　通常貯金', sub: '記号番号 10000-12345678' }
+      { id: 'bank-jp-1', name: 'ゆうちょ銀行　通常貯金', sub: '記号番号 10000-12345678', holder: '父 太郎' }
     ]},
     { group: 'クレジットカード', icon: CARD_ICON, items: [
-      { id: 'card-1', name: '三井住友カード（NL）', sub: '下4桁 4321' },
-      { id: 'card-2', name: '楽天カード', sub: '下4桁 8765' }
+      { id: 'card-smbc',   name: '三井住友カード（NL）', sub: '下4桁 1234', holder: '父 太郎' },
+      { id: 'card-rakuten', name: '楽天カード',          sub: '下4桁 5678', holder: '父 太郎' }
     ]},
     { group: '電子マネー・QR決済', icon: EMONEY_ICON, items: [
-      { id: 'emoney-1', name: 'PayPay', sub: '携帯番号 090-****-**12' }
+      { id: 'emoney-1', name: 'PayPay', sub: '携帯番号 090-****-**12', holder: '父 太郎' }
     ]}
   ];
 
@@ -60,22 +64,23 @@
   let acctId = null;             /* 選んだ登録済み口座の id */
   let fileName = null;           /* 選んだ明細のファイル名 */
   let fileText = null;           /* 選んだ明細ファイルの中身（CSV 文字列） */
-  let lastResult = null;         /* 直近の解析結果 { scan, candidates } */
+  let lastResult = null;         /* 直近の解析結果 { candidates, ... } */
 
-  const TIMING_LABEL = { pre: 'いまのうち', post: 'そのとき' };
+  /* Step3 の各行の作業状態。key は行 index。
+       picked      … チェック済み（登録対象）
+       choice      … B で選んだ service_id（'other' を含む）または null
+       editedName  … C / Bその他 で編集した名前
+       timing      … C / Bその他 で選んだ 'pre'|'post'|'unknown'      */
+  let rowState = [];
 
-  /* Step3 の状態 → 見出しの言い回し。engine の step3View.state と対応。 */
-  const STATE_UI = {
-    found:           { badge: '継続利用として見つかりました', tone: 'ok',
-                       note: '明細から継続利用のサービスを特定しました。' },
-    confirm_contract:{ badge: '継続して利用しているか確認',   tone: 'warn',
-                       note: '継続契約かどうか、ご本人・ご家族に確認が必要です。' },
-    confirm_service: { badge: 'どのサービスか確認が必要',     tone: 'warn',
-                       note: '請求主体までは特定できましたが、サービスが複数考えられます。' },
-    confirm_unknown: { badge: '内容の確認が必要',             tone: 'warn',
-                       note: '内容をご本人・ご家族に確認が必要です。' },
-    domain_unknown:  { badge: '内容の確認が必要な発見',       tone: 'warn',
-                       note: '継続利用の可能性はありますが、SeiZen で扱う領域か確認が必要です。' }
+  const TIMING_LABEL = { pre: 'いまのうち', post: 'そのとき', unknown: '分からない' };
+
+  /* status → 行の見た目。単一リスト・グループ分けはしない（§12-2）。 */
+  const STATUS_UI = {
+    A:          { badge: '継続利用が見つかりました', tone: 'ok' },
+    B:          { badge: 'どのサービスか確認',       tone: 'warn' },
+    C:          { badge: '内容の確認が必要',         tone: 'warn' },
+    registered: { badge: '登録済み',                 tone: 'muted' }
   };
 
   /* ── DOM ────────────────────────────────────────── */
@@ -342,182 +347,386 @@
 
   $('exRestart').addEventListener('click', showInput);
 
+
+  /* ── 解析 → 結果 ───────────────────────────────────
+     payment/pipeline.js を1回呼ぶ。明細はブラウザ内で処理し、どこにも
+     送らない（§15-2）。 */
   function runAnalysis() {
-    const parsed = VpassAdapter.parse(fileText, { payment_source_id: acctId || 'card-unknown' });
-    if (!parsed.ok) {
+    const res = Pipeline.analyze(fileText, {
+      adapter: 'vpass',
+      paymentMethodId: acctId || null
+    });
+    if (!res.ok) {
       loadingView.hidden = true;
       inputView.hidden = false;
-      global.SeiZen.toast('この明細を解析できませんでした：' + parsed.error);
+      global.SeiZen.toast('この明細を解析できませんでした：' + res.error);
       return;
     }
-    const result = Engine.run(parsed.transactions, {
-      coverage: parsed.coverage,
-      scan_id: 'scan-' + Date.now().toString(36),
-      target_person_id: 'target-current'
-    });
-    lastResult = { scan: result.scan, candidates: result.candidates, adapter: parsed.meta };
-    logDevReport(lastResult);
+    lastResult = res;
+    rowState = res.candidates.map(c => ({
+      picked: c.status === 'A',        /* A は既定でチェック（registered は不可） */
+      choice: null,
+      editedName: c.status === 'C' ? (c.merchant_name || c.series.merchant_raw) : '',
+      timing: 'unknown'
+    }));
+    logDevReport(res);
     showResult();
   }
 
-  /* ── 開発ログ（§23） ─────────────────────────────────
-     受入結果が「どの証拠でその状態になったか」を確認できることが目的。
-     description_raw・元CSV行・不要な生明細は出さない。 */
+  /* ── 開発ログ（§6 報告事項の確認用）─────────────────
+     画面には出さない。各系列がどの分岐で確定/破棄されたか、実行時
+     解決に回った系列、§4 との差分をコンソールで追えるようにする。   */
   function logDevReport(res) {
     if (!global.console || !console.group) return;
     console.group('%c[支払い明細から探す] 解析結果', 'font-weight:bold');
-    console.log('scan:', res.scan);
-    console.log('adapter:', res.adapter);
-    const table = res.candidates.map(c => ({
-      candidate_id: c.candidate_id,
-      billing_entity_id: c.billing_entity_id || ('ms:' + (c.merchant_signature || '')),
-      identified_service_id: c.identified_service_id || '',
-      candidate_service_ids: (c.candidate_service_ids || []).join(','),
-      service_identification: c.service_identification,
-      contract_assessment: c.contract_assessment,
-      domain_status: c.domain_status,
-      observed_cycle: c.observed_cycle,
-      amount_behavior: c.amount_behavior,
-      representative_amount: c.representative_amount,
-      occurrences: c.occurrence_count,
-      derived_response_class: c.derived_response_class || '',
-      derived_response_timing: c.derived_response_timing || '',
-      step3: Engine.step3View(c).show ? Engine.step3View(c).state : '(非表示)'
-    }));
-    console.table(table);
-    res.candidates.forEach(c => {
-      console.log(
-        '%c' + (c.billing_entity_name || c.merchant_signature || c.candidate_id),
-        'font-weight:bold',
-        '\n  service_identification:', c.service_identification,
-        '\n  contract_assessment  :', c.contract_assessment,
-        '\n  domain_status        :', c.domain_status,
-        '\n  series_signature     :', c.group_key,
-        '\n  reason_codes         :', c.reason_codes
-      );
-    });
+    console.log('coverage:', res.coverage);
+    console.log('adapter:', res.report.adapter);
+    if (res.report.resolution.length) console.table(res.report.resolution);
+    if (res.payment_method_hits.length) console.log('payment_method hits:', res.payment_method_hits);
+    console.table(res.report.series);
     console.groupEnd();
   }
 
-  /* ── Step3 の描画 ─────────────────────────────────── */
-  function brandSVG(iconKey) {
-    const path = iconKey && C.LOGOS && C.LOGOS[iconKey] ? C.LOGOS[iconKey].path : null;
-    return path
-      ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="' + path + '"/></svg>'
-      : null;
-  }
+  $('exRestart').addEventListener('click', showInput);
 
-  /* billing_entity_id / service_id → ロゴキー（catalog.js の LOGOS）。 */
-  const LOGO_BY_ENTITY = {
-    'be-netflix': 'netflix', 'be-spotify': 'spotify', 'be-apple': 'apple',
-    'be-microsoft': 'microsoft', 'be-amazon': 'amazon'
+  /* ── Step3 の描画 ───────────────────────────────────
+     単一リスト・金額（amount_max）降順（§12-2）。行の中身は status で
+     変わる。B/C は下に確認 UI を展開する。 */
+
+  const LOGO_BY_MERCHANT = {
+    'mch-netflix': 'netflix', 'mch-spotify': 'spotify', 'mch-apple': 'apple',
+    'mch-microsoft': 'microsoft'
   };
 
-  function candMark(name, entityId) {
-    const svg = brandSVG(LOGO_BY_ENTITY[entityId]);
-    return svg
-      ? '<span class="excand-mark">' + svg + '</span>'
-      : '<span class="excand-mark">' + esc(String(name || '?').charAt(0)) + '</span>';
+  function brandSVG(key) {
+    const path = key && C.LOGOS && C.LOGOS[key] ? C.LOGOS[key].path : null;
+    return path ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="' + path + '"/></svg>' : null;
   }
 
-  function cycleLabel(cyc) {
-    return ({
-      WEEKLY: '毎週', MONTHLY: '毎月', BIMONTHLY: '隔月', QUARTERLY: '3か月ごと',
-      SEMIANNUAL: '半年ごと', ANNUAL: '毎年', IRREGULAR: '不定期',
-      INSUFFICIENT_DATA: '1回のみ'
-    })[cyc] || cyc;
+  function candMark(name, merchantId) {
+    const svg = brandSVG(LOGO_BY_MERCHANT[merchantId]);
+    return '<span class="excand-mark">' +
+      (svg || esc(String(name || '?').charAt(0))) + '</span>';
   }
 
-  /* 系列の表示名。identified はサービス名、candidates は請求主体名、
-     未特定は billing_entity 名 or 安全な正規化表記（生摘要は使わない）。 */
-  function candTitle(c) {
-    if (c.service_identification === 'identified' && c.identified_service_id) {
-      const s = KB.SERVICE_MASTER[c.identified_service_id];
-      if (s) return s.service_name;
+  const CYCLE_LABEL = {
+    monthly: '毎月', bimonthly: '隔月', single: '年1回'
+  };
+  function cycleLabel(c) {
+    if (c.series.is_frequent && c.service_id) {
+      const svc = Master.service(c.service_id);
+      if (svc && svc.pricing_type === 'subscription_box') return '定期';
     }
-    if (c.billing_entity_name) return c.billing_entity_name + 'の支払い';
-    return c.merchant_signature || '不明な支払い';
+    return CYCLE_LABEL[c.series.cycle] || c.series.cycle;
   }
 
-  /* candidates のときに出す「考えられるサービス」（表示のみ・選択させない）。 */
-  function candServiceNames(c) {
-    return (c.candidate_service_ids || [])
-      .map(sid => (KB.SERVICE_MASTER[sid] || {}).service_name)
-      .filter(Boolean);
+  /* 金額の表示。変動系列は「¥6,000前後」の目安表記（§12-2）。 */
+  function amountText(c) {
+    const s = c.series;
+    if (s.amount_is_fixed) return '¥' + s.amount_repr.toLocaleString('ja-JP');
+    const mid = Math.round((s.amount_min + s.amount_max) / 2 / 100) * 100;
+    return '¥' + mid.toLocaleString('ja-JP') + '前後';
   }
 
-  function timingText(c) {
-    if (c.derived_response_timing && TIMING_LABEL[c.derived_response_timing]) {
-      return TIMING_LABEL[c.derived_response_timing];
+  /* 行の表示名。A はサービス名、B は請求主体名、C は編集中の名前。 */
+  function rowTitle(c, st) {
+    if (c.service_id) {
+      const svc = Master.service(c.service_id);
+      if (svc) return svc.name;
     }
-    return '確認できていません';
+    if (c.status === 'C') return st.editedName || c.merchant_name || c.series.merchant_raw;
+    return c.merchant_name || c.series.merchant_raw;
   }
 
-  function candCardHTML(c) {
-    const view = Engine.step3View(c);
-    const ui = STATE_UI[view.state] || STATE_UI.confirm_unknown;
-    const title = candTitle(c);
-    const svcNames = candServiceNames(c);
+  /* 行が「登録対象として確定しているか」。
+       A          … 常に可
+       B（未選択）… 不可（まず選ぶ）
+       C          … 名前があれば可                                    */
+  function isActionable(c, st) {
+    if (c.status === 'registered') return false;
+    if (c.status === 'A') return true;
+    if (c.status === 'B') return false;
+    if (c.status === 'C') return !!(st.editedName || '').trim();
+    return false;
+  }
 
-    const stateBadge =
+  /* この行の下に確認 UI（サービス選択／名前・時期）を出すか。 */
+  function showsPick(c) { return c.status === 'B' || c._fromB; }
+  function showsUnknown(c) { return c.status === 'C'; }
+
+  function svgCheck() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-9"/></svg>';
+  }
+  function stateIcon(tone) {
+    return tone === 'ok'
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 12 5 5 9-9"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.01"/></svg>';
+  }
+
+  function timingNote(c, st) {
+    if (c.service_id) {
+      const svc = Master.service(c.service_id);
+      return TIMING_LABEL[svc && svc.post_mortem_procedure ? 'post' : 'pre'];
+    }
+    return st.timing && st.timing !== 'unknown' ? TIMING_LABEL[st.timing] : '未確認';
+  }
+
+  /* B：どのサービスか選ぶピル。options ＋「その他」。 */
+  function pickBlock(c, i, st) {
+    const opts = (c.options || []).map(o =>
+      '<button type="button" class="excand-opt' + (st.choice === o.service_id ? ' on' : '') +
+        '" data-row="' + i + '" data-choice="' + esc(o.service_id) + '">' + esc(o.name) + '</button>').join('');
+    const other = '<button type="button" class="excand-opt' + (st.choice === 'other' ? ' on' : '') +
+      '" data-row="' + i + '" data-choice="other">その他</button>';
+    return '<div class="excand-pick">' +
+      '<p class="excand-pick-lead">どのサービスの支払いですか</p>' +
+      '<div class="excand-opts">' + opts + other + '</div></div>';
+  }
+
+  /* C（および B で「その他」）：名前 ＋ 対応時期。 */
+  function unknownBlock(c, i, st) {
+    const name = st.editedName || c.merchant_name || c.series.merchant_raw;
+    const radios = ['pre', 'post', 'unknown'].map(k =>
+      '<button type="button" class="exradio' + (st.timing === k ? ' on' : '') +
+        '" data-row="' + i + '" data-timing="' + k + '">' +
+        '<span class="exradio-dot"></span>' + esc(TIMING_LABEL[k]) + '</button>').join('');
+    return '<div class="excand-period" style="display:flex;flex-direction:column;align-items:stretch;gap:10px">' +
+      '<label style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<span class="excand-period-lb">名前</span>' +
+        '<input type="text" class="exname-input" data-row="' + i + '" value="' + esc(name) + '" ' +
+          'style="flex:1;min-width:180px;border:1px solid var(--line2);border-radius:9px;padding:8px 12px;font:inherit">' +
+      '</label>' +
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+        '<span class="excand-period-lb">対応時期</span>' +
+        '<div class="exradio-group">' + radios + '</div>' +
+      '</div></div>';
+  }
+
+  function candCardHTML(c, i) {
+    const st = rowState[i];
+    const isReg = c.status === 'registered';
+    const ui = STATUS_UI[isReg ? 'registered' : c.status] || STATUS_UI.C;
+    const title = rowTitle(c, st);
+    const actionable = isActionable(c, st);
+    const showPick = showsPick(c);
+    const showUnknown = showsUnknown(c);
+
+    const cls = ['excand'];
+    if (ui.tone === 'ok') cls.push('is-ready'); else if (!isReg) cls.push('is-check');
+    if (st.picked && !isReg) cls.push('is-picked');
+    if (showPick || showUnknown) cls.push('is-open');
+
+    const check = isReg
+      ? '<span class="excand-check is-locked">' + svgCheck() + '</span>'
+      : '<button type="button" class="excand-check" data-check="' + i + '"' +
+          (actionable ? '' : ' disabled') + '>' + svgCheck() + '</button>';
+
+    const badge =
       '<span class="excand-state ' + ui.tone + '"><span class="lbl">' +
-      (ui.tone === 'ok'
-        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 12 5 5 9-9"/></svg>'
-        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.01"/></svg>') +
-      esc(ui.badge) + '</span>' +
-      '<small>' + esc(ui.note) + '</small></span>';
+        (isReg ? '' : stateIcon(ui.tone)) + esc(ui.badge) + '</span></span>';
+
+    const pmNote = c.payment_method_change
+      ? '<p class="excand-note">この明細の支払い手段に登録し直します（' +
+          esc(c.series.merchant_raw) + ' はすでに別の支払い手段で登録済み）</p>'
+      : '';
 
     const figs =
       '<span class="excand-figs">' +
-        '<span class="excand-fig"><small>代表金額</small><b>¥' + Number(c.representative_amount || 0).toLocaleString('ja-JP') + '</b></span>' +
-        '<span class="excand-fig"><small>周期</small><b>' + esc(cycleLabel(c.observed_cycle)) + '</b></span>' +
-        '<span class="excand-fig"><small>対応時期</small><b>' + esc(timingText(c)) + '</b></span>' +
+        '<span class="excand-fig"><small>金額</small><b>' + esc(amountText(c)) + '</b></span>' +
+        '<span class="excand-fig"><small>周期</small><b>' + esc(cycleLabel(c)) + '</b></span>' +
+        '<span class="excand-fig"><small>対応時期</small><b>' + esc(timingNote(c, st)) + '</b></span>' +
       '</span>';
 
     const row =
-      '<div class="excand-row">' +
-        candMark(title, c.billing_entity_id) +
+      '<div class="excand-row">' + check +
+        candMark(title, c.merchant_id) +
         '<span class="excand-name"><b>' + esc(title) + '</b>' +
-          '<span class="excand-src">' + esc(c.display_descriptor) + '</span></span>' +
-        figs +
-        stateBadge +
+          '<span class="excand-src">' + esc(c.series.merchant_raw) + '</span></span>' +
+        figs + badge +
       '</div>';
 
-    /* candidates：考えられるサービスを表示のみ（選択 UI は持たない）。 */
-    let detail = '';
-    if (view.state === 'confirm_service' && svcNames.length) {
-      detail = '<div class="excand-pick" style="display:block">' +
-        '<p class="excand-pick-lead">考えられるサービス（どれかはご本人・ご家族への確認が必要です）</p>' +
-        '<div class="excand-opts">' +
-        svcNames.map(n => '<span class="excand-opt">' + esc(n) + '</span>').join('') +
-        '</div></div>';
-    }
+    let body = '';
+    if (showPick) body += pickBlock(c, i, st);
+    if (showUnknown) body += unknownBlock(c, i, st);
 
-    const cls = ['excand', ui.tone === 'ok' ? 'is-ready' : 'is-check'];
-    return '<div class="' + cls.join(' ') + '">' + row + detail + '</div>';
+    return '<div class="' + cls.join(' ') + '" data-card="' + i + '">' + row + pmNote + body + '</div>';
   }
 
   function renderResult() {
-    const shown = lastResult.candidates.filter(c => Engine.step3View(c).show);
-    const ok = shown.filter(c => Engine.step3View(c).state === 'found').length;
-    const check = shown.length - ok;
+    const cands = lastResult.candidates;
+    candBox.innerHTML = cands.length
+      ? cands.map(candCardHTML).join('')
+      : '<p class="cf-count-note">継続している可能性がある支払いは見つかりませんでした。</p>';
 
-    $('sumTotal').textContent = shown.length;
-    $('sumReady').textContent = ok;
-    $('sumCheck').textContent = check;
+    updateSummary();
+    renderPaymentMethodHits();
 
-    candBox.innerHTML = shown.length
-      ? shown.map(candCardHTML).join('')
-      : '<p class="cf-count-note">継続利用の可能性がある支払いは見つかりませんでした。</p>';
-
-    /* 対象期間の観測事実（§34：断定しない）。 */
-    const cov = lastResult.scan;
+    const cov = lastResult.coverage;
     const covNote = $('exCoverageNote');
     if (covNote) {
       covNote.textContent = (cov.coverage_from && cov.coverage_to)
         ? '対象期間 ' + cov.coverage_from + ' 〜 ' + cov.coverage_to
         : '対象期間を明細から特定できませんでした';
     }
+  }
+
+  function updateSummary() {
+    const cands = lastResult.candidates;
+    const shown = cands.filter(c => c.status !== 'registered').length;
+    const picked = rowState.filter((s, i) => s.picked && cands[i].status !== 'registered').length;
+    $('sumTotal').textContent = cands.length;
+    $('sumReady').textContent = picked;
+    $('sumCheck').textContent = Math.max(0, shown - picked);
+    const btn = $('exCommit');
+    if (btn) btn.disabled = picked === 0;
+  }
+
+  /* §3-4：payment_method を検出したときの案内（候補リストとは別）。 */
+  function renderPaymentMethodHits() {
+    const box = $('exPmHits');
+    if (!box) return;
+    const hits = lastResult.payment_method_hits || [];
+    if (!hits.length) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    box.innerHTML = hits.map(h =>
+      '<p class="cf-count-note">この明細から、' + esc(h.merchant_name) +
+      'への支払いが見つかりました。そのカードの明細もアップロードすると、配下の契約を確認できます。</p>').join('');
+  }
+
+  /* ── Step3 の操作 ─────────────────────────────────── */
+  candBox.addEventListener('click', e => {
+    const chk = e.target.closest('[data-check]');
+    if (chk && !chk.disabled) {
+      const i = +chk.dataset.check;
+      rowState[i].picked = !rowState[i].picked;
+      rerenderCard(i);
+      updateSummary();
+      return;
+    }
+    const opt = e.target.closest('[data-choice]');
+    if (opt) {
+      const i = +opt.dataset.row;
+      rowState[i].choice = opt.dataset.choice;
+      /* B を選んだ時点で既登録照合（§11）。'other' は C 扱いなので照合しない。
+         選択後は A（または registered）相当の見た目にしつつ、選び直せる
+         よう options とピルは残す（_fromB）。 */
+      const orig = lastResult.candidates[i];
+      if (opt.dataset.choice !== 'other') {
+        let cand = Pipeline.resolveChoice(orig, opt.dataset.choice);
+        cand = Pipeline.reconcileOne(cand, acctId || null);
+        lastResult.candidates[i] = Object.assign({}, cand, {
+          status: cand.status === 'registered' ? 'registered' : 'A',
+          options: orig.options, _fromB: true, _resolved: cand
+        });
+        rowState[i].picked = cand.status !== 'registered';
+      } else {
+        lastResult.candidates[i] = Object.assign({}, orig, {
+          status: 'C', options: orig.options, _fromB: true, _resolved: null,
+          service_id: null
+        });
+        rowState[i].editedName = rowState[i].editedName || orig.merchant_name || orig.series.merchant_raw;
+        rowState[i].picked = false;
+      }
+      rerenderCard(i);
+      updateSummary();
+      return;
+    }
+    const rad = e.target.closest('[data-timing]');
+    if (rad) {
+      const i = +rad.dataset.row;
+      rowState[i].timing = rad.dataset.timing;
+      rerenderCard(i);
+      updateSummary();
+      return;
+    }
+  });
+
+  candBox.addEventListener('input', e => {
+    const inp = e.target.closest('.exname-input');
+    if (!inp) return;
+    const i = +inp.dataset.row;
+    const was = (rowState[i].editedName || '').trim();
+    rowState[i].editedName = inp.value;
+    const now = inp.value.trim();
+    /* 空⇄非空でチェック可否が変わるときだけ再描画（カーソル位置を復元）。
+       それ以外は要約のみ更新してカーソルを保つ。 */
+    if (!!was !== !!now) {
+      const pos = inp.selectionStart;
+      rerenderCard(i);
+      const next = candBox.querySelector('[data-card="' + i + '"] .exname-input');
+      if (next) { next.focus(); try { next.setSelectionRange(pos, pos); } catch (_) {} }
+    }
+    updateSummary();
+  });
+
+  function rerenderCard(i) {
+    const el = candBox.querySelector('[data-card="' + i + '"]');
+    if (!el) return;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = candCardHTML(lastResult.candidates[i], i);
+    el.replaceWith(tmp.firstElementChild);
+  }
+
+  /* ── 登録（§13）─────────────────────────────────────
+     チェック済みの行を register.write へ。B は選択後の service で、
+     C は編集名と選んだ対応時期で登録する。                          */
+  const commitBtn = $('exCommit');
+  if (commitBtn) commitBtn.addEventListener('click', () => {
+    const acct = acctId ? findAccount(acctId) : null;
+    const holderName = acct && acct.acct && acct.acct.holder ? acct.acct.holder
+      : (acct ? '' : '');
+
+    const selections = [];
+    lastResult.candidates.forEach((c, i) => {
+      const st = rowState[i];
+      if (!st.picked || c.status === 'registered') return;
+      if (!isActionable(c, st)) return;
+
+      if (c.service_id) {
+        /* A、または B で service を選んで A 相当になったもの */
+        selections.push({ candidate: c._resolved || c });
+      } else {
+        /* C、または B で「その他」：名前・対応時期をユーザー入力から */
+        selections.push({
+          candidate: Object.assign({}, c, { status: 'C', service_id: null }),
+          editedName: (st.editedName || '').trim(),
+          chosenTiming: st.timing
+        });
+      }
+    });
+
+    if (!selections.length) { global.SeiZen.toast('登録するサービスを選んでください'); return; }
+
+    const out = Pipeline.commit(selections, { paymentMethodId: acctId || null, holderName: holderName });
+    const n = out.added.length + (out.updated ? out.updated.length : 0);
+    global.SeiZen.toast(n + '件を契約・デジタルに登録しました');
+    markSourceDone();
+    showDone(out);
+  });
+
+  /* 登録後：その支払い手段を「確認済み」にする（§13 末尾）。
+     プロトタイプではセッション内フラグ。本番は支払い手段マスタへ。 */
+  const doneSources = new Set();
+  function markSourceDone() { if (acctId) doneSources.add(acctId); }
+
+  function showDone(out) {
+    const lines = [];
+    if (out.added.length)  lines.push('新しく登録：' + out.added.join('、'));
+    if (out.updated && out.updated.length) lines.push('支払い手段を更新：' + out.updated.join('、'));
+    if (out.skipped && out.skipped.length) lines.push('すでに登録済み：' + out.skipped.join('、'));
+    candBox.innerHTML =
+      '<div class="excand is-ready"><div class="excand-row">' +
+        '<span class="excand-mark">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 12 5 5 9-9"/></svg></span>' +
+        '<span class="excand-name"><b>登録しました</b>' +
+          '<span class="excand-src">' + esc(lines.join(' / ') || '変更はありませんでした') + '</span></span>' +
+      '</div></div>' +
+      '<p class="cf-count-note">この支払い手段について、継続している支払いの確認は完了です。' +
+        '<a href="index.html">契約・デジタルの一覧を見る</a></p>';
+    const commit = $('exCommit');
+    if (commit) commit.hidden = true;
+    const s = $('exSummary'); if (s) s.hidden = true;
+    const pm = $('exPmHits'); if (pm) pm.hidden = true;
   }
 
   /* ── 初期化 ─────────────────────────────────────── */

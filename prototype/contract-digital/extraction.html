@@ -178,20 +178,23 @@
         <span class="rt" id="exCoverageNote"></span>
       </div>
 
-      <p class="exsummary">
+      <p class="exsummary" id="exSummary">
         <span class="exsummary-total">全 <b><span id="sumTotal">0</span></b> 件</span>
         <span class="exsummary-sep"></span>
-        <span class="exsummary-item ok"><span class="exsummary-dot"></span>継続利用として特定 <b id="sumReady">0</b></span>
-        <span class="exsummary-item warn"><span class="exsummary-dot"></span>確認が必要 <b id="sumCheck">0</b></span>
+        <span class="exsummary-item ok"><span class="exsummary-dot"></span>登録する <b id="sumReady">0</b></span>
+        <span class="exsummary-item warn"><span class="exsummary-dot"></span>未選択 <b id="sumCheck">0</b></span>
       </p>
+
+      <!-- §3-4：カード等への支払いを検出したときの案内（候補リストとは別） -->
+      <div id="exPmHits" hidden></div>
 
       <div class="excands" id="exCands"></div>
 
-      <!-- 第1実装増分：契約・デジタルへの実登録・対応時期の選択は未実装。
-           Step3 は実解析結果（payment_candidate）の表示までを完成地点とする。 -->
-      <p class="cf-count-note">この画面は解析結果の表示までです。契約・デジタルへの追加は、この増分では行いません。</p>
+      <!-- §12-2：提示しなかった支払いの内訳・判定理由は出さない -->
+      <p class="cf-count-note">継続していない支払いは表示していません。</p>
 
       <div class="cfactions">
+        <button type="button" class="cf-submit" id="exCommit" disabled>契約・デジタルに追加する</button>
         <button type="button" class="cf-reselect" id="exRestart">口座の選択に戻る</button>
       </div>
 
@@ -206,9 +209,14 @@
 <script src="../shared/shell.js"></script>
 <script src="catalog.js"></script>
 <script src="state.js"></script>
-<script src="payment-knowledge.js"></script>
-<script src="payment-adapter-vpass.js"></script>
-<script src="payment-engine.js"></script>
+<script src="payment/master.js"></script>
+<script src="payment/source/vpass.js"></script>
+<script src="payment/resolver.js"></script>
+<script src="payment/series.js"></script>
+<script src="payment/judge.js"></script>
+<script src="payment/reconcile.js"></script>
+<script src="payment/register.js"></script>
+<script src="payment/pipeline.js"></script>
 <script src="extraction.js"></script>
 </body>
 </html>

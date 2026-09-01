@@ -35,7 +35,7 @@
 
       <p class="addlead">思い当たるサービスから探すか、支払い明細から探せます。</p>
       <div class="addcards">
-        <div class="addcard">
+        <a class="addcard" href="add.html">
           <span class="addcard-ic">
             <svg viewBox="0 0 96 96" role="img" aria-labelledby="aat aad"><title id="aat">一覧と検索</title><desc id="aad">項目の並ぶ書類とチェックマーク、重なる虫眼鏡</desc>
               <circle cx="48" cy="48" r="48" fill="var(--paper2)"/>
@@ -49,9 +49,9 @@
           </span>
           <h4>サービスから探す</h4>
           <p>思い当たるサービスを、一覧や検索から選びます。</p>
-          <a class="addcard-btn" href="add.html">サービスを探す <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></a>
-        </div>
-        <div class="addcard">
+          <span class="addcard-btn">サービスを探す <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+        <button type="button" class="addcard" id="add-ocr">
           <span class="addcard-ic">
             <svg viewBox="0 0 96 96" role="img" aria-labelledby="abt abd"><title id="abt">支払い明細</title><desc id="abd">金額の並ぶ明細書と重なるカード</desc>
               <circle cx="48" cy="48" r="48" fill="var(--paper2)"/>
@@ -65,8 +65,8 @@
           </span>
           <h4>支払い明細から探す</h4>
           <p>カードや口座の明細から、継続している契約を見つけます。</p>
-          <button class="addcard-btn" id="add-ocr">支払い明細から探す <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
-        </div>
+          <span class="addcard-btn">支払い明細から探す <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+        </button>
       </div>
       <p class="addnote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 8v.01"/></svg>あとからいつでも追加・変更できます。</p>
 

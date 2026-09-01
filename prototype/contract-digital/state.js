@@ -677,6 +677,72 @@
     return { added, skipped };
   }
 
+  /* 「支払い明細から探す」からの登録。records は
+       [{ name, group, category, domain, service_id,
+          contract: { holder, amount, cycle, amount_is_fixed,
+                      first_seen, last_seen, paymentCard } }]
+     commitAdded と別口にしているのは、明細由来の契約情報（金額・周期・
+     初回/最終出現日・契約者名義・支払いカード）をひな形へ流し込むため
+     （§13-1）。id は service_id が来ればそれを使い（既存カタログと
+     同一性をそろえる）、無ければ採番する。名前重複は skipped。       */
+  function commitFromStatement(records) {
+    const seen = new Set(items.map(it => it.name.trim().toLowerCase()));
+    const seenId = new Set(items.map(it => it.id));
+    const added = [], skipped = [];
+    (records || []).forEach(rec => {
+      const name = String(rec.name || '').trim();
+      const key = name.toLowerCase();
+      if (!name || seen.has(key)) { skipped.push(rec.name); return; }
+      const id = (rec.service_id && !seenId.has(rec.service_id)) ? rec.service_id : newServiceId();
+      seen.add(key); seenId.add(id);
+
+      const base = buildAddedItem({
+        id: id,
+        name: name,
+        group: rec.group,
+        category: rec.category || '未分類',
+        added: today(),
+        no: padNo(nextNo++)
+      });
+      const c = rec.contract || {};
+      base.contract = {
+        holder: c.holder || '',
+        paymentCard: c.paymentCard || null,
+        amount: (c.amount == null ? null : c.amount),
+        cycle: c.cycle || 'monthly',
+        amount_is_fixed: c.amount_is_fixed !== false,
+        started: c.first_seen || '不明',
+        nextBill: '',
+        first_seen: c.first_seen || null,
+        last_seen: c.last_seen || null,
+        source: 'statement'
+      };
+      if (rec.domain) base.domain = rec.domain;
+      items.push(base);
+      added.push(name);
+    });
+    if (added.length) save();
+    return { added, skipped };
+  }
+
+  /* 「支払い明細から探す」§13-2：同一サービスが別の支払い手段で
+     既登録だったとき、既存エントリの支払い手段を上書きする（履歴は
+     作らない）。id または名前一致で既存を引く。更新できたら true。  */
+  function applyPaymentMethodChange(rec) {
+    const byId = rec.service_id ? items.find(it => it.id === rec.service_id) : null;
+    const byName = byId || items.find(it =>
+      it.name.trim().toLowerCase() === String(rec.name || '').trim().toLowerCase());
+    const it = byId || byName;
+    if (!it) return false;
+    it.contract = it.contract || {};
+    const c = rec.contract || {};
+    it.contract.paymentCard = c.paymentCard || null;
+    it.contract.paymentLabel = c.paymentCard ? '' : (c.paymentLabel || it.contract.paymentLabel);
+    if (c.holder) it.contract.holder = c.holder;
+    touch(it);
+    return true;
+  }
+
   /* 追加したサービス1件を取り消す。詳細画面の削除ボタンから呼ぶ。
      seed のサービス（it.added が無い）は対象外。                    */
   function removeAdded(id) {
@@ -877,7 +943,7 @@
     INTENTS, MARKS3, GROUP_UI, MARKS, LOGO_ALIAS,
     cards, items,
     byGroup, preItems, postItems, undecidedItems,
-    hasService, commitAdded, removeAdded, renameService, setGroup, resetAll,
+    hasService, commitAdded, commitFromStatement, applyPaymentMethodChange, removeAdded, renameService, setGroup, resetAll,
     intentOf, intentLabel, markOf, openCount, procChecked, accountMark, accountState, accountDone, statusRows,
     itemBadge, groupSummary, accountSummary,
     paymentDisplay, amountText, findItem, findCard, linkedItems, cardFacts,

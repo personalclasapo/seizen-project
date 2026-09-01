@@ -151,6 +151,7 @@
 
 /* Step3：サマリー。候補カードの角丸ボックスと被らないよう囲みなし。
    見出し直下に、上下の罫線で区切った1行の集計だけを置く。 */
+.exsummary[hidden]{display:none}
 .exsummary{display:flex;align-items:center;flex-wrap:wrap;gap:8px 20px;
   margin:12px 0 16px;padding:12px 2px;
   border-top:1px solid var(--line);border-bottom:1px solid var(--line);
@@ -210,6 +211,10 @@ button.excand-row{-webkit-appearance:none;appearance:none;border:0;margin:0;back
 .excand-state.ok .lbl{color:var(--gr2)}
 .excand-state.warn .lbl{color:#c9781d}
 .excand-state small{font-size:10.5px;color:var(--ink3);text-align:right;line-height:1.4}
+
+/* 支払い手段の変更（§13-2）。行の下に細い注記の帯。 */
+.excand-note{margin:0;padding:8px 16px 8px 50px;border-top:1px dashed var(--line2);
+  background:var(--paper);font-size:11px;line-height:1.5;color:#a56a1c}
 
 /* 確認が必要 → どのサービスか選ぶ（ピル型の候補ボタン）。 */
 .excand-pick{padding:12px 16px 14px 50px;display:none;

@@ -1239,7 +1239,7 @@
   });
 
   document.getElementById('add-ocr').addEventListener('click', () =>
-    show('支払い明細から探す機能は準備中です'));
+    { location.href = 'extraction.html'; });
 
   /* ?id= を持つURLで直接開いたときは、最初から詳細画面を表示する
      （共有リンクや再読み込みでも同じ場所に戻れる）。               */

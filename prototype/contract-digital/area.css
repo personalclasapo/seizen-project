@@ -596,17 +596,23 @@
 .addlead{margin:0 0 18px 44px;font-size:12px;color:var(--ink3)}
 
 .addcards{display:flex;gap:16px}
+/* カード全体が押下領域（a / button）。ホバー・フォーカスで枠が緑になり、
+   中のアウトラインボタンが塗りに変わる（支払い明細フローと同じ作法）。 */
 .addcard{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;
   padding:32px 28px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;
-  box-shadow:0 2px 8px rgba(50,45,25,.04)}
+  box-shadow:0 2px 8px rgba(50,45,25,.04);
+  font-family:inherit;text-decoration:none;cursor:pointer;transition:border-color .12s,background .12s}
+.addcard:hover{border-color:var(--gr);background:var(--gr-bg)}
+.addcard:focus-visible{outline:2px solid var(--gr2);outline-offset:2px}
 .addcard-ic{display:block;width:128px;height:128px;flex:none;margin:0 auto 22px}
 .addcard-ic svg{width:100%;height:100%}
 .addcard h4{margin:0 0 8px;font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
 .addcard p{margin:0 0 20px;font-size:12.5px;line-height:1.75;color:var(--ink2)}
 .addcard-btn{margin-top:auto;width:250px;max-width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
-  padding:13px;border-radius:9px;border:1px solid var(--gr);background:var(--gr);color:#fff;
-  font-family:inherit;font-size:13.5px;font-weight:700;text-decoration:none;box-sizing:border-box}
-.addcard-btn:hover{background:var(--gr-d);border-color:var(--gr-d)}
+  padding:12px;border-radius:999px;border:1.5px solid var(--gr);background:transparent;color:var(--gr2);
+  font-family:inherit;font-size:13.5px;font-weight:700;box-sizing:border-box;transition:background .12s,color .12s}
+.addcard:hover .addcard-btn,
+.addcard:focus-visible .addcard-btn{background:var(--gr);color:#fff}
 .addcard-btn svg{width:15px}
 
 .addnote{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px 0 0;font-size:12px;color:var(--ink3)}
