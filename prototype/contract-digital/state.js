@@ -550,9 +550,14 @@
 
   /* ── 永続化（プロトタイプ用の1本の置き場） ───────────────
      本番はここが1つのサーバAPI（GET /services, PATCH /services/:id …）
-     になる。プロトタイプでは、その代わりに localStorage の1キーへ
+     になる。プロトタイプでは、その代わりに sessionStorage の1キーへ
      items / cards をまるごと持つ。上の const items / cards は「初期
      データ（工場出荷）」で、保存済みの状態が無いときだけ使う。
+
+     localStorage ではなく sessionStorage にしているのは、タブを閉じた
+     ら工場出荷に戻したいから。デモとして触っている間（同一タブの
+     リロード・画面遷移）は状態が残り、新しいタブ／セッションで開けば
+     まっさらから始まる。検証のたびに resetAll() を打たずに済む。
 
      設計の要点：
        ・置き場は1つ（STORE_KEY）。追加分・変更分を別管理しない。
@@ -611,7 +616,7 @@
   /* 保存：いまの items / cards と、次に振る No. をまるごと書き出す。 */
   function save() {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ items: items, cards: cards, nextNo: nextNo }));
+      sessionStorage.setItem(STORE_KEY, JSON.stringify({ items: items, cards: cards, nextNo: nextNo }));
     } catch (e) { /* 無視 */ }
   }
 
@@ -620,9 +625,13 @@
      No. のカウンタも引き継ぐ（無ければ、いま並んでいる最大＋1）。
      保存が無ければ初期データのまま一度保存して、以後の基準にする。  */
   (function loadStore() {
+    /* 旧版は localStorage に置いていた。セッションをまたいで残り続けて
+       検証の妨げになるので、見つけたら消す。 */
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 無視 */ }
+
     let saved = null;
     try {
-      const raw = localStorage.getItem(STORE_KEY);
+      const raw = sessionStorage.getItem(STORE_KEY);
       const obj = raw ? JSON.parse(raw) : null;
       if (obj && Array.isArray(obj.items) && Array.isArray(obj.cards)) saved = obj;
     } catch (e) { saved = null; }
@@ -718,6 +727,7 @@
         source: 'statement'
       };
       if (rec.domain) base.domain = rec.domain;
+      if (rec.plan_id) base.plan_id = rec.plan_id;  /* 判定したプランの記録（表示には使わない） */
       items.push(base);
       added.push(name);
     });
@@ -786,7 +796,8 @@
   /* デモをまっさらに戻す1行。コンソールから SeiZen…resetAll()。
      保存を消してから、初期データで書き戻す（次のロードは工場出荷）。 */
   function resetAll() {
-    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 無視 */ }
+    try { sessionStorage.removeItem(STORE_KEY); } catch (e) { /* 無視 */ }
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 無視 */ } /* 旧キーの掃除 */
   }
 
   /* ── 引き出し ─────────────────────────────────────── */

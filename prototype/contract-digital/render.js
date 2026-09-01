@@ -92,7 +92,11 @@
     info:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg>',
     gate:  '<svg viewBox="0 0 24 24"><path d="M4 21V4M4 4h12l-2.5 4L16 12H4"/></svg>',
     dash:  '<svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg>',
-    trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 4h4M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>'
+    trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 4h4M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>',
+    /* いまのうち＝双葉の芽（今まく種）／そのとき＝葉を茂らせた木（その時に実る）。
+       時計・しおりを廃し、成長の前後で「時期」を言うモチーフにそろえた。 */
+    sprout:'<svg viewBox="0 0 24 24"><path d="M12 21v-8"/><path d="M12 13c-.4-3-2.6-4.8-5.6-4.8 .1 3 2.3 4.9 5.6 4.8Z"/><path d="M12 11c.4-3.3 2.8-5.2 6-5.2 -.1 3.3-2.6 5.3-6 5.2Z"/></svg>',
+    tree:  '<svg viewBox="0 0 24 24"><path d="M12 21v-6"/><circle cx="12" cy="9" r="6"/><path d="M12 15l-2.6-2.4M12 13l2.8-2.6"/></svg>',
   };
 
   /* どの節が、どの path を受け持つか。節ごとの編集で使う。 */
@@ -208,15 +212,49 @@
         '<div><span class="tl">' + esc(ui.badges.ready) + '</span><span class="tv tv-gr">' + t.ready + '件</span></div>' +
         '<div><span class="tl">' + esc(ui.badges.done) + '</span><span class="tv tv-gy">' + t.done + '件</span></div>' +
       '</div>';
+    /* 見出しは2段。上段＝「アイコン＋時間の軸（タブ語）」を大きく、
+       下段＝その束が何かの説明（title）を小さく。振り分け前は phone に
+       入らないので、従来どおり台紙から立ち上がる耳を持たせる。       */
+    const icon = g === 'pre' ? IC.sprout : g === 'post' ? IC.tree : IC.quest;
+    const head = g === 'undecided'
+      ? '<span class="ib-tab">' + esc(ui.tab) + '</span>' +
+        '<div class="ib-h"><span class="ib-ic ic-' + g + '">' + icon + '</span>' +
+          '<h4>' + esc(ui.title) + '</h4><span class="ib-n n-' + g + '">' + full.length + '件</span></div>'
+      : '<div class="ib-h ib-h2">' +
+          '<span class="ib-ic ic-' + g + '">' + icon + '</span>' +
+          '<span class="ib-ttl"><b>' + esc(ui.tab) + '</b>' +
+            '<small>' + esc(ui.title) + '</small></span>' +
+          '<span class="ib-n n-' + g + '">' + full.length + '件</span>' +
+        '</div>';
     return '<div class="iblock ib-' + g + '">' +
-      /* 束の耳。台紙から立ち上がって、この束が何かを名指す。 */
-      '<span class="ib-tab">' + esc(ui.tab) + '</span>' +
-      '<div class="ib-h"><span class="ib-ic ic-' + g + '">' + (g === 'pre' ? IC.bag : g === 'post' ? IC.book : IC.quest) + '</span>' +
-        '<h4>' + esc(ui.title) + '</h4><span class="ib-n n-' + g + '">' + full.length + '件</span></div>' +
+      head +
       '<p class="ib-lead">' + ui.lead + '</p>' +
       tally +
       list.map(idxRowHTML).join('') +
       moreBtn +
+    '</div>';
+  }
+
+  /* pre／post の束を iPhone の外観で包む。端末そのものを再現するのが
+     目的ではなく、「これは持ち歩く画面＝いつでも開いて確かめられる」
+     という位置づけを一目で言うための額装。中身（束＝タブ・台紙・行・
+     すべてを見る）は groupBlock のまま素通しする。undecided と支払い
+     カードはこの軸に乗らないので包まない。
+     ステータスバーの右側（電波・Wi-Fi・電池）だけ添える。時刻の数字は
+     実機で二重に見えるので描かない。                                */
+  const PHONE_STATUS =
+    '<span class="ph-status">' +
+      '<svg viewBox="0 0 17 12"><rect x="0" y="7.5" width="3" height="4.5" rx="1"/><rect x="4.5" y="5" width="3" height="7" rx="1"/><rect x="9" y="2.5" width="3" height="9.5" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></svg>' +
+      '<svg viewBox="0 0 16 12"><path d="M8 11.5 1 4.6a10 10 0 0 1 14 0L8 11.5Z"/></svg>' +
+      '<svg class="ph-batt" viewBox="0 0 26 13"><rect x=".7" y=".7" width="22" height="11.6" rx="3"/><rect class="ph-batt-fill" x="2.7" y="2.7" width="16" height="7.6" rx="1.6"/><path class="ph-batt-cap" d="M24 4.3v4.4a2 2 0 0 0 0-4.4Z"/></svg>' +
+    '</span>';
+
+  function phoneWrap(g, inner) {
+    return '<div class="phone phone-' + g + '">' +
+      '<div class="ph-body"><div class="ph-screen">' +
+        '<span class="ph-island"></span>' + PHONE_STATUS +
+        '<div class="ph-scroll">' + inner + '</div>' +
+      '</div></div>' +
     '</div>';
   }
 
@@ -561,8 +599,8 @@
      it.group が pre/post へ移り、以降は普通の詳細画面に戻る。         */
   let sortHintOpen = false;
   const SORT_CARDS = [
-    { g: 'pre',  icon: 'cal',  title: 'いまのうち', sub: '本人しかできない手続きがある' },
-    { g: 'post', icon: 'book', title: 'そのとき',   sub: '家族があとから手続きできる' }
+    { g: 'pre',  icon: 'sprout', title: 'いまのうち', sub: '本人しかできない手続きがある' },
+    { g: 'post', icon: 'tree',   title: 'そのとき',   sub: '家族があとから手続きできる' }
   ];
   function sortBlockHTML() {
     const hint = sortHintOpen
@@ -728,7 +766,10 @@
        出す。まず振り分けを済ませてから各時期の準備、という順序。
        0件になったら束ごと消える。 */
     const undecided = S.undecidedItems().length ? groupBlock('undecided') : '';
-    idxgrid.innerHTML = undecided + groupBlock('pre') + groupBlock('post') + payBlock();
+    idxgrid.innerHTML = undecided +
+      phoneWrap('pre', groupBlock('pre')) +
+      phoneWrap('post', groupBlock('post')) +
+      payBlock();
     if (openId) renderSheet();
   }
 
@@ -1287,6 +1328,56 @@
     setTimeout(() => { el.remove(); }, 8500);
   }
 
+  /* ── 支払い明細から探す：一括追加の結果（モーダル）───────
+     解析からの一括追加は件数が読めず、「別の支払い手段で登録済みの
+     ため見送り」など予想外の結果も混ざる。軽いバナーでは流されるので、
+     一度受け止めてもらうモーダルで出す。閉じたら追加行を光らせる。   */
+  function consumeAddResultModal() {
+    let res = null;
+    try {
+      const raw = sessionStorage.getItem('seizen.contract.addResult.modal');
+      if (raw) { res = JSON.parse(raw); sessionStorage.removeItem('seizen.contract.addResult.modal'); }
+    } catch (e) { return; }
+    if (!res) return;
+    const added = res.added || [], updated = res.updated || [], skipped = res.skipped || [];
+    if (!added.length && !updated.length && !skipped.length) return;
+
+    const ov = document.createElement('div');
+    ov.className = 'addmodal-ov';
+    const blocks = [];
+    if (added.length)
+      blocks.push('<div class="am-block am-added"><p class="am-h">' + IC.check +
+        '<span>新しく追加　<b>' + added.length + '</b>件</span></p>' +
+        '<p class="am-names">' + added.map(esc).join('・') + '</p></div>');
+    if (updated.length)
+      blocks.push('<div class="am-block am-updated"><p class="am-h">' + IC.check +
+        '<span>支払い手段を更新　<b>' + updated.length + '</b>件</span></p>' +
+        '<p class="am-names">' + updated.map(esc).join('・') + '</p></div>');
+    if (skipped.length)
+      blocks.push('<div class="am-block am-skipped"><p class="am-h">' + IC.info +
+        '<span>別の支払い手段で登録済みのため見送り　<b>' + skipped.length + '</b>件</span></p>' +
+        '<p class="am-names">' + skipped.map(esc).join('・') + '</p></div>');
+
+    ov.innerHTML =
+      '<div class="addmodal" role="dialog" aria-modal="true" aria-labelledby="am-title">' +
+        '<h2 id="am-title">明細から継続中の支払いを追加しました</h2>' +
+        blocks.join('') +
+        '<button type="button" class="am-ok">閉じる</button>' +
+      '</div>';
+    document.body.appendChild(ov);
+
+    function close() {
+      ov.remove();
+      if (added.length) requestAnimationFrame(() => flashAddedRows(added));
+    }
+    ov.querySelector('.am-ok').addEventListener('click', close);
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+    document.addEventListener('keydown', function esc2(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc2); }
+    });
+    ov.querySelector('.am-ok').focus();
+  }
+
   function flashAddedRows(names) {
     const set = new Set(names.map(n => n.trim()));
     idxgrid.querySelectorAll('.irow .nm b').forEach(b => {
@@ -1302,4 +1393,5 @@
   render();
   if (openId) showDetail();
   consumeAddResult();
+  consumeAddResultModal();
 })(window.SeiZenContract);

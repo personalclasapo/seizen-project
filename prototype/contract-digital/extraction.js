@@ -501,8 +501,10 @@
 
   function timingNote(c, st) {
     if (c.service_id) {
+      /* §10-1：遺族が生前準備なしに完了できるか（survivor_can_complete）
+         で決まる。解約導線の有無ではない（§10-2）。 */
       const svc = Master.service(c.service_id);
-      return TIMING_LABEL[svc && svc.post_mortem_procedure ? 'post' : 'pre'];
+      return TIMING_LABEL[svc && svc.survivor_can_complete === true ? 'post' : 'pre'];
     }
     return st.timing && st.timing !== 'unknown' ? TIMING_LABEL[st.timing] : '未確認';
   }
@@ -607,7 +609,6 @@
     if (summary) summary.hidden = empty;
 
     updateSummary();
-    renderPaymentMethodHits();
 
     const cov = lastResult.coverage;
     const covNote = $('exCoverageNote');
@@ -653,17 +654,9 @@
     renderResult();
   });
 
-  /* §3-4：payment_method を検出したときの案内（候補リストとは別）。 */
-  function renderPaymentMethodHits() {
-    const box = $('exPmHits');
-    if (!box) return;
-    const hits = lastResult.payment_method_hits || [];
-    if (!hits.length) { box.hidden = true; box.innerHTML = ''; return; }
-    box.hidden = false;
-    box.innerHTML = hits.map(h =>
-      '<p class="cf-count-note">この明細から、' + esc(h.merchant_name) +
-      'への支払いが見つかりました。そのカードの明細もアップロードすると、配下の契約を確認できます。</p>').join('');
-  }
+  /* §8-1：他社カード・キャリア決済への引き落としは candidate から除く
+     （pipeline が payment_method 判定で弾く）。§12-2「提示しなかった
+     支払いの内訳・判定理由は表示しない」に従い、検出した旨も出さない。 */
 
   /* ── Step3 の操作 ─────────────────────────────────── */
   candBox.addEventListener('click', e => {
@@ -784,37 +777,39 @@
     if (!selections.length) { global.SeiZen.toast('登録するサービスを選んでください'); return; }
 
     const out = Pipeline.commit(selections, { paymentMethodId: acctId || null, holderName: holderName });
-    const n = out.added.length + (out.updated ? out.updated.length : 0);
-    global.SeiZen.toast(n + '件を契約・デジタルに登録しました');
     markSourceDone();
-    showDone(out);
+
+    /* 完了画面は挟まない。解析からの一括追加は件数が読めず、
+       「別の支払い手段で登録済みのため見送り」など予想外の結果も
+       混ざるので、結果は一覧画面（index.html）でモーダルとして
+       受け止めさせる。ここでは結果を sessionStorage に置いて遷移。 */
+    let handoff = false;
+    try {
+      sessionStorage.setItem('seizen.contract.addResult.modal', JSON.stringify({
+        added:   out.added || [],
+        updated: out.updated || [],
+        skipped: out.skipped || []
+      }));
+      handoff = true;
+    } catch (e) { /* 容量超過・プライベートモード等 */ }
+
+    if (handoff) {
+      commitBtn.disabled = true;
+      location.href = 'index.html';
+    } else {
+      /* 結果を渡せなかったときは、その場で件数を伝えて一覧へのリンクを出す */
+      const n = (out.added || []).length + (out.updated || []).length;
+      global.SeiZen.toast(n + '件を契約・デジタルに登録しました');
+      commitBtn.disabled = true;
+      const note = document.querySelector('.exlist-note');
+      if (note) note.innerHTML = '登録が完了しました。<a href="index.html">契約・デジタルの一覧を見る</a>';
+    }
   });
 
   /* 登録後：その支払い手段を「確認済み」にする（§13 末尾）。
      プロトタイプではセッション内フラグ。本番は支払い手段マスタへ。 */
   const doneSources = new Set();
   function markSourceDone() { if (acctId) doneSources.add(acctId); }
-
-  function showDone(out) {
-    const lines = [];
-    if (out.added.length)  lines.push('新しく登録：' + out.added.join('、'));
-    if (out.updated && out.updated.length) lines.push('支払い手段を更新：' + out.updated.join('、'));
-    if (out.skipped && out.skipped.length) lines.push('すでに登録済み：' + out.skipped.join('、'));
-    candBox.innerHTML =
-      '<div class="excand is-ready"><div class="excand-row">' +
-        '<span class="excand-mark">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 12 5 5 9-9"/></svg></span>' +
-        '<span class="excand-name"><b>登録しました</b>' +
-          '<span class="excand-src">' + esc(lines.join(' / ') || '変更はありませんでした') + '</span></span>' +
-      '</div></div>' +
-      '<p class="cf-count-note">この支払い手段について、継続している支払いの確認は完了です。' +
-        '<a href="index.html">契約・デジタルの一覧を見る</a></p>';
-    const commit = $('exCommit');
-    if (commit) commit.hidden = true;
-    const s = $('exSummary'); if (s) s.hidden = true;
-    const pm = $('exPmHits'); if (pm) pm.hidden = true;
-    const ln = document.querySelector('.exlist-note'); if (ln) ln.hidden = true;
-  }
 
   /* ── 初期化 ─────────────────────────────────────── */
   renderAccounts();

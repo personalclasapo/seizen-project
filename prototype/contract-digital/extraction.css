@@ -111,7 +111,7 @@
 /* アップロード枠。口座未選択・ファイル未選択のあいだは is-disabled で沈める。
    枠の中は、上に「対象」行、その下にドロップ本体（中央寄せ）。 */
 .exdrop{border:1.5px dashed var(--line2);border-radius:14px;background:var(--paper);
-  padding:16px 20px 30px;margin-bottom:18px}
+  padding:16px 20px 18px;margin-bottom:18px}
 .exdrop.is-disabled{opacity:.5;pointer-events:none}
 .exdrop.is-drag{border-color:var(--gr);background:var(--gr-bg)}
 .exdrop.has-file{border-style:solid;border-color:var(--gr);background:var(--gr-bg)}
@@ -126,6 +126,12 @@
   font-size:12.5px;font-weight:700;color:#fff;padding:10px 22px;cursor:pointer}
 .exdrop-btn:hover{background:var(--gr-d)}
 .exdrop-note{margin:4px 0 0;font-size:11px;color:var(--ink3)}
+/* ドロップ枠の中の下部に置くプライバシー注記。ここで処理が完結する
+   ことを、ファイルを置く場所そのものに書く。 */
+.exdrop-privacy{display:flex;align-items:center;justify-content:center;gap:6px;
+  margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);
+  font-size:11.5px;color:var(--ink2)}
+.exdrop-privacy svg{width:13px;flex:none;color:var(--gr2)}
 .exdrop.has-file .exdrop-ic{color:var(--gr)}
 
 .expoints{padding:14px 16px;border:1px solid var(--line);border-radius:11px;background:var(--card)}

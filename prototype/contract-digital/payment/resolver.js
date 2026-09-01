@@ -21,9 +21,15 @@
      出力  [{ merchant_raw,           入力と対応づけるためのキー
               merchant_id,            解決できなければ null
               merchant : { name, type, domain },          merchant_id!=null のとき
+              pattern  : { pattern, match, priority, merchant_id } | null
+                         マスタの MERCHANT_PATTERN へ書き戻す照合キー。
+                         これがないと次回も identify で引けず resolveUnknown
+                         を再度通る（§15-2）。
               services : [{ service_id, name, category,
                             pricing_type, domain,
-                            post_mortem_procedure,
+                            survivor_can_complete,   §10-1 の判定根拠。
+                                                     省略時は false 扱い
+                            post_mortem_procedure,   手続きの説明文（任意）
                             plans: [{ plan_id, name, amount }] }],
               writeback : bool }]      true ならマスタへ恒久保存してよい
 
@@ -84,9 +90,12 @@
     {
       match: 'DAZN',
       merchant: { merchant_id: 'mch-dazn', name: 'DAZN', type: 'normal', domain: 'contract_digital' },
+      /* マスタへ書き戻す照合パターン（§15-2）。次回以降 identify で引ける。 */
+      pattern: { pattern: 'DAZN', match: 'prefix', priority: 90 },
       services: [{
         service_id: 'svc-dazn', name: 'DAZN', category: '動画配信',
         pricing_type: 'monthly', domain: 'contract_digital',
+        survivor_can_complete: false,   /* アカウントのログインが前提（§10-2）*/
         post_mortem_procedure: null,
         plans: [{ plan_id: 'pln-dazn-standard', name: 'スタンダード', amount: 4200 }]
       }],
@@ -95,9 +104,11 @@
     {
       match: 'YOUTUBEPREMIUM',
       merchant: { merchant_id: 'mch-youtube', name: 'YouTube', type: 'normal', domain: 'contract_digital' },
+      pattern: { pattern: 'YOUTUBEPREMIUM', match: 'prefix', priority: 90 },
       services: [{
         service_id: 'svc-youtube-premium', name: 'YouTube Premium', category: '動画・音楽',
         pricing_type: 'monthly', domain: 'contract_digital',
+        survivor_can_complete: false,   /* Google アカウントのログインが前提（§10-2）*/
         post_mortem_procedure: null,
         plans: [{ plan_id: 'pln-youtube-premium-individual', name: '個人', amount: 1280 }]
       }],
@@ -111,12 +122,15 @@
       const norm = s.merchant_norm || '';
       const hit = STUB_KNOWLEDGE.find(k => norm.indexOf(k.match) !== -1);
       if (!hit) {
-        return { merchant_raw: s.merchant_raw, merchant_id: null, merchant: null, services: [], writeback: false };
+        return { merchant_raw: s.merchant_raw, merchant_id: null, merchant: null, pattern: null, services: [], writeback: false };
       }
       return {
         merchant_raw: s.merchant_raw,
         merchant_id: hit.merchant.merchant_id,
         merchant: { name: hit.merchant.name, type: hit.merchant.type, domain: hit.merchant.domain },
+        pattern: hit.pattern
+          ? Object.assign({ merchant_id: hit.merchant.merchant_id }, hit.pattern)
+          : null,
         services: hit.services.slice(),
         writeback: !!hit.writeback
       };

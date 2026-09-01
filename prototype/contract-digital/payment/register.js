@@ -73,6 +73,11 @@
       category: category,
       domain: c.domain || 'contract_digital',
       service_id: c.service_id || null,
+      /* 判定で確定したプラン（旧価格・従量・定期宅配・C は null）。
+         表示には使わない（メイン表示はサービス名のみ・過剰表示を避ける）。
+         金額はマスタのプラン金額で上書きせず明細の実額を使う（§9）ので、
+         plan_id は「どのプランと判定したか」の記録として持つに留める。 */
+      plan_id: c.plan_id || null,
       contract: {
         holder: ctx.holderName || '',
         paymentCard: ctx.paymentMethodId || null,

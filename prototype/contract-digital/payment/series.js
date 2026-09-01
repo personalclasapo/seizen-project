@@ -13,17 +13,39 @@
      2. 各グループを resolver.identify で merchant_id へ（null あり）。
         同一 merchant_id に別 merchant_norm が寄ることがあるので、
         merchant_id（無ければ merchant_norm）で再グルーピング
-     3. 各請求主体グループ内を利用日順に並べ、金額の飛びで系列に分割
+     3. 各請求主体グループ内を、配下サービスの金額帯で系列に分割
+        （splitByAmount。マスタを参照）
      4. 各系列の間隔の中央値で cycle を判定（§6-3。平均は使わない）
 
-   ── 系列分割の金額しきい値（実装判断・§5 報告事項）──────
-     同一請求主体内の取引を「金額バンド」で分ける。バンド境は
-     AMOUNT_BAND_EDGES。異なるバンドの取引は別系列にする。
-     §4-3 の APPLE.COM/BILL（¥150 / ¥650 / ¥1,200 → 3系列）で
-     追い込んだ境界。¥150→bandA / ¥650→bandB / ¥1,200→bandC。
-     一方、従量請求の窓（TEPCO 6,294〜10,836 / ドコモ 5,764〜6,425 /
-     東京ガス 3,552〜5,124 / OISIX 4,430〜7,840）はいずれも単一バンドに
-     収まるよう境界を選び、変動系列を割らない。
+   ── 系列分割（§3-1・§4・§7-1）──────────────────────
+     系列を作る単位は請求主体ではなくサービス／プランの金額帯。
+     §7-1「①形 → ②金額」の②が系列を作る段階から効く。§3-1 に反しない：
+     ここでマスタに問うのは「この請求主体の配下サービスはどんな金額を
+     取るか」という事実だけで、契約性や domain の判定はしない。
+
+     手順（請求主体ごと）：
+       A. マスタから配下サービスの「照合に使う金額」を集める。
+          - 定額（monthly / annual / bimonthly）… プランの amount
+          - 従量・定期宅配（metered / subscription_box）… 金額帯を
+            持たない（§7-1：金額照合しない）
+       B. 金額帯を持つ請求主体
+          - 取引を「一致する金額帯」ごとにまとめる → それぞれ系列
+          - どの金額帯にも当たらない取引は、まとめて 1グループにし、
+            それ自体が規則的なら 1系列（judge が「プラン未確定のまま
+            A」で扱う・§7-1。Netflix ¥1,490 旧価格）。規則的でなければ
+            1件ずつの系列にして judge で破棄（§4 の ¥650 / ¥1,200）
+       C. 金額帯を持たない請求主体（従量・定期宅配・マスタ未収録）
+          - 分割しない。全取引を 1系列。額が動いてもよい（§6-3）
+
+     APPLE.COM/BILL … iCloud+ 50GB(¥150) / 200GB(¥450) / Apple One(¥1,200)
+       ¥150×6 → iCloud+ 50GB の帯 → 系列
+       ¥450×6 → iCloud+ 200GB の帯 → 別系列
+       ¥1,200×1 → Apple One の帯だが単発 → judge で形が一致せず破棄
+       ¥650×1 → どの帯にも当たらず、規則性も無い → 1件系列 → 破棄
+     NETFLIX.COM ¥1,490×6 … 帯（890/1,590/1,980）に当たらないが規則的
+       → 1系列。judge が「プラン未確定のまま A」（§7-1）
+     TEPCO 6,294〜10,836 / OISIX 4,430〜7,840 … 金額帯を持たない
+       → 割らず1系列
 
    ── cycle 帯（§6-3・weekly は持たない）─────────────────
      monthly   : 25–36 日
@@ -50,9 +72,12 @@
   'use strict';
 
   const Resolver = global.SeiZenPaymentResolver;
+  const Master = global.SeiZenPaymentMaster;
 
-  /* 金額バンドの境（円）。同一バンド内は同系列、跨ぐと別系列。 */
-  const AMOUNT_BAND_EDGES = [400, 1000, 3000, 20000];
+  /* 取引額がマスタの金額帯（プラン amount）に一致するとみなす相対許容。
+     定額プランは実質固定額なので、値上げ端数程度のズレだけ許す
+     （judge.js の金額照合と同じ考え方）。 */
+  const PLAN_AMOUNT_REL_TOLERANCE = 0.05;
 
   const CYCLE_BANDS = [
     ['monthly', 25, 36],
@@ -62,12 +87,6 @@
   /* 短間隔の反復（定期宅配）の判定 */
   const FREQUENT_MAX_GAP = 20;
   const FREQUENT_MIN_COUNT = 4;
-
-  function amountBand(amount) {
-    let b = 0;
-    for (const e of AMOUNT_BAND_EDGES) { if (amount >= e) b++; else break; }
-    return b;
-  }
 
   function daysBetween(a, b) {
     return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
@@ -84,7 +103,7 @@
      契約の周期は「毎回ほぼその間隔で来る」ものなので、中央値が帯に
      入るだけでなく、ほぼ全ての間隔が帯に収まっていることを要求する。
        - 実データ：本物の契約は全 gap が帯内（30,31,30… / 61,61）
-       - 日常消費の金額バンド分割片は gap が飛ぶ（13,61,72 / 42,2,26,34）
+       - 日常消費（同一店の不規則な来店）は gap が飛ぶ（13,61,72 / 42,2,26,34）
      許容は「帯外の gap が1本まで、かつ帯外の gap も帯を大きく超えない」。
      weekly 帯は持たない（毎週定額の契約はほぼ存在しない）。         */
   function classifyCycle(gaps) {
@@ -107,16 +126,71 @@
       median(gaps) > 0 && median(gaps) < FREQUENT_MAX_GAP;
   }
 
-  /* 請求主体グループ内を金額バンドで系列へ分割。バンドが同じ取引を
-     まとめる。バンド跨ぎは別系列（APPLE ¥150 / ¥650 / ¥1,200）。   */
-  function splitByAmount(txs) {
-    const buckets = new Map(); /* band -> txs[] */
-    for (const tx of txs) {
-      const b = amountBand(tx.amount);
-      if (!buckets.has(b)) buckets.set(b, []);
-      buckets.get(b).push(tx);
+  /* 請求主体の配下サービスが「金額でプランを絞る」料金型のとき、その
+     プラン金額の一覧を返す（重複除去・昇順）。従量・定期宅配・マスタに
+     ない請求主体は空配列。実行時解決の書き戻し後にも増える（pipeline が
+     再度 build を呼ぶ）。                                            */
+  function planAmountsOf(merchantId) {
+    if (!merchantId || !Master) return [];
+    const seen = new Set();
+    for (const sid of Master.servicesOf(merchantId)) {
+      const svc = Master.service(sid);
+      if (!svc || !Master.isAmountMatched(svc.pricing_type)) continue;
+      for (const p of Master.plansOf(sid)) {
+        if (p.amount != null) seen.add(p.amount);
+      }
     }
-    return Array.from(buckets.values());
+    return Array.from(seen).sort((a, b) => a - b);
+  }
+
+  /* 取引額がプラン金額のどれかに一致するなら、その金額帯のキー
+     （プラン金額）を返す。しなければ null。                          */
+  function bandOf(amount, planAmounts) {
+    for (const pa of planAmounts) {
+      if (amount === pa) return pa;
+      if (pa > 0 && Math.abs(amount - pa) / pa <= PLAN_AMOUNT_REL_TOLERANCE) return pa;
+    }
+    return null;
+  }
+
+  /* 請求主体グループ内を系列へ分割する（§3-1・§4・§7-1）。
+     分割の単位は請求主体ではなく、配下サービス／プランの金額帯。
+
+       - 金額帯を持たない請求主体（従量・定期宅配・マスタ未収録）
+           分割しない。全取引を1系列（額が動いてよい・§6-3）。
+       - 金額帯を持つ請求主体
+           取引を一致する金額帯ごとに系列化。どの帯にも当たらない
+           取引はまとめて1グループにし、それ自体が規則的なら1系列
+           （judge が「プラン未確定のまま A」・§7-1）。規則的でなければ
+           1件ずつの系列（judge で shape / continuity 落ち・§4）。   */
+  function splitByAmount(txs, merchantId) {
+    if (txs.length <= 1) return [txs.slice()];
+
+    const planAmounts = planAmountsOf(merchantId);
+    if (planAmounts.length === 0) return [txs.slice()];
+
+    const byBand = new Map();   /* 金額帯キー -> txs[] */
+    const rest = [];            /* どの帯にも当たらない取引 */
+    for (const tx of txs) {
+      const b = bandOf(tx.amount, planAmounts);
+      if (b == null) { rest.push(tx); continue; }
+      if (!byBand.has(b)) byBand.set(b, []);
+      byBand.get(b).push(tx);
+    }
+
+    const out = Array.from(byBand.values());
+
+    if (rest.length === 1) {
+      out.push(rest);
+    } else if (rest.length > 1) {
+      /* 帯に当たらない取引群。まとめて規則的なら1系列（旧価格の
+         サブスク）。そうでなければ 1件ずつ（単発の寄せ集め）。 */
+      const g = gapsOf(rest.map(t => t.usage_date));
+      if (classifyCycle(g) !== 'single' || isFrequent(g)) out.push(rest);
+      else rest.forEach(tx => out.push([tx]));
+    }
+
+    return out.length ? out : [txs.slice()];
   }
 
   /* 隣接する利用日の間隔（日）の配列。 */
@@ -173,10 +247,10 @@
       /* 表示用 merchant_raw は最頻の生表記にしたいが、簡便に最初のものを使う */
     }
 
-    /* 3) 請求主体ごとに金額で系列分割 → series 生成 */
+    /* 3) 請求主体ごとに、配下サービスの金額帯で系列分割 → series 生成 */
     const series = [];
     for (const { merchant_id, merchant_raw, txs } of byEntity.values()) {
-      for (const group of splitByAmount(txs)) {
+      for (const group of splitByAmount(txs, merchant_id)) {
         series.push(buildSeries(merchant_raw, merchant_id, group));
       }
     }
@@ -189,6 +263,6 @@
 
   global.SeiZenPaymentSeries = {
     build,
-    _internal: { classifyCycle, isFrequent, splitByAmount, amountBand, gapsOf, median, AMOUNT_BAND_EDGES }
+    _internal: { classifyCycle, isFrequent, splitByAmount, gapsOf, median }
   };
 })(window);

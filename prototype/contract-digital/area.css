@@ -27,6 +27,74 @@
    束のモチーフは着せない（耳も台紙も持たせない）。               */
 .ib-pay{grid-column:1 / -1}
 .ib-pay:before{display:none}
+
+/* ── iPhone の額装 ────────────────────────────────────
+   pre／post の束を「持ち歩く画面」として額装する。端末の再現が目的
+   ではないので、外枠・Dynamic Island・ステータスバー右側の3つだけに
+   絞る。時刻の数字とサイドボタンは持たせない。中身の束（タブ・台紙・
+   行・すべてを見る）は groupBlock のまま。undecided と支払いカードは
+   この軸に乗らないので額装しない。                                */
+.phone{justify-self:center;width:100%;max-width:420px}
+.phone-pre,.phone-post{position:relative}
+
+/* 端末の外枠。立体感は3層で出す：
+   1) 下方向の強い落ち影で板を宙に浮かせる
+   2) フチ（チタンの枠）に上ハイライト＋下シャドウの内側インセットを重ねて
+      面取りを作る
+   3) いちばん外に細い縁を回して、枠の“角”を光らせる                */
+.ph-body{position:relative;background:linear-gradient(158deg,#43444a,#17181b 40%,#26272c);
+  border-radius:56px;padding:12px;
+  box-shadow:
+    0 2px 4px #00000047,
+    0 30px 46px -12px #4b422b4a,
+    0 54px 80px -24px #4b422b40,
+    inset 0 2px 2px #ffffff2e,
+    inset 0 -3px 5px #00000063,
+    inset 0 0 0 1px #00000080}
+/* いちばん外の光る縁。 */
+.ph-body:before{content:"";position:absolute;inset:0;border-radius:56px;
+  box-shadow:inset 0 0 0 1.5px #ffffff1f;pointer-events:none}
+/* 画面。枠との境に内側の落ち込み影を敷いて、ガラスが枠に嵌まって
+   見えるようにする。束の耳と台紙が外へ出るぶん、内側に余白を取る。  */
+.ph-screen{position:relative;background:var(--paper);border-radius:44px;overflow:hidden;
+  box-shadow:inset 0 0 0 1px #0000001a,inset 0 3px 10px -3px #00000038}
+/* Dynamic Island。モチーフなので小さめに。 */
+.ph-island{position:absolute;top:11px;left:50%;transform:translateX(-50%);
+  width:84px;height:25px;background:#000;border-radius:15px;z-index:3;
+  box-shadow:0 1px 3px #0000002e}
+/* ステータスバー右側：電波・Wi-Fi・電池。 */
+.ph-status{position:absolute;top:16px;right:24px;display:flex;align-items:center;gap:6px;z-index:3;color:var(--ink)}
+.ph-status svg{height:11px;width:auto;fill:currentColor}
+.ph-status .ph-batt{fill:none}
+.ph-status .ph-batt>rect:first-child{stroke:currentColor;stroke-opacity:.4;stroke-width:1.2;fill:none}
+.ph-status .ph-batt-fill{fill:currentColor}
+.ph-status .ph-batt-cap{fill:currentColor;fill-opacity:.4}
+/* 中身の置き場。上はステータスバー領域を空け、左右下は束の台紙が
+   はみ出すぶんの逃げ。束そのものの余白は .iblock が持っているので
+   ここでは足さない。                                              */
+.ph-scroll{padding:44px 22px 28px}
+/* 端末の中では束は「画面そのもの」なので、束を囲う板（枠・影・台紙・耳）
+   は全部落とす。分類の造形はタブ語を取り込んだ2段見出しが受け持つ。   */
+.ph-scroll .iblock{border:0;border-radius:0;box-shadow:none;padding:0}
+.ph-scroll .iblock:before,.ph-scroll .ib-tab{display:none}
+
+/* 見出し。アイコン｜「時間の軸（大）＋説明（小）」を1行に横並びにし、
+   その塊を束の中央へ据える。件数は右上へ絶対配置で逃がし、中央の軸を
+   ぶらさない。                                                     */
+.ib-h2{position:relative;justify-content:center;align-items:center;gap:11px;margin-bottom:13px}
+.ib-h2 .ib-ic{width:40px;height:40px;border-radius:11px}
+.ib-h2 .ib-ic svg{width:23px;height:23px}
+.ib-ttl{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ib-ttl b{font-size:18px;font-weight:800;letter-spacing:.02em;line-height:1.2}
+.ib-ttl small{font-size:11.5px;font-weight:600;color:var(--ink3);line-height:1.3}
+.ib-pre .ib-ttl b{color:#a4650f}.ib-post .ib-ttl b{color:#3d6b52}
+.ib-h2 .ib-n{position:absolute;top:0;right:0;margin:0}
+
+/* 狭幅では2台を縦に積む。 */
+@media (max-width:900px){
+  .idxgrid{grid-template-columns:1fr}
+  .phone{max-width:400px}
+}
 .paycards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 /* 索引ブロックは「仕分けされた書類の束」を借りる。借りるのは束の
    質感だけで、入れ物（箱・バインダー）は作らない。箱は中身が有限に
@@ -123,10 +191,10 @@
 /* 件数が上限を超えた束の一番下に出る「すべてを見る」。行の並びを
    崩さないよう .irow と同じ横幅・左右余白で、束の一番下に足す。
    押すとその束だけの全件画面（list.html?g=…）へ遷移する。       */
-.ib-more{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:2px;padding:10px 4px;border-top:1px solid #f2ede0;background:none;font-family:inherit;font-size:11.5px;font-weight:700;color:#8a8578;text-decoration:none;cursor:pointer}
+.ib-more{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:2px;padding:14px 4px;border-top:1px solid #f2ede0;background:none;font-family:inherit;font-size:13px;font-weight:700;color:#8a8578;text-decoration:none;cursor:pointer}
 .ib-more:hover{color:#54627a}
 .ib-more .chev{display:inline-flex;color:#b6b09f}
-.ib-more .chev svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2}
+.ib-more .chev svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2}
 
 /* ── その束だけの全件画面（list.html） ──────────────────
    ハブの束の見た目（台紙・耳・タブ・行）をそのまま踏襲する。
@@ -477,6 +545,38 @@
 .addbanner .ab-close{position:absolute;top:12px;right:12px;width:24px;height:24px;
   border:0;border-radius:6px;background:none;color:#8aa694;font-size:13px;cursor:pointer}
 .addbanner .ab-close:hover{background:#e2efe6;color:#4a6b58}
+
+/* 支払い明細から探す：一括追加の結果モーダル。件数と内訳を一度
+   受け止めてもらうためのダイアログ。「一覧を見る」で閉じる。      */
+.addmodal-ov{position:fixed;inset:0;z-index:60;display:flex;align-items:center;
+  justify-content:center;padding:24px;background:rgba(38,48,40,.42);
+  animation:amov .18s ease}
+@keyframes amov{from{opacity:0}to{opacity:1}}
+.addmodal{width:100%;max-width:440px;max-height:calc(100vh - 48px);overflow-y:auto;
+  padding:26px 26px 22px;border-radius:16px;background:var(--paper,#fff);
+  box-shadow:0 18px 50px rgba(30,45,34,.28);animation:amin .22s ease}
+@keyframes amin{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.addmodal h2{margin:0 0 16px;font-size:17px;font-weight:800;color:var(--ink,#2b3b2e)}
+.addmodal .am-block{margin:0 0 12px;padding:12px 14px;border-radius:10px}
+.addmodal .am-block:last-of-type{margin-bottom:18px}
+.addmodal .am-h{display:flex;align-items:center;gap:8px;margin:0;
+  font-size:13.5px;font-weight:700}
+.addmodal .am-h b{font-size:15px}
+.addmodal .am-h svg{width:16px;height:16px;flex:none;fill:none;stroke-width:2.4}
+.addmodal .am-names{margin:6px 0 0 24px;font-size:12.5px;line-height:1.65;color:#5c6b5f}
+.addmodal .am-added{background:#f0f8f2}
+.addmodal .am-added .am-h{color:#2f6a48}
+.addmodal .am-added .am-h svg{stroke:#2f6a48}
+.addmodal .am-updated{background:#eef4fa}
+.addmodal .am-updated .am-h{color:#3a5f86}
+.addmodal .am-updated .am-h svg{stroke:#3a5f86}
+.addmodal .am-skipped{background:#faf5ec}
+.addmodal .am-skipped .am-h{color:#8a6c3d}
+.addmodal .am-skipped .am-h svg{stroke:#b08e5c}
+.addmodal .am-ok{width:100%;padding:12px;border:1.5px solid var(--gr,#2f6a48);
+  border-radius:999px;background:#fff;color:var(--gr,#2f6a48);
+  font-size:14px;font-weight:700;cursor:pointer;transition:background .12s,color .12s}
+.addmodal .am-ok:hover{background:var(--gr,#2f6a48);color:#fff}
 
 /* 追加直後の行を数秒だけ光らせる。索引の行の下地に緑を差し、
    ゆっくり引く。 */

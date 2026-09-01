@@ -25,8 +25,8 @@
   const IC = {
     chevL: '<svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>',
     chevR: '<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
-    bag:   '<svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="14" rx="2"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>',
-    book:  '<svg viewBox="0 0 24 24"><path d="M6 4h11a1 1 0 0 1 1 1v15l-6-3-6 3V5a1 1 0 0 1 1-1Z"/></svg>',
+    sprout:'<svg viewBox="0 0 24 24"><path d="M12 21v-8"/><path d="M12 13c-.4-3-2.6-4.8-5.6-4.8 .1 3 2.3 4.9 5.6 4.8Z"/><path d="M12 11c.4-3.3 2.8-5.2 6-5.2 -.1 3.3-2.6 5.3-6 5.2Z"/></svg>',
+    tree:  '<svg viewBox="0 0 24 24"><path d="M12 21v-6"/><circle cx="12" cy="9" r="6"/><path d="M12 15l-2.6-2.4M12 13l2.8-2.6"/></svg>',
     quest: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.8c0 1.7-2.4 2-2.4 3.6M12 17h.01"/></svg>'
   };
 
@@ -71,7 +71,7 @@
   function render() {
     const ui = S.GROUP_UI[g];
     const rows = idxOrder(S.byGroup(g));
-    const icon = g === 'pre' ? IC.bag : g === 'post' ? IC.book : IC.quest;
+    const icon = g === 'pre' ? IC.sprout : g === 'post' ? IC.tree : IC.quest;
 
     document.title = 'SeiZen | ' + ui.title + '（すべて）';
     SeiZen.setNavCount('contract-digital', S.items.length + '件');

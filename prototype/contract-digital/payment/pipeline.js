@@ -75,6 +75,7 @@
       resolution.forEach(r => {
         if (r.merchant_id && r.writeback) {
           Master.addMerchant(r.merchant_id, r.merchant);
+          Master.addMerchantPattern(r.pattern);   /* これで次回 identify が引ける（§15-2） */
           (r.services || []).forEach(svc => {
             Master.addService(svc.service_id, Object.assign({}, svc, { merchant_id: r.merchant_id }));
           });
