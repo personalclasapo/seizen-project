@@ -178,12 +178,13 @@
         <span class="rt" id="exCoverageNote"></span>
       </div>
 
-      <p class="exsummary" id="exSummary">
+      <div class="exsummary" id="exSummary">
         <span class="exsummary-total">全 <b><span id="sumTotal">0</span></b> 件</span>
         <span class="exsummary-sep"></span>
-        <span class="exsummary-item ok"><span class="exsummary-dot"></span>登録する <b id="sumReady">0</b></span>
+        <span class="exsummary-item ok"><span class="exsummary-dot"></span>追加する <b id="sumReady">0</b></span>
         <span class="exsummary-item warn"><span class="exsummary-dot"></span>未選択 <b id="sumCheck">0</b></span>
-      </p>
+        <button type="button" class="exsummary-toggle" id="exToggleAll" data-mode="on">すべて選ぶ</button>
+      </div>
 
       <!-- §3-4：カード等への支払いを検出したときの案内（候補リストとは別） -->
       <div id="exPmHits" hidden></div>
@@ -194,8 +195,8 @@
       <p class="cf-count-note">継続していない支払いは表示していません。</p>
 
       <div class="cfactions">
+        <button type="button" class="cf-reselect" id="exRestart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg>口座の選択に戻る</button>
         <button type="button" class="cf-submit" id="exCommit" disabled>契約・デジタルに追加する</button>
-        <button type="button" class="cf-reselect" id="exRestart">口座の選択に戻る</button>
       </div>
 
       <p class="exfoot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>明細データはブラウザ内だけで解析しています。ファイルはどこにも送信・保存されません。</p>

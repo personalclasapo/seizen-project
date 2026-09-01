@@ -75,12 +75,13 @@
 
   const TIMING_LABEL = { pre: 'いまのうち', post: 'そのとき', unknown: '分からない' };
 
-  /* status → 行の見た目。単一リスト・グループ分けはしない（§12-2）。 */
-  const STATUS_UI = {
-    A:          { badge: '継続利用が見つかりました', tone: 'ok' },
-    B:          { badge: 'どのサービスか確認',       tone: 'warn' },
-    C:          { badge: '内容の確認が必要',         tone: 'warn' },
-    registered: { badge: '登録済み',                 tone: 'muted' }
+  /* status → 行の小さなチップ。単一リスト・グループ分けはしない（§12-2）。
+     A は「見つかった」ことが分かれば十分なのでチップは出さず、
+     確認が要る B / C と、既登録だけにチップを出す。                 */
+  const STATUS_CHIP = {
+    B:          { text: '確認',     tone: 'warn' },
+    C:          { text: '要入力',   tone: 'warn' },
+    registered: { text: '登録済み', tone: 'muted' }
   };
 
   /* ── DOM ────────────────────────────────────────── */
@@ -364,7 +365,7 @@
     }
     lastResult = res;
     rowState = res.candidates.map(c => ({
-      picked: c.status === 'A',        /* A は既定でチェック（registered は不可） */
+      picked: false,                   /* 既定はチェックなし。ユーザーが選ぶ */
       choice: null,
       editedName: c.status === 'C' ? (c.merchant_name || c.series.merchant_raw) : '',
       timing: 'unknown'
@@ -457,11 +458,6 @@
   function svgCheck() {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-9"/></svg>';
   }
-  function stateIcon(tone) {
-    return tone === 'ok'
-      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 12 5 5 9-9"/></svg>'
-      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.01"/></svg>';
-  }
 
   function timingNote(c, st) {
     if (c.service_id) {
@@ -505,29 +501,35 @@
   function candCardHTML(c, i) {
     const st = rowState[i];
     const isReg = c.status === 'registered';
-    const ui = STATUS_UI[isReg ? 'registered' : c.status] || STATUS_UI.C;
+    const needsInput = c.status === 'B' || c.status === 'C';
     const title = rowTitle(c, st);
     const actionable = isActionable(c, st);
     const showPick = showsPick(c);
     const showUnknown = showsUnknown(c);
 
     const cls = ['excand'];
-    if (ui.tone === 'ok') cls.push('is-ready'); else if (!isReg) cls.push('is-check');
+    if (isReg) cls.push('is-reg');
+    else if (needsInput) cls.push('is-check');
+    else cls.push('is-ready');
     if (st.picked && !isReg) cls.push('is-picked');
     if (showPick || showUnknown) cls.push('is-open');
 
     const check = isReg
       ? '<span class="excand-check is-locked">' + svgCheck() + '</span>'
       : '<button type="button" class="excand-check" data-check="' + i + '"' +
-          (actionable ? '' : ' disabled') + '>' + svgCheck() + '</button>';
+          (actionable ? '' : ' disabled') +
+          ' aria-label="' + esc(title) + ' を追加対象にする">' + svgCheck() + '</button>';
 
-    const badge =
-      '<span class="excand-state ' + ui.tone + '"><span class="lbl">' +
-        (isReg ? '' : stateIcon(ui.tone)) + esc(ui.badge) + '</span></span>';
+    const chip = STATUS_CHIP[isReg ? 'registered' : c.status];
+    const chipHTML = chip
+      ? '<span class="excand-chip ' + chip.tone + '">' + esc(chip.text) + '</span>' : '';
 
+    /* §13-2：同名サービスが別の支払い手段で既登録の可能性がある。
+       ここでは「SeiZen 上にすでに登録があるかもしれない」ことだけ伝え、
+       別物なら確認のうえこのまま追加してよい、と案内する。 */
     const pmNote = c.payment_method_change
-      ? '<p class="excand-note">この明細の支払い手段に登録し直します（' +
-          esc(c.series.merchant_raw) + ' はすでに別の支払い手段で登録済み）</p>'
+      ? '<p class="excand-note">「' + esc(title) + '」は SeiZen にすでに登録があるかもしれません。' +
+          '同じものなら支払い手段の情報だけ更新します。別のものなら、このまま追加してください。</p>'
       : '';
 
     const figs =
@@ -540,9 +542,9 @@
     const row =
       '<div class="excand-row">' + check +
         candMark(title, c.merchant_id) +
-        '<span class="excand-name"><b>' + esc(title) + '</b>' +
+        '<span class="excand-name"><b>' + esc(title) + '</b>' + chipHTML +
           '<span class="excand-src">' + esc(c.series.merchant_raw) + '</span></span>' +
-        figs + badge +
+        figs +
       '</div>';
 
     let body = '';
@@ -570,6 +572,14 @@
     }
   }
 
+  /* 一括チェックの対象になり得る行（registered を除く actionable 行）。 */
+  function selectableIndexes() {
+    return lastResult.candidates
+      .map((c, i) => ({ c, i, st: rowState[i] }))
+      .filter(x => x.c.status !== 'registered' && isActionable(x.c, x.st))
+      .map(x => x.i);
+  }
+
   function updateSummary() {
     const cands = lastResult.candidates;
     const shown = cands.filter(c => c.status !== 'registered').length;
@@ -577,9 +587,25 @@
     $('sumTotal').textContent = cands.length;
     $('sumReady').textContent = picked;
     $('sumCheck').textContent = Math.max(0, shown - picked);
+
+    const sel = selectableIndexes();
+    const allOn = sel.length > 0 && sel.every(i => rowState[i].picked);
+    const toggle = $('exToggleAll');
+    if (toggle) {
+      toggle.textContent = allOn ? 'すべて外す' : 'すべて選ぶ';
+      toggle.disabled = sel.length === 0;
+      toggle.dataset.mode = allOn ? 'off' : 'on';
+    }
     const btn = $('exCommit');
     if (btn) btn.disabled = picked === 0;
   }
+
+  const toggleAll = $('exToggleAll');
+  if (toggleAll) toggleAll.addEventListener('click', () => {
+    const on = toggleAll.dataset.mode !== 'off';
+    selectableIndexes().forEach(i => { rowState[i].picked = on; });
+    renderResult();
+  });
 
   /* §3-4：payment_method を検出したときの案内（候補リストとは別）。 */
   function renderPaymentMethodHits() {
@@ -595,6 +621,20 @@
 
   /* ── Step3 の操作 ─────────────────────────────────── */
   candBox.addEventListener('click', e => {
+    /* 行のどこを押してもチェックが切り替わる（チェック可能な行のみ）。
+       サービス選択ピル・時期ラジオ・名前入力の上では切り替えない。 */
+    const row = e.target.closest('.excand-row');
+    if (row && !e.target.closest('[data-choice],[data-timing],.exname-input,[data-check]')) {
+      const card = row.closest('[data-card]');
+      const i = card ? +card.dataset.card : -1;
+      if (i >= 0 && isActionable(lastResult.candidates[i], rowState[i]) &&
+          lastResult.candidates[i].status !== 'registered') {
+        rowState[i].picked = !rowState[i].picked;
+        rerenderCard(i);
+        updateSummary();
+      }
+      return;
+    }
     const chk = e.target.closest('[data-check]');
     if (chk && !chk.disabled) {
       const i = +chk.dataset.check;
