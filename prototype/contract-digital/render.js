@@ -245,7 +245,7 @@
   const PHONE_STATUS =
     '<span class="ph-status">' +
       '<svg class="ph-sig" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>' +
-      '<svg class="ph-wifi" viewBox="0 0 20 15"><path d="M10 14.2 1.3 5.4a12.3 12.3 0 0 1 17.4 0L10 14.2Z"/></svg>' +
+      '<svg class="ph-wifi" viewBox="0 0 20 15"><path d="M1 5.2a13 13 0 0 1 18 0M4 8.4a8.6 8.6 0 0 1 12 0"/><circle cx="10" cy="12.4" r="1.5"/></svg>' +
       '<svg class="ph-batt" viewBox="0 0 27 13"><rect x=".6" y=".6" width="22" height="11.8" rx="3.2"/><rect class="ph-batt-fill" x="2.6" y="2.6" width="16" height="7.8" rx="1.8"/><path class="ph-batt-cap" d="M24.4 4.2v4.6a2 2 0 0 0 0-4.6Z"/></svg>' +
     '</span>';
 

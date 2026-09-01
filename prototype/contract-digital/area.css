@@ -65,10 +65,11 @@
 /* ステータスバー右側：電波・Wi-Fi・電池。 */
 .ph-status{position:absolute;top:16px;right:24px;display:flex;align-items:center;gap:6px;z-index:3;color:var(--ink)}
 .ph-status svg{height:11px;width:auto;fill:currentColor}
-/* Wi-Fi は塗りの扇なので、小さいと団子になる。少し大きく取り、
-   下角を少しだけ丸めて“電波の弧”に見せる。 */
-.ph-status .ph-wifi{height:12px}
-.ph-status .ph-wifi path{stroke:currentColor;stroke-width:.6;stroke-linejoin:round}
+/* Wi-Fi は塗りの扇だと小さいサイズで団子に見えるので、3本アーチ＋点の
+   グリフにする。これなら 12px でも「Wi-Fi」と読める。 */
+.ph-status .ph-wifi{height:12px;fill:none}
+.ph-status .ph-wifi path{stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
+.ph-status .ph-wifi circle{fill:currentColor}
 .ph-status .ph-batt{fill:none}
 .ph-status .ph-batt>rect:first-child{stroke:currentColor;stroke-opacity:.4;stroke-width:1.2;fill:none}
 .ph-status .ph-batt-fill{fill:currentColor}
