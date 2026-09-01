@@ -218,13 +218,13 @@
 .excand-fig small{font-size:9.5px;color:var(--ink3)}
 .excand-fig b{font-size:12.5px;font-weight:700;color:var(--ink)}
 
-/* §12-2 の脚注。リスト最後のカードのすぐ下に、小さく控えめに置く。
-   区切り線は引かない（リストの一部として読ませる）。 */
-.exlist-note{margin:8px 2px 0;font-size:11.5px;line-height:1.6;color:var(--ink3)}
+/* §12-2 の一文。集計バーの直後・リストの前に、この一覧の内容を
+   定義する説明として置く。 */
+.exlist-note{margin:0 2px 14px;font-size:11.5px;line-height:1.7;color:var(--ink3)}
 .exlist-note[hidden]{display:none}
 
 /* Step3 のアクション行。左に控えめな「戻る」、右に主ボタン。 */
-#resultView .cfactions{justify-content:space-between;margin-top:24px;
+#resultView .cfactions{justify-content:space-between;margin-top:22px;
   padding-top:20px;border-top:1px solid var(--line)}
 #resultView .cf-reselect{display:inline-flex;align-items:center;gap:5px;
   padding:12px 8px;color:var(--ink3);font-weight:600}
