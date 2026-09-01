@@ -149,23 +149,10 @@
 .exloading-tx{margin:0;font-size:14.5px;font-weight:700;color:var(--ink)}
 .exloading-sub{margin:0;font-size:12px;color:var(--ink3)}
 
-/* Step3：サマリー。候補カードの角丸ボックスと被らないよう囲みなし。
-   見出し直下に、上下の罫線で区切った1行の集計だけを置く。 */
+/* Step3：サマリー。見出し直下の1行。件数だけを静かに示す。 */
 .exsummary[hidden]{display:none}
-.exsummary{display:flex;align-items:center;flex-wrap:wrap;gap:8px 20px;
-  margin:12px 0 16px;padding:12px 2px;
-  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-  font-size:12.5px;color:var(--ink2)}
-.exsummary-total{font-size:13px;font-weight:700;color:var(--ink2)}
-.exsummary-total b{font-size:18px;font-weight:800;color:var(--ink);margin:0 2px}
-.exsummary-sep{width:1px;height:16px;background:var(--line2)}
-.exsummary-item{display:inline-flex;align-items:center;gap:7px;font-weight:600}
-.exsummary-item b{font-size:15px;font-weight:800;margin-left:1px}
-.exsummary-dot{width:9px;height:9px;border-radius:50%}
-.exsummary-item.ok{color:var(--gr2)}
-.exsummary-item.ok .exsummary-dot{background:var(--gr)}
-.exsummary-item.warn{color:#c9781d}
-.exsummary-item.warn .exsummary-dot{background:#e0a441}
+.exsummary{margin:10px 0 14px;font-size:12.5px;color:var(--ink3)}
+.exsummary b{font-size:14px;font-weight:800;color:var(--ink2);margin:0 1px}
 
 /* 候補リスト。1行1候補。左に状態色の帯、選択チェック、ロゴ、名前＋摘要、
    金額・周期。確認が必要な行は下に選択肢を展開する。 */
@@ -209,10 +196,12 @@
 .excand-fig small{font-size:9.5px;color:var(--ink3)}
 .excand-fig b{font-size:12.5px;font-weight:700;color:var(--ink)}
 
-/* Step3 のアクション行。左に「戻る」、右に主ボタン。 */
+/* Step3 のアクション行。左に控えめな「戻る」、右に主ボタン。 */
 #resultView .cfactions{justify-content:space-between}
-.cf-reselect{display:inline-flex;align-items:center;gap:4px}
-.cf-reselect svg{width:15px;height:15px}
+#resultView .cf-reselect{display:inline-flex;align-items:center;gap:5px;
+  padding:12px 8px;color:var(--ink3);font-weight:600}
+#resultView .cf-reselect:hover{color:var(--ink2);text-decoration:none}
+#resultView .cf-reselect svg{width:14px;height:14px}
 @media (max-width:560px){
   #resultView .cfactions{flex-direction:column-reverse}
   #resultView .cf-reselect{justify-content:center}
@@ -228,12 +217,16 @@
 .excand-note{margin:0;padding:9px 16px 10px 50px;border-top:1px dashed var(--line2);
   background:var(--paper);font-size:11px;line-height:1.6;color:var(--ink2)}
 
-/* 一括選択トグル。集計の右端に。 */
-.exsummary-toggle{margin-left:auto;border:1px solid var(--line2);border-radius:999px;
-  background:var(--card);font-family:inherit;font-size:11.5px;font-weight:700;color:var(--gr2);
-  padding:6px 14px;cursor:pointer}
-.exsummary-toggle:hover:not(:disabled){background:var(--gr-bg);border-color:var(--gr)}
-.exsummary-toggle:disabled{color:var(--ink3);cursor:not-allowed}
+/* リスト先頭の「すべて選ぶ」ヘッダ行。行のチェックと同じ作法にそろえる。 */
+.excand-head{display:flex;align-items:center;gap:14px;padding:2px 16px 12px;margin-bottom:2px}
+.excand-head label{font-size:12.5px;font-weight:700;color:var(--ink2);cursor:pointer}
+.excand-head .excand-check{position:relative;cursor:pointer}
+.excand-head .excand-check.is-on,
+.excand-head .excand-check.is-indeterminate{background:var(--gr);border-color:var(--gr)}
+.excand-head .excand-check.is-on svg{opacity:1}
+.excand-head .excand-check.is-indeterminate svg{opacity:0}
+.excand-head .excand-check.is-indeterminate:after{content:"";position:absolute;
+  width:9px;height:2px;background:#fff;border-radius:1px}
 
 /* 確認が必要 → どのサービスか選ぶ（ピル型の候補ボタン）。 */
 .excand-pick{padding:12px 16px 14px 50px;display:none;
