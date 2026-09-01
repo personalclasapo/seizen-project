@@ -556,9 +556,15 @@
 
   function renderResult() {
     const cands = lastResult.candidates;
-    candBox.innerHTML = cands.length
-      ? cands.map(candCardHTML).join('')
-      : '<p class="cf-count-note">継続している可能性がある支払いは見つかりませんでした。</p>';
+    const empty = cands.length === 0;
+    candBox.innerHTML = empty
+      ? '<p class="cf-count-note">継続している可能性がある支払いは見つかりませんでした。</p>'
+      : cands.map(candCardHTML).join('');
+
+    const listNote = document.querySelector('.exlist-note');
+    if (listNote) listNote.hidden = empty;
+    const summary = $('exSummary');
+    if (summary) summary.hidden = empty;
 
     updateSummary();
     renderPaymentMethodHits();
@@ -767,6 +773,7 @@
     if (commit) commit.hidden = true;
     const s = $('exSummary'); if (s) s.hidden = true;
     const pm = $('exPmHits'); if (pm) pm.hidden = true;
+    const ln = document.querySelector('.exlist-note'); if (ln) ln.hidden = true;
   }
 
   /* ── 初期化 ─────────────────────────────────────── */
