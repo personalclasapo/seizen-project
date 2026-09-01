@@ -370,8 +370,48 @@
       editedName: c.status === 'C' ? (c.merchant_name || c.series.merchant_raw) : '',
       timing: 'unknown'
     }));
+    saveDebugResult(res);
     logDevReport(res);
     showResult();
+  }
+
+  /* ── Step3 のデバッグ復元（?debug=step3）─────────────
+     解析結果を localStorage に保存し、次回以降 ?debug=step3 で開いたら
+     アップロードを飛ばして直接 Step3 を描画する。プロトタイプの確認用。
+     結果は payment/pipeline.js の出力そのものなので、パイプラインを
+     変えたら一度アップロードし直して保存を更新すること。            */
+  const DEBUG_KEY = 'seizen.payment.debug.step3.v1';
+
+  function saveDebugResult(res) {
+    try {
+      localStorage.setItem(DEBUG_KEY, JSON.stringify({
+        savedAt: new Date().toISOString(),
+        acctId: acctId || null,
+        result: res
+      }));
+    } catch (e) { /* 容量超過等は無視 */ }
+  }
+
+  function tryDebugRestore() {
+    const params = new URLSearchParams(location.search);
+    if (params.get('debug') !== 'step3') return false;
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(DEBUG_KEY) || 'null'); } catch (e) { saved = null; }
+    if (!saved || !saved.result || !Array.isArray(saved.result.candidates)) {
+      global.SeiZen.toast('保存された解析結果がありません。一度アップロードして解析してください。');
+      return false;
+    }
+    acctId = saved.acctId || acctId;
+    lastResult = saved.result;
+    rowState = lastResult.candidates.map(c => ({
+      picked: false, choice: null,
+      editedName: c.status === 'C' ? (c.merchant_name || c.series.merchant_raw) : '',
+      timing: 'unknown'
+    }));
+    showResult();
+    global.SeiZen.toast('保存済みの解析結果を表示しています（' +
+      new Date(saved.savedAt).toLocaleString('ja-JP') + ' 時点）');
+    return true;
   }
 
   /* ── 開発ログ（§6 報告事項の確認用）─────────────────
@@ -780,4 +820,5 @@
   renderAccounts();
   syncSelected();
   setSource(null);   /* デフォルトはどちらも未選択。パネルは出さない。 */
+  tryDebugRestore(); /* ?debug=step3 なら保存済み結果で Step3 を描く */
 })(window);
