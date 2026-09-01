@@ -177,14 +177,15 @@
 .exsummary-toggle svg{width:13px;height:13px}
 
 /* 候補リスト。1行1候補。左に状態色の帯、選択チェック、ロゴ、名前＋摘要、
-   金額・周期。確認が必要な行は下に選択肢を展開する。 */
+   金額・周期。確認が必要な行は下に選択肢を展開する。
+   帯は太め（6px）・はっきりした色で、状態が一目で分かるようにする。 */
 .excands{display:flex;flex-direction:column;gap:10px}
-.excand{border:1px solid var(--line);border-left:3px solid var(--line2);border-radius:12px;
+.excand{border:1px solid var(--line);border-left:6px solid var(--line2);border-radius:12px;
   background:var(--card);overflow:hidden}
 .excand.is-ready{border-left-color:var(--gr)}
-.excand.is-check{border-left-color:#e6b25e}
-.excand.is-reg{border-left-color:var(--line2);opacity:.72}
-.excand.is-picked{background:var(--gr-bg);border-color:var(--gr);border-left-color:var(--gr)}
+.excand.is-check{border-left-color:#e08a1e}
+.excand.is-reg{border-left-color:#cfc9ba;opacity:.66}
+.excand.is-picked{background:var(--gr-bg);border-color:var(--gr);border-left-color:var(--gr-d)}
 
 .excand-row{display:flex;align-items:center;gap:14px;padding:13px 16px;width:100%;
   box-sizing:border-box;text-align:left;font-family:inherit;flex-wrap:wrap;cursor:pointer}
@@ -224,8 +225,7 @@
 .exlist-note[hidden]{display:none}
 
 /* Step3 のアクション行。左に控えめな「戻る」、右に主ボタン。 */
-#resultView .cfactions{justify-content:space-between;margin-top:22px;
-  padding-top:20px;border-top:1px solid var(--line)}
+#resultView .cfactions{justify-content:space-between;margin-top:22px}
 #resultView .cf-reselect{display:inline-flex;align-items:center;gap:5px;
   padding:12px 8px;color:var(--ink3);font-weight:600}
 #resultView .cf-reselect:hover{color:var(--ink2);text-decoration:none}
@@ -238,7 +238,7 @@
 /* status チップ（B / C / 登録済み）。タイトルの右に小さく。 */
 .excand-chip{flex:none;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;
   letter-spacing:.02em;line-height:1.5}
-.excand-chip.warn{background:#fbefdc;color:#a56a1c}
+.excand-chip.warn{background:#f7e4c4;color:#8f560f}
 .excand-chip.muted{background:var(--paper2);color:var(--ink3)}
 
 /* すでに登録があるかもしれない旨（§13-2）。行の下に細い注記。 */
