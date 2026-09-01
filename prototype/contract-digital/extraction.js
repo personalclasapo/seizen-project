@@ -554,25 +554,10 @@
     return '<div class="' + cls.join(' ') + '" data-card="' + i + '">' + row + pmNote + body + '</div>';
   }
 
-  /* リスト先頭の「すべて選ぶ」行。行のチェックと同じ見た目のチェック
-     ボックス＋ラベル。全選択・一部選択・未選択の3状態を表す。 */
-  function headRowHTML() {
-    const sel = selectableIndexes();
-    const on = sel.filter(i => rowState[i].picked).length;
-    let stateCls = '';
-    if (sel.length && on === sel.length) stateCls = ' is-on';
-    else if (on > 0) stateCls = ' is-indeterminate';
-    return '<div class="excand-head">' +
-      '<button type="button" class="excand-check' + stateCls + '" id="exSelectAll"' +
-        (sel.length ? '' : ' disabled') + ' aria-label="すべて選ぶ">' + svgCheck() + '</button>' +
-      '<label for="exSelectAll">すべて選ぶ</label>' +
-      '</div>';
-  }
-
   function renderResult() {
     const cands = lastResult.candidates;
     candBox.innerHTML = cands.length
-      ? headRowHTML() + cands.map(candCardHTML).join('')
+      ? cands.map(candCardHTML).join('')
       : '<p class="cf-count-note">継続している可能性がある支払いは見つかりませんでした。</p>';
 
     updateSummary();
@@ -597,22 +582,30 @@
 
   function updateSummary() {
     const cands = lastResult.candidates;
+    const shown = cands.filter(c => c.status !== 'registered').length;
     const picked = rowState.filter((s, i) => s.picked && cands[i].status !== 'registered').length;
-    /* 「見つかった」件数は registered を含めた提示総数。追加件数は選択分。 */
     $('sumTotal').textContent = cands.length;
     $('sumReady').textContent = picked;
+    $('sumCheck').textContent = Math.max(0, shown - picked);
 
-    const head = $('exSelectAll');
-    if (head) {
+    const toggle = $('exSelectAll');
+    if (toggle) {
       const sel = selectableIndexes();
-      const on = sel.filter(i => rowState[i].picked).length;
-      head.classList.toggle('is-on', sel.length > 0 && on === sel.length);
-      head.classList.toggle('is-indeterminate', on > 0 && on < sel.length);
-      head.disabled = sel.length === 0;
+      const allOn = sel.length > 0 && sel.every(i => rowState[i].picked);
+      $('exSelectAllLabel').textContent = allOn ? 'すべて外す' : 'すべて選ぶ';
+      toggle.disabled = sel.length === 0;
+      toggle.dataset.mode = allOn ? 'off' : 'on';
     }
     const btn = $('exCommit');
     if (btn) btn.disabled = picked === 0;
   }
+
+  const selectAllBtn = $('exSelectAll');
+  if (selectAllBtn) selectAllBtn.addEventListener('click', () => {
+    const on = selectAllBtn.dataset.mode !== 'off';
+    selectableIndexes().forEach(i => { rowState[i].picked = on; });
+    renderResult();
+  });
 
   /* §3-4：payment_method を検出したときの案内（候補リストとは別）。 */
   function renderPaymentMethodHits() {
@@ -628,15 +621,6 @@
 
   /* ── Step3 の操作 ─────────────────────────────────── */
   candBox.addEventListener('click', e => {
-    /* リスト先頭「すべて選ぶ」。全選択済みなら全解除、そうでなければ全選択。 */
-    const all = e.target.closest('#exSelectAll');
-    if (all && !all.disabled) {
-      const sel = selectableIndexes();
-      const turnOn = !sel.every(i => rowState[i].picked);
-      sel.forEach(i => { rowState[i].picked = turnOn; });
-      renderResult();
-      return;
-    }
     /* 行のどこを押してもチェックが切り替わる（チェック可能な行のみ）。
        サービス選択ピル・時期ラジオ・名前入力の上では切り替えない。 */
     const row = e.target.closest('.excand-row');

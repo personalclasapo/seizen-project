@@ -149,10 +149,32 @@
 .exloading-tx{margin:0;font-size:14.5px;font-weight:700;color:var(--ink)}
 .exloading-sub{margin:0;font-size:12px;color:var(--ink3)}
 
-/* Step3：サマリー。見出し直下の1行。件数だけを静かに示す。 */
+/* Step3：サマリー。候補カードの角丸ボックスと被らないよう囲みなし。
+   見出し直下に、上下の罫線で区切った1行の集計だけを置く。 */
 .exsummary[hidden]{display:none}
-.exsummary{margin:10px 0 14px;font-size:12.5px;color:var(--ink3)}
-.exsummary b{font-size:14px;font-weight:800;color:var(--ink2);margin:0 1px}
+.exsummary{display:flex;align-items:center;flex-wrap:wrap;gap:8px 20px;
+  margin:12px 0 16px;padding:12px 2px;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  font-size:12.5px;color:var(--ink2)}
+.exsummary-total{font-size:13px;font-weight:700;color:var(--ink2)}
+.exsummary-total b{font-size:18px;font-weight:800;color:var(--ink);margin:0 2px}
+.exsummary-sep{width:1px;height:16px;background:var(--line2)}
+.exsummary-item{display:inline-flex;align-items:center;gap:7px;font-weight:600}
+.exsummary-item b{font-size:15px;font-weight:800;margin-left:1px}
+.exsummary-dot{width:9px;height:9px;border-radius:50%}
+.exsummary-item.ok{color:var(--gr2)}
+.exsummary-item.ok .exsummary-dot{background:var(--gr)}
+.exsummary-item.warn{color:#c9781d}
+.exsummary-item.warn .exsummary-dot{background:#e0a441}
+
+/* 集計の右端。全選択トグルはテキストリンク＋チェックアイコンで、
+   集計の並びに馴染ませる（pill ボタンにしない）。 */
+.exsummary-toggle{margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+  border:0;background:none;padding:4px 2px;font-family:inherit;font-size:12px;
+  font-weight:700;color:var(--gr2);cursor:pointer}
+.exsummary-toggle:hover:not(:disabled){text-decoration:underline;text-underline-offset:2px}
+.exsummary-toggle:disabled{color:var(--ink3);cursor:not-allowed}
+.exsummary-toggle svg{width:14px;height:14px}
 
 /* 候補リスト。1行1候補。左に状態色の帯、選択チェック、ロゴ、名前＋摘要、
    金額・周期。確認が必要な行は下に選択肢を展開する。 */
@@ -217,16 +239,6 @@
 .excand-note{margin:0;padding:9px 16px 10px 50px;border-top:1px dashed var(--line2);
   background:var(--paper);font-size:11px;line-height:1.6;color:var(--ink2)}
 
-/* リスト先頭の「すべて選ぶ」ヘッダ行。行のチェックと同じ作法にそろえる。 */
-.excand-head{display:flex;align-items:center;gap:14px;padding:2px 16px 12px;margin-bottom:2px}
-.excand-head label{font-size:12.5px;font-weight:700;color:var(--ink2);cursor:pointer}
-.excand-head .excand-check{position:relative;cursor:pointer}
-.excand-head .excand-check.is-on,
-.excand-head .excand-check.is-indeterminate{background:var(--gr);border-color:var(--gr)}
-.excand-head .excand-check.is-on svg{opacity:1}
-.excand-head .excand-check.is-indeterminate svg{opacity:0}
-.excand-head .excand-check.is-indeterminate:after{content:"";position:absolute;
-  width:9px;height:2px;background:#fff;border-radius:1px}
 
 /* 確認が必要 → どのサービスか選ぶ（ピル型の候補ボタン）。 */
 .excand-pick{padding:12px 16px 14px 50px;display:none;

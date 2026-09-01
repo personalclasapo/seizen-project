@@ -178,9 +178,16 @@
         <span class="rt" id="exCoverageNote"></span>
       </div>
 
-      <p class="exsummary" id="exSummary">
-        見つかった <b id="sumTotal">0</b> 件のうち <b id="sumReady">0</b> 件を追加します
-      </p>
+      <div class="exsummary" id="exSummary">
+        <span class="exsummary-total">全 <b><span id="sumTotal">0</span></b> 件</span>
+        <span class="exsummary-sep"></span>
+        <span class="exsummary-item ok"><span class="exsummary-dot"></span>追加する <b id="sumReady">0</b></span>
+        <span class="exsummary-item warn"><span class="exsummary-dot"></span>未選択 <b id="sumCheck">0</b></span>
+        <button type="button" class="exsummary-toggle" id="exSelectAll">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12 5 5 9-9"/></svg>
+          <span id="exSelectAllLabel">すべて選ぶ</span>
+        </button>
+      </div>
 
       <!-- §3-4：カード等への支払いを検出したときの案内（候補リストとは別） -->
       <div id="exPmHits" hidden></div>
