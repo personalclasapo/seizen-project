@@ -1,0 +1,272 @@
+/* SeiZen｜保険の成果物UI
+   ------------------------------------------------------------------
+   保険証券・契約内容を連想するデジタル記録UI（正本 §4-2）。この
+   領域にしか出てこない造形だけをここに置く。左のガイドブック・
+   見出し・意味説明は shared/shell.css の担当。
+
+   通帳（銀行口座）とも索引（契約・デジタル）とも別の骨格でよい。
+   ここで作った形を他領域へ機械的に持ち出さない（正本 §13）。
+
+   種類ごとの系統色（state.js の KIND_TONES と対）：
+     .k-life … 生命＝ピンク（亡くなったとき等）
+     .k-med  … 医療＝ブルー（入院・手術）
+     .k-non  … 損保＝ベージュ（事故）
+   系統色はカードの縁・封筒・タブ・紋章にだけ差す。本文の地は白。 */
+
+.sec{max-width:1000px}
+.sec-h .sec-icon{width:38px;height:38px}
+.sec-h .sec-icon svg{width:22px}
+.inner>.sec-h:first-child{margin-top:0}
+.sec-h .cnt{background:none;padding:4px 11px}
+.sec-h{margin:34px 0 6px}
+
+/* 種類ごとの色トークン。カードにも証券にも同じ変数で差す。
+   --kc      … 濃い差し色（タブ文字・紋章・focus）
+   --kc-bg   … タグ地・ロゴ地
+   --kc-bg2  … 詳細ゾーンのブロック地
+   --kc-env  … 罫線
+   --fold-*  … フォルダの3面。明度を back < gusset < flap の順に段階
+               付けして折れを見せる。パステルに寄りすぎないよう、
+               彩度・濃度は高めに取る。                               */
+.k-life{--kc:#b56b74;--kc-d:#9c545e;--kc-bg:#f7e6e8;--kc-bg2:#fbeff1;--kc-env:#c68f99;
+  --fold-back:#d3a2ab;--fold-gusset:#dcb1b9;--fold-flap:#e6c3ca;--fold-edge:#bd8590}
+.k-med {--kc:#5f7fa6;--kc-d:#4a6890;--kc-bg:#e4ecf4;--kc-bg2:#eef3f8;--kc-env:#93b0d0;
+  --fold-back:#a7c1de;--fold-gusset:#b7cde5;--fold-flap:#cadbee;--fold-edge:#8aa9cc}
+.k-non {--kc:#a98a5b;--kc-d:#8f7145;--kc-bg:#f0e6d3;--kc-bg2:#f6efe0;--kc-env:#bfa377;
+  --fold-back:#cdb388;--fold-gusset:#d8c29c;--fold-flap:#e4d3b3;--fold-edge:#b79c6f}
+
+/* ══ 一覧ゾーン：証券フォルダを並べた目次 ══════════════════
+     .rkfolder  位置基準。padding が「フォルダの色が覗く量」。
+     .rk-back   フォルダ本体（色付き角丸矩形）。一番奥（z1）。
+     .rk-tab    耳（左上）（z2）。
+     .rk-card   白い証券（z3）。左右・上にフォルダの色が覗く。
+     .rk-pocket 前面ポケット。上辺が中央で下がる凹カーブの色帯。証券
+                の下端にかぶさる（z4）。SVG（高さ固定）。
+     .rk-crest  紋章。証券の下端の中央、ポケットの凹みに収まる（z5）。
+
+   ポケットの凹みは常に中央 → 盾は left:50% 固定 → 幅が変わっても
+   必ず凹みに収まる。凹カーブの縦は固定寸なので歪まない。           */
+
+.rack{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:44px 34px;
+  align-items:start;margin:8px 0}
+
+/* padding：上26（耳）・左右16（本体の覗き）・下40（ポケット）。 */
+.rkfolder{position:relative;display:block;width:100%;
+  padding:26px 16px 40px;border:0;background:none;font-family:inherit;
+  text-align:left;cursor:pointer;transition:transform .14s}
+.rkfolder:hover{transform:translateY(-3px)}
+.rkfolder:focus-visible{outline:2px solid var(--kc);outline-offset:6px;border-radius:8px}
+
+.rk-tab,.rk-back,.rk-card,.rk-name,.rk-kind,.rk-rule,.rk-pocket,.rk-crest{display:block}
+
+/* フォルダ本体（色付き角丸矩形）。耳の下端〜フォルダの底、全幅。
+   一番奥。前面ポケットより一段濃くして、面の前後を分ける。 */
+.rk-back{position:absolute;left:0;right:0;top:18px;bottom:0;z-index:1;
+  background:linear-gradient(178deg,var(--fold-gusset),var(--fold-back));
+  border:1px solid var(--fold-edge);border-radius:14px;
+  box-shadow:inset 0 1px 0 #ffffff70,0 14px 26px -12px rgba(75,66,43,.3)}
+
+/* 耳（タブ）。フォルダ本体の上辺に乗る。 */
+.rk-tab{position:absolute;top:0;left:30px;z-index:2;
+  padding:5px 18px 12px;font-size:12px;font-weight:700;color:var(--kc-d);
+  background:var(--fold-flap);
+  border:1px solid var(--fold-edge);border-bottom:0;border-radius:10px 10px 0 0;
+  box-shadow:inset 0 1px 0 #ffffffcc}
+
+/* 白い証券。padding のぶん内側に入り、左右・上にフォルダの色が覗く。
+   下端は前面ポケットに 18px ほどかぶさられるので、下 padding を厚めに
+   取り、文字がポケットの凹みより上で終わるようにする。 */
+.rk-card{position:relative;z-index:3;padding:20px 22px 26px;
+  background:#fff;border:1px solid #e5ddca;border-radius:10px 10px 6px 6px;
+  box-shadow:0 1px 2px #4b422b1a,0 6px 14px -9px #4b422b2e}
+
+/* 前面ポケット。フォルダの底から立ち上がる色帯。上辺が中央で下がる
+   凹カーブ。証券の下端に 20px ほどかぶさる。SVG 高さ固定。 */
+.rk-pocket{position:absolute;left:0;right:0;bottom:0;width:100%;height:60px;
+  z-index:4;pointer-events:none;filter:drop-shadow(0 -1px 2px rgba(75,66,43,.08))}
+
+/* 紋章。前面ポケット（.rk-pocket：bottom:0・高さ60）の中で、見えて
+   いる帯の縦中央に置く。帯の上辺は中央で凹んで rkfolder 底から
+   約 44px、下辺は 0 → 見えている中央は約 22px。丸の中心をそこへ。
+   固定配置なので幅・カード高さに依存しない。 */
+.rk-crest{position:absolute;left:50%;bottom:22px;transform:translate(-50%,50%);z-index:5;
+  display:grid;place-items:center;width:36px;height:36px;border-radius:50%;
+  background:#fff;border:1px solid var(--fold-edge);box-shadow:0 3px 7px #4b422b33}
+.rk-crest svg{width:21px;height:21px}
+
+.rk-head{display:flex;align-items:center;gap:11px}
+.rk-head .rk-bd{margin-left:auto}
+/* ロゴは自作 SVG か頭文字。地色は持たせず、マークそのものを見せる。 */
+.rk-logo{flex:none;display:grid;place-items:center;width:30px;height:30px}
+.rk-logo .brand-svg{display:block}
+.rk-logo .brand-initial{display:grid;place-items:center;width:28px;height:28px;border-radius:7px;
+  background:var(--kc-bg);color:var(--kc-d);font-size:11px;font-weight:800}
+.rk-name{font-size:16px;font-weight:700;color:#2f342d;white-space:nowrap}
+.rk-bar{display:block;width:1px;height:16px;background:#d8d3c5}
+.rk-kind{font-size:16px;font-weight:700;color:#2f342d;white-space:nowrap}
+
+.rk-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.rk-tag{font-size:11.5px;font-weight:600;color:var(--kc-d);background:var(--kc-bg);
+  border-radius:14px;padding:4px 12px;white-space:nowrap}
+.rk-tag.q{color:var(--ink3);background:#efece4}
+
+.rk-rule{display:block;height:0;border-top:1px dashed #e2ddce;margin:15px 0 13px}
+.rk-people{display:flex;gap:30px}
+.rk-role{font-size:12.5px;color:#3a3f38}
+.rk-role i{font-style:normal;margin-right:8px;font-size:11px;color:var(--ink3)}
+
+.rk-bd{display:inline-block;flex:none;font-size:10.5px;font-weight:700;padding:4px 11px;
+  border-radius:20px;white-space:nowrap}
+.rk-bd.warn{background:var(--or-bg);color:#a35a0d}
+.rk-bd.off{background:#eef0ea;color:var(--gr2)}
+
+/* 目次から送られてきた証券は一瞬だけ縁が光る。 */
+@keyframes pvhit{from{box-shadow:0 0 0 3px var(--kc),0 8px 20px -6px #4b422b33}
+  to{box-shadow:0 0 0 3px #ffffff00,0 8px 20px -6px #4b422b33}}
+.pv.hit .pv-sheet{animation:pvhit 1.6s ease-out}
+
+/* ══ 詳細ゾーン：証券の記録 ══════════════════════════════
+   現実の証券の情報階層を借りて、SeiZen で使いやすい形へ。券面 →
+   確認する場面 → 問い合わせ先 → 主な情報 → 確認 → その他 → 申し送り。
+   額装の罫は種類の系統色。ブロックの地は白のまま。               */
+
+.pv{position:relative;margin:22px 0 40px}
+.pv-tab{position:absolute;top:-14px;left:22px;z-index:2;
+  padding:5px 18px 12px;font-size:12px;font-weight:700;color:var(--kc-d);
+  background:var(--kc-tab);border-radius:9px 9px 0 0;
+  box-shadow:inset 0 1px 0 #ffffff8c,0 -1px 2px #4b422b1c}
+
+/* 証券本体。二重罫の額装：外は淡色パネル、内は系統色の細い罫。 */
+.pv-sheet{position:relative;border-radius:14px;padding:12px;
+  background:#fffdfb;
+  border:1px solid var(--kc-env);
+  box-shadow:0 2px 4px #4b422b1c,0 16px 34px -14px #4b422b40}
+.pv-sheet:before{content:"";position:absolute;inset:7px;border:1px solid var(--kc-env);
+  border-radius:9px;pointer-events:none}
+/* 角の飾り。四隅に系統色の短い罫を2本ずつ。 */
+.pv-sheet:after{content:"";position:absolute;inset:12px;pointer-events:none;
+  background:
+    linear-gradient(var(--kc),var(--kc)) 0 0/16px 2px no-repeat,
+    linear-gradient(var(--kc),var(--kc)) 0 0/2px 16px no-repeat,
+    linear-gradient(var(--kc),var(--kc)) 100% 0/16px 2px no-repeat,
+    linear-gradient(var(--kc),var(--kc)) 100% 0/2px 16px no-repeat,
+    linear-gradient(var(--kc),var(--kc)) 0 100%/16px 2px no-repeat,
+    linear-gradient(var(--kc),var(--kc)) 0 100%/2px 16px no-repeat,
+    linear-gradient(var(--kc),var(--kc)) 100% 100%/16px 2px no-repeat,
+    linear-gradient(var(--kc),var(--kc)) 100% 100%/2px 16px no-repeat;
+  opacity:.55}
+
+/* 券面。会社ロゴ／種類／証券番号。 */
+.pv-face{position:relative;display:flex;align-items:center;gap:14px;
+  padding:18px 20px 16px;margin:6px 6px 0}
+.pv-logo{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:8px;
+  background:var(--kc-bg);color:var(--kc-d);font-size:14px;font-weight:800}
+.pv-title{flex:1;min-width:0}
+.pv-insurer{font-size:12px;color:var(--ink3)}
+.pv-product{margin:2px 0 0;font-size:22px;font-weight:800;letter-spacing:.06em;color:#2f342d}
+.pv-no{flex:none;text-align:right;font-size:13px;font-weight:700;color:#3a3f38;
+  font-variant-numeric:tabular-nums;border:1px solid var(--kc-env);border-radius:7px;padding:6px 12px}
+.pv-no i{display:block;font-style:normal;font-size:9.5px;font-weight:600;color:var(--ink3);letter-spacing:.06em}
+
+/* 当事者。券面のすぐ下に4項目を横並び。 */
+.pv-parties{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+  margin:10px 12px 0;padding:13px 14px;
+  border-top:1px solid #ece7da;border-bottom:1px solid #ece7da}
+.pv-parties div{font-size:13.5px;font-weight:700;color:#2f342d}
+.pv-parties i{display:block;font-style:normal;font-size:10.5px;font-weight:600;color:var(--ink3);margin-bottom:3px}
+
+/* 情報ブロック。地は淡い系統色、見出しの左に小アイコン。 */
+.pv-block{margin:14px 12px 0;border-radius:10px;padding:15px 16px;
+  background:var(--kc-bg2);border:1px solid var(--kc-env)}
+.pv-bh{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.pv-bh-ic{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:7px;
+  background:#fff;color:var(--kc-d);border:1px solid var(--kc-env)}
+.pv-bh b{font-size:14.5px;font-weight:700;color:#2f342d}
+
+/* ① 確認する場面。トリガー＋給付名＋説明。 */
+.pv-ben{background:var(--kc-bg2)}
+.ben-row{display:flex;gap:12px;padding:11px 4px;border-top:1px solid #ffffffcf}
+.ben-row:first-of-type{border-top:0;padding-top:2px}
+.ben-ic{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;
+  background:#fff;color:var(--kc-d)}
+.ben-tx{min-width:0}
+.ben-line{display:flex;align-items:baseline;gap:10px}
+.ben-line b{font-size:13.5px;font-weight:700;color:#2f342d}
+.ben-name{font-size:12.5px;font-weight:700;color:var(--kc-d)}
+.ben-about{margin-top:3px;font-size:12px;color:#54524b;line-height:1.7}
+.ben-by{margin-left:8px;color:var(--ink3)}
+.ben-note{margin:9px 0 0;font-size:11px;color:var(--ink3)}
+
+/* ② 問い合わせ先。3列。左＝会社、中＝Web、右＝代理店。 */
+.pv-ct{background:#eef0f4;border-color:#dde0e8}
+.pv-ct .pv-bh-ic{border-color:#dde0e8;color:#5b6b86}
+.ct-grid{display:grid;grid-template-columns:1.2fr 1fr 1.2fr;gap:14px}
+.ct-col{background:#fff;border:1px solid #e6e2d6;border-radius:8px;padding:12px 13px}
+.ct-cap{display:inline-block;font-size:10.5px;font-weight:700;color:#fff;
+  border-radius:12px;padding:3px 10px;margin-bottom:8px}
+.ct-cap-a{background:#7e6da6}.ct-cap-b{background:#5b6b86}.ct-cap-c{background:#7e6da6}
+.ct-name{font-size:13px;font-weight:700;color:#2f342d;line-height:1.5}
+.ct-sub{font-size:12px;color:#54524b;line-height:1.6}
+.ct-tel{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:13.5px;font-weight:700;
+  color:var(--gr2);font-variant-numeric:tabular-nums}
+.ct-hours{margin-top:4px;font-size:11px;color:var(--ink3);line-height:1.6}
+.ct-link{display:inline-block;margin-top:7px;font-size:11.5px;font-weight:600;color:#5b6b86;
+  background:#eef0f4;border:1px solid #dde0e8;border-radius:6px;padding:5px 10px}
+.ct-note{margin:9px 0 0;font-size:11px;color:var(--ink3)}
+
+/* ③ 主な情報。6セルのグリッド。 */
+.pv-fx{background:var(--gr-bg);border-color:#d7e2d9}
+.pv-fx .pv-bh-ic{border-color:#d7e2d9;color:var(--gr2)}
+.fx-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 16px}
+.fx-cell{display:flex;gap:9px}
+.fx-ic{flex:none;color:var(--gr2);margin-top:1px}
+.fx-cap{font-size:11px;color:var(--ink3)}
+.fx-val{margin-top:2px;font-size:12.5px;font-weight:600;color:#2f342d;line-height:1.55}
+
+/* ④ 請求のときの確認。持ち物・段取りのチェックリスト。 */
+.pv-ck{background:#faf7f0;border-color:#ece3d2}
+.pv-ck .pv-bh-ic{border-color:#ece3d2;color:var(--or)}
+.ck-list{list-style:none;margin:0;padding:0}
+.ck-list li{display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px dashed #e6e1d3}
+.ck-list li:first-child{border-top:0}
+.ck-mark{flex:none;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;
+  font-size:11px;font-weight:800}
+.ok .ck-mark{background:var(--gr-bg2);color:var(--gr2)}
+.no .ck-mark{background:var(--or-bg);color:var(--or)}
+.na .ck-mark{background:#efece4;color:#a9a498}
+.ck-item{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:#3a3f38}
+.ck-where{flex:none;max-width:45%;font-size:11.5px;color:var(--ink3);
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.no .ck-where{color:var(--or)}
+.ck-foot{margin-top:10px;padding-top:9px;border-top:1px solid #efe7d6;
+  font-size:11.5px;font-weight:700;color:var(--gr2)}
+.ck-foot.open{color:var(--or)}
+
+/* ⑤ その他の契約情報。参考扱い。地を控えめに、注記を添える。 */
+.pv-ad{background:#f5f3ec;border-color:#e6e0d2}
+.pv-ad .pv-bh-ic{border-color:#e6e0d2;color:var(--ink2)}
+.pv-ad .pv-bh b{color:#54524b}
+.ad-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.ad-cell{border-left:2px solid #e0dac9;padding-left:11px}
+.ad-cap{font-size:10.5px;color:var(--ink3)}
+.ad-val{margin-top:2px;font-size:12.5px;color:#54524b;font-variant-numeric:tabular-nums}
+.ad-note{margin:10px 0 0;font-size:11px;color:var(--ink3);line-height:1.6}
+
+/* ⑥ 家族への申し送り。手書き風メモ。証券の下端、額装の内へ。 */
+.pv-memo{margin:14px 12px 12px;padding:14px 16px 16px;
+  background:repeating-linear-gradient(180deg,#fffdf7,#fffdf7 27px,#efe7d4 28px);
+  border:1px solid var(--kc-env);border-radius:10px}
+.pv-memo-h{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--kc-d);
+  margin-bottom:6px}
+.pv-memo-ic{flex:none;color:var(--kc-d)}
+.pv-memo-body p{margin:0;font-size:13px;line-height:28px;color:#3a3f38;
+  font-family:var(--font-serif)}
+
+/* ── 見出し横の追加ボタン（shared の .addbtn を使う） ── */
+
+@media (max-width:1080px){
+  .rack{grid-template-columns:1fr}
+  .ct-grid{grid-template-columns:1fr}
+  .fx-grid,.ad-grid{grid-template-columns:1fr 1fr}
+  .pv-parties{grid-template-columns:1fr 1fr}
+}

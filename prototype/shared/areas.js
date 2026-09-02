@@ -30,7 +30,8 @@
       lead: '続いている契約とアカウントを、止める側・引き継ぐ側の両方から。',
       icon: '<rect x="6" y="2.6" width="9.5" height="16.3" rx="1.6"/><path d="M8.5 6.4h4.5M8.5 9.6h4.5M8.5 12.8h2.7"/><path d="M17 9.2v7.6m-2.6-2.6 2.6 2.6 2.6-2.6"/>' },
 
-    { id: 'insurance',       label: '保険',           status: 'soon',
+    { id: 'insurance',       label: '保険',           path: 'insurance/index.html',
+      status: 'ready',
       lead: 'どの保険に入っていて、必要になったとき誰がどう請求するか。',
       icon: '<path d="M12 3.2 5 6v5.4c0 4.7 2.9 7.6 7 8.8 4.1-1.2 7-4.1 7-8.8V6l-7-2.8Z"/><path d="m9.1 11.7 2 1.9 3.8-4.1"/>' },
 
