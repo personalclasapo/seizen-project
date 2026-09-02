@@ -134,11 +134,27 @@
      あたる部分は他カードへの支払いを持たないので「カード情報」という
      別の中身に置き換え、連絡先は手続き方法の「手続き先」に一本化して
      二重に持たない。                                                */
-  const cards = [
+  /* ── 事実：支払い手段 ─────────────────────────────────
+     本番では「支払い手段マスタ」（カード・口座・電子マネーを扱う共有
+     データ。契約・デジタルの外）が持つもの。この画面はそれを参照し、
+     書き戻すのは statement_checked（明細確認の記録）だけ。プロトタイプ
+     では state.js がその写しを持つ。
+
+       kind … 'card' | 'bank' | 'emoney'（見た目と手続き文面の出し分け）
+       statement_checked … 「支払い明細から探す」で明細を確認した記録。
+         { at: 'YYYY.MM.DD', coverage_from, coverage_to } | null
+         （from/to は確認した明細の対象期間。部分確認を表せる）
+     旧名は cards。card 以外も入るので paymentMethods に改称。
+     後方互換のため cards エイリアス（kind==='card' のみ）も残す。 */
+  const paymentMethods = [
     { id: 'card-rakuten', name: '楽天カード',
-      group: 'card',
+      kind: 'card', group: 'card',
       /* 券面の地の色。実ロゴは使わないので、色だけで見分ける。 */
       brand: 'rakuten',
+      /* この支払い手段の明細CSVの形式（§15-4）。アップロード画面が
+         これを見てアダプタを選ぶ。null＝形式未対応（明細取り込み不可）。 */
+      statement_format: 'rakuten',
+      statement_checked: null,
       policy: {
         intent: 'continue',
         reason: '複数の契約の支払いに使っているため、当面はこのカードのまま使い続けます。',
@@ -160,8 +176,10 @@
       memo: ''
     },
     { id: 'card-smbc', name: '三井住友カード（NL）',
-      group: 'card',
+      kind: 'card', group: 'card',
       brand: 'smbc',
+      statement_format: 'vpass',
+      statement_checked: null,
       policy: {
         intent: 'unknown',
         reason: '',
@@ -181,8 +199,56 @@
         point: '解約すると、紐づく契約の支払いがすべて止まります。\n先に他の支払い方法へ切り替えてから手続きします。'
       },
       memo: ''
+    },
+    { id: 'bank-jp-1', name: 'ゆうちょ銀行　通常貯金',
+      kind: 'bank', group: 'bank',
+      brand: 'bank',
+      /* ゆうちょの入出金明細形式は未対応（アダプタ未実装）。取り込もう
+         とすると「この支払い手段の明細形式には未対応」と出る（§15-4）。 */
+      statement_format: null,
+      statement_checked: null,
+      /* 口座は「止める」対象ではなく「相続手続きで凍結・名義変更される」
+         もの。引き落とし契約は口座凍結の前に支払い方法を移す必要がある。 */
+      policy: { intent: 'unknown', reason: '', nextTiming: '' },
+      account: [
+        { label: '通帳・キャッシュカード', value: '保管場所：自宅・本人の机', state: 'ok',   icon: 'card' },
+        { label: '暗証番号',               value: '',                       state: 'none', icon: 'user' },
+        { label: 'ネットバンキングのログイン', value: '',                   state: 'none', icon: 'mail' }
+      ],
+      info: { issuer: 'ゆうちょ銀行', holder: '父 太郎', tail: '5678', branch: '記号 10000 / 番号 12345678' },
+      procedure: {
+        checked: false,
+        where: 'ゆうちょ銀行の窓口（相続手続き）',
+        steps: ['ゆうちょ銀行に口座名義人が亡くなったことを伝える', '相続手続きの必要書類を確認する', '自動振替になっている契約の支払い方法を先に移す', '相続手続き（払い戻し・名義変更）を進める'],
+        link: 'ゆうちょ銀行 相続手続きのご案内',
+        point: '口座が凍結されると、自動振替の支払いが止まります。\n公共料金などは先に支払い方法を切り替えます。'
+      },
+      memo: ''
+    },
+    { id: 'emoney-1', name: 'PayPay',
+      kind: 'emoney', group: 'emoney',
+      brand: 'paypay',
+      statement_format: null,   /* PayPay の取引履歴形式は未対応 */
+      statement_checked: null,
+      policy: { intent: 'unknown', reason: '', nextTiming: '' },
+      account: [
+        { label: 'アプリのログイン', value: '', state: 'none', icon: 'phone' },
+        { label: '登録の携帯番号',   value: '090-****-**12', state: 'ok', icon: 'user' },
+        { label: '本人確認の状況',   value: '', state: 'none', icon: 'doc' }
+      ],
+      info: { issuer: 'PayPay株式会社', holder: '父 太郎', tail: '**12' },
+      procedure: {
+        checked: false,
+        where: 'PayPay カスタマーサポート',
+        steps: ['PayPay に利用者が亡くなったことを伝える', '残高の相続・払い戻しの可否を確認する', '定期支払いに使っている契約があれば支払い方法を移す'],
+        link: 'PayPay 利用者が亡くなった場合',
+        point: '残高の扱いは事業者ごとに異なります。まず問い合わせて確認します。'
+      },
+      memo: ''
     }
   ];
+  /* 後方互換：card だけを見たい既存呼び出し向け。 */
+  const cards = paymentMethods;
 
   /* ── 事実：契約 ───────────────────────────────────── */
 
@@ -421,7 +487,7 @@
         { label: '手続き窓口',           value: 'カスタマーセンター 0120-995-113', state: 'ok', icon: 'phone' },
         { label: '検針票・請求書のありか', value: '自宅・リビングの書類ケース',   state: 'ok', icon: 'folder' }
       ],
-      contract: { holder: '父 太郎', paymentCard: null, paymentLabel: 'ゆうちょ銀行 自動振替', amount: 8500, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
+      contract: { holder: '父 太郎', paymentCard: 'bank-jp-1', paymentLabel: 'ゆうちょ銀行 自動振替', amount: 8500, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
         checked: true,
         where: '東京電力 カスタマーセンター（電話）',
@@ -444,7 +510,7 @@
         { label: '手続き窓口',           value: 'お客さまセンター 0570-002-211', state: 'ok', icon: 'phone' },
         { label: '検針票・請求書のありか', value: '自宅・リビングの書類ケース',    state: 'ok', icon: 'folder' }
       ],
-      contract: { holder: '父 太郎', paymentCard: null, paymentLabel: 'ゆうちょ銀行 自動振替', amount: 4200, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
+      contract: { holder: '父 太郎', paymentCard: 'bank-jp-1', paymentLabel: 'ゆうちょ銀行 自動振替', amount: 4200, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
         checked: true,
         where: '東京ガス お客さまセンター（電話）',
@@ -467,7 +533,7 @@
         { label: '手続き窓口',           value: 'お客さまセンター 03-5326-1100', state: 'ok',   icon: 'phone' },
         { label: '検針票・請求書のありか', value: '',                            state: 'none', icon: 'folder' }
       ],
-      contract: { holder: '父 太郎', paymentCard: null, paymentLabel: 'ゆうちょ銀行 自動振替', amount: 3100, cycle: 'monthly', started: '不明', nextBill: '隔月〇日頃' },
+      contract: { holder: '父 太郎', paymentCard: 'bank-jp-1', paymentLabel: 'ゆうちょ銀行 自動振替', amount: 3100, cycle: 'monthly', started: '不明', nextBill: '隔月〇日頃' },
       procedure: {
         checked: true,
         where: '東京都水道局 お客さまセンター（電話）',
@@ -536,7 +602,7 @@
         { label: '手続き窓口',           value: 'ふれあいセンター 0120-151515', state: 'ok',   icon: 'phone' },
         { label: '検針票・請求書のありか', value: '',                           state: 'none', icon: 'folder' }
       ],
-      contract: { holder: '父 太郎', paymentCard: null, paymentLabel: 'ゆうちょ銀行 自動振替', amount: 1225, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
+      contract: { holder: '父 太郎', paymentCard: 'bank-jp-1', paymentLabel: 'ゆうちょ銀行 自動振替', amount: 1225, cycle: 'monthly', started: '不明', nextBill: '毎月〇日頃' },
       procedure: {
         checked: false,
         where: 'NHK ふれあいセンター（電話）',
@@ -613,10 +679,12 @@
     };
   }
 
-  /* 保存：いまの items / cards と、次に振る No. をまるごと書き出す。 */
+  /* 保存：いまの items / paymentMethods と、次に振る No. をまるごと。 */
   function save() {
     try {
-      sessionStorage.setItem(STORE_KEY, JSON.stringify({ items: items, cards: cards, nextNo: nextNo }));
+      sessionStorage.setItem(STORE_KEY, JSON.stringify({
+        items: items, paymentMethods: paymentMethods, nextNo: nextNo
+      }));
     } catch (e) { /* 無視 */ }
   }
 
@@ -633,11 +701,22 @@
     try {
       const raw = sessionStorage.getItem(STORE_KEY);
       const obj = raw ? JSON.parse(raw) : null;
-      if (obj && Array.isArray(obj.items) && Array.isArray(obj.cards)) saved = obj;
+      /* paymentMethods キーが正。旧保存は cards キーだが、旧 cards は
+         kind を持たず（券面の出し分けが壊れる）、口座・電子マネーの
+         手段も含まないため、写しとしては使えない。kind を持つ新スキーマ
+         のときだけ復元し、それ以外は seed の paymentMethods をそのまま
+         使う（プロトタイプのセッション限りのデータなので破棄してよい）。 */
+      const pm = obj && obj.paymentMethods;
+      const pmValid = Array.isArray(pm) && pm.every(m => m && m.kind);
+      if (obj && Array.isArray(obj.items)) {
+        saved = Object.assign({}, obj, pmValid ? { paymentMethods: pm } : { paymentMethods: null });
+      }
     } catch (e) { saved = null; }
     if (!saved) { save(); return; }
     items.splice(0, items.length, ...saved.items);
-    cards.splice(0, cards.length, ...saved.cards);
+    if (saved.paymentMethods) {
+      paymentMethods.splice(0, paymentMethods.length, ...saved.paymentMethods);
+    }
     const savedNo = parseInt(saved.nextNo, 10);
     nextNo = !isNaN(savedNo) && savedNo >= NO_START ? savedNo : items.reduce((m, it) => {
       const n = parseInt(it.no, 10);
@@ -800,6 +879,12 @@
     try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 無視 */ } /* 旧キーの掃除 */
   }
 
+  /* テスト・デモ用：明細確認の記録だけ消す。 */
+  function clearStatementChecks() {
+    paymentMethods.forEach(pm => { pm.statement_checked = null; });
+    save();
+  }
+
   /* ── 引き出し ─────────────────────────────────────── */
 
   const byGroup = g => items.filter(it => it.group === g);
@@ -901,7 +986,12 @@
 
   function paymentDisplay(it) {
     const c = it.contract || it;
-    if (c.paymentCard) return findCard(c.paymentCard).name;
+    if (c.paymentCard) {
+      const pm = findCard(c.paymentCard);
+      if (pm) return pm.name;
+      /* 参照先の支払い手段が無い（旧スキーマからの読み込み等）。
+         ラベルがあればそれ、無ければ未確認。 */
+    }
     return c.paymentLabel || '未確認';
   }
 
@@ -913,7 +1003,9 @@
   }
 
   function findItem(id) { return items.find(it => it.id === id); }
-  function findCard(id) { return cards.find(c => c.id === id); }
+  /* findCard は名前だけ従来通り。card 以外の支払い手段も引ける。 */
+  function findCard(id) { return paymentMethods.find(c => c.id === id); }
+  function findPaymentMethod(id) { return paymentMethods.find(c => c.id === id); }
 
   function linkedItems(cardId) {
     return items.filter(it => (it.contract ? it.contract.paymentCard : it.paymentCard) === cardId);
@@ -926,6 +1018,22 @@
       hasPre:  linked.some(it => it.group === 'pre'),
       hasPost: linked.some(it => it.group === 'post')
     };
+  }
+
+  /* 「支払い明細から探す」で、その支払い手段の明細を確認し終えたときに
+     呼ぶ（§13 末尾・§2 の網羅の進捗）。本番は
+     POST /payment-methods/:id/statement-check にあたる。
+     coverage は確認した明細の対象期間（{ from, to }・省略可）。       */
+  function markStatementChecked(id, coverage) {
+    const pm = findPaymentMethod(id);
+    if (!pm) return false;
+    pm.statement_checked = {
+      at: today(),
+      coverage_from: (coverage && coverage.from) || null,
+      coverage_to:   (coverage && coverage.to)   || null
+    };
+    save();
+    return true;
   }
 
   function yen(n) { return '¥' + Math.round(n).toLocaleString('ja-JP'); }
@@ -952,12 +1060,13 @@
 
   global.SeiZenContract = {
     INTENTS, MARKS3, GROUP_UI, MARKS, LOGO_ALIAS,
-    cards, items,
+    paymentMethods, cards, items,
     byGroup, preItems, postItems, undecidedItems,
     hasService, commitAdded, commitFromStatement, applyPaymentMethodChange, removeAdded, renameService, setGroup, resetAll,
+    markStatementChecked, clearStatementChecks,
     intentOf, intentLabel, markOf, openCount, procChecked, accountMark, accountState, accountDone, statusRows,
     itemBadge, groupSummary, accountSummary,
-    paymentDisplay, amountText, findItem, findCard, linkedItems, cardFacts,
+    paymentDisplay, amountText, findItem, findCard, findPaymentMethod, linkedItems, cardFacts,
     yen, today, touch
   };
 })(window);

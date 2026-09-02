@@ -341,11 +341,40 @@
       '<span class="st ' + tone + '">' + esc(text) + '</span></li>';
   }
 
+  /* 表紙の地紋。銀行ごとに固定の1枚を割り当てる。写実的な箔ではなく、
+     冊子だと分かる程度の淡い織り柄をインライン SVG で表紙に敷く。
+     ベクターなのでカード幅が変わっても密度が保たれる（ラスターだと
+     1カラム落ちで間延びする）。柄は白の線だけで描き、opacity は
+     .sh-weave 側で寝かせる。並び順で回すので銀行が増えても破綻しない。 */
+  const WEAVE_TILE = {
+    /* 縦の箔ストライプ。通帳の表紙で一番よくある型。 */
+    stripe: '<pattern id="w-stripe" width="9" height="9" patternUnits="userSpaceOnUse">' +
+            '<path d="M0 0V9M4.5 0V9" stroke="#fff" stroke-width="1"/></pattern>',
+    /* クローバー。4枚の葉を小円で。ゆうちょの地紋の見立て。 */
+    clover: '<pattern id="w-clover" width="26" height="26" patternUnits="userSpaceOnUse">' +
+            '<g fill="none" stroke="#fff" stroke-width="1">' +
+            '<circle cx="13" cy="9" r="3"/><circle cx="9" cy="13" r="3"/>' +
+            '<circle cx="17" cy="13" r="3"/><circle cx="13" cy="17" r="3"/>' +
+            '<path d="M13 13v6"/></g></pattern>',
+    /* 葉脈。斜めの主脈から羽状に。ソニー銀行の見立て。 */
+    vein:   '<pattern id="w-vein" width="30" height="30" patternUnits="userSpaceOnUse" patternTransform="rotate(20)">' +
+            '<g fill="none" stroke="#fff" stroke-width="1">' +
+            '<path d="M0 15h30"/><path d="M7 15l-4-5M7 15l-4 5M15 15l-4-5M15 15l-4 5M23 15l-4-5M23 15l-4 5"/>' +
+            '</g></pattern>'
+  };
+  const WEAVES = ['stripe', 'clover', 'vein'];
+  const weaveFor = bank => WEAVES[S.banks.indexOf(bank) % WEAVES.length];
+  const weaveSVG = key =>
+    '<svg class="sh-weave" aria-hidden="true" width="100%" height="100%" preserveAspectRatio="none">' +
+    '<defs>' + WEAVE_TILE[key] + '</defs>' +
+    '<rect width="100%" height="100%" fill="url(#w-' + key + ')"/></svg>';
+
   function shelfCard(bank) {
     const badge = S.bankBadge(bank);
     const t = S.tally(bank);
     const kinds = shelfKinds(bank);
     const roles = shelfRoles(bank);
+    const weave = weaveFor(bank);
 
     /* 上層＝通帳の表紙。銀行名・口座数・名義だけを置く。「預金通帳」
        の箔押しは名乗りとして読み手に要らない情報で、その1行のぶん
@@ -376,6 +405,10 @@
       '</div>';
 
     return '<button class="shbook' + (bank.dormant ? ' gy' : '') + '" type="button" data-goto="' + bank.id + '">' +
+      weaveSVG(weave) +
+      '<span class="sh-spine" aria-hidden="true"></span>' +
+      '<span class="sh-edge r" aria-hidden="true"></span>' +
+      '<span class="sh-edge b" aria-hidden="true"></span>' +
       face + body + '</button>';
   }
 

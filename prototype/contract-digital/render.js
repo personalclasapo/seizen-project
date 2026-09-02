@@ -50,7 +50,7 @@
     collapseAllPref = v;
     try { localStorage.setItem(COLLAPSE_PREF_KEY, v ? '1' : '0'); } catch (e) { /* 無視 */ }
   }
-  const COLLAPSIBLE_KEYS = ['policy', 'account', 'proc', 'memo'];
+  const COLLAPSIBLE_KEYS = ['policy', 'account', 'proc', 'clinked', 'memo'];
   /* 書いてある場所がそのまま入力欄になる。銀行口座プロトタイプと
      同じ手つきで、値の置き場所を動かさずに書き換える。            */
   let editing = null;      // { path, kind } … 欄ひとつだけを開く
@@ -212,18 +212,18 @@
         '<div><span class="tl">' + esc(ui.badges.ready) + '</span><span class="tv tv-gr">' + t.ready + '件</span></div>' +
         '<div><span class="tl">' + esc(ui.badges.done) + '</span><span class="tv tv-gy">' + t.done + '件</span></div>' +
       '</div>';
-    /* 見出しは2段。上段＝「アイコン＋時間の軸（タブ語）」を大きく、
-       下段＝その束が何かの説明（title）を小さく。振り分け前は phone に
-       入らないので、従来どおり台紙から立ち上がる耳を持たせる。       */
+    /* 見出しは「アイコン＋時間の軸（タブ語）」の1段。束が何かの説明は
+       すぐ下の ib-lead が同じことを言うので、見出しには持たせない
+       （二重になって配置がズレて見える）。振り分け前は phone に入らない
+       ので、従来どおり台紙から立ち上がる耳を持たせる。               */
     const icon = g === 'pre' ? IC.sprout : g === 'post' ? IC.tree : IC.quest;
     const head = g === 'undecided'
       ? '<span class="ib-tab">' + esc(ui.tab) + '</span>' +
         '<div class="ib-h"><span class="ib-ic ic-' + g + '">' + icon + '</span>' +
-          '<h4>' + esc(ui.title) + '</h4><span class="ib-n n-' + g + '">' + full.length + '件</span></div>'
+          '<h4>' + esc(ui.tab) + '</h4><span class="ib-n n-' + g + '">' + full.length + '件</span></div>'
       : '<div class="ib-h ib-h2">' +
           '<span class="ib-ic ic-' + g + '">' + icon + '</span>' +
-          '<span class="ib-ttl"><b>' + esc(ui.tab) + '</b>' +
-            '<small>' + esc(ui.title) + '</small></span>' +
+          '<span class="ib-ttl"><b>' + esc(ui.tab) + '</b></span>' +
           '<span class="ib-n n-' + g + '">' + full.length + '件</span>' +
         '</div>';
     return '<div class="iblock ib-' + g + '">' +
@@ -264,37 +264,64 @@
       '<span class="chip2">' + markHTML(it.name) + '<span class="cl">' + esc(it.name) + '</span></span>').join('');
   }
 
+  /* 支払い手段ごとの「止めると何が止まるか」。kind で券面の見た目と
+     文面を出し分ける（card＝券面、bank＝口座、emoney＝アプリ残高）。 */
+  function payMethodCard(c) {
+    /* kind 未設定（旧スキーマの取りこぼし）は card として扱う。 */
+    const kind = c.kind || 'card';
+    const f = S.cardFacts(c.id);
+    const chips = payChips(f.linked);
+    const sc = c.statement_checked;
+    const checkedNote = sc
+      ? '<span class="pc-checked">' + IC.check + '明細確認済み' +
+          (sc.coverage_from && sc.coverage_to
+            ? '（' + esc(sc.coverage_from) + '〜' + esc(sc.coverage_to) + '）' : '') + '</span>'
+      : '';
+
+    const kindStop = {
+      card:   'このカードを止めると、',
+      bank:   'この口座が凍結されると、',
+      emoney: 'この決済を止めると、'
+    }[kind] || 'この支払い手段を止めると、';
+
+    /* 券面の中段。card は下4桁＋有効期限、bank は記号番号、emoney は
+       登録番号。持たない項目は出さない。 */
+    let mid;
+    if (kind === 'card') {
+      mid = '<span class="pc-chip"></span>' +
+        '<span class="pc-tail">•••• ' + esc(c.info.tail) + '</span>' +
+        '<span class="pc-nm"><i>名義</i>' + esc(c.info.holder) + '</span>' +
+        (c.info.expiry ? '<span class="pc-exp"><i>有効期限</i>' + esc(c.info.expiry) + '</span>' : '');
+    } else if (kind === 'bank') {
+      mid = '<span class="pc-tail">' + esc(c.info.branch || ('•••• ' + c.info.tail)) + '</span>' +
+        '<span class="pc-nm"><i>名義</i>' + esc(c.info.holder) + '</span>';
+    } else {
+      mid = '<span class="pc-tail">' + esc(c.info.issuer || c.name) + '</span>' +
+        '<span class="pc-nm"><i>名義</i>' + esc(c.info.holder) + '</span>';
+    }
+
+    return '<button class="paycard" type="button" data-open="' + c.id + '">' +
+      '<div class="pc-face pf-' + esc(c.brand) + '">' +
+        '<div class="pc-h"><b>' + esc(c.name) + '</b>' +
+          '<span class="lnk">' + f.linked.length + '契約</span></div>' +
+        '<div class="pc-mid">' + mid + '</div>' +
+      '</div>' +
+      '<div class="pc-body">' +
+        '<div class="pc-warn">' + IC.warn + kindStop + f.linked.length + '件の支払いが止まります</div>' +
+        '<div class="chips">' + chips + '</div>' +
+        (checkedNote ? '<div class="pc-checkedrow">' + checkedNote + '</div>' : '') +
+      '</div>' +
+    '</button>';
+  }
+
   function payBlock() {
-    const cardsHTML = S.cards.map(c => {
-      const f = S.cardFacts(c.id);
-      const chips = payChips(f.linked);
-      /* 上半分はカードの券面そのもの。ICチップ・番号・名義・有効期限を
-         実物と同じ位置に置く。下半分は SeiZen 側の記録（止めたときに
-         何が止まるか、どの契約がぶら下がるか）。券面を再現すること自体
-         が目的ではないので、券面には状態を持ち込まない。            */
-      return '<button class="paycard" type="button" data-open="' + c.id + '">' +
-        '<div class="pc-face pf-' + esc(c.brand) + '">' +
-          '<div class="pc-h"><b>' + esc(c.name) + '</b>' +
-            '<span class="lnk">' + f.linked.length + '契約</span></div>' +
-          /* チップ・番号・名義・期限を横一列に置く。券面に載る情報は
-             これだけなので、段を作らずに1行で収める。            */
-          '<div class="pc-mid"><span class="pc-chip"></span>' +
-            '<span class="pc-tail">•••• ' + esc(c.info.tail) + '</span>' +
-            '<span class="pc-nm"><i>名義</i>' + esc(c.info.holder) + '</span>' +
-            '<span class="pc-exp"><i>有効期限</i>' + esc(c.info.expiry) + '</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="pc-body">' +
-          '<div class="pc-warn">' + IC.warn + 'このカードを止めると、' + f.linked.length + '件の支払いが止まります</div>' +
-          '<div class="chips">' + chips + '</div>' +
-        '</div>' +
-      '</button>';
-    }).join('');
+    const methods = S.paymentMethods;
+    const html = methods.map(payMethodCard).join('');
     return '<div class="iblock ib-pay">' +
       '<div class="ib-h"><span class="ib-ic ic-pay">' + IC.card + '</span>' +
-        '<h4>支払いのつながり</h4><span class="ib-n n-pay">' + S.cards.length + '件の経路</span></div>' +
+        '<h4>支払いのつながり</h4><span class="ib-n n-pay">' + methods.length + '件の経路</span></div>' +
       '<p class="ib-lead">支払い方法ごとに、紐づく契約をまとめています。支払い手段を変更・停止する前にご確認ください。</p>' +
-      '<div class="paycards">' + cardsHTML + '</div>' +
+      '<div class="paycards">' + html + '</div>' +
     '</div>';
   }
 
@@ -502,14 +529,13 @@
   function spineContractHTML(it) {
     const c = it.contract;
     const payOpts = [{ value: 'unknown', label: '未確認' }]
-      .concat(S.cards.map(k => ({ value: k.id, label: k.name })))
-      .concat([{ value: 'acct', label: 'ゆうちょ銀行 自動振替' }, { value: 'none', label: '費用なし' }]);
-    /* paymentCard も paymentLabel も無い契約は「未確認」。ラベルの
-       文字列でだけ 費用なし／自動振替 を区別し、それ以外は未確認。 */
+      .concat(S.paymentMethods.map(k => ({ value: k.id, label: k.name })))
+      .concat([{ value: 'none', label: '費用なし' }]);
+    /* 支払い手段は id で持つ。id が無い契約は、ラベルで 費用なし だけ
+       区別し、それ以外は未確認。 */
     const payVal = c.paymentCard
       ? c.paymentCard
       : c.paymentLabel === '費用なし' ? 'none'
-      : c.paymentLabel === 'ゆうちょ銀行 自動振替' ? 'acct'
       : 'unknown';
     const card = c.paymentCard ? S.findCard(c.paymentCard) : null;
     const amtLabel = c.cycle === 'yearly' ? '年額料金' : '月額料金';
@@ -695,14 +721,24 @@
   function spineCardInfoHTML(card) {
     const c = card.info;
     const on = editSection === 'cardinfo';
+    const L = ({
+      card:   { head: 'カード情報',   issuer: 'カード会社',   idLabel: '下4桁',   idPrefix: '•••• ' },
+      bank:   { head: '口座情報',     issuer: '金融機関',     idLabel: '記号・番号', idPrefix: '' },
+      emoney: { head: '決済サービス情報', issuer: '事業者',   idLabel: '登録番号', idPrefix: '' }
+    })[card.kind] || { head: '支払い手段の情報', issuer: '事業者', idLabel: '識別番号', idPrefix: '' };
+    const idVal = card.kind === 'bank'
+      ? ev('info.branch', c.branch, 'line', '例：記号 10000 / 番号 12345678')
+      : L.idPrefix + ev('info.tail', c.tail, 'line', '例：1234');
     return '<div class="rspine">' +
-      '<div class="rsp-h"><span>カード情報</span>' +
-        '<button type="button" class="rsp-edit' + (on ? ' on' : '') + '" data-editsec="cardinfo" aria-label="カード情報を編集">' +
+      '<div class="rsp-h"><span>' + L.head + '</span>' +
+        '<button type="button" class="rsp-edit' + (on ? ' on' : '') + '" data-editsec="cardinfo" aria-label="' + L.head + 'を編集">' +
           (on ? IC.check : IC.pen) + '</button></div>' +
-      '<div class="rsp-row"><small>カード会社</small><b>' + ev('info.issuer', c.issuer, 'line', '例：楽天カード株式会社') + '</b></div>' +
+      '<div class="rsp-row"><small>' + L.issuer + '</small><b>' + ev('info.issuer', c.issuer, 'line', '例：楽天カード株式会社') + '</b></div>' +
       '<div class="rsp-row"><small>名義人</small><b>' + ev('info.holder', c.holder, 'line', '例：父 太郎') + '</b></div>' +
-      '<div class="rsp-row"><small>下4桁</small><b>•••• ' + ev('info.tail', c.tail, 'line', '例：1234') + '</b></div>' +
-      '<div class="rsp-row"><small>有効期限</small><b>' + ev('info.expiry', c.expiry, 'line', '例：2027/03') + '</b></div>' +
+      '<div class="rsp-row"><small>' + L.idLabel + '</small><b>' + idVal + '</b></div>' +
+      (card.kind === 'card'
+        ? '<div class="rsp-row"><small>有効期限</small><b>' + ev('info.expiry', c.expiry, 'line', '例：2027/03') + '</b></div>'
+        : '') +
     '</div>';
   }
 
@@ -745,7 +781,7 @@
           sectionHTML('policy', 't-pu', IC.flag, '対応方針', '', policyHTML(card, '家族の方針'), false, true) +
           sectionHTML('account', 't-gr', IC.person, S.GROUP_UI.card.accountTitle, '', accountHTML(card), false, true) +
           sectionHTML('proc', 't-rd', IC.clip, '手続き方法', procSub(card), procedureHTML(card), false, true) +
-          sectionHTML('clinked', 't-cr', IC.link, '紐づく契約一覧', '（' + f.linked.length + '件）', clinkedHTML(card), true, false) +
+          sectionHTML('clinked', 't-cr', IC.link, '紐づく契約一覧', '（' + f.linked.length + '件）', clinkedHTML(card), false, false) +
           sectionHTML('memo', 't-cr', IC.pen, 'メモ', '', memoHTML(card), false, true) +
         '</div>' +
       '</div>';
@@ -889,8 +925,7 @@
       return true;
     } else if (path === 'contract.paymentCard') {
       const before = it.contract.paymentCard + '|' + (it.contract.paymentLabel || '');
-      if (val === 'acct')         { it.contract.paymentCard = null; it.contract.paymentLabel = 'ゆうちょ銀行 自動振替'; }
-      else if (val === 'none')    { it.contract.paymentCard = null; it.contract.paymentLabel = '費用なし'; }
+      if (val === 'none')         { it.contract.paymentCard = null; it.contract.paymentLabel = '費用なし'; }
       else if (val === 'unknown') { it.contract.paymentCard = null; delete it.contract.paymentLabel; }
       else                        { it.contract.paymentCard = val;  delete it.contract.paymentLabel; }
       return before !== it.contract.paymentCard + '|' + (it.contract.paymentLabel || '');

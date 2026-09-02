@@ -82,17 +82,16 @@
 .ph-scroll .iblock{border:0;border-radius:0;box-shadow:none;padding:0}
 .ph-scroll .iblock:before,.ph-scroll .ib-tab{display:none}
 
-/* 見出し。アイコン｜「時間の軸（大）＋説明（小）」を1行に横並びにし、
-   その塊を束の中央へ据える。件数は右上へ絶対配置で逃がし、中央の軸を
-   ぶらさない。                                                     */
+/* 見出し。アイコン｜時間の軸（タブ語）を1行に横並びにし、その塊を
+   束の中央へ据える。束が何かの説明は下の ib-lead が言うので、見出しに
+   は持たせない。件数は右上へ絶対配置で逃がし、中央の軸をぶらさない。 */
 .ib-h2{position:relative;justify-content:center;align-items:center;gap:11px;margin-bottom:13px}
 .ib-h2 .ib-ic{width:40px;height:40px;border-radius:11px}
 .ib-h2 .ib-ic svg{width:23px;height:23px}
-.ib-ttl{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ib-ttl{display:flex;align-items:center;min-width:0}
 .ib-ttl b{font-size:18px;font-weight:800;letter-spacing:.02em;line-height:1.2}
-.ib-ttl small{font-size:11.5px;font-weight:600;color:var(--ink3);line-height:1.3}
 .ib-pre .ib-ttl b{color:#a4650f}.ib-post .ib-ttl b{color:#3d6b52}
-.ib-h2 .ib-n{position:absolute;top:0;right:0;margin:0}
+.ib-h2 .ib-n{position:absolute;top:50%;right:0;transform:translateY(-50%);margin:0}
 
 /* 狭幅では2台を縦に積む。 */
 @media (max-width:900px){
@@ -143,7 +142,17 @@
    ベージュにする。 */
 .ib-undecided{grid-column:1 / -1;justify-self:center;width:calc((100% - 26px) / 2);
   --bk-mat:#EFECE4;--bk-mat2:#E6E2D7;--bk-mat3:#D9D4C6;--bk-ln:#E2DDCF;--bk-ln2:#C9C2AF}
-.ib-undecided:before{box-shadow:0 7px 14px -7px #4b422b26,0 16px 26px -14px #4b422b22}
+/* pre/post は下に敷いた台紙（:before を右・下へずらす）で奥行きを出すが、
+   振り分け前でそれをやると右下だけに影が寄って安っぽく見える。ここは
+   台紙を使わず、板そのものを宙に浮かせる。下は外へ落ち影、上は外へ
+   はみ出させると耳（.ib-tab）の裏に回り込むので、内側に落とし込む影
+   （inset）で上端も浮いて見せる。左右は薄い拡散影でつなぐ。          */
+.ib-undecided:before{display:none}
+.ib-undecided{box-shadow:
+  inset 0 3px 5px -3px #4b422b3d,
+  0 0 0 1px #4b422b12,
+  0 3px 6px -1px #4b422b2e,
+  0 12px 22px -10px #4b422b40}
 .ib-undecided .ib-tab{color:#6d6350}
 .ic-undecided{background:#efece4;color:#8a8578}
 .n-undecided{color:#8a8578}
@@ -201,9 +210,51 @@
 .ib-more .chev svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2}
 
 /* ── その束だけの全件画面（list.html） ──────────────────
-   ハブの束の見た目（台紙・耳・タブ・行）をそのまま踏襲する。
-   違うのは行を2列で並べること。狭幅では1列に落とす。            */
+   pre／post はハブと同じ「持ち歩く画面」の位置づけを額装で言う。
+   ただし全件を2列で並べるぶん横幅が要るので、iPhone ではなく iPad
+   の外観（.tablet）で包む。undecided は額装せず、ハブと同じ束の
+   造形（台紙は使わず多層影で浮かせる）のまま全幅で置く。行はどちらも
+   2列。狭幅では1列に落とす。                                      */
 .listwrap{max-width:1080px}
+
+/* ── iPad の額装（list.html の pre／post） ────────────
+   .ph-body と同じ3層の立体（下方向の落ち影／フチの面取り／外周の
+   光る縁）を、比率だけ横長にして流用する。Dynamic Island は iPad に
+   無いので持たせず、ステータスバー右側の3グリフだけ添える。中身の
+   束（見出し・台紙・行）は .tb-screen の中で素通しする。          */
+.tablet{margin-top:22px;width:100%}
+.tb-body{position:relative;background:linear-gradient(158deg,#43444a,#17181b 40%,#26272c);
+  border-radius:34px;padding:12px;
+  box-shadow:
+    0 2px 4px #00000047,
+    0 30px 46px -12px #4b422b4a,
+    0 54px 80px -24px #4b422b40,
+    inset 0 2px 2px #ffffff2e,
+    inset 0 -3px 5px #00000063,
+    inset 0 0 0 1px #00000080}
+.tb-body:before{content:"";position:absolute;inset:0;border-radius:34px;
+  box-shadow:inset 0 0 0 1.5px #ffffff1f;pointer-events:none}
+.tb-screen{position:relative;background:var(--paper);border-radius:24px;overflow:hidden;
+  box-shadow:inset 0 0 0 1px #0000001a,inset 0 3px 10px -3px #00000038}
+/* ステータスバー右側：電波・Wi-Fi・電池。iPad なので中央の時刻は描かない。 */
+.tb-status{position:absolute;top:15px;right:26px;display:flex;align-items:center;gap:6px;z-index:3;color:var(--ink)}
+.tb-status svg{height:11px;width:auto;fill:currentColor}
+.tb-status .tb-wifi{height:12px;fill:none}
+.tb-status .tb-wifi path{stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
+.tb-status .tb-batt{fill:none}
+.tb-status .tb-batt>rect:first-child{stroke:currentColor;stroke-opacity:.4;stroke-width:1.2;fill:none}
+.tb-status .tb-batt-fill{fill:currentColor}
+.tb-status .tb-batt-cap{fill:currentColor;fill-opacity:.4}
+/* 中身の置き場。上はステータスバー領域、左右下は行がフチに触れない逃げ。 */
+.tb-scroll{padding:40px 30px 30px}
+/* iPad の中では束は「画面そのもの」なので、束を囲う板（枠・影・台紙・
+   耳）は落とす。分類の造形はタブ語を取り込んだ見出しが受け持つ。   */
+.tb-scroll .iblock{border:0;border-radius:0;box-shadow:none;padding:0}
+.tb-scroll .iblock:before,.tb-scroll .ib-tab{display:none}
+/* 狭幅では2列をやめて1列に。額装は残す。 */
+@media (max-width:820px){
+  .tb-scroll{padding:36px 18px 24px}
+}
 /* 戻り導線は素のテキストリンク。囲みは持たせない（詳細画面の
    .dtl-back のようなピルにはしない）。見出しのすぐ上に置く。     */
 .list-back{display:inline-flex;align-items:center;gap:4px;margin-bottom:10px;font-family:inherit;font-size:12px;font-weight:700;color:#6b6963;text-decoration:none}
@@ -212,11 +263,17 @@
 /* 戻りリンクの直後なので、見出しの上余白は詰める（既定の .sec-h の
    margin-top:34px はここでは効かせない）。 */
 .listwrap .sec-h{margin-top:4px}
-/* 束が1つだけなので、上は耳（.ib-tab）が飛び出すぶんだけ空ける。 */
-.list-block{margin-top:22px}
+/* 束が1つだけ。耳（.ib-tab）が上へ飛び出すぶんに加え、ページ上部の
+   説明文（.sec-lead）と耳が近づきすぎないよう、ゆとりを持たせる。 */
+.list-block{margin-top:40px}
 /* 全件画面では束が1つだけなので、振り分け前も幅を絞らず全幅で置く
    （ハブでの .ib-undecided の中央寄せ・半幅はここでは効かせない）。 */
 .list-block .ib-undecided{justify-self:stretch;width:auto}
+/* 全件画面の振り分け前は ib-lead を持たない（説明はページ上部の
+   sec-lead に一本化）。tally も無いので、見出しと行のあいだに
+   区切りを1本だけ入れる。 */
+.list-block .ib-undecided .ib-h{margin-bottom:0;padding-bottom:13px;border-bottom:1px solid #e7e1d1}
+.list-block .ib-undecided .list-rows{margin-top:6px}
 /* 束の中の行を2列に。1行＝1項目（.irow）をグリッドのセルにする。 */
 .list-rows{display:grid;grid-template-columns:1fr 1fr;column-gap:22px}
 /* 行どうしの区切りは、2列それぞれの中で上罫を引いてそろえる。 */
@@ -227,7 +284,7 @@
    （.cut の margin-top / 濃い線は打ち消す）。並び順は保つ。       */
 .list-rows .irow.cut{margin-top:0;padding-top:11px;border-top:1px solid #f2ede0}
 .list-rows .irow.cut:nth-child(1),.list-rows .irow.cut:nth-child(2){border-top:0}
-@media (max-width:760px){
+@media (max-width:820px){
   .list-rows{grid-template-columns:1fr}
   .list-rows .irow:nth-child(2){border-top:1px solid #f2ede0}
 }
@@ -259,6 +316,11 @@
    主役になってはいけない。実物の色を借りつつ、紙面へなじむ濃さに。 */
 .pf-rakuten{background:linear-gradient(145deg,#8a4a44,#73393a 55%,#613033)}
 .pf-smbc{background:linear-gradient(145deg,#4a7059,#3b5c48 55%,#314c3c)}
+/* 券面を持たない支払い手段（口座・電子マネー）。カードと同じ立体感の
+   まま、地色だけ中立に。口座は藍、電子マネーは灰みの赤。 */
+.pf-bank{background:linear-gradient(145deg,#40566f,#33475c 55%,#2b3d50)}
+.pf-paypay{background:linear-gradient(145deg,#9a4a4a,#83393a 55%,#6f3033)}
+.pf-card,.pf-emoney{background:linear-gradient(145deg,#5b5f6b,#494d59 55%,#3d414c)}
 .pc-h{display:flex;align-items:baseline;gap:8px}
 .pc-h b{font-size:13.5px;font-weight:700;letter-spacing:.01em}
 .pc-h .lnk{margin-left:auto;font-size:11px;color:#ffffffd1;font-weight:700;white-space:nowrap;
@@ -287,6 +349,11 @@
 .chip2{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:5px 11px 5px 6px;border:1px solid #eee9de;border-radius:8px;background:#fff;font-size:11.5px;color:#454b44}
 .chip2 .cl{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .chip2 .mark{flex:none;width:20px;height:20px;border-radius:5px;font-size:10px}
+/* 明細確認済みの記録。件数チップの下に控えめに。 */
+.pc-checkedrow{margin-top:9px}
+.pc-checked{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;
+  color:#3f7d54;background:#eaf3ec;border:1px solid #d3e6d8;border-radius:7px;padding:3px 8px}
+.pc-checked svg{flex:0 0 11px;stroke:#3f7d54;fill:none;stroke-width:2.4}
 
 /* ── 詳細：画面 ───────────────────────────────────
    索引の上に重ねるオーバーレイではなく、?id= を持つ別画面として

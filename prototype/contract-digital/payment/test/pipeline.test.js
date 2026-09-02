@@ -66,18 +66,33 @@ function freshModules(contractStub) {
   global.window = global;
   global.SeiZenCatalog = { categoryFor: () => '未分類' };
   global.SeiZenContract = contractStub || makeContractStub([]);
-  ['master.js','resolver.js','series.js','judge.js','reconcile.js','register.js','source/vpass.js','pipeline.js']
+  ['master.js','resolver.js','series.js','judge.js','reconcile.js','register.js','source/vpass.js','source/rakuten.js','pipeline.js']
     .forEach(f => require(PDIR + f));
   return {
     Pipeline: global.SeiZenPaymentPipeline,
     Master: global.SeiZenPaymentMaster,
     Vpass: global.SeiZenSourceVpass,
+    Rakuten: global.SeiZenSourceRakuten,
     Contract: global.SeiZenContract
   };
 }
 
 function analyze(csv, opts) {
   return global.SeiZenPaymentPipeline.analyze(csv, Object.assign({ adapter: 'vpass' }, opts || {}));
+}
+
+/* 実 Vpass 形式（ヘッダーなし11列・先頭にカード情報行・末尾に合計行）
+   の CSV を、明細行の配列（[利用日, 店名, 金額, 支払区分, 回数, 備考]）
+   から組み立てる。テスト内の合成ケース用。 */
+function vpassCsv(rows) {
+  const out = ['VPASSガイド 様,4980-XXXX-XXXX-1234,,SMBCCARDクラシック☆,,,,,,,'];
+  let total = 0;
+  for (const [date, shop, amt, kubun, kaisu, biko] of rows) {
+    out.push([date, shop, amt, kubun || '1', kaisu || '1', amt, '', '', '', '', biko || ''].join(','));
+    const n = parseInt(amt, 10); if (!isNaN(n)) total += n;
+  }
+  out.push(['', '', '', '', '', String(total), '', '', '', '', ''].join(','));
+  return out.join('\r\n') + '\r\n';
 }
 const cand = (r, name) => r.candidates.find(c => c.merchant_name === name || (c.series && c.series.merchant_raw === name));
 const dropped = (r, raw) => r.report.series.find(s => s.merchant_raw === raw && s.status === 'drop');
@@ -92,61 +107,94 @@ console.log('\n■ 1. 異常系 CSV');
   // 1a. 空CSV
   check('空CSV → ok:false', analyze('').ok === false);
 
-  // 1b. ヘッダーのみ
-  check('ヘッダー行のみ → ok:false', analyze('請求月,ご利用日,ご利用店名,ご利用金額,支払区分\n').ok === false);
+  // 1b. 明細行が1つも無い（カード情報行と合計行だけ）→ ok:false
+  const noData = 'VPASSガイド 様,4980-XXXX-XXXX-1234,,SMBCCARDクラシック☆,,,,,,,\r\n,,,,,0,,,,,\r\n';
+  check('明細行なし → ok:false', analyze(noData).ok === false);
 
-  // 1c. 必須列欠落
-  const r1c = analyze('請求月,ご利用日,ご利用店名,ご利用金額\n2026-03,2026/03/12,NETFLIX.COM,1590\n');
-  check('必須列（支払区分）欠落 → ok:false かつメッセージに列名', r1c.ok === false && /支払区分/.test(r1c.error), r1c.error);
+  // 1c. 別カード会社の CSV を vpass アダプタに渡す → 日付列が無く data_rows 0
+  const rakutenLike = '"利用日","利用店名・商品名","利用者","支払方法","利用金額"\r\n"2026/03/12","NETFLIX.COM","本人","1回払い","1590"\r\n';
+  check('楽天形式を vpass アダプタに渡す → ok:false（読めない）', analyze(rakutenLike).ok === false);
 
-  // 1d. 対応外アダプタ
-  check('未対応アダプタ → ok:false', analyze('a\nb', { adapter: 'nanko' }).ok === false);
+  // 1d. 未対応アダプタ名
+  const r1d = analyze('a\nb', { adapter: 'nanko' });
+  check('未対応アダプタ名 → ok:false かつメッセージに形式名', r1d.ok === false && /nanko/.test(r1d.error), r1d.error);
 
-  // 1e. 請求月が飛んでいる → coverage underivable、判定は通る
-  const gap = [
-    '請求月,ご利用日,ご利用店名,ご利用金額,支払区分,今回回数,お支払い金額,備考',
-    '2026-03,2026/03/12,NETFLIX.COM,1590,1,,1590,◎',
-    '2026-05,2026/05/12,NETFLIX.COM,1590,1,,1590,◎',   // 4月が無い
-    '2026-06,2026/06/12,NETFLIX.COM,1590,1,,1590,◎',
-    '2026-07,2026/07/12,NETFLIX.COM,1590,1,,1590,◎'
-  ].join('\n');
+  // 1e. 利用日が飛んでいる短い系列 → coverage は利用日から / 判定は保守的
+  const gap = vpassCsv([
+    ['2026/3/12', 'NETFLIX.COM', '1590'],
+    ['2026/5/12', 'NETFLIX.COM', '1590'],   // 4月が無い
+    ['2026/6/12', 'NETFLIX.COM', '1590'],
+    ['2026/7/12', 'NETFLIX.COM', '1590']
+  ]);
   const rgap = analyze(gap);
-  check('請求月に欠損 → coverage_status underivable', rgap.ok && rgap.coverage.coverage_status === 'underivable',
+  check('coverage は利用日の最小〜最大から導出', rgap.ok &&
+    rgap.coverage.coverage_from === '2026-03-12' && rgap.coverage.coverage_to === '2026-07-12',
     JSON.stringify(rgap.coverage));
   /* 4点しかなく 1本 61日ギャップ → classifyCycle は保守的に single 判定
      （短い系列は全 gap 帯内を要求）。既知マスタでも cycle=single では
      shape 一致せず破棄。これは設計意図（本物の契約は全 gap 帯内）通り。 */
-  check('請求月欠損＋短系列 → 保守的に破棄（Netflix 候補に出ない）',
+  check('利用日欠損＋短系列 → 保守的に破棄（Netflix 候補に出ない）',
     rgap.ok && !cand(rgap, 'Netflix') && dropped(rgap, 'NETFLIX.COM'),
     JSON.stringify(rgap.report.series.filter(s => /NETFLIX/i.test(s.merchant_raw))));
 
   // 1f. 全行が分割払い → transactions 0 → candidates 空だが ok
-  const allInst = [
-    '請求月,ご利用日,ご利用店名,ご利用金額,支払区分,今回回数,お支払い金額,備考',
-    '2026-03,2026/03/05,BIC CAMERA,66000,3,1,22000,◎',
-    '2026-04,2026/03/05,BIC CAMERA,66000,3,2,22000,◎'
-  ].join('\n');
-  const rai = analyze(allInst);
+  const rai = analyze(vpassCsv([
+    ['2026/4/5', 'BIC CAMERA', '66000', '3', '1'],
+    ['2026/5/5', 'BIC CAMERA', '66000', '3', '2']
+  ]));
   check('全行分割払い → ok:true / candidates 空', rai.ok && rai.candidates.length === 0);
   check('  除外統計に installment 計上', rai.report.adapter.stats.excluded_installment === 2,
     JSON.stringify(rai.report.adapter.stats));
 
   // 1g. マイナス額のみ（返金）
-  const neg = [
-    '請求月,ご利用日,ご利用店名,ご利用金額,支払区分,今回回数,お支払い金額,備考',
-    '2026-03,2026/03/19,AMAZON.CO.JP,-3980,1,,-3980,返品'
-  ].join('\n');
-  const rneg = analyze(neg);
+  const rneg = analyze(vpassCsv([['2026/3/19', 'AMAZON.CO.JP', '-3980', '1', '1', '返品']]));
   check('マイナス額のみ → 除外され candidates 空', rneg.ok && rneg.candidates.length === 0 &&
     rneg.report.adapter.stats.excluded_nonpositive === 1);
 
-  // 1h. BOM 有無どちらも通る
-  const body = 'ご利用日,請求月,ご利用店名,ご利用金額,支払区分,今回回数,お支払い金額,備考\n' +
-    ['2026/03/12,2026-03,NETFLIX.COM,1590,1,,1590,◎',
-     '2026/04/12,2026-04,NETFLIX.COM,1590,1,,1590,◎',
-     '2026/05/12,2026-05,NETFLIX.COM,1590,1,,1590,◎'].join('\n');
-  check('BOM なし → ok:true', analyze(body).ok);
-  check('BOM あり → ok:true', analyze('﻿' + body).ok);
+  // 1h. カード情報行・合計行・空行を黙って飛ばす
+  const withNoise = [
+    'VPASSガイド 様,4980-XXXX-XXXX-1234,,SMBCCARDクラシック☆,,,,,,,',
+    '2026/3/12,NETFLIX.COM,1590,1,1,1590,,,,,',
+    '2026/4/12,NETFLIX.COM,1590,1,1,1590,,,,,',
+    '',
+    'VPASSガイド 様,4980-XXXX-XXXX-9999,,三井住友カード iD［専用カード］,,,,,,,',
+    '2026/5/12,NETFLIX.COM,1590,1,1,1590,,,,,',
+    '2026/6/12,NETFLIX.COM,1590,1,1,1590,,,,,',
+    ',,,,,6360,,,,,'
+  ].join('\r\n');
+  const rn = analyze(withNoise);
+  check('カード情報行/合計行/空行を飛ばして明細だけ拾う', rn.ok &&
+    rn.report.adapter.stats.skipped_nondata === 3 && rn.report.adapter.stats.data_rows === 4,
+    JSON.stringify(rn.report.adapter.stats));
+  check('  複数カードブロックの明細が1つの系列にまとまる → Netflix A',
+    rn.ok && cand(rn, 'Netflix') && cand(rn, 'Netflix').status === 'A');
+
+  // 1i. 文字コード（§15-4）：三井住友カードの実 CSV は Shift-JIS(CP932)
+  const utf8Str = fs.readFileSync(CSVDIR + 'SeiZen_sample_vpass_6months_2026-03_to_08.csv', 'utf8');
+  const u8 = Buffer.from(utf8Str.replace(/^﻿/, ''), 'utf8');
+  const rU8 = analyze(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength));
+  check('UTF-8 バイト列 → ok / encoding=utf-8', rU8.ok && rU8.report.adapter.encoding === 'utf-8',
+    JSON.stringify(rU8.report && rU8.report.adapter && rU8.report.adapter.encoding));
+
+  const sjisPath = CSVDIR + 'SeiZen_sample_vpass_6months_2026-03_to_08_sjis.csv';
+  if (fs.existsSync(sjisPath)) {
+    const sj = fs.readFileSync(sjisPath);
+    const rSj = analyze(sj.buffer.slice(sj.byteOffset, sj.byteOffset + sj.byteLength));
+    check('Shift-JIS バイト列 → ok / encoding=shift_jis', rSj.ok && rSj.report.adapter.encoding === 'shift_jis',
+      JSON.stringify(rSj.report && rSj.report.adapter && rSj.report.adapter.encoding));
+    check('  Shift-JIS でも UTF-8 と同じ候補が出る（Netflix / Spotify / 日経）',
+      rSj.ok && ['Netflix', 'Spotify', '日本経済新聞'].every(n => rSj.candidates.some(c => c.merchant_name === n)),
+      rSj.ok ? rSj.candidates.map(c => c.merchant_name).join(',') : rSj.error);
+    /* UTF-8 版と候補・drop が一致することの照合 */
+    const rUtf = analyze(utf8Str);
+    check('  Shift-JIS と UTF-8 で候補件数が一致', rSj.candidates.length === rUtf.candidates.length,
+      rSj.candidates.length + ' vs ' + rUtf.candidates.length);
+  } else {
+    check('Shift-JIS サンプル CSV が存在する（sjis.csv）', false, sjisPath + ' が無い。生成手順は test/README 参照');
+  }
+
+  // 1j. 文字列（デコード済み）はそのまま通る＝?debug 復元・旧経路互換
+  check('デコード済み文字列も引き続き通る', analyze(utf8Str).ok);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -157,20 +205,24 @@ console.log('\n■ 2. 判定の派生経路');
   freshModules();
 
   // 2a. bimonthly の明確なケース（水道を隔月で 4 回）
-  const bim = ['請求月,ご利用日,ご利用店名,ご利用金額,支払区分,今回回数,お支払い金額,備考'];
-  ['2026-03,2026/03/10', '2026-05,2026/05/10', '2026-07,2026/07/10', '2026-09,2026/09/10']
-    .forEach(p => bim.push(p + ',YOKOHAMA WATERWORKS,4800,1,,4800,◎'));
-  const rbim = analyze(bim.join('\n'));
+  const rbim = analyze(vpassCsv([
+    ['2026/3/10', 'YOKOHAMA WATERWORKS', '4800'],
+    ['2026/5/10', 'YOKOHAMA WATERWORKS', '4800'],
+    ['2026/7/10', 'YOKOHAMA WATERWORKS', '4800'],
+    ['2026/9/10', 'YOKOHAMA WATERWORKS', '4800']
+  ]));
   const wc = cand(rbim, '横浜市水道局');
   check('隔月 x4 → 横浜市水道局 候補あり', !!wc);
   check('  cycle == bimonthly', wc && wc.series.cycle === 'bimonthly', wc && wc.series.cycle);
   check('  status == A（従量・金額照合しない）', wc && wc.status === 'A', wc && wc.status);
 
   // 2b. resolver スタブで解決できない継続課金 → C
-  const unk = ['請求月,ご利用日,ご利用店名,ご利用金額,支払区分,今回回数,お支払い金額,備考'];
-  ['2026-03,2026/03/08', '2026-04,2026/04/08', '2026-05,2026/05/08', '2026-06,2026/06/08']
-    .forEach(p => unk.push(p + ',MYSTERY SUBSCRIPTION,3300,1,,3300,◎'));
-  const runk = analyze(unk.join('\n'));
+  const runk = analyze(vpassCsv([
+    ['2026/3/8', 'MYSTERY SUBSCRIPTION', '3300'],
+    ['2026/4/8', 'MYSTERY SUBSCRIPTION', '3300'],
+    ['2026/5/8', 'MYSTERY SUBSCRIPTION', '3300'],
+    ['2026/6/8', 'MYSTERY SUBSCRIPTION', '3300']
+  ]));
   const mc = cand(runk, 'MYSTERY SUBSCRIPTION');
   check('未知の継続課金（月次 x4）→ C', mc && mc.status === 'C', mc && mc.status);
   check('  service_id は null（マスタにない）', mc && mc.service_id === null);
@@ -196,6 +248,62 @@ console.log('\n■ 2. 判定の派生経路');
     check('  B で「その他」→ status C', other.status === 'C', other.status);
     check('  service_id null / timing null', other.service_id === null && other.response_timing === null);
   }
+
+  // 2e. 期間が1ヶ月だけの明細（§7-3：期間下限を設けない）
+  freshModules();
+  const rom = analyze(vpassCsv([
+    ['2026/7/6',  'MICROSOFT*MICROSOFT 365', '21300'],   // 年額・単発 → A
+    ['2026/7/9',  'GMO*ONAMAE.COM', '1408'],             // 年額・単発 → A
+    ['2026/7/12', 'NETFLIX.COM', '1590'],                // 月額 1件 → 継続の観測なし
+    ['2026/7/20', 'SEIYU', '3200']                       // 日常消費 → drop
+  ]));
+  check('1ヶ月明細でも ok:true', rom.ok);
+  check('  年額の単発（MS365 / GMO）は A（§7-3）',
+    ['Microsoft', 'GMO お名前.com'].every(n => {
+      const c = cand(rom, n); return c && c.status === 'A';
+    }), rom.candidates.map(c => c.merchant_name + ':' + c.status).join(','));
+  check('  coverage は利用日から（2026-07-06 〜 2026-07-20）',
+    rom.coverage.coverage_from === '2026-07-06' && rom.coverage.coverage_to === '2026-07-20',
+    JSON.stringify(rom.coverage));
+  check('  月額1件の Netflix は継続の観測が無く候補に出ない（cycle=single → drop）',
+    !cand(rom, 'Netflix') && dropped(rom, 'NETFLIX.COM'),
+    JSON.stringify(rom.report.series.filter(s => /NETFLIX/i.test(s.merchant_raw))));
+
+  // 2f. 支払区分が全角「１」（vpass.js は半角・全角どちらも lump sum）
+  freshModules();
+  const rz = analyze(vpassCsv([
+    ['2026/3/12', 'NETFLIX.COM', '1590', '１'],
+    ['2026/4/12', 'NETFLIX.COM', '1590', '１'],
+    ['2026/5/12', 'NETFLIX.COM', '1590', '１'],
+    ['2026/6/12', 'NETFLIX.COM', '1590', '１'],
+    ['2026/7/12', 'NETFLIX.COM', '1590', '１'],
+    ['2026/8/12', 'NETFLIX.COM', '1590', '１']
+  ]));
+  check('支払区分が全角「１」でも一括払いとして扱う → Netflix A',
+    rz.ok && cand(rz, 'Netflix') && cand(rz, 'Netflix').status === 'A',
+    rz.ok ? JSON.stringify(rz.report.adapter.stats) : rz.error);
+
+  // 2g. 同一請求主体に「定額系列＋どの帯にも当たらない単発」が混在
+  freshModules();
+  const rmix = analyze(vpassCsv([
+    ['2026/3/18', 'APPLE.COM/BILL', '150'],
+    ['2026/4/18', 'APPLE.COM/BILL', '150'],
+    ['2026/5/18', 'APPLE.COM/BILL', '150'],
+    ['2026/6/18', 'APPLE.COM/BILL', '150'],
+    ['2026/7/18', 'APPLE.COM/BILL', '150'],
+    ['2026/8/18', 'APPLE.COM/BILL', '150'],
+    ['2026/4/11', 'APPLE.COM/BILL', '1200'],   // Apple One 帯・単発
+    ['2026/8/22', 'APPLE.COM/BILL', '650']     // 帯外・単発
+  ]));
+  check('混在：¥150×6 は iCloud+（50GB プラン）に確定 → A',
+    (() => { const c = cand(rmix, 'Apple'); return c && c.status === 'A' && c.service_id === 'svc-icloud' && c.plan_id === 'pln-icloud-50'; })(),
+    JSON.stringify(rmix.candidates.map(c => ({ n: c.merchant_name, s: c.status, sid: c.service_id }))));
+  check('  ¥1,200 単発は「形が一致しない」で drop（§7-2）',
+    !!dropped(rmix, 'APPLE.COM/BILL') && rmix.report.series.some(s => s.merchant_raw === 'APPLE.COM/BILL' && s.amount_max === 1200 && s.status === 'drop'));
+  check('  ¥650 単発も drop（どの帯にも当たらず規則性なし）',
+    rmix.report.series.some(s => s.merchant_raw === 'APPLE.COM/BILL' && s.amount_max === 650 && s.status === 'drop'));
+  check('  Apple の候補は1つだけ（¥150 系列のみ）',
+    rmix.candidates.filter(c => c.merchant_name === 'Apple').length === 1);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -294,10 +402,13 @@ console.log('\n■ 4. C の対応時期「分からない」');
 {
   const stub4 = makeContractStub([]);
   freshModules(stub4);
-  const unk = ['請求月,ご利用日,ご利用店名,ご利用金額,支払区分,今回回数,お支払い金額,備考'];
-  ['2026-03,2026/03/08', '2026-04,2026/04/08', '2026-05,2026/05/08', '2026-06,2026/06/08']
-    .forEach(p => unk.push(p + ',MYSTERY SUBSCRIPTION,3300,1,,3300,◎'));
-  const r4 = analyze(unk.join('\n'), { paymentMethodId: 'card-Z' });
+  const unkCsv = vpassCsv([
+    ['2026/3/8', 'MYSTERY SUBSCRIPTION', '3300'],
+    ['2026/4/8', 'MYSTERY SUBSCRIPTION', '3300'],
+    ['2026/5/8', 'MYSTERY SUBSCRIPTION', '3300'],
+    ['2026/6/8', 'MYSTERY SUBSCRIPTION', '3300']
+  ]);
+  const r4 = analyze(unkCsv, { paymentMethodId: 'card-Z' });
   const c4 = cand(r4, 'MYSTERY SUBSCRIPTION');
   const out4 = global.SeiZenPaymentPipeline.commit([
     { candidate: c4, editedName: 'なぞの定期購入', chosenTiming: 'unknown' }
@@ -311,7 +422,7 @@ console.log('\n■ 4. C の対応時期「分からない」');
   // 4b. C を pre で登録
   const stub4b = makeContractStub([]);
   freshModules(stub4b);
-  const r4b = analyze(unk.join('\n'), { paymentMethodId: 'card-Z' });
+  const r4b = analyze(unkCsv, { paymentMethodId: 'card-Z' });
   global.SeiZenPaymentPipeline.commit([
     { candidate: cand(r4b, 'MYSTERY SUBSCRIPTION'), editedName: 'X', chosenTiming: 'pre' }
   ], { paymentMethodId: 'card-Z', holderName: '' });
@@ -324,10 +435,14 @@ console.log('\n■ 4. C の対応時期「分からない」');
 console.log('\n■ 5. resolver 書き戻し（§15-2）');
 {
   freshModules();
-  const daznCsv = ['請求月,ご利用日,ご利用店名,ご利用金額,支払区分,今回回数,お支払い金額,備考'];
-  ['2026-03,2026/03/05', '2026-04,2026/04/05', '2026-05,2026/05/05', '2026-06,2026/06/05', '2026-07,2026/07/05', '2026-08,2026/08/05']
-    .forEach(p => daznCsv.push(p + ',DAZN*7F3A21,4200,1,,4200,◎'));
-  const csv = daznCsv.join('\n');
+  const csv = vpassCsv([
+    ['2026/3/5', 'DAZN*7F3A21', '4200'],
+    ['2026/4/5', 'DAZN*7F3A21', '4200'],
+    ['2026/5/5', 'DAZN*7F3A21', '4200'],
+    ['2026/6/5', 'DAZN*7F3A21', '4200'],
+    ['2026/7/5', 'DAZN*7F3A21', '4200'],
+    ['2026/8/5', 'DAZN*7F3A21', '4200']
+  ]);
 
   const first = analyze(csv);
   const d1 = cand(first, 'DAZN');
@@ -349,10 +464,11 @@ console.log('\n■ 5. resolver 書き戻し（§15-2）');
 console.log('\n■ 6. payment_method（§8-1）');
 {
   freshModules();
-  const cardCsv = ['請求月,ご利用日,ご利用店名,ご利用金額,支払区分,今回回数,お支払い金額,備考'];
-  ['2026-03,2026/03/21', '2026-04,2026/04/21', '2026-05,2026/05/21']
-    .forEach(p => cardCsv.push(p + ',RAKUTEN CARD,88000,1,,88000,◎'));
-  const r6 = analyze(cardCsv.join('\n'));
+  const r6 = analyze(vpassCsv([
+    ['2026/3/21', 'RAKUTEN CARD', '88000'],
+    ['2026/4/21', 'RAKUTEN CARD', '88000'],
+    ['2026/5/21', 'RAKUTEN CARD', '88000']
+  ]));
   check('RAKUTEN CARD → candidates に載らない', !cand(r6, 'クレジットカード（他社）') && !cand(r6, 'RAKUTEN CARD'));
   check('  payment_method_hits には出る（report/開発ログ用）',
     r6.payment_method_hits.some(h => /クレジットカード/.test(h.merchant_name)), JSON.stringify(r6.payment_method_hits));
@@ -366,10 +482,11 @@ console.log('\n■ 6. payment_method（§8-1）');
 console.log('\n■ 7. out_of_scope（§8-2）');
 {
   freshModules();
-  const insCsv = ['請求月,ご利用日,ご利用店名,ご利用金額,支払区分,今回回数,お支払い金額,備考'];
-  ['2026-03,2026/03/23', '2026-04,2026/04/23', '2026-05,2026/05/23']
-    .forEach(p => insCsv.push(p + ',SOMPO JAPAN,4230,1,,4230,◎'));
-  const r7 = analyze(insCsv.join('\n'));
+  const r7 = analyze(vpassCsv([
+    ['2026/3/23', 'SOMPO JAPAN', '4230'],
+    ['2026/4/23', 'SOMPO JAPAN', '4230'],
+    ['2026/5/23', 'SOMPO JAPAN', '4230']
+  ]));
   check('SOMPO JAPAN → candidates に載らない', !cand(r7, '損保ジャパン'));
   check('  payment_method_hits にも出ない', !r7.payment_method_hits.some(h => /損保/.test(h.merchant_name)));
   check('  report で drop / out_of_scope', dropped(r7, 'SOMPO JAPAN') && dropped(r7, 'SOMPO JAPAN').drop_reason === 'out_of_scope');

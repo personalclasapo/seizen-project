@@ -40,18 +40,29 @@
   const Resolver = global.SeiZenPaymentResolver;
   const Master = global.SeiZenPaymentMaster;
 
+  /* 明細形式（statement_format）→ ソースアダプタ。支払い手段が持つ
+     statement_format をキーに引く（§15-4）。ここに無い形式は未対応。 */
   const ADAPTERS = {
-    vpass: global.SeiZenSourceVpass
+    vpass:   global.SeiZenSourceVpass,      /* 三井住友カード */
+    rakuten: global.SeiZenSourceRakuten     /* 楽天カード */
   };
 
-  function analyze(csvText, opts) {
+  function analyze(input, opts) {
     opts = opts || {};
-    const adapter = ADAPTERS[opts.adapter || 'vpass'];
+    /* adapter 名は呼び出し側（extraction.js）が支払い手段の
+       statement_format から渡す。未指定なら vpass（旧来の既定）。 */
+    const fmt = opts.adapter || 'vpass';
+    const adapter = ADAPTERS[fmt];
     const paymentMethodId = opts.paymentMethodId || null;
-    if (!adapter) return { ok: false, error: '未対応の明細形式です。' };
+    if (!fmt) {
+      return { ok: false, error: 'この支払い手段の明細形式が未設定です。' };
+    }
+    if (!adapter) {
+      return { ok: false, error: 'この支払い手段の明細形式（' + fmt + '）にはまだ対応していません。' };
+    }
 
     /* ① 正規化 */
-    const parsed = adapter.parse(csvText, {});
+    const parsed = adapter.parse(input, {});
     if (!parsed.ok) return { ok: false, error: parsed.error };
 
     /* ②③ 系列化（identify を内包） */

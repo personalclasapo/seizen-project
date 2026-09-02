@@ -29,30 +29,45 @@
   const esc = global.SeiZen.esc;
   const Pipeline = global.SeiZenPaymentPipeline;
   const Master = global.SeiZenPaymentMaster;
+  const SeiZenContract = global.SeiZenContract;
 
-  /* ── 登録済み口座のダミー ─────────────────────────────
-     カードは contract-digital/state.js の cards と id をそろえる
-     （既登録照合・支払い手段の上書きが id で効くように）。holder は
-     §3-2「契約者名義は支払い手段の登録情報から」に対応。本番はサーバ共有。 */
+  /* ── 登録済みの支払い手段 ─────────────────────────────
+     本番は「支払い手段マスタ」（共有・契約デジタルの外）。プロトタイプ
+     では state.js が写しを持つ（SeiZenContract.paymentMethods）。
+     §3-2「契約者名義は支払い手段の登録情報から」。                   */
   const BANK_ICON = '<path d="M3 21h18M4 10h16M5 10 12 4l7 6M6 10v10M18 10v10M10 10v10M14 10v10"/>';
   const CARD_ICON = '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>';
   const EMONEY_ICON = '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20M6 15h4"/>';
+  const KIND_META = {
+    card:   { group: 'クレジットカード',    icon: CARD_ICON },
+    bank:   { group: '銀行口座',            icon: BANK_ICON },
+    emoney: { group: '電子マネー・QR決済',  icon: EMONEY_ICON }
+  };
 
-  const ACCOUNTS = [
-    { group: '銀行口座', icon: BANK_ICON, items: [
-      { id: 'bank-jp-1', name: 'ゆうちょ銀行　通常貯金', sub: '記号番号 10000-12345678', holder: '父 太郎' }
-    ]},
-    { group: 'クレジットカード', icon: CARD_ICON, items: [
-      { id: 'card-smbc',   name: '三井住友カード（NL）', sub: '下4桁 1234', holder: '父 太郎' },
-      { id: 'card-rakuten', name: '楽天カード',          sub: '下4桁 5678', holder: '父 太郎' }
-    ]},
-    { group: '電子マネー・QR決済', icon: EMONEY_ICON, items: [
-      { id: 'emoney-1', name: 'PayPay', sub: '携帯番号 090-****-**12', holder: '父 太郎' }
-    ]}
-  ];
+  /* paymentMethods を「銀行口座 / クレジットカード / 電子マネー」の
+     グループ順に畳んで、口座選択リスト用の形にする。sub は kind ごとの
+     識別情報（下4桁・記号番号・登録番号）。 */
+  function accountGroups() {
+    const order = ['bank', 'card', 'emoney'];
+    return order.map(kind => {
+      const meta = KIND_META[kind];
+      const items = SeiZenContract.paymentMethods
+        .filter(pm => pm.kind === kind)
+        .map(pm => ({
+          id: pm.id, name: pm.name, holder: (pm.info && pm.info.holder) || '',
+          sub: kind === 'bank'
+            ? (pm.info && pm.info.branch) || ''
+            : kind === 'emoney'
+              ? (pm.info && pm.info.issuer) || ''
+              : '下4桁 ' + ((pm.info && pm.info.tail) || ''),
+          statement_checked: pm.statement_checked || null
+        }));
+      return { group: meta.group, icon: meta.icon, items };
+    }).filter(g => g.items.length);
+  }
 
   function findAccount(id) {
-    for (const g of ACCOUNTS) {
+    for (const g of accountGroups()) {
       const it = g.items.find(x => x.id === id);
       if (it) return { acct: it, icon: g.icon, group: g.group };
     }
@@ -63,7 +78,8 @@
   let sourceMode = null;         /* null（未選択）| 'existing' | 'new' */
   let acctId = null;             /* 選んだ登録済み口座の id */
   let fileName = null;           /* 選んだ明細のファイル名 */
-  let fileText = null;           /* 選んだ明細ファイルの中身（CSV 文字列） */
+  let fileBytes = null;          /* 選んだ明細ファイルの中身（ArrayBuffer）。
+                                    文字コードはアダプタが判定・デコードする */
   let lastResult = null;         /* 直近の解析結果 { candidates, ... } */
 
   /* Step3 の各行の作業状態。key は行 index。
@@ -139,18 +155,27 @@
   pickExisting.addEventListener('click', () => setSource('existing'));
   pickNew.addEventListener('click', () => setSource('new'));
 
+  function checkedBadge(sc) {
+    if (!sc) return '';
+    const range = sc.coverage_from && sc.coverage_to
+      ? '（' + esc(sc.coverage_from) + '〜' + esc(sc.coverage_to) + '）' : '';
+    return '<span class="exacct-done">確認済み' + range + '</span>';
+  }
+
   function renderAccounts() {
-    acctBox.innerHTML = ACCOUNTS.map(g =>
+    acctBox.innerHTML = accountGroups().map(g =>
       '<div class="exacct-group">' +
         '<h4>' + esc(g.group) + '</h4>' +
         '<div class="exacct-list">' +
         g.items.map(it =>
           '<button type="button" class="exacct' + (it.id === acctId ? ' is-on' : '') +
+            (it.statement_checked ? ' is-done' : '') +
             '" data-acct="' + esc(it.id) + '" role="radio" aria-checked="' + (it.id === acctId) + '">' +
             '<span class="exacct-radio"></span>' +
             '<span class="exacct-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
               'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + g.icon + '</svg></span>' +
-            '<span class="exacct-tx"><b>' + esc(it.name) + '</b><small>' + esc(it.sub) + '</small></span>' +
+            '<span class="exacct-tx"><b>' + esc(it.name) + '</b><small>' + esc(it.sub) + '</small>' +
+              checkedBadge(it.statement_checked) + '</span>' +
           '</button>'
         ).join('') +
         '</div>' +
@@ -167,10 +192,11 @@
     refreshStart();
   });
 
-  /* ── Step1：新しく口座を登録する ─────────────────────
+  /* ── Step1：新しく支払い手段を登録する ───────────────
      種別で、ラベルとプレースホルダ・支店欄の要否を切り替える。
-     登録すると ACCOUNTS の該当グループへ足し、その口座を選択済みに
-     して「登録済みから選ぶ」表示へ戻す（＝そのまま Step2 へ進める）。 */
+     登録すると SeiZenContract.paymentMethods へ足し（本番は支払い手段
+     マスタへの登録）、その手段を選択済みにして「登録済みから選ぶ」
+     表示へ戻す（＝そのまま Step2 へ進める）。 */
   const regKind = $('regKind');
   const regName = $('regName');
   const regBranch = $('regBranch');
@@ -183,7 +209,6 @@
     'クレジットカード':     { name: 'カード名',   namePh: '例：三井住友カード', num: 'カード番号下4桁', numPh: '例：4321', branch: false },
     '電子マネー・QR決済':  { name: 'サービス名', namePh: '例：PayPay',        num: '登録番号（任意）', numPh: '例：090-****-**12', branch: false }
   };
-  const ICON_BY_KIND = { '銀行口座': BANK_ICON, 'クレジットカード': CARD_ICON, '電子マネー・QR決済': EMONEY_ICON };
 
   function applyRegKind() {
     const L = REG_LABELS[regKindValue];
@@ -209,14 +234,29 @@
     const L = REG_LABELS[regKindValue];
     const branch = L.branch ? regBranch.value.trim() : '';
     const num = regNumber.value.trim();
-    const subParts = [];
-    if (branch) subParts.push(branch);
-    if (num) subParts.push((L.branch ? '口座番号 ' : '') + num);
-    const id = 'acct-new-' + Date.now().toString(36);
+    const kind = regKindValue === '銀行口座' ? 'bank'
+      : regKindValue === '電子マネー・QR決済' ? 'emoney' : 'card';
+    const idPrefix = { bank: 'bank', emoney: 'emoney', card: 'card' }[kind];
+    const id = idPrefix + '-new-' + Date.now().toString(36);
 
-    let grp = ACCOUNTS.find(g => g.group === regKindValue);
-    if (!grp) { grp = { group: regKindValue, icon: ICON_BY_KIND[regKindValue], items: [] }; ACCOUNTS.push(grp); }
-    grp.items.push({ id: id, name: name, sub: subParts.join('　') || '登録済み' });
+    /* 支払い手段マスタ相当（state.js）へ追加。詳細画面・支払いの
+       つながりも同じデータを見るので、ここ1箇所に足せば全画面に出る。 */
+    SeiZenContract.paymentMethods.push({
+      id: id, name: name, kind: kind, group: kind, brand: kind,
+      /* 新規登録した手段の明細形式は不明。取り込もうとすると
+         「未対応」と出る。対応形式は今後 UI で選ばせる想定。 */
+      statement_format: null,
+      statement_checked: null,
+      policy: { intent: 'unknown', reason: '', nextTiming: '' },
+      account: [],
+      info: {
+        issuer: '', holder: '',
+        tail: kind === 'bank' ? '' : num,
+        branch: kind === 'bank' ? (branch + (num ? '　口座番号 ' + num : '')) : ''
+      },
+      procedure: { checked: false, where: '', steps: [], link: '', point: '' },
+      memo: ''
+    });
 
     acctId = id;
     regForm.reset();
@@ -273,17 +313,19 @@
   });
 
   /* CSV をブラウザ内で読む（サーバへは送らない・§27）。
-     文字コードは UTF-8 前提。CP932 は今回のサンプルでは扱わない。 */
+     文字コードはアダプタ（vpass.js）が吸収するので、ここではバイト列
+     のまま渡す。三井住友カードの明細は Shift-JIS(CP932) で出てくるが、
+     ユーザーに変換させない。 */
   function readFile(file) {
     const reader = new FileReader();
-    reader.onload = () => { setFile(file.name, String(reader.result || '')); };
+    reader.onload = () => { setFile(file.name, reader.result || new ArrayBuffer(0)); };
     reader.onerror = () => { global.SeiZen.toast('ファイルを読み込めませんでした'); };
-    reader.readAsText(file, 'UTF-8');
+    reader.readAsArrayBuffer(file);
   }
 
-  function setFile(name, text) {
+  function setFile(name, bytes) {
     fileName = name;
-    fileText = text;
+    fileBytes = bytes;
     drop.classList.add('has-file');
     dropMain.textContent = name + ' を選択しました';
     dropOr.textContent = '別のファイルに変更するには、もう一度選択してください';
@@ -291,8 +333,16 @@
   }
 
   function refreshStart() {
-    const ok = sourceMode === 'existing' && !!acctId && !!fileName && !!fileText;
+    const fmt = statementFormatOf(acctId);
+    const ok = sourceMode === 'existing' && !!acctId && !!fileName && !!fileBytes && !!fmt;
     startBtn.disabled = !ok;
+    /* 明細形式が未対応なら、ファイルを選んでも解析に進めない旨を出す。 */
+    const note = $('exFormatNote');
+    if (note) {
+      const show = !!acctId && !fmt;
+      note.hidden = !show;
+      if (show) note.textContent = 'この支払い手段の明細は、まだ取り込みに対応していません。対応しているのはクレジットカード（三井住友カード・楽天カード）です。';
+    }
     setStep(acctId ? 2 : 1);
   }
 
@@ -334,16 +384,28 @@
     if (!backLink.getAttribute('href')) { e.preventDefault(); showInput(); }
   });
 
+  /* 選んだ支払い手段の明細形式（§15-4）。対応アダプタが無ければ
+     アップロードさせても読めないので、その時点で伝える。 */
+  function statementFormatOf(id) {
+    const pm = id && SeiZenContract.findPaymentMethod
+      ? SeiZenContract.findPaymentMethod(id) : null;
+    return pm ? (pm.statement_format || null) : null;
+  }
+
   /* ── 解析 → 結果 ───────────────────────────────────
-     Vpass Adapter → Detection Engine を実行し、payment_candidate を得る。
-     第1増分では固定ダミーを使わない。 */
+     支払い手段の形式に応じたアダプタ → Detection Engine を実行。 */
   startBtn.addEventListener('click', () => {
+    const fmt = statementFormatOf(acctId);
+    if (!fmt) {
+      global.SeiZen.toast('この支払い手段の明細は、まだ取り込みに対応していません。');
+      return;
+    }
     inputView.hidden = true;
     loadingView.hidden = false;
     window.scrollTo(0, 0);
     setStep(3);
     /* パイプラインは同期処理だが、解析中表示を一瞬見せてから走らせる。 */
-    setTimeout(runAnalysis, 500);
+    setTimeout(() => runAnalysis(fmt), 500);
   });
 
   $('exRestart').addEventListener('click', showInput);
@@ -352,9 +414,9 @@
   /* ── 解析 → 結果 ───────────────────────────────────
      payment/pipeline.js を1回呼ぶ。明細はブラウザ内で処理し、どこにも
      送らない（§15-2）。 */
-  function runAnalysis() {
-    const res = Pipeline.analyze(fileText, {
-      adapter: 'vpass',
+  function runAnalysis(fmt) {
+    const res = Pipeline.analyze(fileBytes, {
+      adapter: fmt || statementFormatOf(acctId) || 'vpass',
       paymentMethodId: acctId || null
     });
     if (!res.ok) {
@@ -777,7 +839,17 @@
     if (!selections.length) { global.SeiZen.toast('登録するサービスを選んでください'); return; }
 
     const out = Pipeline.commit(selections, { paymentMethodId: acctId || null, holderName: holderName });
-    markSourceDone();
+
+    /* この支払い手段の明細を確認し終えた記録（§13 末尾・§2 の網羅の
+       進捗）。本番は POST /payment-methods/:id/statement-check。
+       確認した明細の対象期間も一緒に残す（部分確認を表せる）。 */
+    if (acctId && SeiZenContract.markStatementChecked) {
+      const cov = (lastResult && lastResult.coverage) || {};
+      SeiZenContract.markStatementChecked(acctId, {
+        from: cov.coverage_from || null,
+        to:   cov.coverage_to   || null
+      });
+    }
 
     /* 完了画面は挟まない。解析からの一括追加は件数が読めず、
        「別の支払い手段で登録済みのため見送り」など予想外の結果も
@@ -806,10 +878,8 @@
     }
   });
 
-  /* 登録後：その支払い手段を「確認済み」にする（§13 末尾）。
-     プロトタイプではセッション内フラグ。本番は支払い手段マスタへ。 */
-  const doneSources = new Set();
-  function markSourceDone() { if (acctId) doneSources.add(acctId); }
+  /* 「確認済み」の記録は SeiZenContract.markStatementChecked（state.js）
+     が持つ。renderAccounts がそれを見てバッジを出す。 */
 
   /* ── 初期化 ─────────────────────────────────────── */
   renderAccounts();

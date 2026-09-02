@@ -69,6 +69,12 @@
 .exacct-tx{flex:1;min-width:0}
 .exacct-tx b{display:block;font-size:13px;font-weight:700;color:var(--ink);line-height:1.4}
 .exacct-tx small{display:block;font-size:11px;color:var(--ink3);margin-top:1px}
+/* 明細をすでに確認済みの支払い手段。選び直せるよう無効化はしないが、
+   「もう見た」と分かるバッジを添える。 */
+.exacct-done{display:inline-block;margin-top:4px;font-size:10px;font-weight:700;
+  color:#3f7d54;background:#eaf3ec;border:1px solid #d3e6d8;border-radius:6px;padding:2px 7px}
+.exacct.is-done{border-style:solid;border-color:#d3e6d8}
+.exacct.is-done .exacct-ic{background:#eaf3ec;border-color:#d3e6d8;color:#3f7d54}
 
 /* 新規登録フォーム。ラベル＋入力を横に組み、狭いときは縦へ。 */
 .exregform[hidden]{display:none}
@@ -140,7 +146,9 @@
 .expoints ul{margin:0;padding-left:18px}
 .expoints li{margin:3px 0}
 
-.exactions{display:flex;justify-content:flex-end;margin-top:8px}
+.exactions{display:flex;justify-content:flex-end;align-items:center;gap:14px;margin-top:8px}
+.ex-formatnote{margin:0;flex:1;font-size:11.5px;line-height:1.6;color:#b06a1d}
+.ex-formatnote[hidden]{display:none}
 .ex-start{display:inline-flex;align-items:center;gap:8px;padding:14px 30px;border:0;border-radius:999px;
   background:var(--gr);font-family:inherit;font-size:14px;font-weight:700;color:#fff;cursor:pointer}
 .ex-start:hover:not(:disabled){background:var(--gr-d)}
