@@ -84,6 +84,92 @@
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
     '<path d="m6 9 6 6 6-6"/></svg>';
 
+  const HAMBURGER =
+    '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round">' +
+    '<path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+
+  /* ── ガイドの開閉（3段）──────────────────────────────
+     ・>1200px（WIDE）：常設。.appbar もドロワーも使わない。
+     ・1200〜900px（MID）：ガイドは既定で画面外。ハンバーガーで本文に
+       被せて開く。開いた本文の上をタップ／Esc／メニュー内リンクで
+       閉じる。開閉状態は localStorage に覚え、次回この帯に入ったとき
+       復元する（本文はスクロールできるので body ロックはしない）。
+     ・≤900px（NARROW）：同じオフキャンバスだが、常にスクリム＋body
+       ロック。既定状態は覚えず、必ず閉じた状態から始める。
+     WIDE へ戻ったら状態を必ず捨てる（CSS が transform を戻すだけでは
+     body ロックやスクリムが class に残るため）。                   */
+  const MID    = window.matchMedia('(max-width:1200px)');
+  const NARROW = window.matchMedia('(max-width:900px)');
+  const GUIDE_OPEN_KEY = 'seizen-guide-open';
+
+  function wireDrawer(guide) {
+    const bar = document.createElement('header');
+    bar.className = 'appbar';
+    bar.innerHTML =
+      '<button class="appbar-menu" type="button" aria-label="メニューを開く" ' +
+        'aria-expanded="false">' + HAMBURGER + '</button>' +
+      '<a class="appbar-brand" href="' + root + 'index.html">' +
+        '<span class="brand-mark">' + BRAND_MARK + '</span><b>SeiZen</b></a>';
+    body.insertBefore(bar, body.firstChild);
+
+    const scrim = document.createElement('div');
+    scrim.className = 'guide-scrim';
+    body.appendChild(scrim);
+
+    const btn = bar.querySelector('.appbar-menu');
+
+    const remember = v => {
+      try { localStorage.setItem(GUIDE_OPEN_KEY, v ? '1' : '0'); } catch (e) {}
+    };
+    const recall = () => {
+      try { return localStorage.getItem(GUIDE_OPEN_KEY) === '1'; } catch (e) { return false; }
+    };
+
+    const open = (persist) => {
+      guide.classList.add('is-open');
+      scrim.classList.add('is-on');
+      /* 狭い幅では背面を固定。中間幅は本文をスクロールできるので固定しない。 */
+      if (NARROW.matches) body.classList.add('guide-locked');
+      btn.setAttribute('aria-expanded', 'true');
+      btn.setAttribute('aria-label', 'メニューを閉じる');
+      if (persist && MID.matches && !NARROW.matches) remember(true);
+    };
+    const close = (persist) => {
+      guide.classList.remove('is-open');
+      scrim.classList.remove('is-on');
+      body.classList.remove('guide-locked');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.setAttribute('aria-label', 'メニューを開く');
+      if (persist && MID.matches && !NARROW.matches) remember(false);
+    };
+
+    btn.addEventListener('click', () =>
+      guide.classList.contains('is-open') ? close(true) : open(true));
+    scrim.addEventListener('click', () => close(true));
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && guide.classList.contains('is-open')) close(true);
+    });
+    /* メニュー内のリンクを押したら、遷移する前に閉じておく（同一ページ
+       内アンカーや戻る操作でも開きっぱなしにしない）。中間幅で覚えた
+       「開」は保持したいので、この close は永続化しない。 */
+    guide.addEventListener('click', e => {
+      if (e.target.closest('a')) close(false);
+    });
+
+    /* 帯をまたいだときの整合。
+       ・MID へ入った → localStorage の記憶どおりに開閉を復元
+       ・NARROW へ入った／出た → 必ず閉じる（記憶は変えない）
+       ・WIDE へ戻った → 状態を捨てる                               */
+    const syncToViewport = () => {
+      if (!MID.matches) { close(false); return; }          // WIDE
+      if (NARROW.matches) { close(false); return; }         // NARROW：常に閉から
+      recall() ? open(false) : close(false);                // MID：記憶を復元
+    };
+    MID.addEventListener('change', syncToViewport);
+    NARROW.addEventListener('change', syncToViewport);
+    syncToViewport();
+  }
+
   function drawGuide(el) {
     const areas = AREAS.all();
     const main  = areas.filter(a => !a.docs).map(navItem).join('');
@@ -134,6 +220,7 @@
       .addEventListener('click', () => toast('家族の切替は準備中です'));
 
     wireGuide(el);
+    wireDrawer(el);
   }
 
   /* 冊子の縦の振る舞い。
@@ -151,13 +238,16 @@
     if (!menu || !stick || !foot) return;
 
     const measure = () => {
+      /* ≤1200px ではガイドはオフキャンバス（内部スクロールを持つ）
+         なので、cramped 判定も貼り付けも使わない。 */
+      if (MID.matches) { el.classList.remove('is-cramped'); return; }
       /* ロゴ＋メニュー（.guide-stick）と足元を、上下に貼り付けたとき
          必要な高さ（+ 余白）。これを下回るウィンドウでは貼り付けない。 */
       const need = stick.offsetHeight + foot.offsetHeight + 40;
       el.classList.toggle('is-cramped', window.innerHeight < need);
     };
     const hint = () => {
-      if (!more) return;
+      if (!more || MID.matches) { if (more) more.classList.remove('is-on'); return; }
       /* メニュー最終項目の下端が画面内に収まっていれば全部見えている。
          はみ出していれば、まだ下にメニューがある＝スクロールできる。 */
       const items = menu.querySelectorAll('a');

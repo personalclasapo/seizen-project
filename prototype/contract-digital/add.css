@@ -194,7 +194,7 @@
 /* ── 画面下のドック ─────────────────────────────────
    選択件数と「選択内容を確認」を、作業面の幅にそろえて画面下へ固定する。
    .shell と同じ中央寄せに、ガイドブックぶんを足して作業面側へ寄せる。   */
-:root{--dock-w:clamp(var(--shell-min),calc(100vw - 32px),var(--shell-max))}
+:root{--dock-w:min(calc(100vw - 32px),var(--shell-max))}
 
 .seldock{position:fixed;left:50%;bottom:20px;z-index:40;width:var(--dock-w);
   transform:translateX(-50%);pointer-events:none}
@@ -218,5 +218,19 @@
 .seldock.is-empty .seldock-count span{color:var(--ink3)}
 .seldock.is-empty .seldock-confirm{background:#eceadf;color:var(--ink3)}
 .seldock.is-empty .seldock-confirm:hover{background:#e4e1d3}
+
+/* ≤1200px ではガイドがオフキャンバスになり流れから外れるので、
+   ドックを作業面側へ寄せる余白（ガイド幅ぶん）をやめる。 */
+@media (max-width:1200px){
+  .seldock-inner{margin-left:44px}
+}
+
+/* ≤900px は1カラム・全幅。ドックも画面幅いっぱいで下端へ。 */
+@media (max-width:900px){
+  :root{--dock-w:100vw}
+  .seldock{bottom:0}
+  .seldock-inner{margin:0 10px 10px;padding:12px 16px}
+  .work .inner{padding-bottom:96px}
+}
 
 /* 「先頭へ戻る」は shared/shell.css へ移動（全ページ共通）。 */

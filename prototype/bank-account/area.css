@@ -252,3 +252,59 @@ select.ef{appearance:none;padding-right:24px;cursor:pointer;background-image:lin
 .e-no{border:1px solid #ded8ca;background:#fff;color:#8a8578}.e-no:hover{background:#f5f3ec}
 .e-del{border:1px solid #e8cabb;background:#fff;color:#b45c3a;margin-right:auto}.e-del:hover{background:#fdf3ee;border-color:#dba385}
 
+/* ══════════════════════════════════════════════════════════════
+   レスポンシブ（成果物UI）
+   ------------------------------------------------------------------
+   外殻は shared/shell.css。ここは通帳（記録物）の側だけ。
+   狭い作業面では、横に並べていたものを縦に積み、固定幅の表は
+   その器の中で横スクロールさせる。値は tokens の --bp-* と対応。 */
+
+/* 中間幅（≤1200px）：作業面が流動化するので、表紙の目次を1列に、
+   通帳の最大幅も解く。制度・持ち物の2列組みは ≤900px まで保つ。 */
+@media (max-width:1200px){
+  .pb-shelf{grid-template-columns:minmax(0,1fr)}
+  .sec{max-width:none}
+}
+
+/* 狭い幅（≤900px）：1カラム。横並びを縦に積む。 */
+@media (max-width:900px){
+  /* カード本体の余白を詰める。 */
+  .cv{padding:16px 20px 18px 20px;flex-wrap:wrap;gap:6px 12px}
+  .cv .nm{font-size:16px}
+  .cv .bd{margin-left:0}
+  .body{padding:18px 16px 4px}
+  .blk{margin-bottom:22px}
+
+  /* ①必要時の対応・②持ち物：2列 → 1列。 */
+  .sit-grid,.kit-grid{grid-template-columns:minmax(0,1fr)}
+  /* 制度名・状況は nowrap をやめて折り返す（横幅が足りない）。 */
+  .sit-cap,.sit-mean{white-space:normal}
+  .sit-row{min-height:0}
+  .sit-badge-wrap{align-self:flex-start}
+
+  /* ③口座情報：固定幅の5列表は畳まず、器の中で横スクロール。
+     table-layout:fixed と列%指定を解いて内容幅で組む。 */
+  .acctinfo{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .acctinfo table{table-layout:auto;width:auto;min-width:100%}
+  .acctinfo th,.acctinfo td{white-space:nowrap}
+  .acctinfo th:nth-child(n),.acctinfo td:nth-child(n){width:auto}
+  /* 編集行は入力欄が縦に伸びるので折り返しを許す。 */
+  .acctinfo tr.edit td{white-space:normal}
+
+  /* 記帳行（追加・編集フォーム）：1行 → 折り返し。 */
+  .ent{flex-wrap:wrap;row-gap:8px}
+  .ent .k{flex-basis:auto}
+  .ent .uwrap{margin-left:0;width:100%}
+  .f-branch,.f-no{flex:1 1 100%}
+  .roles{padding-left:0}
+
+  /* 銀行名の候補リストは画面幅に合わせる。 */
+  .sug{left:16px;right:16px;width:auto}
+  .namewrap{max-width:none}
+}
+
+@media (max-width:400px){
+  .cv .kd{font-size:11px}
+  .blk-h b{font-size:15px}
+}
+

@@ -579,7 +579,8 @@
 
   /* 契約情報は綴じ代（左）へ置く「変わらない事実」。右の本体は
      「どう対応するか」だけにするので、ここでは cinfo の横並びグリッド
-     ではなく、綴じ代の rmeta と同じ縦積みの1カラムで描く。          */
+     ではなく、縦積みの1カラムで描く。末尾の登録日・最終更新日は
+     編集しない補足として .rsp-row-meta で続ける。                   */
   function spineContractHTML(it) {
     const c = it.contract;
     const payOpts = [{ value: 'unknown', label: '未確認' }]
@@ -612,6 +613,12 @@
         '</b></div>' +
       '<div class="rsp-row"><small>契約開始時期</small><b>' + ev('contract.started', c.started, 'line', '例：2020年頃') + '</b></div>' +
       '<div class="rsp-row"><small>次回請求日</small><b>' + ev('contract.nextBill', c.nextBill, 'line', '例：毎月〇日頃') + '</b></div>' +
+      /* 登録日・最終更新日は編集しない補足。契約情報の一部として同じ
+         行組みに並べ（.rsp-row-meta）、デスクトップでは点線で区切って
+         「変わらない事実」の下段に、スマホでは 3列グリッドの続きの
+         セルに流し込む。 */
+      '<div class="rsp-row rsp-row-meta rsp-row-meta-first"><small>登録日</small><b>' + esc(it.registered) + '</b></div>' +
+      '<div class="rsp-row rsp-row-meta"><small>最終更新日</small><b>' + esc(it.updated) + '</b></div>' +
     '</div>';
   }
 
@@ -734,8 +741,6 @@
         '<span class="ring r4"></span><span class="ring r5"></span>' +
         fileCardHTML(it) +
         spineContractHTML(it) +
-        '<div class="rmeta"><small>登録日</small><b>' + esc(it.registered) + '</b>' +
-          '<small>最終更新日</small><b>' + esc(it.updated) + '</b></div>' +
         '<div class="rfoot">' + IC.box + '<span>家族のための<br>契約・アカウント記録</span></div>' +
         deleteZoneHTML(it) +
       '</div>' +

@@ -264,9 +264,15 @@
 
 /* ── 見出し横の追加ボタン（shared の .addbtn を使う） ── */
 
-@media (max-width:1080px){
+/* 中間幅（≤1200px）：作業面が流動化する。主要な2列組みを1列へ。 */
+@media (max-width:1200px){
   .rack{grid-template-columns:1fr}
   .ct-grid{grid-template-columns:1fr}
   .fx-grid,.ad-grid{grid-template-columns:1fr 1fr}
   .pv-parties{grid-template-columns:1fr 1fr}
+}
+
+/* 狭い幅（≤900px）：残る2列も縦に。 */
+@media (max-width:900px){
+  .fx-grid,.ad-grid,.pv-parties{grid-template-columns:1fr}
 }

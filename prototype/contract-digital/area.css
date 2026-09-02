@@ -93,7 +93,9 @@
 .ib-pre .ib-ttl b{color:#a4650f}.ib-post .ib-ttl b{color:#3d6b52}
 .ib-h2 .ib-n{position:absolute;top:50%;right:0;transform:translateY(-50%);margin:0}
 
-/* 狭幅では2台を縦に積む。 */
+/* 1カラム化する幅（≤900px）で、額装した2台を縦に積む。中間幅
+   （1200〜900px）はガイドがドロワーへ抜けて作業面が全幅になるので
+   2列を保てる。 */
 @media (max-width:900px){
   .idxgrid{grid-template-columns:1fr}
   .phone{max-width:400px}
@@ -433,8 +435,18 @@
 /* 左：リング金具のある綴じ代。変わらない事実（ファイルNo.・契約情報・
    登録日）を持つ。ページが長くなっても読んでいる間ずっと見えるよう、
    sticky で追従させる。綴じ目には薄い影を足し、リングがページを
-   押さえている厚みを出す。                                      */
-.rings{position:sticky;top:16px;flex:0 0 236px;background:linear-gradient(180deg,#f2efe6,#eae6da);padding:26px 20px;display:flex;flex-direction:column;align-items:stretch;text-align:center}
+   押さえている厚みを出す。
+   幅は 236px を基準にしつつ縮められる（flex-shrink:1）。作業面が
+   狭まったら、情報量の一定なこちら＝綴じ代を先に詰めて、読ませたい
+   本文（.page）の幅を守る。下限は中身（契約情報のラベル＋値）が
+   耐えられる 186px。                                              */
+.rings{position:sticky;top:16px;
+  /* 綴じ代｜本体 = 236 : 604 の比率で分ける。flex-basis:0 の比率配分に
+     すると、.page が min-width:0 で無限に折り返せても「作業面の一定
+     割合」を綴じ代が取り、作業面が狭まれば綴じ代も比例して詰まる。
+     ただし詰まりすぎると中身が持たないので 200〜236px に収める。   */
+  flex:236 1 0;min-width:200px;max-width:236px;
+  background:linear-gradient(180deg,#f2efe6,#eae6da);padding:26px 20px;display:flex;flex-direction:column;align-items:stretch;text-align:center}
 .rings:after{content:"";position:absolute;top:0;right:-1px;bottom:0;width:1px;background:rgba(70,64,50,.16)}
 .ring{position:absolute;left:-13px;width:44px;height:13px}
 .ring:before{content:"";position:absolute;inset:0;border-radius:7px;background:linear-gradient(180deg,#6b7079,#3c4149 45%,#23262b);box-shadow:0 1px 3px rgba(0,0,0,.35)}
@@ -474,9 +486,10 @@
 .rsp-row b em{display:block;font-style:normal;font-size:11px;color:#7d7a76;letter-spacing:.06em;margin-top:1px}
 .rsp-row .ef{width:100%;font-size:12px}
 .rsp-row .ev{display:inline-block}
-.rmeta{margin-top:22px;padding-top:18px;border-top:1px dashed #d8d0bc}
-.rmeta small{display:block;font-size:10px;color:var(--ink3)}
-.rmeta b{display:block;margin:3px 0 20px;font-size:12.5px;font-weight:700;color:#5c594d;letter-spacing:.02em}
+/* 登録日・最終更新日。契約情報の下段。編集しない補足なので値の色を
+   落とす。デスクトップでは「変わらない事実」の塊から点線で仕切る。 */
+.rsp-row-meta b{color:#7d7a76}
+.rsp-row-meta-first{margin-top:22px;padding-top:18px;border-top:1px dashed #d8d0bc}
 .rfoot{margin-top:auto;padding-top:18px;color:#a09b8d}
 .rfoot svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5}
 .rfoot span{display:block;margin-top:8px;font-size:10px;line-height:1.7}
@@ -500,7 +513,10 @@
 
 /* 右：本体。綴じ目側の縁に薄い影を落とし、リングに押さえられた
    ページの厚みを出す。                                          */
-.page{flex:1;min-width:0;background:#fff;box-shadow:inset 9px 0 12px -10px rgba(56,50,34,.16)}
+/* 本体は綴じ代と 604:236 の比率で分ける（flex:604 1 0）。作業面が
+   狭まると両方が比例で縮み、綴じ代が先に下限（200px）で止まったあとは
+   本体だけが縮む。 */
+.page{flex:604 1 0;min-width:0;background:#fff;box-shadow:inset 9px 0 12px -10px rgba(56,50,34,.16)}
 .pg-h{display:flex;align-items:center;gap:14px;padding:22px 28px 18px;border-bottom:1px solid #f0ece3}
 .pg-h .nm{font-size:27px;font-weight:800;letter-spacing:-.03em}
 .pg-h .cat{padding-left:14px;border-left:1px solid #e2ddd0;font-size:13px;color:#7d7a76}
@@ -821,3 +837,213 @@
 
 .addnote{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px 0 0;font-size:12px;color:var(--ink3)}
 .addnote svg{width:15px;flex:none}
+
+/* ══════════════════════════════════════════════════════════════
+   レスポンシブ（成果物UI）
+   ------------------------------------------------------------------
+   外殻は shared/shell.css。ここは索引と詳細シートの側だけ。
+   ・索引：2列で並べていた束・カード・行を1列へ。
+   ・詳細シート：横に組んだ「綴じ代（rings）｜本体（page）」を縦に。
+     綴じ代は本体の上の帯として置き、リング金具の飾りは畳む。
+   値は tokens の --bp-wide / --bp-narrow と対応。@media に var() は
+   使えないので数値直書き。                                        */
+
+/* 中間幅（≤1200px）：作業面が流動化するので索引・全件一覧の最大幅を
+   解く。2カラムはまだ保てる（ガイドがドロワーへ抜けるぶん全幅）。 */
+@media (max-width:1200px){
+  .sec,.listwrap{max-width:none}
+}
+
+/* 1カラム化する幅（≤900px）：券面カードと通帳を 1列にして、横に
+   間延びしないよう読む幅（450px）で止めて中央へ。サービスの追加も同じ。 */
+@media (max-width:900px){
+  .paycards{grid-template-columns:1fr;max-width:450px;margin-inline:auto}
+  .addcards{flex-direction:column;max-width:450px;margin-inline:auto}
+}
+
+@media (max-width:900px){
+  /* ── 索引 ─────────────────────────────────────── */
+  /* 束の耳・台紙が左右へはみ出すぶん、狭い作業面では内側に余白を確保。 */
+  .idxgrid{margin-top:28px;row-gap:36px}
+  .iblock{padding:16px 14px 14px}
+  /* 券面カード内の「紐づく契約」チップ：3列 → 2列。 */
+  .chips,.pbc-chips{grid-template-columns:1fr 1fr}
+  /* 索引の行：矢印を落として名前と状態バッジだけに。 */
+  .irow{gap:9px;padding:11px 2px}
+
+  /* ── 詳細シート：綴じ代（.rings） ─────────────────────
+     デスクトップでは「リング綴じの背表紙側」＝変わらない事実を本文の
+     左にずっと見せておく sticky マージン。スマホで縦に積むと背表紙の
+     比喩は成り立たず、ただ長い前置きになる。ここでは比喩を捨て、
+     「この契約の基本情報」を折り目正しくまとめた “おもて表紙” に
+     組み替える：
+       ・No. と時期ラベル → 小さな見出し1行（アイデンティティなので残す）
+       ・契約情報 → ラベル｜値 の2列組みにして縦の丈を半分に
+       ・登録日／更新日 → さらに小さく、下端に1組
+       ・版面の飾り（.rfoot の「家族のための記録」）→ 消す
+     全体を薄い地色の1ブロックにして、本文の前の要約として置く。     */
+  /* 「綴じ代｜本体」の横組みを縦に。
+     デスクトップで本文の【左辺】を綴じていたリングを、スマホでは
+     本文の【上辺】へ持ってくる（バインダーを90°回して上から綴じる）。
+     リング金具そのものの造形（44×13 の横バー・金属グラデ・光る穴）は
+     全体表示と同じものを使い、変えるのは位置だけ：
+       ・左辺沿い（left:-13px / top:16〜80%）→ 上辺沿い（top:-7px / left:%）
+     背後の台紙（.dtl-file:before）は 2枚に割れるここでは半端なので畳む。 */
+  .dtl-file:before{display:none}
+  /* リングはシートの外へ全部飛び出す（高さ 20px ぶんの余地）。 */
+  #detailView{margin-top:0}
+  .dtl-file{padding-top:22px}
+  /* シートの地を綴じ代のベージュにする。白のままだと、.rings との
+     境目（角丸の内側・上辺）に白が薄く覗いてしまう。白は .page が持つ。 */
+  .sheet{flex-direction:column;overflow:visible;background:#f4f1e8}
+  .rfoot{display:none}
+
+  /* 綴じ代＝本体の上に載る1枚の紙。中身は
+     「No.の札（左）｜契約情報（右）」を横に並べ、その下に登録日等を
+     全幅で続ける grid。シートの上端にぴったり付ける（margin-top を
+     持たせると、その隙間から .sheet の地が帯になって覗く）。
+     全体表示の flex（縦積み・中央寄せ）は解く。 */
+  .rings{position:relative;flex:none;
+    width:auto;min-width:0;max-width:none;
+    margin:0;padding:16px 16px 22px;
+    background:#f4f1e8;
+    border-radius:13px 13px 0 0;overflow:visible;
+    display:grid;grid-template-columns:auto 1fr;gap:0 18px;align-items:start;
+    text-align:left}
+  /* grid の子（filecard / rspine）が持つ base の上マージンを全部消す。 */
+  .rings > *{margin-top:0}
+  /* 右端の縦仕切り罫のかわりに、上辺へ綴じ目の陰を入れる。リングが
+     紙を押さえている厚みを、全体表示の綴じ目と同じ考え方で出す。 */
+  .rings:after{content:"";position:absolute;left:0;right:0;top:0;height:7px;
+    border-radius:13px 13px 0 0;pointer-events:none;
+    background:linear-gradient(180deg,rgba(70,64,50,.16),rgba(70,64,50,0))}
+
+  /* リング金具：上辺を綴じる小さな縦リング。全体表示（左辺の 44×13）を
+     そのまま回すと大きすぎるので、上辺用に控えめな 10×20 にする。
+     紙の上端に立ち、シートの外へ全部出る（top:-20px）。色も一段明るく
+     して、5本が黒く主張しすぎないように。left:% で等間隔。
+     base の .ring.r1〜r5{top:…} を打ち消す。 */
+  .ring{left:auto;top:-20px;width:10px;height:20px}
+  .ring:before{border-radius:5px 5px 2px 2px;
+    background:linear-gradient(180deg,#9096a0,#5f646d 55%,#4a4e57);
+    box-shadow:0 2px 4px rgba(0,0,0,.28)}
+  .ring:after{left:2px;top:2px;width:6px;height:6px}
+  .ring.r1,.ring.r2,.ring.r3,.ring.r4,.ring.r5{top:-20px}
+  .ring.r1{left:10%}.ring.r2{left:30%}.ring.r3{left:50%}
+  .ring.r4{left:70%}.ring.r5{left:90%}
+
+  /* ファイルカード＝「いまのうち／No.003」の白い札。grid の左カラム。
+     全体表示と同じ白地・角丸・影・時期色の下線。中の文字は中央寄せ。
+     札そのものは、右の契約情報グリッドの高さに対して上下中央に置く。 */
+  .filecard{width:132px;margin:0;padding:12px 10px 13px;
+    grid-column:1;grid-row:1;align-self:center;justify-self:start;text-align:center}
+  .filecard small{display:block}
+  .filecard b{display:block;margin-top:5px;font-size:13px}
+  .filecard b i{font-size:22px;margin-left:3px}
+  .filecard .rule{margin:9px auto 0;width:46px}
+
+  /* 契約情報：右カラム（col2）。「ラベル／値」の小マスを 4列で並べる。
+     契約情報 5項目＋登録日 2項目＝7項目がそのまま流れて 2段に収まり、
+     登録日と最終更新日も横に並ぶ（列を固定すると縦積みになるので、
+     auto-flow に任せる）。見出しテキストは隠し、編集ペンはカード
+     右上へ絶対配置。 */
+  .rspine{position:static;grid-column:2;grid-row:1;margin:0;padding:0 28px 4px 0;border-top:0;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:12px 12px;align-content:start}
+  .rsp-h{grid-column:1 / -1;margin:0;min-height:0;line-height:0}
+  .rsp-h span{display:none}
+  .rsp-edit{position:absolute;top:12px;right:12px}
+  .rsp-row{margin:0;padding:0;border-top:0;min-width:0}
+  .rsp-row small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rsp-row b em{display:block}
+  /* 登録日・最終更新日は編集しない補足なので、値の色だけ落とす。
+     位置は auto-flow のまま（列を固定しない）。 */
+  .rsp-row-meta small{font-size:9.5px;color:#a5a199}
+  .rsp-row-meta b{font-size:11px;color:#8a8578}
+  /* 明細確認済み・削除は下に全幅で（点線区切り）。 */
+  .stmt-checked,.rdelete{grid-column:1 / -1;margin:0;
+    padding:12px 0;border-top:1px dashed #ddd5c2}
+  .rfoot{display:none}
+
+  /* 本体：綴じ代の下に続く白いページ。縦組みでは flex:604 1 0 の
+     basis:0 が縦に効いて高さ0になるので内容なりへ。
+     綴じ代（ベージュ）との境目がはっきりするよう、上に区切り線を置き、
+     綴じ目側の内影も上へ回して「めくったページ」の厚みを出す。
+     .sheet が overflow:visible なので本体の下角は自分で丸める。 */
+  .page{flex:0 1 auto;border-radius:0 0 13px 13px;
+    border-top:1px solid #d8d0bc;
+    box-shadow:inset 0 12px 16px -12px rgba(56,50,34,.3)}
+  .pg-h{flex-wrap:wrap;gap:8px 12px;padding:26px 16px 18px}
+  .pg-h .nm{font-size:22px}
+  .pg-h .cat{padding-left:0;border-left:0}
+  .pg-collapse{margin-left:auto}
+  .pg-body{padding:12px 14px 20px}
+
+  /* 前へ｜戻る｜次へ：前へ／次への当たり判定にサービス名が入ると
+     左右で幅が揃わず中央の3タブがずれる。サービス名は隠し、「前へ」
+     「次へ」の固定ラベル（.dtl-lb 内の small）＋矢印だけにする。
+     左右の列を同じ固定幅にして、中央の 1fr の3タブを画面中央へ。 */
+  #detailNav{grid-template-columns:52px 1fr 52px;gap:6px}
+  .dtl-pbtn{padding:5px 0;justify-self:center;gap:3px}
+  .dtl-pbtn[data-next]{justify-self:center}
+  /* 親の直接テキスト（サービス名）を font-size:0 で潰し、small の
+     「前へ」「次へ」だけ表示する。 */
+  .dtl-lb{display:inline;flex:none;font-size:0;overflow:visible;white-space:nowrap}
+  .dtl-lb small{display:inline;font-size:11px;font-weight:700;color:#6b6963}
+  .dtl-back{justify-self:center}
+
+  /* いまの状況：リング＋3項目の横並びを縦に。3項目は横1列のまま
+     （○△✕は小さくても読める）。 */
+  .status-panel{flex-direction:column;gap:16px;align-items:stretch}
+  .status-ring{align-self:center}
+  .status-items{gap:4px}
+  .stat-mark{font-size:24px}
+
+  /* 対応方針：2列 → 縦。縦罫は横罫へ。 */
+  .policy{grid-template-columns:1fr}
+  .pol-l{padding-right:0;border-right:0;padding-bottom:16px;border-bottom:1px solid #efe9dc;margin-bottom:16px}
+  .pol-r{padding-left:0}
+
+  /* 手続き方法：左右2列（手続き先＋流れ｜参考リンク＋ポイント）を縦に。
+     確認状況のピルは流れの中に埋もれるので、節の本文の右上へ逃がす。
+     本文（.sc-body）を位置の基準にして、その右上隅へ絶対配置。
+     ピルのぶん、1行目（手続き先）の右側にだけ余白をあける。 */
+  .sect .sc-body{position:relative}
+  .proc-status-row{position:absolute;top:14px;right:15px;z-index:2;margin:0}
+  .proc2{grid-template-columns:1fr;gap:18px;padding:22px 0 0}
+  .proc2 > div:first-child .pr-lb:first-child{padding-right:104px}
+  .proc2 > div:last-child{display:flex;flex-direction:column;gap:11px}
+  .pr-where{margin-bottom:12px;padding-bottom:10px}
+
+  /* アカウント情報の行：横1行の [icon｜label｜value｜badge] を、
+     1段目「icon＋ラベル … 状態バッジ」／2段目「値」に組み替える。
+     値はラベルの真下（icon のぶん字下げ）に入る。 */
+  .arow{display:grid;grid-template-columns:26px 1fr auto;column-gap:12px;row-gap:5px;
+    align-items:center;padding:12px 4px}
+  .arow .aic{grid-column:1;grid-row:1}
+  .arow .alb{grid-column:2;grid-row:1;flex:none;font-weight:700}
+  .arow .ast,.arow .ast-wrap{grid-column:3;grid-row:1;justify-self:end}
+  .arow .avl{grid-column:2 / -1;grid-row:2;padding-left:0;border-left:0;
+    color:#5c594d;line-height:1.6}
+
+  /* 洗い出しの入口：カードの余白を詰める（縦積みは 820px で済み）。 */
+  .addcard{padding:26px 22px 22px}
+  .addcard-ic{width:96px;height:96px;margin-bottom:16px}
+  .addlead,.addnote{margin-left:0}
+}
+
+@media (max-width:400px){
+  .chips,.pbc-chips{grid-template-columns:1fr}
+  .pg-h .nm{font-size:20px}
+  .status-items{grid-template-columns:1fr}
+  /* 幅が足りないので、札の横に契約情報を並べるのをやめ縦に。 */
+  .rings{grid-template-columns:1fr}
+  .filecard{grid-column:1;grid-row:auto}
+  /* 幅が足りないので 2列。7項目がそのまま流れ、登録日と最終更新日は
+     最後の行に横並びで収まる。 */
+  .rspine{grid-column:1;grid-row:auto;padding-top:12px;border-top:1px dashed #ddd5c2;
+    grid-template-columns:repeat(2,1fr)}
+  /* 確認ピルは絶対配置をやめ、本文の頭に普通に置く。 */
+  .proc-status-row{position:static;margin:0 0 12px}
+  .proc2{padding-top:0}
+  .proc2 > div:first-child .pr-lb:first-child{padding-right:0}
+}

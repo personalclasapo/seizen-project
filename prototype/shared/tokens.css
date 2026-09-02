@@ -33,7 +33,15 @@
   --font:"Noto Sans JP",-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",system-ui,sans-serif;
   --font-serif:"Hiragino Mincho ProN","Yu Mincho",serif;
 
-  /* 外殻の構造寸法。デスクトップ固定の間の値。スマホ対応時は
-     ここを基点にブレークポイント別の値へ差し替える。 */
-  --shell-max:1280px; --shell-min:1120px; --guide-w:258px;
+  /* 外殻の構造寸法と3段のブレークポイント（shell.css）。
+     ・--bp-wide (1200) 以上：固定幅の2カラム。左ガイドは常設。
+     ・--bp-wide 〜 --bp-narrow：流動2カラム。作業面・綴じ代が縮む。
+       左ガイドは既定で畳み、ハンバーガーで本文に被せて開く（開閉は
+       localStorage で記憶）。
+     ・--bp-narrow (900) 以下：1カラム。左ガイドはオフキャンバス
+       ・ドロワー（スクリム付き、記憶なし）。
+     @media のクエリに var() は使えないので、shell.css は数値直書き。
+     値を変えるときはここと両方あわせること。                       */
+  --shell-max:1280px; --guide-w:258px;
+  --bp-wide:1200px; --bp-narrow:900px;
 }
