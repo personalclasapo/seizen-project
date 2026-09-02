@@ -4,7 +4,7 @@
 
    1ページで3ステップを扱う。
      ① inputView … Step1（口座を選ぶ）と Step2（明細をアップロード）を
-        上下に並べる。登録済み口座を1つ選び、Vpass CSV を1つ選ぶと
+        上下に並べる。登録済み口座を1つ選び、カード明細の CSV を1つ選ぶと
         「解析をはじめる」が押せる。
      ② loadingView … 解析表示。
      ③ resultView … Step3。パイプライン（payment/pipeline.js）の結果を
@@ -17,7 +17,7 @@
         支払い手段を確認済みにする。
 
    解析パイプライン（ブラウザ内で完結・§15-2）：
-        source/vpass.js → series.js → resolver.js → judge.js
+        source/statement-csv.js → series.js → resolver.js → judge.js
         → reconcile.js → candidate → Step3 描画 → register.js
    マスタは payment/master.js（アプリ内静的＋実行時解決の書き戻し）。
 
@@ -157,9 +157,10 @@
 
   function checkedBadge(sc) {
     if (!sc) return '';
-    const range = sc.coverage_from && sc.coverage_to
-      ? '（' + esc(sc.coverage_from) + '〜' + esc(sc.coverage_to) + '）' : '';
-    return '<span class="exacct-done">確認済み' + range + '</span>';
+    const cov = SeiZenContract.statementCoverageText
+      ? SeiZenContract.statementCoverageText(sc) : '';
+    return '<span class="exacct-done">確認済み' +
+      (cov ? '<small>' + esc(cov) + '</small>' : '') + '</span>';
   }
 
   function renderAccounts() {
@@ -313,7 +314,7 @@
   });
 
   /* CSV をブラウザ内で読む（サーバへは送らない・§27）。
-     文字コードはアダプタ（vpass.js）が吸収するので、ここではバイト列
+     文字コードはアダプタ（statement-csv.js）が吸収するので、ここではバイト列
      のまま渡す。三井住友カードの明細は Shift-JIS(CP932) で出てくるが、
      ユーザーに変換させない。 */
   function readFile(file) {
@@ -333,15 +334,16 @@
   }
 
   function refreshStart() {
-    const fmt = statementFormatOf(acctId);
-    const ok = sourceMode === 'existing' && !!acctId && !!fileName && !!fileBytes && !!fmt;
+    const importable = canImportStatement(acctId);
+    const ok = sourceMode === 'existing' && !!acctId && !!fileName && !!fileBytes && importable;
     startBtn.disabled = !ok;
-    /* 明細形式が未対応なら、ファイルを選んでも解析に進めない旨を出す。 */
+    /* 明細を取り込めない手段（銀行・電子マネー）なら、ファイルを
+       選んでも解析に進めない旨を出す。 */
     const note = $('exFormatNote');
     if (note) {
-      const show = !!acctId && !fmt;
+      const show = !!acctId && !importable;
       note.hidden = !show;
-      if (show) note.textContent = 'この支払い手段の明細は、まだ取り込みに対応していません。対応しているのはクレジットカード（三井住友カード・楽天カード）です。';
+      if (show) note.textContent = 'この支払い手段の明細は、まだ取り込みに対応していません。対応しているのはクレジットカードの明細（CSV）です。';
     }
     setStep(acctId ? 2 : 1);
   }
@@ -384,19 +386,19 @@
     if (!backLink.getAttribute('href')) { e.preventDefault(); showInput(); }
   });
 
-  /* 選んだ支払い手段の明細形式（§15-4）。対応アダプタが無ければ
-     アップロードさせても読めないので、その時点で伝える。 */
-  function statementFormatOf(id) {
+  /* この支払い手段の明細を取り込めるか（§15-4）。カード明細は会社を
+     問わず汎用アダプタが読む（statement_format: 'card_csv'）。銀行・
+     電子マネーは構造が違うため未対応（null）。 */
+  function canImportStatement(id) {
     const pm = id && SeiZenContract.findPaymentMethod
       ? SeiZenContract.findPaymentMethod(id) : null;
-    return pm ? (pm.statement_format || null) : null;
+    return !!(pm && pm.statement_format);
   }
 
   /* ── 解析 → 結果 ───────────────────────────────────
-     支払い手段の形式に応じたアダプタ → Detection Engine を実行。 */
+     汎用アダプタ（列を推定）→ Detection Engine を実行。 */
   startBtn.addEventListener('click', () => {
-    const fmt = statementFormatOf(acctId);
-    if (!fmt) {
+    if (!canImportStatement(acctId)) {
       global.SeiZen.toast('この支払い手段の明細は、まだ取り込みに対応していません。');
       return;
     }
@@ -405,7 +407,7 @@
     window.scrollTo(0, 0);
     setStep(3);
     /* パイプラインは同期処理だが、解析中表示を一瞬見せてから走らせる。 */
-    setTimeout(() => runAnalysis(fmt), 500);
+    setTimeout(runAnalysis, 500);
   });
 
   $('exRestart').addEventListener('click', showInput);
@@ -414,9 +416,8 @@
   /* ── 解析 → 結果 ───────────────────────────────────
      payment/pipeline.js を1回呼ぶ。明細はブラウザ内で処理し、どこにも
      送らない（§15-2）。 */
-  function runAnalysis(fmt) {
+  function runAnalysis() {
     const res = Pipeline.analyze(fileBytes, {
-      adapter: fmt || statementFormatOf(acctId) || 'vpass',
       paymentMethodId: acctId || null
     });
     if (!res.ok) {

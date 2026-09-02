@@ -349,11 +349,34 @@
 .chip2{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:5px 11px 5px 6px;border:1px solid #eee9de;border-radius:8px;background:#fff;font-size:11.5px;color:#454b44}
 .chip2 .cl{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .chip2 .mark{flex:none;width:20px;height:20px;border-radius:5px;font-size:10px}
-/* 明細確認済みの記録。件数チップの下に控えめに。 */
+/* 明細確認済みの記録。件数チップの下に控えめに。ラベルと期間は横並び
+   （狭いときだけ折り返る）。 */
 .pc-checkedrow{margin-top:9px}
-.pc-checked{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;
-  color:#3f7d54;background:#eaf3ec;border:1px solid #d3e6d8;border-radius:7px;padding:3px 8px}
-.pc-checked svg{flex:0 0 11px;stroke:#3f7d54;fill:none;stroke-width:2.4}
+.pc-checked{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;font-size:10.5px;
+  color:#3f7d54;background:#eaf3ec;border:1px solid #d3e6d8;border-radius:7px;padding:3px 9px}
+.pc-checked svg{flex:0 0 11px;align-self:center;stroke:#3f7d54;fill:none;stroke-width:2.4}
+.pc-checked-tx{display:contents}
+.pc-checked-tx b{font-weight:700}
+.pc-checked-tx small{font-size:10px;font-weight:600;color:#5a8a6a}
+
+/* ── 支払いのつながり：銀行口座は通帳の表紙で ───────────
+   外枠（.pb-book 系）は shared/passbook.css。ここが持つのは記録票
+   （.pb-body）の中身だけ＝止まる支払い・紐づく契約・対応方針。
+   券面カード（.paycard）と同じ .paycards グリッドに混ぜて並べる。 */
+.pbc-warn{display:flex;gap:7px;align-items:flex-start;font-size:11px;color:#c9781d;line-height:1.6;margin:0 0 10px}
+.pbc-warn svg{flex:0 0 13px;margin-top:1px;stroke:#d18017;fill:none;stroke-width:2}
+.pbc-chips{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+/* .chip2 は券面カードと共有（同じ「紐づく契約」の粒）。 */
+.pbc-checked{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;margin-top:10px;font-size:10.5px;color:#3f7d54}
+.pbc-checked svg{flex:0 0 11px;align-self:center;stroke:#3f7d54;fill:none;stroke-width:2.4}
+.pbc-checked span{display:contents}
+.pbc-checked b{font-weight:700}
+.pbc-checked small{font-size:10px;font-weight:600;color:#5a8a6a}
+.pbc-foot{display:flex;align-items:baseline;margin-top:10px;padding-top:10px;border-top:1px solid #e6dfcb}
+.pbc-policy{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.pbc-policy.p-gr{background:#e3ede5;color:#2f6a48}
+.pbc-policy.p-or{background:var(--or-bg);color:#a35a0d}
+.pbc-policy.p-gy{background:#f0eee7;color:var(--gy)}
 
 /* ── 詳細：画面 ───────────────────────────────────
    索引の上に重ねるオーバーレイではなく、?id= を持つ別画面として
@@ -543,6 +566,16 @@
    アカウント状況＝緑／手続き方法＝赤の固定色（各節の色とそろえる）。
    ○△✕の色は項目の色ではなく、済み＝緑／途中＝橙／手つかず＝赤
    という状態そのものの色。                                      */
+/* 綴じ代（左カラム）の「明細を確認済み」。カード情報スパインの下に、
+   同じ点線区切り・中央寄せで（他の項目と同じ体裁）。確認できた全区間と
+   最終確認日を控えめに。 */
+.stmt-checked{margin-top:22px;padding-top:18px;border-top:1px dashed #d8d0bc}
+.stmt-checked svg{width:12px;height:12px;stroke:#8a8578;fill:none;stroke-width:2.4;vertical-align:-1px;margin-right:5px}
+.stmt-tx{display:inline;min-width:0}
+.stmt-tx b{font-size:11px;font-weight:700;color:#8a8578;letter-spacing:.04em}
+.stmt-cov{display:block;margin-top:8px;font-size:12.5px;font-weight:700;color:#5c594d;letter-spacing:.02em}
+.stmt-at{display:block;margin-top:4px;font-size:10px;color:var(--ink3)}
+
 .status-panel{display:flex;align-items:center;gap:36px;padding:8px 6px 26px;margin-bottom:9px;border-bottom:1px solid #f0ece3}
 .status-ring{position:relative;flex:none;width:98px;height:98px}
 .ring-svg{width:100%;height:100%;transform:rotate(-90deg)}

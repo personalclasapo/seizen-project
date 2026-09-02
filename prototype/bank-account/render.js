@@ -341,75 +341,39 @@
       '<span class="st ' + tone + '">' + esc(text) + '</span></li>';
   }
 
-  /* 表紙の地紋。銀行ごとに固定の1枚を割り当てる。写実的な箔ではなく、
-     冊子だと分かる程度の淡い織り柄をインライン SVG で表紙に敷く。
-     ベクターなのでカード幅が変わっても密度が保たれる（ラスターだと
-     1カラム落ちで間延びする）。柄は白の線だけで描き、opacity は
-     .sh-weave 側で寝かせる。並び順で回すので銀行が増えても破綻しない。 */
-  const WEAVE_TILE = {
-    /* 縦の箔ストライプ。通帳の表紙で一番よくある型。 */
-    stripe: '<pattern id="w-stripe" width="9" height="9" patternUnits="userSpaceOnUse">' +
-            '<path d="M0 0V9M4.5 0V9" stroke="#fff" stroke-width="1"/></pattern>',
-    /* クローバー。4枚の葉を小円で。ゆうちょの地紋の見立て。 */
-    clover: '<pattern id="w-clover" width="26" height="26" patternUnits="userSpaceOnUse">' +
-            '<g fill="none" stroke="#fff" stroke-width="1">' +
-            '<circle cx="13" cy="9" r="3"/><circle cx="9" cy="13" r="3"/>' +
-            '<circle cx="17" cy="13" r="3"/><circle cx="13" cy="17" r="3"/>' +
-            '<path d="M13 13v6"/></g></pattern>',
-    /* 葉脈。斜めの主脈から羽状に。ソニー銀行の見立て。 */
-    vein:   '<pattern id="w-vein" width="30" height="30" patternUnits="userSpaceOnUse" patternTransform="rotate(20)">' +
-            '<g fill="none" stroke="#fff" stroke-width="1">' +
-            '<path d="M0 15h30"/><path d="M7 15l-4-5M7 15l-4 5M15 15l-4-5M15 15l-4 5M23 15l-4-5M23 15l-4 5"/>' +
-            '</g></pattern>'
-  };
-  const WEAVES = ['stripe', 'clover', 'vein'];
-  const weaveFor = bank => WEAVES[S.banks.indexOf(bank) % WEAVES.length];
-  const weaveSVG = key =>
-    '<svg class="sh-weave" aria-hidden="true" width="100%" height="100%" preserveAspectRatio="none">' +
-    '<defs>' + WEAVE_TILE[key] + '</defs>' +
-    '<rect width="100%" height="100%" fill="url(#w-' + key + ')"/></svg>';
-
+  /* 表紙の外枠・地紋は shared/passbook.js が持つ。地紋は銀行の並び順で
+     割り当てる（写実的な箔ではなく、冊子だと分かる程度の淡い織り柄）。 */
   function shelfCard(bank) {
     const badge = S.bankBadge(bank);
     const t = S.tally(bank);
     const kinds = shelfKinds(bank);
     const roles = shelfRoles(bank);
-    const weave = weaveFor(bank);
-
-    /* 上層＝通帳の表紙。銀行名・口座数・名義だけを置く。「預金通帳」
-       の箔押しは名乗りとして読み手に要らない情報で、その1行のぶん
-       だけカードが縦に伸びていたので外した。                      */
     const owner = (bank.accounts.find(a => a.owner) || {}).owner || '';
-    const face =
-      '<div class="sh-face">' +
-        '<div class="sh-nm">' + esc(bank.name) + '</div>' +
-        '<div class="sh-meta">' +
-          '<span class="sh-cnt">口座 ' + bank.accounts.length + '件</span>' +
-          (kinds.length ? '<span class="sh-kd">' + esc(kinds.join('・')) + '</span>' : '') +
-          (owner ? '<span class="sh-ow"><i>名義</i>' + esc(owner) + '</span>' : '') +
-        '</div>' +
-        '<span class="sh-bd' + (badge.cls === 'warn' ? '' : ' off') + '">' +
-          esc(badge.text.replace(/\s/g, '')) + '</span>' +
-      '</div>';
 
     /* 下層＝SeiZen の記録。制度2行のあとに、持ち物の数と用途。
        期限の警告は制度ごとのバッジ（今のうちの対応が必要）に
        もう出ているので、カード上部でも繰り返さない。              */
     const body =
-      '<div class="sh-body">' +
-        '<ul class="sh-sits">' + displayOrder(bank).map(i => shelfSitRow(bank, bank.prep[i])).join('') + '</ul>' +
-        '<div class="sh-foot">' +
-          '<span class="sh-kit' + (t.open ? ' open' : '') + '">持ち物 ' + t.done + '/' + (t.done + t.open) + ' 確認済み</span>' +
-          '<span class="sh-use">' + (roles.length ? esc(roles.join('・')) : '用途 未入力') + '</span>' +
-        '</div>' +
+      '<ul class="sh-sits">' + displayOrder(bank).map(i => shelfSitRow(bank, bank.prep[i])).join('') + '</ul>' +
+      '<div class="sh-foot">' +
+        '<span class="sh-kit' + (t.open ? ' open' : '') + '">持ち物 ' + t.done + '/' + (t.done + t.open) + ' 確認済み</span>' +
+        '<span class="sh-use">' + (roles.length ? esc(roles.join('・')) : '用途 未入力') + '</span>' +
       '</div>';
 
-    return '<button class="shbook' + (bank.dormant ? ' gy' : '') + '" type="button" data-goto="' + bank.id + '">' +
-      weaveSVG(weave) +
-      '<span class="sh-spine" aria-hidden="true"></span>' +
-      '<span class="sh-edge r" aria-hidden="true"></span>' +
-      '<span class="sh-edge b" aria-hidden="true"></span>' +
-      face + body + '</button>';
+    /* 上層＝通帳の表紙。銀行名・口座数・名義だけを置く。 */
+    return SeiZen.passbook({
+      key: bank.id,
+      name: bank.name,
+      weaveIndex: S.banks.indexOf(bank),
+      dormant: bank.dormant,
+      meta: [
+        { text: '口座 ' + bank.accounts.length + '件', lead: true },
+        { text: kinds.join('・') },
+        { text: owner, label: '名義' }
+      ],
+      badge: { text: badge.text.replace(/\s/g, ''), on: badge.cls === 'warn' },
+      body: body
+    });
   }
 
   /* 上部の警告は、事実から引き直す。 */

@@ -142,8 +142,12 @@
 
        kind … 'card' | 'bank' | 'emoney'（見た目と手続き文面の出し分け）
        statement_checked … 「支払い明細から探す」で明細を確認した記録。
-         { at: 'YYYY.MM.DD', coverage_from, coverage_to } | null
-         （from/to は確認した明細の対象期間。部分確認を表せる）
+         { at: 'YYYY.MM.DD', ranges: [{ from, to }, …] } | null
+         ranges は確認済みの期間（ISO 'YYYY-MM-DD'、from 昇順）。取り込む
+         たびに新しい期間を足し、重なる／隙間が1か月以内のものだけ1本に
+         まとめる。飛んだ期間はそのまま複数レンジで残す（部分確認を
+         正確に表す）。旧 { coverage_from, coverage_to } は読み込み時に
+         ranges 1本へ変換する（migrateStatementChecked）。
      旧名は cards。card 以外も入るので paymentMethods に改称。
      後方互換のため cards エイリアス（kind==='card' のみ）も残す。 */
   const paymentMethods = [
@@ -151,9 +155,11 @@
       kind: 'card', group: 'card',
       /* 券面の地の色。実ロゴは使わないので、色だけで見分ける。 */
       brand: 'rakuten',
-      /* この支払い手段の明細CSVの形式（§15-4）。アップロード画面が
-         これを見てアダプタを選ぶ。null＝形式未対応（明細取り込み不可）。 */
-      statement_format: 'rakuten',
+      /* 明細CSVの取り込みに対応しているか（§15-4）。カード明細は
+         会社を問わず汎用アダプタ（statement-csv.js）が列を推定して
+         読むので 'card_csv'。銀行口座・電子マネーは明細の構造が違う
+         ため null（未対応）。会社ごとの区別は持たない。 */
+      statement_format: 'card_csv',
       statement_checked: null,
       policy: {
         intent: 'continue',
@@ -178,7 +184,7 @@
     { id: 'card-smbc', name: '三井住友カード（NL）',
       kind: 'card', group: 'card',
       brand: 'smbc',
-      statement_format: 'vpass',
+      statement_format: 'card_csv',
       statement_checked: null,
       policy: {
         intent: 'unknown',
@@ -203,8 +209,8 @@
     { id: 'bank-jp-1', name: 'ゆうちょ銀行　通常貯金',
       kind: 'bank', group: 'bank',
       brand: 'bank',
-      /* ゆうちょの入出金明細形式は未対応（アダプタ未実装）。取り込もう
-         とすると「この支払い手段の明細形式には未対応」と出る（§15-4）。 */
+      /* 銀行の入出金明細は入金/出金の2列構造でカード明細と形が違う。
+         汎用アダプタ（カード明細向け）では読めないので未対応（§15-4）。 */
       statement_format: null,
       statement_checked: null,
       /* 口座は「止める」対象ではなく「相続手続きで凍結・名義変更される」
@@ -614,25 +620,41 @@
     }
   ];
 
-  /* ── 永続化（プロトタイプ用の1本の置き場） ───────────────
-     本番はここが1つのサーバAPI（GET /services, PATCH /services/:id …）
-     になる。プロトタイプでは、その代わりに sessionStorage の1キーへ
-     items / cards をまるごと持つ。上の const items / cards は「初期
-     データ（工場出荷）」で、保存済みの状態が無いときだけ使う。
+  /* ── 永続化（本番の構造に寄せる） ───────────────────────
+     本番では：
+       ・マスタ（契約カタログ・支払い手段マスタ・手続き情報）はサーバの
+         DB。フロントは毎回 GET で取得し、コピーを永続化しない。
+       ・ユーザーのデータ（登録した契約・入力した対応方針やアカウント
+         情報・明細の確認記録）はサーバの DB。POST/PATCH で書く。
+       ・フロントの状態はキャッシュ。リロードすればサーバから最新を取る
+         ので、マスタの更新（列の追加・文言の変更）は次のリロードで
+         自然に反映される。
 
-     localStorage ではなく sessionStorage にしているのは、タブを閉じた
-     ら工場出荷に戻したいから。デモとして触っている間（同一タブの
-     リロード・画面遷移）は状態が残り、新しいタブ／セッションで開けば
-     まっさらから始まる。検証のたびに resetAll() を打たずに済む。
+     プロトタイプでこれを写すと：
+       ・seed（上の const items / paymentMethods）＝「サーバのマスタ＋
+         工場出荷データ」。**保存しない。** 常にコードから読むので、
+         seed を変えればリロードで即反映される（本番と同じ挙動）。
+       ・保存するのは「本番でサーバに POST するもの」だけ：
+           - ユーザーが追加した契約（items のうち added:true）
+           - seed の契約への編集（対応方針・アカウント情報・手続き・
+             メモ・名前・カテゴリ・時期）を、id ごとに変更フィールド
+             だけ
+           - 明細の確認記録（paymentMethod id → { at, from, to }）
+           - ユーザーが追加した支払い手段（稀）
+       ・置き場は sessionStorage の1キー（本番の DB 相当）。タブを
+         閉じたら工場出荷に戻る（検証のたびに resetAll() 不要）。
 
-     設計の要点：
-       ・置き場は1つ（STORE_KEY）。追加分・変更分を別管理しない。
-       ・id が同一性の基準。名前・カテゴリはただの編集できる項目。
-       ・追加サービスの id は採番したその場で確定させ、以後は動かさない
-         （ロード順に依存する連番はやめる）。
-       ・詳細画面のどの書き換えも S.touch() を通るので、保存はそこで
-         一度だけ行えばよい（render 側の各操作は既に touch を呼ぶ）。 */
-  const STORE_KEY = 'seizen.contract.v1';
+     この形なら、seed のスキーマを変えても保存とぶつからない（seed は
+     常に最新、保存は既知の編集フィールドだけを seed の上に重ねる）。 */
+  const STORE_KEY = 'seizen.contract.v2';   /* v1 は seed 丸ごと保存。互換なし。 */
+
+  /* ユーザーが編集できる item のフィールド。保存はこれだけを id ごとに
+     持ち、ロード時に seed の item へ重ねる。ここに無いフィールド
+     （手続きの steps 本文・カテゴリ既定値など seed 由来のもの）は
+     常にコードが正。 */
+  const ITEM_EDITABLE = ['name', 'category', 'group', 'policy', 'account', 'procedure', 'contract', 'memo', 'updated'];
+  /* 支払い手段側で保存する編集。 */
+  const METHOD_EDITABLE = ['statement_checked', 'policy', 'account', 'procedure', 'info', 'memo', 'updated'];
 
   /* 追加サービスの id を1つ作る。時刻＋乱数で、採番順に依存しない。 */
   function newServiceId() {
@@ -679,53 +701,101 @@
     };
   }
 
-  /* 保存：いまの items / paymentMethods と、次に振る No. をまるごと。 */
+  /* seed のスナップショット（工場出荷そのまま）。編集の差分計算と、
+     ロード時の再構築の土台にする。以後 items / paymentMethods 本体を
+     いじってもこちらは動かない。 */
+  const SEED_ITEMS = JSON.parse(JSON.stringify(items));
+  const SEED_METHODS = JSON.parse(JSON.stringify(paymentMethods));
+  const seedItemById = {};   SEED_ITEMS.forEach(it => { seedItemById[it.id] = it; });
+  const seedMethodById = {}; SEED_METHODS.forEach(m => { seedMethodById[m.id] = m; });
+
+  const jsonEq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+  /* entity の editable フィールドのうち、seed と違うものだけ抜き出す。 */
+  function editDiff(entity, seed, fields) {
+    if (!seed) return null;
+    const d = {};
+    let any = false;
+    fields.forEach(f => {
+      if (!jsonEq(entity[f], seed[f])) { d[f] = entity[f]; any = true; }
+    });
+    return any ? d : null;
+  }
+
+  /* 保存：本番でサーバに POST するものだけ。seed は保存しない。 */
   function save() {
     try {
+      const addedItems = items.filter(it => it.added);
+      const itemEdits = {};
+      items.forEach(it => {
+        if (it.added) return;                         /* 追加分は上で丸ごと持つ */
+        const d = editDiff(it, seedItemById[it.id], ITEM_EDITABLE);
+        if (d) itemEdits[it.id] = d;
+      });
+      const addedMethods = paymentMethods.filter(m => !seedMethodById[m.id]);
+      const methodEdits = {};
+      paymentMethods.forEach(m => {
+        if (!seedMethodById[m.id]) return;
+        const d = editDiff(m, seedMethodById[m.id], METHOD_EDITABLE);
+        if (d) methodEdits[m.id] = d;
+      });
+
       sessionStorage.setItem(STORE_KEY, JSON.stringify({
-        items: items, paymentMethods: paymentMethods, nextNo: nextNo
+        v: 2, nextNo: nextNo,
+        addedItems: addedItems,
+        itemEdits: itemEdits,
+        addedMethods: addedMethods,
+        methodEdits: methodEdits
       }));
     } catch (e) { /* 無視 */ }
   }
 
-  /* 読み込み：保存済みがあれば、その中身で items / cards の要素を
-     入れ替える（配列そのものは作り直さない＝外へ渡した参照を保つ）。
-     No. のカウンタも引き継ぐ（無ければ、いま並んでいる最大＋1）。
-     保存が無ければ初期データのまま一度保存して、以後の基準にする。  */
+  /* 読み込み：items / paymentMethods を seed から作り直し（＝コードが
+     常に最新）、保存済みのユーザーデータ（追加分・編集差分）を重ねる。
+     配列そのものは作り直さない（外へ渡した参照を保つ）。            */
   (function loadStore() {
-    /* 旧版は localStorage に置いていた。セッションをまたいで残り続けて
-       検証の妨げになるので、見つけたら消す。 */
     try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 無視 */ }
+    try { sessionStorage.removeItem('seizen.contract.v1'); } catch (e) { /* v1 掃除 */ }
 
-    let saved = null;
+    let patch = null;
     try {
       const raw = sessionStorage.getItem(STORE_KEY);
       const obj = raw ? JSON.parse(raw) : null;
-      /* paymentMethods キーが正。旧保存は cards キーだが、旧 cards は
-         kind を持たず（券面の出し分けが壊れる）、口座・電子マネーの
-         手段も含まないため、写しとしては使えない。kind を持つ新スキーマ
-         のときだけ復元し、それ以外は seed の paymentMethods をそのまま
-         使う（プロトタイプのセッション限りのデータなので破棄してよい）。 */
-      const pm = obj && obj.paymentMethods;
-      const pmValid = Array.isArray(pm) && pm.every(m => m && m.kind);
-      if (obj && Array.isArray(obj.items)) {
-        saved = Object.assign({}, obj, pmValid ? { paymentMethods: pm } : { paymentMethods: null });
-      }
-    } catch (e) { saved = null; }
-    if (!saved) { save(); return; }
-    items.splice(0, items.length, ...saved.items);
-    if (saved.paymentMethods) {
-      paymentMethods.splice(0, paymentMethods.length, ...saved.paymentMethods);
+      if (obj && obj.v === 2) patch = obj;
+    } catch (e) { patch = null; }
+
+    /* items：seed（fresh）＋ 編集差分 ＋ 追加分 */
+    const rebuiltItems = SEED_ITEMS.map(seed => {
+      const base = JSON.parse(JSON.stringify(seed));
+      const d = patch && patch.itemEdits && patch.itemEdits[seed.id];
+      return d ? Object.assign(base, d) : base;
+    });
+    if (patch && Array.isArray(patch.addedItems)) {
+      patch.addedItems.forEach(it => rebuiltItems.push(it));
     }
-    const savedNo = parseInt(saved.nextNo, 10);
-    nextNo = !isNaN(savedNo) && savedNo >= NO_START ? savedNo : items.reduce((m, it) => {
+    items.splice(0, items.length, ...rebuiltItems);
+
+    /* paymentMethods：seed（fresh）＋ 編集差分 ＋ 追加分 */
+    const rebuiltMethods = SEED_METHODS.map(seed => {
+      const base = JSON.parse(JSON.stringify(seed));
+      const d = patch && patch.methodEdits && patch.methodEdits[seed.id];
+      return d ? Object.assign(base, d) : base;
+    });
+    if (patch && Array.isArray(patch.addedMethods)) {
+      patch.addedMethods.forEach(m => rebuiltMethods.push(m));
+    }
+    paymentMethods.splice(0, paymentMethods.length, ...rebuiltMethods);
+
+    const savedNo = patch && parseInt(patch.nextNo, 10);
+    nextNo = (savedNo && savedNo >= NO_START) ? savedNo : items.reduce((m, it) => {
       const n = parseInt(it.no, 10);
       return isNaN(n) ? m : Math.max(m, n + 1);
     }, NO_START);
 
-    /* 移行：No. の採番を入れる前に追加したサービスは no が '—' のまま
-       保存されている。登録日の古い順（＝追加した順）に、いまの nextNo
-       から番号を振り直し、一度だけ保存し直す。1回走れば以降は該当なし。 */
+    if (!patch) { save(); return; }
+
+    /* 移行：No. 採番前に追加したサービスは no が '—'。登録日の古い順に
+       振り直して1回だけ保存し直す。 */
     const unnumbered = items.filter(it => it.added && (!it.no || it.no === '—'));
     if (unnumbered.length) {
       unnumbered
@@ -842,11 +912,12 @@
     return true;
   }
 
-  /* 追加サービスの名前・カテゴリを書き換える。詳細画面のインライン
-     編集から呼ぶ。id で引くので、名前が変わっても同じサービスのまま。
-     seed（it.added が無い）は対象外。値が変わったときだけ true。     */
+  /* サービスの名前・カテゴリを書き換える。詳細画面のインライン編集
+     から呼ぶ。id で引くので、名前が変わっても同じサービスのまま。
+     seed のサービスも対象（保存は editDiff が id ごとに差分を持つ）。
+     値が変わったときだけ true。                                      */
   function renameService(id, patch) {
-    const it = items.find(x => x.id === id && x.added);
+    const it = items.find(x => x.id === id);
     if (!it) return false;
     let changed = false;
     if (patch && 'name' in patch) {
@@ -872,11 +943,15 @@
     return true;
   }
 
-  /* デモをまっさらに戻す1行。コンソールから SeiZen…resetAll()。
-     保存を消してから、初期データで書き戻す（次のロードは工場出荷）。 */
+  /* デモをまっさらに戻す。コンソールから SeiZen…resetAll() してリロード。
+     保存（ユーザーデータ）を消すだけ。次のロードは seed（工場出荷）。 */
   function resetAll() {
     try { sessionStorage.removeItem(STORE_KEY); } catch (e) { /* 無視 */ }
-    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 無視 */ } /* 旧キーの掃除 */
+    try { sessionStorage.removeItem('seizen.contract.v1'); } catch (e) { /* 無視 */ }
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 無視 */ }
+    /* いま画面に出ている配列も seed に戻す（リロード前でも整合させる）。 */
+    items.splice(0, items.length, ...JSON.parse(JSON.stringify(SEED_ITEMS)));
+    paymentMethods.splice(0, paymentMethods.length, ...JSON.parse(JSON.stringify(SEED_METHODS)));
   }
 
   /* テスト・デモ用：明細確認の記録だけ消す。 */
@@ -1020,20 +1095,94 @@
     };
   }
 
+  /* ── 明細確認の記録（期間の累積）───────────────────────
+     ranges は確認済み期間の配列（ISO 'YYYY-MM-DD'、from 昇順）。取り込む
+     たびに新しい期間を addRange で足し、重なる／隙間が1か月（31日）以内
+     の区間だけ1本にまとめる。飛んだ期間は複数レンジのまま残す。       */
+
+  const MS_DAY = 86400000;
+  function isoToTime(s) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+    return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : NaN;
+  }
+
+  /* 旧スキーマ { coverage_from, coverage_to } を { ranges: [...] } へ。
+     すでに ranges を持つものはそのまま返す。                        */
+  function migrateStatementChecked(sc) {
+    if (!sc) return null;
+    if (Array.isArray(sc.ranges)) return sc;
+    const from = sc.coverage_from || null, to = sc.coverage_to || null;
+    return {
+      at: sc.at || null,
+      ranges: (from && to) ? [{ from: from, to: to }] : []
+    };
+  }
+
+  /* 既存 ranges に1区間を足し、重なり／近接（隙間31日以内）を統合する。 */
+  function addRange(ranges, from, to) {
+    const list = (ranges || []).slice();
+    if (from && to) list.push({ from: from, to: to });
+    const valid = list
+      .filter(r => isFinite(isoToTime(r.from)) && isFinite(isoToTime(r.to)))
+      .sort((a, b) => isoToTime(a.from) - isoToTime(b.from));
+    const merged = [];
+    valid.forEach(r => {
+      const last = merged[merged.length - 1];
+      if (last && isoToTime(r.from) <= isoToTime(last.to) + 31 * MS_DAY) {
+        if (isoToTime(r.to) > isoToTime(last.to)) last.to = r.to;
+      } else {
+        merged.push({ from: r.from, to: r.to });
+      }
+    });
+    return merged;
+  }
+
   /* 「支払い明細から探す」で、その支払い手段の明細を確認し終えたときに
      呼ぶ（§13 末尾・§2 の網羅の進捗）。本番は
      POST /payment-methods/:id/statement-check にあたる。
-     coverage は確認した明細の対象期間（{ from, to }・省略可）。       */
+     coverage は今回確認した明細の対象期間（{ from, to }・省略可）。
+     既存の確認済み期間へ足し込む（上書きしない）。                   */
   function markStatementChecked(id, coverage) {
     const pm = findPaymentMethod(id);
     if (!pm) return false;
+    const prev = migrateStatementChecked(pm.statement_checked);
+    const from = (coverage && coverage.from) || null;
+    const to   = (coverage && coverage.to)   || null;
     pm.statement_checked = {
       at: today(),
-      coverage_from: (coverage && coverage.from) || null,
-      coverage_to:   (coverage && coverage.to)   || null
+      ranges: addRange(prev ? prev.ranges : [], from, to)
     };
     save();
     return true;
+  }
+
+  /* バッジ用の和文表記。確認済みの全区間を並べる。
+       1区間・同年 : '2026年 3月〜8月'
+       複数区間     : '2026年 3月〜5月・9月〜11月'
+       年をまたぐ   : '2025年12月〜2026年2月'
+     区間が無ければ空文字。                                          */
+  function statementCoverageText(sc) {
+    const s = migrateStatementChecked(sc);
+    if (!s || !s.ranges.length) return '';
+    const parts = [];
+    let lastYear = null;
+    s.ranges.forEach(r => {
+      const a = /^(\d{4})-(\d{2})-/.exec(r.from);
+      const b = /^(\d{4})-(\d{2})-/.exec(r.to);
+      if (!a || !b) return;
+      const y1 = +a[1], m1 = +a[2], y2 = +b[1], m2 = +b[2];
+      let seg;
+      if (y1 === y2) {
+        const head = (y1 === lastYear) ? '' : y1 + '年 ';
+        seg = head + m1 + '月' + (m1 === m2 ? '' : '〜' + m2 + '月');
+        lastYear = y1;
+      } else {
+        seg = y1 + '年' + m1 + '月〜' + y2 + '年' + m2 + '月';
+        lastYear = y2;
+      }
+      parts.push(seg);
+    });
+    return parts.join('・');
   }
 
   function yen(n) { return '¥' + Math.round(n).toLocaleString('ja-JP'); }
@@ -1063,7 +1212,7 @@
     paymentMethods, cards, items,
     byGroup, preItems, postItems, undecidedItems,
     hasService, commitAdded, commitFromStatement, applyPaymentMethodChange, removeAdded, renameService, setGroup, resetAll,
-    markStatementChecked, clearStatementChecks,
+    markStatementChecked, clearStatementChecks, statementCoverageText, migrateStatementChecked,
     intentOf, intentLabel, markOf, openCount, procChecked, accountMark, accountState, accountDone, statusRows,
     itemBadge, groupSummary, accountSummary,
     paymentDisplay, amountText, findItem, findCard, findPaymentMethod, linkedItems, cardFacts,

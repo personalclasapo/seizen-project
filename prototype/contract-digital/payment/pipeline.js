@@ -40,29 +40,21 @@
   const Resolver = global.SeiZenPaymentResolver;
   const Master = global.SeiZenPaymentMaster;
 
-  /* 明細形式（statement_format）→ ソースアダプタ。支払い手段が持つ
-     statement_format をキーに引く（§15-4）。ここに無い形式は未対応。 */
-  const ADAPTERS = {
-    vpass:   global.SeiZenSourceVpass,      /* 三井住友カード */
-    rakuten: global.SeiZenSourceRakuten     /* 楽天カード */
-  };
+  /* 明細CSV → 取引配列（§15-4）。会社別アダプタは持たず、汎用アダプタ
+     1本が列の意味（利用日 / 金額 / 店名）を推定して読む。カード会社を
+     問わない。opts.adapter は使わない。 */
+  const Adapter = global.SeiZenSourceStatementCsv;
 
   function analyze(input, opts) {
     opts = opts || {};
-    /* adapter 名は呼び出し側（extraction.js）が支払い手段の
-       statement_format から渡す。未指定なら vpass（旧来の既定）。 */
-    const fmt = opts.adapter || 'vpass';
-    const adapter = ADAPTERS[fmt];
     const paymentMethodId = opts.paymentMethodId || null;
-    if (!fmt) {
-      return { ok: false, error: 'この支払い手段の明細形式が未設定です。' };
-    }
-    if (!adapter) {
-      return { ok: false, error: 'この支払い手段の明細形式（' + fmt + '）にはまだ対応していません。' };
+
+    if (!Adapter) {
+      return { ok: false, error: '明細CSVの読み取り機能が読み込まれていません。' };
     }
 
     /* ① 正規化 */
-    const parsed = adapter.parse(input, {});
+    const parsed = Adapter.parse(input, {});
     if (!parsed.ok) return { ok: false, error: parsed.error };
 
     /* ②③ 系列化（identify を内包） */

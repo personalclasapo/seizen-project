@@ -272,10 +272,11 @@
     const f = S.cardFacts(c.id);
     const chips = payChips(f.linked);
     const sc = c.statement_checked;
+    const covText = S.statementCoverageText(sc);
     const checkedNote = sc
-      ? '<span class="pc-checked">' + IC.check + '明細確認済み' +
-          (sc.coverage_from && sc.coverage_to
-            ? '（' + esc(sc.coverage_from) + '〜' + esc(sc.coverage_to) + '）' : '') + '</span>'
+      ? '<span class="pc-checked">' + IC.check +
+          '<span class="pc-checked-tx"><b>明細を確認済み</b>' +
+          (covText ? '<small>' + esc(covText) + '</small>' : '') + '</span></span>'
       : '';
 
     const kindStop = {
@@ -314,9 +315,47 @@
     '</button>';
   }
 
+  /* 銀行口座は「券面」ではなく通帳の表紙で見せる（銀行口座の一覧と
+     同じ実体なので、外枠は shared/passbook.js で共有）。載る事実は
+     契約・デジタル側のもの＝止まる支払い・紐づく契約・対応方針。
+     押すと従来どおり詳細シート（data-open）へ。                    */
+  function payBookCard(c) {
+    const f = S.cardFacts(c.id);
+    const sc = c.statement_checked;
+    const covText = S.statementCoverageText(sc);
+    const intent = S.INTENTS[c.policy.intent];
+    const intentLabel = (c.policy.intentLabel || intent.label);
+
+    const body =
+      '<div class="pbc-warn">' + IC.warn +
+        'この口座が凍結されると、' + f.linked.length + '件の支払いが止まります</div>' +
+      '<div class="pbc-chips">' + payChips(f.linked) + '</div>' +
+      (sc
+        ? '<div class="pbc-checked">' + IC.check + '<span><b>明細を確認済み</b>' +
+            (covText ? '<small>' + esc(covText) + '</small>' : '') + '</span></div>'
+        : '') +
+      '<div class="pbc-foot">' +
+        '<span class="pbc-policy p-' + intent.tone + '">対応方針：' + esc(intentLabel) + '</span>' +
+      '</div>';
+
+    return SeiZen.passbook({
+      key: c.id,
+      gotoAttr: 'open',
+      name: c.name,
+      weaveIndex: 0,
+      meta: [
+        { text: (c.info.issuer || '金融機関'), lead: true },
+        { text: c.info.holder, label: '名義' }
+      ],
+      badge: sc ? { text: '明細を確認済み', on: true } : null,
+      body: body
+    });
+  }
+
   function payBlock() {
     const methods = S.paymentMethods;
-    const html = methods.map(payMethodCard).join('');
+    const html = methods.map(m =>
+      (m.kind === 'bank' ? payBookCard(m) : payMethodCard(m))).join('');
     return '<div class="iblock ib-pay">' +
       '<div class="ib-h"><span class="ib-ic ic-pay">' + IC.card + '</span>' +
         '<h4>支払いのつながり</h4><span class="ib-n n-pay">' + methods.length + '件の経路</span></div>' +
@@ -337,6 +376,21 @@
     if (b.kind === 'done')
       return '<button type="button" class="complete-btn on" data-complete="1">' + IC.loop + '準備済みに戻す</button>';
     return '';
+  }
+
+  /* 支払い手段の詳細シートに出す「明細を確認済み」の一角。確認できた
+     期間を全区間ならべ、最後に確認した日も添える。「支払い明細から
+     探す」を通っていなければ何も出さない。                          */
+  function statementCheckedHTML(card) {
+    const sc = card.statement_checked;
+    if (!sc) return '';
+    const covText = S.statementCoverageText(sc);
+    const at = sc.at ? sc.at.replace(/\./g, '/') : '';
+    return '<div class="stmt-checked">' + IC.check +
+      '<div class="stmt-tx"><b>明細を確認済み</b>' +
+      (covText ? '<span class="stmt-cov">' + esc(covText) + '</span>' : '') +
+      (at ? '<span class="stmt-at">最終確認 ' + esc(at) + '</span>' : '') +
+      '</div></div>';
   }
 
   /* 綴じ代のいちばん下に置く、この記録を削除するための一角。追加した
@@ -686,15 +740,14 @@
         deleteZoneHTML(it) +
       '</div>' +
       '<div class="page">' +
-        /* 追加したサービスは、名前・カテゴリを他の項目と同じインライン
-           編集にする（押すと入力欄）。seed は markOf のロゴ判定が名前
-           に依存するので、読み取り専用のまま。                        */
+        /* 名前・カテゴリは他の項目と同じインライン編集（押すと入力欄）。
+           照合は id で行うので、名前を変えても同じサービスのまま。seed の
+           サービスも編集でき、保存は state.js の editDiff が id ごとに
+           差分を持つ。名前を変えると markOf の頭文字/ロゴ判定は既定へ
+           落ちる（追加サービスと同じ挙動）。                          */
         '<div class="pg-h">' +
-          (it.added
-            ? '<span class="nm">' + ev('name', it.name, 'line', '例：DHC 定期便') + '</span>' +
-              '<span class="cat">' + ev('category', it.category, 'line', '例：化粧品') + '</span>'
-            : '<span class="nm">' + esc(it.name) + '</span>' +
-              '<span class="cat">' + esc(it.category) + '</span>') +
+          '<span class="nm">' + ev('name', it.name, 'line', '例：DHC 定期便') + '</span>' +
+          '<span class="cat">' + ev('category', it.category, 'line', '例：化粧品') + '</span>' +
           '<span class="pol hb-' + b.tone + '">' + esc(bTxt) + '</span>' +
           completeToggleHTML(b) +
           pgCollapseHTML() + '</div>' +
@@ -766,7 +819,7 @@
         '<div class="filecard"><small>支払いカード</small><b>' + esc(card.name) + '</b>' +
           '<div class="rule" style="background:#4681a0"></div></div>' +
         spineCardInfoHTML(card) +
-        '<div class="rfoot">' + IC.card + '<span>支払いの経路を<br>まとめて記録</span></div>' +
+        statementCheckedHTML(card) +
       '</div>' +
       '<div class="page">' +
         '<div class="pg-h"><span class="nm">' + esc(card.name) + '</span>' +

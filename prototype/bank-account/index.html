@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../shared/tokens.css">
   <link rel="stylesheet" href="../shared/shell.css">
+  <link rel="stylesheet" href="../shared/passbook.css">
   <link rel="stylesheet" href="area.css">
 </head>
 <!-- data-area がナビの現在地、data-root が prototype/ までの相対パス。
@@ -29,7 +30,7 @@
         <div></div>
       </div>
       <!-- 通帳の表紙を並べた目次。押すと下の該当通帳へ送る。 -->
-      <div class="shelf" id="shelf"></div>
+      <div class="pb-shelf" id="shelf"></div>
     </div>
     <div class="sec-h">
       <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4.5h11a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2Z"/><path d="M8 4.5V20M8 8.5h6M8 12h4"/></svg></span>
@@ -45,6 +46,7 @@
 <div class="toast" id="toast"></div>
 <script src="../shared/areas.js"></script>
 <script src="../shared/shell.js"></script>
+<script src="../shared/passbook.js"></script>
 <script src="state.js"></script>
 <script src="render.js"></script>
 </body>

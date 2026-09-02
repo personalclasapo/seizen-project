@@ -71,8 +71,10 @@
 .exacct-tx small{display:block;font-size:11px;color:var(--ink3);margin-top:1px}
 /* 明細をすでに確認済みの支払い手段。選び直せるよう無効化はしないが、
    「もう見た」と分かるバッジを添える。 */
-.exacct-done{display:inline-block;margin-top:4px;font-size:10px;font-weight:700;
-  color:#3f7d54;background:#eaf3ec;border:1px solid #d3e6d8;border-radius:6px;padding:2px 7px}
+.exacct-done{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:0 6px;margin-top:4px;
+  font-size:10px;font-weight:700;color:#3f7d54;background:#eaf3ec;border:1px solid #d3e6d8;
+  border-radius:6px;padding:2px 7px}
+.exacct-done small{font-size:10px;font-weight:600;color:#5a8a6a;margin:0}
 .exacct.is-done{border-style:solid;border-color:#d3e6d8}
 .exacct.is-done .exacct-ic{background:#eaf3ec;border-color:#d3e6d8;color:#3f7d54}
 

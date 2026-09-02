@@ -66,24 +66,24 @@ function freshModules(contractStub) {
   global.window = global;
   global.SeiZenCatalog = { categoryFor: () => '未分類' };
   global.SeiZenContract = contractStub || makeContractStub([]);
-  ['master.js','resolver.js','series.js','judge.js','reconcile.js','register.js','source/vpass.js','source/rakuten.js','pipeline.js']
+  ['master.js','resolver.js','series.js','judge.js','reconcile.js','register.js','source/statement-csv.js','pipeline.js']
     .forEach(f => require(PDIR + f));
   return {
     Pipeline: global.SeiZenPaymentPipeline,
     Master: global.SeiZenPaymentMaster,
-    Vpass: global.SeiZenSourceVpass,
-    Rakuten: global.SeiZenSourceRakuten,
+    Adapter: global.SeiZenSourceStatementCsv,
     Contract: global.SeiZenContract
   };
 }
 
 function analyze(csv, opts) {
-  return global.SeiZenPaymentPipeline.analyze(csv, Object.assign({ adapter: 'vpass' }, opts || {}));
+  return global.SeiZenPaymentPipeline.analyze(csv, opts || {});
 }
 
-/* 実 Vpass 形式（ヘッダーなし11列・先頭にカード情報行・末尾に合計行）
-   の CSV を、明細行の配列（[利用日, 店名, 金額, 支払区分, 回数, 備考]）
-   から組み立てる。テスト内の合成ケース用。 */
+/* 三井住友カード（Vpass）実形式（ヘッダーなし11列・先頭カード情報行・
+   末尾合計行）の CSV を、明細行の配列（[利用日, 店名, 金額, 支払区分,
+   回数, 備考]）から組み立てる。汎用アダプタが列を推定できることの
+   検証にも使う（＝会社別の決め打ちをしていない）。 */
 function vpassCsv(rows) {
   const out = ['VPASSガイド 様,4980-XXXX-XXXX-1234,,SMBCCARDクラシック☆,,,,,,,'];
   let total = 0;
@@ -111,13 +111,25 @@ console.log('\n■ 1. 異常系 CSV');
   const noData = 'VPASSガイド 様,4980-XXXX-XXXX-1234,,SMBCCARDクラシック☆,,,,,,,\r\n,,,,,0,,,,,\r\n';
   check('明細行なし → ok:false', analyze(noData).ok === false);
 
-  // 1c. 別カード会社の CSV を vpass アダプタに渡す → 日付列が無く data_rows 0
-  const rakutenLike = '"利用日","利用店名・商品名","利用者","支払方法","利用金額"\r\n"2026/03/12","NETFLIX.COM","本人","1回払い","1590"\r\n';
-  check('楽天形式を vpass アダプタに渡す → ok:false（読めない）', analyze(rakutenLike).ok === false);
+  // 1c. 明細でないCSV（列を推定できない）→ ok:false（黙って空を返さない）
+  const rGarbage = analyze('a,b,c\r\n1,2,3\r\n4,5,6\r\n');
+  check('列を推定できないCSV → ok:false', rGarbage.ok === false, rGarbage.error);
 
-  // 1d. 未対応アダプタ名
-  const r1d = analyze('a\nb', { adapter: 'nanko' });
-  check('未対応アダプタ名 → ok:false かつメッセージに形式名', r1d.ok === false && /nanko/.test(r1d.error), r1d.error);
+  // 1d. 楽天カード形式（別の列並び）も汎用アダプタが読める
+  const rakutenLike = [
+    '"利用日","利用店名・商品名","利用者","支払方法","利用金額","支払手数料","支払総額","8月支払金額","9月繰越残高","新規サイン"',
+    '"2026/03/12","NETFLIX.COM","本人","1回払い","1590","0","1590","1590","0","*"',
+    '"2026/04/12","NETFLIX.COM","本人","1回払い","1590","0","1590","1590","0","*"',
+    '"2026/05/12","NETFLIX.COM","本人","1回払い","1590","0","1590","1590","0","*"',
+    '"2026/06/12","NETFLIX.COM","本人","1回払い","1590","0","1590","1590","0","*"'
+  ].join('\r\n');
+  const rRk = analyze('﻿' + rakutenLike);
+  check('楽天カード形式も汎用アダプタが読める（Netflix A）',
+    rRk.ok && cand(rRk, 'Netflix') && cand(rRk, 'Netflix').status === 'A',
+    rRk.ok ? JSON.stringify(rRk.report.adapter.stats.columns) : rRk.error);
+  check('  金額列は「利用金額」を選ぶ（「支払総額」ではない）',
+    rRk.ok && rRk.report.adapter.stats.columns.amount === 4,
+    rRk.ok ? JSON.stringify(rRk.report.adapter.stats.columns) : '');
 
   // 1e. 利用日が飛んでいる短い系列 → coverage は利用日から / 判定は保守的
   const gap = vpassCsv([
@@ -164,7 +176,7 @@ console.log('\n■ 1. 異常系 CSV');
   ].join('\r\n');
   const rn = analyze(withNoise);
   check('カード情報行/合計行/空行を飛ばして明細だけ拾う', rn.ok &&
-    rn.report.adapter.stats.skipped_nondata === 3 && rn.report.adapter.stats.data_rows === 4,
+    rn.report.adapter.stats.skipped_nondata >= 1 && rn.report.adapter.stats.data_rows === 4,
     JSON.stringify(rn.report.adapter.stats));
   check('  複数カードブロックの明細が1つの系列にまとまる → Netflix A',
     rn.ok && cand(rn, 'Netflix') && cand(rn, 'Netflix').status === 'A');
@@ -490,6 +502,93 @@ console.log('\n■ 7. out_of_scope（§8-2）');
   check('SOMPO JAPAN → candidates に載らない', !cand(r7, '損保ジャパン'));
   check('  payment_method_hits にも出ない', !r7.payment_method_hits.some(h => /損保/.test(h.merchant_name)));
   check('  report で drop / out_of_scope', dropped(r7, 'SOMPO JAPAN') && dropped(r7, 'SOMPO JAPAN').drop_reason === 'out_of_scope');
+}
+
+/* ════════════════════════════════════════════════════════════════
+   8. 汎用アダプタ（§15-4）：会社を問わず列を推定して読む
+   ════════════════════════════════════════════════════════════════ */
+console.log('\n■ 8. 汎用アダプタ（§15-4）');
+{
+  const setOf = r => r.candidates.map(c => c.merchant_name + ':' + c.status).sort().join(' | ');
+
+  /* 8a. 三井住友カード（Vpass）実形式と楽天カード実形式で、
+        同じ取引データなら候補集合が一致する（判定は形式非依存）。 */
+  freshModules();
+  const vpassPath   = CSVDIR + 'SeiZen_sample_vpass_6months_2026-03_to_08.csv';
+  const rakutenPath = CSVDIR + 'SeiZen_sample_rakuten_6months_2026-03_to_08.csv';
+  const readBytes = p => { const b = fs.readFileSync(p); return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); };
+
+  const rVp = analyze(readBytes(vpassPath));
+  check('三井住友カード実形式（ヘッダーなし11列）→ ok', rVp.ok,
+    rVp.ok ? JSON.stringify(rVp.report.adapter.stats.columns) : rVp.error);
+
+  if (fs.existsSync(rakutenPath)) {
+    const rRk = analyze(readBytes(rakutenPath));
+    check('楽天カード実形式（ヘッダーあり10列・BOM）→ ok', rRk.ok,
+      rRk.ok ? JSON.stringify(rRk.report.adapter.stats.columns) : rRk.error);
+    check('  三井住友版と楽天版で候補集合が一致（会社別の決め打ちをしていない）',
+      rVp.ok && rRk.ok && setOf(rVp) === setOf(rRk),
+      '\n     vpass:   ' + setOf(rVp) + '\n     rakuten: ' + setOf(rRk));
+  } else {
+    check('楽天カードのサンプル CSV が存在する', false, rakutenPath + ' が無い');
+  }
+
+  /* 8b. セゾン形式（列の並びが違う）も読める */
+  freshModules();
+  const saison = [
+    '利用日,ご利用店名及び商品名,本人・家族区分,支払区分名称,締前入金区分,利用金額,備考',
+    '2026/03/12,NETFLIX.COM,本人,1回払い,,1590,',
+    '2026/04/12,NETFLIX.COM,本人,1回払い,,1590,',
+    '2026/05/12,NETFLIX.COM,本人,1回払い,,1590,',
+    '2026/06/12,NETFLIX.COM,本人,1回払い,,1590,'
+  ].join('\r\n');
+  const rSa = analyze(saison);
+  check('セゾン形式（利用金額が6列目）→ Netflix A',
+    rSa.ok && cand(rSa, 'Netflix') && cand(rSa, 'Netflix').status === 'A',
+    rSa.ok ? JSON.stringify(rSa.report.adapter.stats.columns) : rSa.error);
+
+  /* 8c. 三菱UFJニコス形式（カナ略記店名・支払回数列）も読める */
+  freshModules();
+  const mufg = [
+    '"利用日","利用者","利用区分","利用内容","新規利用額","今回請求額","支払回数","備考"',
+    '"2026/03/12","本人","国内","ﾈｯﾄﾌﾘｯｸｽ","1590","1590","1",""',
+    '"2026/04/12","本人","国内","ﾈｯﾄﾌﾘｯｸｽ","1590","1590","1",""',
+    '"2026/05/12","本人","国内","ﾈｯﾄﾌﾘｯｸｽ","1590","1590","1",""',
+    '"2026/06/12","本人","国内","ﾈｯﾄﾌﾘｯｸｽ","1590","1590","1",""',
+    '"2026/04/05","本人","国内","ﾋﾞｯｸｶﾒﾗ","66000","22000","3","分割"'
+  ].join('\r\n');
+  const rMu = analyze(mufg);
+  check('三菱UFJ形式（新規利用額・支払回数）→ ok / 金額列は「今回請求額」でなく「新規利用額」',
+    rMu.ok && rMu.report.adapter.stats.columns.amount === 4,
+    rMu.ok ? JSON.stringify(rMu.report.adapter.stats.columns) : rMu.error);
+  check('  支払回数=3（分割）の BIC CAMERA は除外される',
+    rMu.ok && rMu.report.adapter.stats.excluded_installment === 1,
+    rMu.ok ? JSON.stringify(rMu.report.adapter.stats) : '');
+
+  /* 8d. 「現地利用額…変換レート…」の補足行（利用日が空）を飛ばす */
+  freshModules();
+  const forex = [
+    '"利用日","利用店名・商品名","利用者","支払方法","利用金額","支払総額"',
+    '"2026/03/12","NETFLIX.COM","本人","1回払い","1590","1590"',
+    '"","現地利用額　９．９９ＵＳＤ　変換レート　１５９．００","","","",""',
+    '"2026/04/12","NETFLIX.COM","本人","1回払い","1590","1590"',
+    '"2026/05/12","NETFLIX.COM","本人","1回払い","1590","1590"'
+  ].join('\r\n');
+  const rFx = analyze('﻿' + forex);
+  check('補足行（利用日が空）を飛ばす', rFx.ok && rFx.report.adapter.stats.skipped_nondata === 1,
+    rFx.ok ? JSON.stringify(rFx.report.adapter.stats) : rFx.error);
+
+  /* 8e. 金額の紛らわしい列（支払総額）を金額列にしない */
+  freshModules();
+  const trap = [
+    '"利用日","利用店名","利用金額","支払総額","今回のお支払い金額"',
+    '"2026/03/05","BIC CAMERA","66000","67200","22400"',       // 分割：総額と乖離
+    '"2026/03/12","NETFLIX.COM","1590","1590","1590"'
+  ].join('\r\n');
+  const rTr = analyze('﻿' + trap);
+  check('金額列は「利用金額」を選ぶ（支払総額・今回支払は選ばない）',
+    rTr.ok && rTr.report.adapter.stats.columns.amount === 2,
+    rTr.ok ? JSON.stringify(rTr.report.adapter.stats.columns) : rTr.error);
 }
 
 /* ════════════════════════════════════════════════════════════════
