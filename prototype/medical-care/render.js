@@ -76,6 +76,17 @@
     '<path d="M4.8 20.5c0-4 3.2-7 7.2-7s7.2 3 7.2 7"/>';
   const CLINIC_IC = '<path d="M4 20V7.5L12 4l8 3.5V20"/><path d="M12 9.5v6M9 12.5h6"/>';
   const PHARM_IC = '<path d="M8.5 4.5h7M12 4.5v3"/><path d="M6.5 9.5h11L16 20H8L6.5 9.5Z"/>';
+  /* 節見出しの記号。番号のかわりに、その節が何の話かを記号で言う。 */
+  const WARN_IC  = '<path d="M12 3.5 2 20.5h20L12 3.5Z"/><path d="M12 10v4.6M12 17.6v.1"/>';
+  const PULSE_IC = '<path d="M3 12.5h3.6l2-5.2 3 10 2.4-6.4 1.6 1.6H21"/>';
+  const TREAT_IC = '<path d="M4.5 15.5 15.5 4.5l4 4-11 11H4.5Z"/><path d="M12.5 7.5l4 4"/>' +
+                   '<path d="M3 21h8"/>';
+  const PILL_IC  = '<rect x="3" y="9.5" width="18" height="9" rx="4.5" ' +
+                   'transform="rotate(-40 12 14)"/><path d="M9 8.5 15 15"/>';
+  const DOC_IC   = '<path d="M6.5 3h8l4 4v14h-12Z"/><path d="M14.5 3v4h4"/>' +
+                   '<path d="M9 12h6M9 15.5h4"/>';
+  /* 要介護度＝制度上の区分。段階を表す階段の記号。 */
+  const LEVEL_IC = '<path d="M3.5 19h5v-4h5v-4h5.5"/><path d="M19 11v8H3.5"/>';
 
   /* ── 編集プリミティブ ───────────────────────────────
      ev()       … 一行／複数行テキスト。開いていれば入力欄。
@@ -188,37 +199,48 @@
       '</svg>';
   }
 
-  function medSection(no, key, title, lead, body, cls) {
+  /* 節。番号は振らない。①→⑦の順に埋めていくものではなく、救急で
+     読む節（伝えること）も、辿るための節（薬の入口）も、性質が別だから
+     （正本 §12：入力率を進捗にしない）。見出しは記号＋文字で分ける。 */
+  function medSection(key, icon, title, lead, body, cls) {
     return '<div class="bs ' + (cls || '') + '">' +
-      '<div class="bs-h"><span class="bs-no">' + no + '</span>' +
+      '<div class="bs-h"><span class="bs-ic">' + svgIc(icon, 16) + '</span>' +
       '<h5>' + esc(title) + '</h5>' +
       (lead ? '<small>' + esc(lead) + '</small>' : '') +
       editBtn(key) + '</div>' +
       '<div class="bs-body">' + body + '</div></div>';
   }
 
-  /* ① 主な医療機関 */
+  /* 主な医療機関。1件ずつが「かかっている先」として並立するので、
+     帯に潰さずカードで横に並べる。カードの中では
+       診療科（何科か）→ 名前 → 何のために → 誰に → 連絡先
+     の順で、上から重要度が下がる。                                 */
   function clinicsBlock() {
     const m = S.data.medical;
     const on = secOn('clinic');
-    const rows = (m.clinics || []).map((c, i) => {
+    const cards = (m.clinics || []).map((c, i) => {
       const p = 'medical.clinics.' + i + '.';
       const tags = on
-        ? '<span class="cl-tags">' + ev(p + 'depts', S.tagsToText(c.depts), 'line', '診療科（読点区切り）') + '</span>'
-        : '<span class="cl-tags">' + (c.depts || []).map(d =>
-            '<span class="tag">' + esc(d) + '</span>').join('') + '</span>';
-      return '<div class="cl">' +
-        '<span class="cl-ic">' + svgIc(CLINIC_IC, 16) + '</span>' +
-        '<span class="cl-name">' + ev(p + 'name', c.name, 'line', '医療機関の名前') + '</span>' +
-        tags +
-        '<span class="cl-reason">' + ev(p + 'reason', c.reason, 'line', '通っている理由') + '</span>' +
-        '<span class="cl-tel">' + TEL + ev(p + 'tel', c.tel, 'line', '電話番号') + '</span>' +
-        '<span class="cl-doctor">' + ev(p + 'doctor', c.doctor, 'line', '担当の先生') + '</span>' +
-        stBadge('medical.clinics.' + i) +
-        (on ? delBtn(c.id) : '') +
+        ? '<div class="mc-depts">' + ev(p + 'depts', S.tagsToText(c.depts), 'line', '診療科（読点区切り）') + '</div>'
+        : '<div class="mc-depts">' + (c.depts || []).map(d =>
+            '<span class="tag tag-dept">' + esc(d) + '</span>').join('') + '</div>';
+      return '<div class="mc">' +
+        '<div class="mc-top">' +
+          '<span class="mc-ic">' + svgIc(CLINIC_IC, 17) + '</span>' +
+          tags + stBadge('medical.clinics.' + i) +
+          (on ? delBtn(c.id) : '') +
+        '</div>' +
+        '<div class="mc-name">' + ev(p + 'name', c.name, 'line', '医療機関の名前') + '</div>' +
+        '<div class="mc-reason">' + ev(p + 'reason', c.reason, 'line', '通っている理由') + '</div>' +
+        '<dl class="mc-kv">' +
+          '<dt>担当</dt><dd>' + ev(p + 'doctor', c.doctor, 'line', '担当の先生') + '</dd>' +
+          '<dt>電話</dt><dd class="mc-tel">' + TEL +
+            ev(p + 'tel', c.tel, 'line', '電話番号') + '</dd>' +
+        '</dl>' +
         '</div>';
     }).join('');
-    return (rows || '<p class="i-ev-empty">まだ登録がありません。</p>') +
+    return '<div class="mcgrid">' +
+      (cards || '<p class="i-ev-empty">まだ登録がありません。</p>') + '</div>' +
       (on ? '<button type="button" class="rowadd" data-add="clinic">＋ 医療機関を足す</button>' : '');
   }
 
@@ -258,19 +280,22 @@
   function tellBlock() {
     const m = S.data.medical;
     const on = secOn('tell');
+    /* 1件ずつを「読み上げる1項目」として組む。左に何の話か（種別）、
+       右に読み上げる文。文字は本文より大きく――救急隊員に見せる／
+       家族が声に出す場所なので、小さい字で3行並べない。            */
     const rows = (m.tells || []).map((t, i) => {
       const type = S.tellType(t.type);
       const p = 'medical.tells.' + i + '.';
       const kindLine = on
         ? evSelect(p + 'type', t.type, Object.keys(S.TELL_TYPES))
         : esc(type.label);
-      return '<div class="tell">' +
-        '<span class="tell-dot"></span>' +
-        '<span class="tell-tx"><b class="tell-kind">' + kindLine + '</b>' +
+      return '<li class="tell' + (type.urgent ? ' tell-urgent' : '') + '">' +
+        '<span class="tell-kind">' + kindLine + '</span>' +
+        '<span class="tell-tx">' +
           ev(p + 'text', t.text, 'line', type.placeholder || '伝えることを書く') + '</span>' +
-        stBadge('medical.tells.' + i) +
-        (on ? delBtn(t.id) : '') +
-        '</div>';
+        '<span class="tell-st">' + stBadge('medical.tells.' + i) +
+          (on ? delBtn(t.id) : '') + '</span>' +
+        '</li>';
     }).join('');
 
     /* 空・未確認のものがあれば注意を出す。いざというとき家族が言えない。 */
@@ -281,31 +306,51 @@
         '本人かかかりつけ医に確認しておきます。</span></div>'
       : '';
 
-    return (rows || '<p class="i-ev-empty">まだ登録がありません。</p>') + warn +
+    return (rows ? '<ul class="telllist">' + rows + '</ul>'
+                 : '<p class="i-ev-empty">まだ登録がありません。</p>') + warn +
       (on ? '<button type="button" class="rowadd" data-add="tell">＋ 伝えることを足す</button>' : '');
   }
 
-  /* ⑥ 薬の正確な情報への入口 */
+  /* 薬の正確な情報への入口。ここは「入口」なので、4行の表ではなく
+     行き先そのものを大きく出す。左＝どこを見ればよいか（行き先）、
+     右＝いま服薬があるか（前提）と申し送り。                       */
   function medsBlock() {
     const md = S.data.medical.meds;
-    return '<table class="kv"><tbody>' +
-      '<tr><th>現在の服薬</th><td>' +
-        (isOpen('medical.meds.taking')
-          ? evSelect('medical.meds.taking', md.taking, ['あり', 'なし', '未確認'])
-          : '<span class="pill">' + esc(md.taking || '未確認') + '</span>') +
-        '</td></tr>' +
-      '<tr><th>お薬手帳</th><td>' +
-        (isOpen('medical.meds.bookKind')
-          ? evSelect('medical.meds.bookKind', md.bookKind, S.MEDBOOK_KINDS)
-          : '<span class="pill">' + esc(md.bookKind || '未確認') + '</span>') +
-        '　' + ev('medical.meds.bookWhere', md.bookWhere, 'line', 'どこで見られるか') +
-        '</td></tr>' +
-      '<tr><th>保管場所・アプリ</th><td>' +
-        ev('medical.meds.appWhere', md.appWhere, 'line', '手帳・アプリの場所') + '</td></tr>' +
-      '<tr><th>補足</th><td>' +
-        ev('medical.meds.note', md.note, 'line', '家族への申し送り') + '</td></tr>' +
-      '<tr><th>確認の状態</th><td>' + stBadge('medical.meds') + '</td></tr>' +
-      '</tbody></table>';
+    const kind = md.bookKind || '未確認';
+    /* 電子なら端末の中、紙なら物として在る。記号を変える。 */
+    const isDigital = kind.indexOf('電子') > -1;
+    const ic = isDigital
+      ? '<rect x="6.5" y="2.5" width="11" height="19" rx="2.4"/><path d="M10.5 18.6h3"/>'
+      : '<path d="M6.5 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-11Z"/><path d="M6.5 3v18"/>' +
+        '<path d="M9.5 8h6M9.5 12h6"/>';
+
+    return '<div class="entry">' +
+      '<div class="entry-go">' +
+        '<span class="entry-ic">' + svgIc(ic, 26) + '</span>' +
+        '<div class="entry-tx">' +
+          /* 種別も押して変えられる。読み取り面では太字だが、
+             ev と同じ data-edit を持たせて編集への入口を塞がない。 */
+          '<span class="entry-lb">お薬手帳は' +
+            (isOpen('medical.meds.bookKind')
+              ? evSelect('medical.meds.bookKind', md.bookKind, S.MEDBOOK_KINDS)
+              : '<b class="i-ev" data-edit="medical.meds.bookKind" data-kind="select">' +
+                esc(kind) + '</b>') + '</span>' +
+          '<span class="entry-where">' +
+            ev('medical.meds.bookWhere', md.bookWhere, 'line', 'どこで見られるか') + '</span>' +
+          '<span class="entry-sub">' +
+            ev('medical.meds.appWhere', md.appWhere, 'line', '手帳・アプリの場所') + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="entry-side">' +
+        '<div class="entry-row"><span>現在の服薬</span>' +
+          (isOpen('medical.meds.taking')
+            ? evSelect('medical.meds.taking', md.taking, ['あり', 'なし', '未確認'])
+            : '<span class="pill">' + esc(md.taking || '未確認') + '</span>') + '</div>' +
+        '<div class="entry-row"><span>確認</span>' + stBadge('medical.meds') + '</div>' +
+        '<p class="entry-note">' +
+          ev('medical.meds.note', md.note, 'line', '家族への申し送り') + '</p>' +
+      '</div>' +
+      '</div>';
   }
 
   /* ⑦ 書類。持ち歩くもの（ポケット）／自宅にあるもの（表）。 */
@@ -398,17 +443,21 @@
         '</div>' +
 
         '<div class="bk-page">' +
-          medSection(1, 'clinic', '主な医療機関', 'いつも診てもらっている医療機関です。', clinicsBlock()) +
-          medSection(2, 'pharm', 'かかりつけ薬局', 'いつも調剤してもらっている薬局です。', pharmBlock()) +
-          medSection(3, 'cond', '現在治療中の主な病気・状態', '',
-            tagBlock('medical.conditions', m.conditions, 'tag-cond', '病名（読点区切り）')) +
-          medSection(4, 'treat', '継続している重要な治療・処置', '',
-            tagBlock('medical.treatments', m.treatments, 'tag-treat', '治療・処置（読点区切り）')) +
-          medSection(5, 'tell', '医療機関に必ず伝えること',
+          /* 救急で読む節を最初に置く。①→⑦と順に埋めるものではない
+             ので番号は振らず、性質の近いものだけを並べる。 */
+          medSection('tell', WARN_IC, '医療機関に必ず伝えること',
             '救急のとき、まっさきに伝えます。', tellBlock(), 'bs-tell') +
-          medSection(6, 'meds', '薬の正確な情報への入口',
+          medSection('clinic', CLINIC_IC, '主な医療機関',
+            'いつも診てもらっている医療機関です。', clinicsBlock()) +
+          medSection('pharm', PHARM_IC, 'かかりつけ薬局',
+            'いつも調剤してもらっている薬局です。', pharmBlock()) +
+          medSection('cond', PULSE_IC, '現在治療中の主な病気・状態', '',
+            tagBlock('medical.conditions', m.conditions, 'tag-cond', '病名（読点区切り）')) +
+          medSection('treat', TREAT_IC, '継続している重要な治療・処置', '',
+            tagBlock('medical.treatments', m.treatments, 'tag-treat', '治療・処置（読点区切り）')) +
+          medSection('meds', PILL_IC, '薬の正確な情報への入口',
             'くすりの詳しい内容は、ここから確認できます。', medsBlock()) +
-          medSection(7, 'docs', '医療関係書類',
+          medSection('docs', DOC_IC, '医療関係書類',
             '診察券や医療の書類の保管場所です。', docsBlock()) +
           '<div class="bs">' + slipsBlock() + '</div>' +
         '</div>' +
@@ -431,19 +480,41 @@
 
      幅は preserveAspectRatio="none" で伸ばさず、slice で中央を保つ。
      縦は固定寸なので、幅が変わっても桟や柵の太さが歪まない。       */
-  /* 支柱1本。柱・球の飾り・そのハイライト。左右で使い回す。 */
+  /* 支柱1本。旋盤で削ったくびれを持つ柱＋玉飾り。左右で使い回す。
+     平たいカプセルにしないため、輪郭を径の変化で作る：
+       玉 → 首 → 肩（テーパー）→ 胴 → くびれ → 台座
+     ハイライトは1本の縦帯（円柱の照り）と、玉の小さな点。         */
   function bedPost() {
-    return '<rect x="14" y="24" width="32" height="184" rx="16" fill="url(#bdPost2)"/>' +
-      '<circle cx="30" cy="22" r="19" fill="#d8b993"/>' +
-      '<circle cx="30" cy="22" r="19" fill="none" stroke="#b18f63" stroke-width="1.5"/>' +
-      '<circle cx="24" cy="16" r="6.5" fill="#f0e2cc" fill-opacity=".85"/>' +
-      /* 柱に巻く帯。作りを一段見せる。 */
-      '<rect x="12" y="52" width="36" height="7" rx="3.5" fill="#b48f61"/>' +
-      '<defs><linearGradient id="bdPost2" x1="0" y1="0" x2="1" y2="0">' +
-        '<stop offset="0" stop-color="#a8825a"/>' +
-        '<stop offset=".35" stop-color="#d9bb96"/>' +
-        '<stop offset="1" stop-color="#9c764d"/>' +
-      '</linearGradient></defs>';
+    return '<defs>' +
+      '<linearGradient id="bdPost2" x1="0" y1="0" x2="1" y2="0">' +
+        '<stop offset="0" stop-color="#8f6c45"/>' +
+        '<stop offset=".18" stop-color="#b08c5f"/>' +
+        '<stop offset=".42" stop-color="#e0c6a1"/>' +
+        '<stop offset=".62" stop-color="#c2a074"/>' +
+        '<stop offset="1" stop-color="#8a6740"/>' +
+      '</linearGradient>' +
+      '<radialGradient id="bdKnob" cx=".36" cy=".3" r=".78">' +
+        '<stop offset="0" stop-color="#f2e0c6"/>' +
+        '<stop offset=".5" stop-color="#d3b088"/>' +
+        '<stop offset="1" stop-color="#9a7648"/>' +
+      '</radialGradient>' +
+      '</defs>' +
+      /* 胴。径が上下で変わる輪郭。左右対称の1本のパスで削り出す。 */
+      '<path d="M22 44c-3 8-4 16-4 24v104c0 10 1 16 4 22h16c3-6 4-12 4-22V68c0-8-1-16-4-24Z" ' +
+        'fill="url(#bdPost2)"/>' +
+      /* くびれ（下寄り）。径がすぼまる部分に陰を落として溝に見せる。 */
+      '<path d="M18 150c4 3 20 3 24 0v10c-4 3-20 3-24 0Z" fill="#8a6740" fill-opacity=".55"/>' +
+      /* 肩の輪。玉の下の首飾り。 */
+      '<ellipse cx="30" cy="44" rx="15" ry="5" fill="#c9a677"/>' +
+      '<ellipse cx="30" cy="40" rx="12" ry="4" fill="#dcc09a"/>' +
+      /* 玉飾り。 */
+      '<circle cx="30" cy="22" r="18" fill="url(#bdKnob)"/>' +
+      '<circle cx="24" cy="15" r="5" fill="#fbf1de" fill-opacity=".75"/>' +
+      /* 円柱の照り。縦に細く1本。 */
+      '<path d="M25 52v140" stroke="#f4e3c8" stroke-opacity=".4" stroke-width="4" ' +
+        'stroke-linecap="round"/>' +
+      /* 台座（マットレスに隠れる手前まで）。 */
+      '<path d="M17 192h26v12H17Z" fill="#a5804f"/>';
   }
 
   function bedScene() {
@@ -463,39 +534,81 @@
         '</linearGradient>' +
         /* 寝具。ほぼ白いが、影で面を出す。 */
         '<linearGradient id="bdSheet" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#fbf9f2"/>' +
-          '<stop offset="1" stop-color="#e9e5d8"/>' +
+          '<stop offset="0" stop-color="#fdfbf6"/>' +
+          '<stop offset=".62" stop-color="#f3efe4"/>' +
+          '<stop offset="1" stop-color="#e2ddcd"/>' +
         '</linearGradient>' +
         '<linearGradient id="bdQuilt" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#dfe7e6"/>' +
-          '<stop offset="1" stop-color="#c4d0d0"/>' +
+          '<stop offset="0" stop-color="#e7eeec"/>' +
+          '<stop offset=".5" stop-color="#d3dedd"/>' +
+          '<stop offset="1" stop-color="#bcc9c9"/>' +
+        '</linearGradient>' +
+        /* 桟の溝。彫り込みは「暗い線＋その右の明るい線」の対で出す。 */
+        '<linearGradient id="bdGroove" x1="0" y1="0" x2="1" y2="0">' +
+          '<stop offset="0" stop-color="#8a6a42" stop-opacity=".55"/>' +
+          '<stop offset=".55" stop-color="#8a6a42" stop-opacity=".18"/>' +
+          '<stop offset="1" stop-color="#f0dcc0" stop-opacity=".5"/>' +
         '</linearGradient>' +
       '</defs>' +
 
-      /* 壁。ヘッドボードの背後。 */
+      /* 壁。ヘッドボードの背後。下端にかけて僅かに沈ませる。 */
       '<rect width="900" height="300" fill="#efe7da"/>' +
+      '<rect y="150" width="900" height="60" fill="#e3d9c8" fill-opacity=".5"/>' +
 
       /* ── ヘッドボード（横に伸びてよい部分）──
          背板・笠木・桟・寝具は幅なりに伸びる。伸びても意味が壊れない
          （板は横長になるだけ）。 */
-      '<rect x="20" y="26" width="860" height="150" rx="10" fill="url(#bdWood)"/>' +
-      '<g stroke="#96774f" stroke-opacity=".45" stroke-width="2">' +
-        Array.from({ length: 13 }, (_, i) =>
-          '<path d="M' + (78 + i * 62) + ' 44V162"/>').join('') +
+      /* 板が壁に落とす影。板を壁から浮かせる。 */
+      '<rect x="26" y="36" width="854" height="146" rx="8" fill="#8a6a42" fill-opacity=".28"/>' +
+      /* 背板。 */
+      '<rect x="20" y="26" width="860" height="150" rx="8" fill="url(#bdWood)"/>' +
+      /* 落とし込みの内枠。framed panel の段差。 */
+      '<rect x="44" y="46" width="812" height="112" rx="4" fill="#000" fill-opacity=".07"/>' +
+      '<rect x="46" y="48" width="808" height="108" rx="3" fill="url(#bdWood)"/>' +
+      '<path d="M46 48h808" stroke="#8a6a42" stroke-opacity=".4" stroke-width="2"/>' +
+      '<path d="M46 155h808" stroke="#f0dcc0" stroke-opacity=".45" stroke-width="2"/>' +
+      /* 縦の桟。溝は幅を持った帯（暗→明）で彫りに見せる。 */
+      '<g>' +
+        Array.from({ length: 12 }, (_, i) =>
+          '<rect x="' + (78 + i * 64) + '" y="52" width="5" height="100" ' +
+          'fill="url(#bdGroove)"/>').join('') +
       '</g>' +
-      /* 笠木（上桟）。板の上に載る一本。 */
-      '<rect x="8" y="12" width="884" height="28" rx="14" fill="#d8b993"/>' +
-      '<rect x="8" y="12" width="884" height="11" rx="5.5" fill="#e6cba9"/>' +
+      /* 笠木（上桟）。板の上に載る一本。手前に張り出すので、板へ影を落とす。 */
+      '<rect x="8" y="14" width="884" height="30" rx="8" fill="#c8a578"/>' +
+      '<rect x="8" y="14" width="884" height="13" rx="6" fill="#e4c8a4"/>' +
+      '<path d="M8 40h884" stroke="#a5825a" stroke-width="2"/>' +
+      '<rect x="20" y="44" width="860" height="9" fill="#8a6a42" fill-opacity=".3"/>' +
 
-      /* ── 寝具 ── */
-      '<rect x="0" y="176" width="900" height="72" fill="url(#bdSheet)"/>' +
-      '<path d="M0 196h900" stroke="#d8d2c2" stroke-width="2"/>' +
-      /* 掛け布団の折り返し。 */
-      '<rect x="0" y="238" width="900" height="62" fill="url(#bdQuilt)"/>' +
-      '<path d="M0 238h900" stroke="#b7c4c4" stroke-width="2"/>' +
-      /* 掛け布団のしわ。折り返しの下に柔らかい弧を数本。 */
-      '<g fill="none" stroke="#aebcbc" stroke-opacity=".6" stroke-width="2" stroke-linecap="round">' +
-        '<path d="M90 262q40 12 80 0M330 266q40 12 80 0M580 262q40 12 80 0"/>' +
+      /* ── 寝具 ──
+         マットレス（厚みの側面つき）→ 敷きシーツ → 掛け布団の折り返し。
+         面の境に必ず段差を置いて、layer を見せる。 */
+      /* マットレスの上面。 */
+      '<rect x="0" y="176" width="900" height="26" fill="#f7f4ea"/>' +
+      /* ヘッドボードがマットレスへ落とす影。接地して見せる要。 */
+      '<rect x="0" y="176" width="900" height="11" fill="#a4977c" fill-opacity=".33"/>' +
+      /* 敷きシーツ。 */
+      '<rect x="0" y="200" width="900" height="46" fill="url(#bdSheet)"/>' +
+      /* シーツの浅いしわ。間隔も丈も揃えない。 */
+      '<g fill="none" stroke="#cfc7b2" stroke-opacity=".65" stroke-width="1.6" stroke-linecap="round">' +
+        '<path d="M64 214c26 7 44 4 62-3"/>' +
+        '<path d="M286 210c18 9 39 7 52 1"/>' +
+        '<path d="M470 216c30 6 46 2 58-4"/>' +
+        '<path d="M690 212c22 8 41 5 56-2"/>' +
+      '</g>' +
+      /* 掛け布団。上端は直線にせず、たわんだ縁にする。 */
+      '<path d="M0 246c120-9 210 7 316 2 96-4 158-11 262-6 118 6 206-4 322-8v66H0Z" ' +
+        'fill="url(#bdQuilt)"/>' +
+      /* 折り返しの厚み。縁のすぐ下に一段明るい帯。 */
+      '<path d="M0 246c120-9 210 7 316 2 96-4 158-11 262-6 118 6 206-4 322-8v13' +
+        'c-116 4-204 14-322 8-104-5-166 2-262 6-106 5-196-11-316-2Z" ' +
+        'fill="#eef3f2" fill-opacity=".75"/>' +
+      /* 布団のひだ。長さも間隔も不揃いにする。 */
+      '<g fill="none" stroke="#a8b7b7" stroke-opacity=".55" stroke-width="1.8" stroke-linecap="round">' +
+        '<path d="M96 274c14 12 30 15 44 9"/>' +
+        '<path d="M243 281c9 9 21 12 31 8"/>' +
+        '<path d="M395 272c17 14 36 16 51 8"/>' +
+        '<path d="M596 278c12 10 26 13 38 8"/>' +
+        '<path d="M742 271c19 13 38 15 54 7"/>' +
       '</g>' +
       '</svg>' +
 
@@ -507,28 +620,47 @@
         bedPost() + '</svg>' +
       '<svg class="bed-post bed-post-r" viewBox="0 0 60 210" aria-hidden="true">' +
         bedPost() + '</svg>' +
-      '<svg class="bed-remote-svg" viewBox="0 0 60 190" aria-hidden="true">' +
-        /* コード。笠木のあたりから垂れる。 */
-        '<path d="M34 0c0 34-18 40-18 74" fill="none" stroke="#b6b0a2" ' +
-          'stroke-width="4" stroke-linecap="round"/>' +
+      '<svg class="bed-remote-svg" viewBox="0 0 64 196" aria-hidden="true">' +
+        '<defs>' +
+          '<linearGradient id="bdRem" x1="0" y1="0" x2="1" y2="0">' +
+            '<stop offset="0" stop-color="#d8d4c8"/>' +
+            '<stop offset=".3" stop-color="#f7f5ee"/>' +
+            '<stop offset="1" stop-color="#cbc7ba"/>' +
+          '</linearGradient>' +
+        '</defs>' +
+        /* コード。たわみを持たせて2度カーブさせる。 */
+        '<path d="M40 0c1 22-16 26-19 44-2 14 3 22 3 32" fill="none" stroke="#a8a294" ' +
+          'stroke-width="3.4" stroke-linecap="round"/>' +
+        /* 本体が板へ落とす影。掛かっていることを影で示す。 */
+        '<rect x="10" y="80" width="42" height="98" rx="12" fill="#6b5f45" fill-opacity=".3"/>' +
         /* 本体 */
-        '<rect x="1.5" y="74" width="40" height="94" rx="11" fill="#f2f0e8" ' +
-          'stroke="#aca696" stroke-width="2.5"/>' +
-        /* 画面の窓 */
-        '<rect x="9" y="83" width="25" height="16" rx="4.5" fill="#9fb0a4"/>' +
-        /* ボタン */
-        '<g fill="#b9b3a6">' +
-          '<rect x="10" y="108" width="23" height="8" rx="4"/>' +
-          '<rect x="10" y="122" width="23" height="8" rx="4"/>' +
-          '<rect x="10" y="136" width="23" height="8" rx="4"/>' +
-          '<rect x="10" y="150" width="23" height="8" rx="4"/>' +
+        '<rect x="5" y="76" width="42" height="98" rx="12" fill="url(#bdRem)" ' +
+          'stroke="#a39d8d" stroke-width="2"/>' +
+        /* 上端の吊り金具。 */
+        '<rect x="19" y="70" width="14" height="9" rx="4" fill="#b3ada0"/>' +
+        /* 画面の窓。少し凹ませる。 */
+        '<rect x="12" y="85" width="28" height="18" rx="4" fill="#7f9384"/>' +
+        '<rect x="12" y="85" width="28" height="6" rx="3" fill="#000" fill-opacity=".14"/>' +
+        /* ボタン。上下（昇降）は大きく、その他は小さく。 */
+        '<g>' +
+          '<rect x="13" y="111" width="26" height="12" rx="6" fill="#c3bcac"/>' +
+          '<path d="M22 119l4-4 4 4" fill="none" stroke="#7d7767" stroke-width="2" ' +
+            'stroke-linecap="round" stroke-linejoin="round"/>' +
+          '<rect x="13" y="128" width="26" height="12" rx="6" fill="#c3bcac"/>' +
+          '<path d="M22 133l4 4 4-4" fill="none" stroke="#7d7767" stroke-width="2" ' +
+            'stroke-linecap="round" stroke-linejoin="round"/>' +
+          '<rect x="13" y="147" width="11" height="9" rx="4.5" fill="#cdc7b8"/>' +
+          '<rect x="28" y="147" width="11" height="9" rx="4.5" fill="#cdc7b8"/>' +
+          '<rect x="13" y="160" width="11" height="9" rx="4.5" fill="#cdc7b8"/>' +
+          '<rect x="28" y="160" width="11" height="9" rx="4.5" fill="#cdc7b8"/>' +
         '</g>' +
       '</svg>';
   }
 
-  function careSection(no, key, title, lead, body) {
+  /* 介護の節。医療と同じく番号は振らない（順に埋めるものではない）。 */
+  function careSection(key, icon, title, lead, body) {
     return '<div class="cs">' +
-      '<div class="cs-h"><span class="cs-no">' + no + '</span>' +
+      '<div class="cs-h"><span class="cs-ic">' + svgIc(icon, 16) + '</span>' +
       '<h5>' + esc(title) + '</h5>' +
       (lead ? '<small>' + esc(lead) + '</small>' : '') +
       editBtn(key) + '</div>' +
@@ -701,14 +833,15 @@
           '</div>' +
         '</div>' +
         '<div class="bed-body">' +
-          careSection(1, 'level', '現在の介護状態', '現在の認定状況や生活場所です。', levelBlock()) +
-          careSection(2, 'manager', '担当ケアマネジャー（介護の中心・入口）',
+          careSection('level', LEVEL_IC, '現在の介護状態',
+            '現在の認定状況や生活場所です。', levelBlock()) +
+          careSection('manager', PERSON_IC, '担当ケアマネジャー（介護の中心・入口）',
             '介護に関する相談や調整の窓口です。', managerBlock()) +
-          careSection(3, 'service', '利用中の介護サービス',
+          careSection('service', SV_IC.support, '利用中の介護サービス',
             '現在利用している支援の体制です。', servicesBlock()) +
-          careSection(4, 'know', '家族が知っておきたいこと',
+          careSection('know', WARN_IC, '家族が知っておきたいこと',
             '急に対応することになったときに、知っておくと安心なことです。', knowBlock()) +
-          careSection(5, 'cpapers', '介護関係書類',
+          careSection('cpapers', DOC_IC, '介護関係書類',
             '介護保険やケアプランなどの書類の保管場所です。', carePapersBlock()) +
         '</div>' +
       '</div>';
