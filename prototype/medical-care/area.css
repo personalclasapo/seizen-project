@@ -118,8 +118,12 @@ button.st:hover{filter:brightness(.97)}
   padding:6px 22px 22px;box-shadow:inset 0 1px 0 #fff,0 2px 8px rgba(40,60,48,.1)}
 
 /* 節。番号は振らない（①→⑦と順に埋めるものではない）。記号＋文字
-   の見出しで、その節が何の話かを言う。 */
-.bs{padding:18px 0;border-bottom:1px solid #ece6d6}
+   の見出しで、その節が何の話かを言う。
+
+   節をすべて同じ重みで並べない。救急で読む節（.bs-tell）は別格で、
+   辿るための節はその下に従属する。強弱は「地の色・見出しの大きさ・
+   上の余白」の3つでつける。                                       */
+.bs{padding:16px 0 18px;border-bottom:1px solid #ece6d6}
 .bs:last-child{border-bottom:0;padding-bottom:4px}
 .bs-h{display:flex;align-items:center;gap:10px;margin-bottom:11px}
 .bs-ic{display:grid;place-items:center;width:26px;height:26px;flex:none;
@@ -156,6 +160,21 @@ button.st:hover{filter:brightness(.97)}
 .mc-tel{display:flex;align-items:center;gap:5px;color:var(--gr2);font-weight:700}
 .mc-tel svg{width:12px;height:12px;flex:none}
 
+/* 節の中の小見出し。独立した節にするほどではないもの（薬局）を、
+   親の節にぶら下げる。見出しは本文サイズまで落とす。 */
+.subsec{margin-top:13px;padding-top:12px;border-top:1px dashed #ded8c6}
+.subsec-lb{display:flex;align-items:center;gap:6px;margin-bottom:7px;
+  font-size:11.5px;font-weight:700;color:var(--ink2)}
+.subsec-lb svg{color:#4d8262;flex:none}
+.subsec-lb .i-secedit{width:24px;height:24px}
+.subsec-lb .i-secedit svg{width:13px;height:13px;color:inherit}
+
+/* 2欄でひとまとめにする節（体の状態）。器の実幅で1列に落とす。 */
+.bs:has(.pairgrid){container-type:inline-size}
+.pairgrid{display:grid;grid-template-columns:1fr;gap:12px}
+@container (min-width:520px){.pairgrid{grid-template-columns:1fr 1fr}}
+.pair-lb{display:block;margin-bottom:5px;font-size:11px;color:var(--ink3)}
+
 /* かかりつけ薬局。1件が普通なので帯のまま。ただし医療機関と
    取り違えないよう色を変える。 */
 .cl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -179,8 +198,13 @@ button.st:hover{filter:brightness(.97)}
 
 /* ⑤ 医療機関に必ず伝えること。この領域の核。
    救急で家族が読み上げる情報なので、他の節と同じ見た目にしない。 */
-.bs-tell{margin:4px -12px;padding:15px 16px 16px;border-radius:11px;
-  background:#fdf2f1;border:1.5px solid #e6b3ae}
+/* 救急で読む節。ここだけ別格――紙面から浮き上がった1枚として、
+   見出しも中身も一段大きく、上下に余白を余分に取る。 */
+.bs-tell{margin:2px -14px 6px;padding:17px 18px 18px;border-radius:12px;
+  background:linear-gradient(#fef5f4,#fce9e7);border:1.5px solid #e0a49e;
+  box-shadow:0 1px 0 #ffffffcc inset,0 6px 16px -8px #9c4a4340}
+.bs-tell .bs-h h5{font-size:16px}
+.bs-tell+.bs{padding-top:20px}
 .bs-tell .bs-ic{background:#fbe5e3;border-color:#e6b3ae;color:var(--rd)}
 .bs-tell .bs-h h5{color:#a8322a}
 .bs-tell .bs-h small{color:#b0736d}
@@ -298,20 +322,26 @@ button.st:hover{filter:brightness(.97)}
    ベッドの代用をしない。
    ══════════════════════════════════════════════════════════════ */
 
-.bed{position:relative}
+/* ベッド全体で1つの物。通帳が「表紙＋貼り込んだ記録票」で1冊なのと
+   同じで、ヘッドボード＋寝具＋その上の記録で1台にする。記録は寝具の
+   上に直に載る――背景の上に浮かせない（ここが安っぽさの元だった）。
+   木の枠が四辺を囲み、内側に沈んだ影を落とす。                     */
+.bed{position:relative;border-radius:14px 14px 10px 10px;
+  padding:0 12px 12px;
+  background:linear-gradient(158deg,#b8946a,#a17c52 46%,#8a6740);
+  box-shadow:
+    inset 0 2px 0 #ffffff59,
+    inset 2px 0 0 #ffffff2e,
+    inset 0 -3px 0 #6d5029,
+    inset -2px 0 0 #74562d,
+    0 0 0 1px #3a2f1c2b,
+    0 2px 4px -1px #4b422b3d,
+    0 8px 16px -4px #4b422b33,
+    0 24px 36px -14px #4b422b52}
 
-/* ヘッドボード。木の面。上端に薄い笠木、下は記録カードへ続く。 */
-/* ヘッドボードは絵（.bed-svg）が受け持つ。CSS は器と、絵の上に
-   枕を置く位置だけ（CLAUDE.md：SVG が物の形、CSS が物の配置）。 */
-/* 絵を背景として敷き、枕はヘッドボードの手前・マットレスの上に
-   重なる。絵の下側（マットレス・掛け布団・柵）が枕の下に見えるよう、
-   器の下側に余白を残す。 */
-/* 右にリモコンの居場所を空ける（枕がリモコンを隠さないよう、
-   右の padding をリモコンの幅ぶん厚く取る）。下は寝具を見せるぶん
-   厚めに取り、枕がシーツ・掛け布団を覆い隠さないようにする。 */
-.bed-head{position:relative;padding:100px 150px 92px 56px;
-  border-radius:16px 16px 0 0;overflow:hidden;
-  background:#efe7da;border:1px solid #9c7d59;border-bottom:0}
+/* ヘッドボード。絵（.bed-svg）が物の形を持ち、CSS は器と配置だけ。 */
+.bed-head{position:relative;padding:104px 150px 40px 56px;
+  margin:0 -12px;border-radius:14px 14px 0 0;overflow:hidden}
 /* 伸びてよい部分（板・寝具）は器いっぱいに引き伸ばす。 */
 .bed-svg{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* 伸ばしてはいけない物は原寸で、左右の端と決まった位置に置く。
@@ -324,13 +354,24 @@ button.st:hover{filter:brightness(.97)}
 .bed-pillows{position:relative;z-index:1;display:flex;gap:16px;flex-wrap:wrap;
   align-items:stretch}
 
-/* 枕。角の丸い柔らかい面。中身が主役なので飾りは最小限。
-   左右で丸みを変え、少し傾けて「置かれている」ようにする。 */
-.bed-pillow{flex:1;min-width:210px;padding:18px 22px;
-  border-radius:22px 26px 24px 20px;
-  background:linear-gradient(166deg,#fffdf7,#f2eee0);
-  border:1px solid #ded6bf;
-  box-shadow:0 10px 22px -6px rgba(60,45,25,.34),inset 0 2px 3px #fff}
+/* 枕。布として見せる。通帳の表紙（shared/passbook.css）と同じで、
+   形を足すのではなく縁ごとに光を置く：上と左に受け光、下と右に沈み、
+   内側に大きな陰り、外に3段の落ち影。角丸は四隅すべて別の値にして、
+   縫い代のある袋物の不揃いさを出す。                               */
+.bed-pillow{flex:1;min-width:210px;padding:19px 23px;
+  border-radius:26px 20px 28px 22px;
+  background:
+    radial-gradient(120% 90% at 26% 18%,#fffefa 0%,#fbf8ee 42%,#f1ece0 100%);
+  box-shadow:
+    inset 0 2px 2px #ffffffe6,
+    inset 2px 0 2px #ffffffb0,
+    inset 0 -3px 4px #cfc5ad66,
+    inset -3px 0 4px #d6ccb566,
+    inset 0 -22px 26px -20px #b3a68840,
+    0 0 0 1px #d9d0b93d,
+    0 2px 4px -1px #6b5a3826,
+    0 7px 14px -4px #6b5a3826,
+    0 18px 28px -12px #6b5a3840}
 .bed-pillow-main{flex:1 1 300px;display:flex;align-items:center;gap:14px;
   transform:rotate(-.5deg)}
 .bed-pillow-ic{display:grid;place-items:center;width:44px;height:44px;flex:none;
@@ -343,11 +384,16 @@ button.st:hover{filter:brightness(.97)}
 .bed-pillow-say{display:flex;align-items:center;transform:rotate(.6deg)}
 .bed-pillow-say p{margin:0;font-size:12.5px;line-height:2;color:var(--ink2)}
 
-/* 記録カードの束。ヘッドボードの下、シーツの上に置かれている。 */
-.bed-body{position:relative;padding:20px 22px 24px;
-  border-radius:0 0 16px 16px;
-  background:linear-gradient(#f7f5ee,#f2efe5);
-  border:1px solid #ddd6c5;border-top:0}
+/* 記録はシーツ面そのもの。木の枠に貼り込まれた一枚として、通帳の
+   .pb-body と同じく内側へ沈める（縁に内影、下に白の照り返し）。 */
+.bed-body{position:relative;padding:18px 18px 20px;
+  border-radius:4px;
+  background:linear-gradient(#fdfcf7,#f6f3e9);
+  box-shadow:
+    inset 0 0 0 1px #00000012,
+    inset 0 3px 7px -3px #00000038,
+    0 1px 0 #ffffff30,
+    2px 3px 7px -2px #00000038}
 
 /* 介護の節。医療の .bs と似た骨だが、地が白いカードとして浮く。 */
 .cs{background:#fff;border:1px solid #e6e0d0;border-radius:11px;

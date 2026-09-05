@@ -33,8 +33,8 @@
     person:  ['medical.person.'],
     clinic:  ['medical.clinics'],
     pharm:   ['medical.pharmacies'],
-    cond:    ['medical.conditions'],
-    treat:   ['medical.treatments'],
+    /* 病名と治療は1つの節（体の状態）にまとめたので、両方を受け持つ。 */
+    cond:    ['medical.conditions', 'medical.treatments'],
     tell:    ['medical.tells'],
     meds:    ['medical.meds.'],
     docs:    ['medical.pocket', 'medical.papers'],
@@ -447,14 +447,30 @@
              ので番号は振らず、性質の近いものだけを並べる。 */
           medSection('tell', WARN_IC, '医療機関に必ず伝えること',
             '救急のとき、まっさきに伝えます。', tellBlock(), 'bs-tell') +
-          medSection('clinic', CLINIC_IC, '主な医療機関',
-            'いつも診てもらっている医療機関です。', clinicsBlock()) +
-          medSection('pharm', PHARM_IC, 'かかりつけ薬局',
-            'いつも調剤してもらっている薬局です。', pharmBlock()) +
-          medSection('cond', PULSE_IC, '現在治療中の主な病気・状態', '',
-            tagBlock('medical.conditions', m.conditions, 'tag-cond', '病名（読点区切り）')) +
-          medSection('treat', TREAT_IC, '継続している重要な治療・処置', '',
-            tagBlock('medical.treatments', m.treatments, 'tag-treat', '治療・処置（読点区切り）')) +
+          /* 医療機関と薬局は「かかっている先」という一続き。薬局だけで
+             節を立てると1行の帯が独立して、医療機関と同じ重みになる。 */
+          medSection('clinic', CLINIC_IC, 'かかっている先',
+            'いつも診てもらっている医療機関と、調剤してもらう薬局です。',
+            clinicsBlock() +
+            '<div class="subsec">' +
+              '<span class="subsec-lb">' + svgIc(PHARM_IC, 13) + 'かかりつけ薬局' +
+                editBtn('pharm') + '</span>' +
+              pharmBlock() +
+            '</div>') +
+          /* 病名と治療は、どちらも「本人の体の状態」を短い語で言うもの。
+             別々の節に立てると同じ重みの帯が2本続くので、1つの節の中で
+             2欄に分ける（節の数を減らし、強弱をつける）。 */
+          '<div class="bs bs-pair">' +
+            '<div class="bs-h"><span class="bs-ic">' + svgIc(PULSE_IC, 16) + '</span>' +
+              '<h5>体の状態</h5><small>いま治療中のことと、続けている処置です。</small>' +
+              editBtn('cond') + '</div>' +
+            '<div class="bs-body pairgrid">' +
+              '<div class="pair-col"><span class="pair-lb">治療中の病気・状態</span>' +
+                tagBlock('medical.conditions', m.conditions, 'tag-cond', '病名（読点区切り）') + '</div>' +
+              '<div class="pair-col"><span class="pair-lb">継続している治療・処置</span>' +
+                tagBlock('medical.treatments', m.treatments, 'tag-treat', '治療・処置（読点区切り）') + '</div>' +
+            '</div>' +
+          '</div>' +
           medSection('meds', PILL_IC, '薬の正確な情報への入口',
             'くすりの詳しい内容は、ここから確認できます。', medsBlock()) +
           medSection('docs', DOC_IC, '医療関係書類',
@@ -486,19 +502,29 @@
      ハイライトは1本の縦帯（円柱の照り）と、玉の小さな点。         */
   function bedPost() {
     return '<defs>' +
+      /* 円柱の陰影。左に回り込みの暗部、やや左寄りに芯のハイライト、
+         右に落ち込み。段を多く取るほど丸く見える。 */
       '<linearGradient id="bdPost2" x1="0" y1="0" x2="1" y2="0">' +
-        '<stop offset="0" stop-color="#8f6c45"/>' +
-        '<stop offset=".18" stop-color="#b08c5f"/>' +
-        '<stop offset=".42" stop-color="#e0c6a1"/>' +
-        '<stop offset=".62" stop-color="#c2a074"/>' +
-        '<stop offset="1" stop-color="#8a6740"/>' +
+        '<stop offset="0" stop-color="#7d5c37"/>' +
+        '<stop offset=".1" stop-color="#a17c4f"/>' +
+        '<stop offset=".3" stop-color="#d9bd97"/>' +
+        '<stop offset=".42" stop-color="#efdcc0"/>' +
+        '<stop offset=".56" stop-color="#c9a878"/>' +
+        '<stop offset=".8" stop-color="#9a7549"/>' +
+        '<stop offset="1" stop-color="#785634"/>' +
       '</linearGradient>' +
+      '<filter id="bdPostSh" x="-40%" y="-10%" width="180%" height="130%">' +
+        '<feGaussianBlur stdDeviation="4"/>' +
+      '</filter>' +
       '<radialGradient id="bdKnob" cx=".36" cy=".3" r=".78">' +
         '<stop offset="0" stop-color="#f2e0c6"/>' +
         '<stop offset=".5" stop-color="#d3b088"/>' +
         '<stop offset="1" stop-color="#9a7648"/>' +
       '</radialGradient>' +
       '</defs>' +
+      /* 柱が背板へ落とす影。柱を板より手前に出す。 */
+      '<path d="M26 44c-3 8-4 16-4 24v104c0 10 1 16 4 22h18c3-6 4-12 4-22V68c0-8-1-16-4-24Z" ' +
+        'fill="#6b4f2c" fill-opacity=".4" filter="url(#bdPostSh)"/>' +
       /* 胴。径が上下で変わる輪郭。左右対称の1本のパスで削り出す。 */
       '<path d="M22 44c-3 8-4 16-4 24v104c0 10 1 16 4 22h16c3-6 4-12 4-22V68c0-8-1-16-4-24Z" ' +
         'fill="url(#bdPost2)"/>' +
@@ -507,9 +533,16 @@
       /* 肩の輪。玉の下の首飾り。 */
       '<ellipse cx="30" cy="44" rx="15" ry="5" fill="#c9a677"/>' +
       '<ellipse cx="30" cy="40" rx="12" ry="4" fill="#dcc09a"/>' +
-      /* 玉飾り。 */
+      /* 玉飾り。球に見せるには、明部→暗部の境（ターミネータ）と、
+         下からの照り返し、そして首への落ち影が要る。 */
       '<circle cx="30" cy="22" r="18" fill="url(#bdKnob)"/>' +
-      '<circle cx="24" cy="15" r="5" fill="#fbf1de" fill-opacity=".75"/>' +
+      /* 下の照り返し。球の底が完全に黒く沈まないようにする。 */
+      '<path d="M14 28a18 18 0 0 0 32 0 18 18 0 0 1-32 0Z" fill="#e8cba4" fill-opacity=".5"/>' +
+      /* 首への落ち影。 */
+      '<ellipse cx="30" cy="39" rx="13" ry="4" fill="#7d5c37" fill-opacity=".4" ' +
+        'filter="url(#bdPostSh)"/>' +
+      '<circle cx="23.5" cy="15" r="5.5" fill="#fdf6e8" fill-opacity=".8"/>' +
+      '<circle cx="21.5" cy="13" r="2.2" fill="#fffdf7"/>' +
       /* 円柱の照り。縦に細く1本。 */
       '<path d="M25 52v140" stroke="#f4e3c8" stroke-opacity=".4" stroke-width="4" ' +
         'stroke-linecap="round"/>' +
@@ -521,11 +554,25 @@
     return '<svg class="bed-svg" viewBox="0 0 900 300" preserveAspectRatio="none" ' +
       'aria-hidden="true" focusable="false">' +
       '<defs>' +
+        /* 柔らかい影。部品同士の隙間に落として前後を出す。 */
+        '<filter id="bdSoft" x="-20%" y="-20%" width="140%" height="150%">' +
+          '<feGaussianBlur stdDeviation="6"/>' +
+        '</filter>' +
+        '<filter id="bdSoft2" x="-30%" y="-30%" width="160%" height="170%">' +
+          '<feGaussianBlur stdDeviation="3"/>' +
+        '</filter>' +
+        /* 木目。乱流を横に引き伸ばして board の縞にする。 */
+        '<filter id="bdGrain" x="0" y="0" width="100%" height="100%">' +
+          '<feTurbulence type="fractalNoise" baseFrequency="0.9 0.012" ' +
+            'numOctaves="3" seed="7" result="n"/>' +
+          '<feColorMatrix in="n" type="saturate" values="0"/>' +
+        '</filter>' +
         /* 木の面。上が明るく下が沈む。 */
         '<linearGradient id="bdWood" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#cfae87"/>' +
-          '<stop offset=".55" stop-color="#bd9769"/>' +
-          '<stop offset="1" stop-color="#a88254"/>' +
+          '<stop offset="0" stop-color="#d6b78f"/>' +
+          '<stop offset=".18" stop-color="#c9a479"/>' +
+          '<stop offset=".62" stop-color="#b78f61"/>' +
+          '<stop offset="1" stop-color="#9d7a4c"/>' +
         '</linearGradient>' +
         '<linearGradient id="bdPost" x1="0" y1="0" x2="1" y2="0">' +
           '<stop offset="0" stop-color="#a8825a"/>' +
@@ -558,34 +605,50 @@
       /* ── ヘッドボード（横に伸びてよい部分）──
          背板・笠木・桟・寝具は幅なりに伸びる。伸びても意味が壊れない
          （板は横長になるだけ）。 */
-      /* 板が壁に落とす影。板を壁から浮かせる。 */
-      '<rect x="26" y="36" width="854" height="146" rx="8" fill="#8a6a42" fill-opacity=".28"/>' +
+      /* 板が壁に落とす影。ぼかして、板を壁から浮かせる。 */
+      '<rect x="30" y="42" width="846" height="146" rx="8" fill="#7a5c34" ' +
+        'fill-opacity=".34" filter="url(#bdSoft)"/>' +
       /* 背板。 */
       '<rect x="20" y="26" width="860" height="150" rx="8" fill="url(#bdWood)"/>' +
-      /* 落とし込みの内枠。framed panel の段差。 */
-      '<rect x="44" y="46" width="812" height="112" rx="4" fill="#000" fill-opacity=".07"/>' +
+      /* 木目。板の上に薄く重ねる。 */
+      '<rect x="20" y="26" width="860" height="150" rx="8" filter="url(#bdGrain)" ' +
+        'opacity=".16" style="mix-blend-mode:multiply"/>' +
+      /* 上辺の受け光と下辺の沈み。通帳の表紙と同じ「縁ごとの光」。 */
+      '<path d="M28 28h844" stroke="#f4e0c2" stroke-opacity=".75" stroke-width="2.5"/>' +
+      '<path d="M28 174h844" stroke="#7d5f36" stroke-opacity=".55" stroke-width="3"/>' +
+      /* 落とし込みの内枠。彫り込みなので、上辺に濃い影・下辺に受け光。 */
+      '<rect x="44" y="46" width="812" height="112" rx="4" fill="#8a6a42" fill-opacity=".3" ' +
+        'filter="url(#bdSoft2)"/>' +
       '<rect x="46" y="48" width="808" height="108" rx="3" fill="url(#bdWood)"/>' +
-      '<path d="M46 48h808" stroke="#8a6a42" stroke-opacity=".4" stroke-width="2"/>' +
-      '<path d="M46 155h808" stroke="#f0dcc0" stroke-opacity=".45" stroke-width="2"/>' +
+      '<rect x="46" y="48" width="808" height="108" rx="3" filter="url(#bdGrain)" ' +
+        'opacity=".14" style="mix-blend-mode:multiply"/>' +
+      '<path d="M46 49.5h808" stroke="#6f5330" stroke-opacity=".5" stroke-width="3"/>' +
+      '<path d="M46 155h808" stroke="#f6e5c9" stroke-opacity=".5" stroke-width="2.5"/>' +
       /* 縦の桟。溝は幅を持った帯（暗→明）で彫りに見せる。 */
       '<g>' +
         Array.from({ length: 12 }, (_, i) =>
           '<rect x="' + (78 + i * 64) + '" y="52" width="5" height="100" ' +
           'fill="url(#bdGroove)"/>').join('') +
       '</g>' +
-      /* 笠木（上桟）。板の上に載る一本。手前に張り出すので、板へ影を落とす。 */
-      '<rect x="8" y="14" width="884" height="30" rx="8" fill="#c8a578"/>' +
-      '<rect x="8" y="14" width="884" height="13" rx="6" fill="#e4c8a4"/>' +
-      '<path d="M8 40h884" stroke="#a5825a" stroke-width="2"/>' +
-      '<rect x="20" y="44" width="860" height="9" fill="#8a6a42" fill-opacity=".3"/>' +
+      /* 笠木（上桟）。板の上に載る一本。手前に張り出すので、板へ影を落とす。
+         断面は丸いので、上に受け光・中ほどに芯・下に沈みの3段。 */
+      '<rect x="20" y="46" width="860" height="14" fill="#7a5c34" fill-opacity=".38" ' +
+        'filter="url(#bdSoft2)"/>' +
+      '<rect x="8" y="14" width="884" height="30" rx="9" fill="url(#bdWood)"/>' +
+      '<rect x="8" y="14" width="884" height="30" rx="9" filter="url(#bdGrain)" ' +
+        'opacity=".13" style="mix-blend-mode:multiply"/>' +
+      '<path d="M14 17h872" stroke="#f7e6cc" stroke-opacity=".85" stroke-width="3"/>' +
+      '<path d="M12 41.5h876" stroke="#6f5330" stroke-opacity=".6" stroke-width="3"/>' +
 
       /* ── 寝具 ──
          マットレス（厚みの側面つき）→ 敷きシーツ → 掛け布団の折り返し。
          面の境に必ず段差を置いて、layer を見せる。 */
-      /* マットレスの上面。 */
+      /* マットレスの上面（厚みの小口）。 */
       '<rect x="0" y="176" width="900" height="26" fill="#f7f4ea"/>' +
-      /* ヘッドボードがマットレスへ落とす影。接地して見せる要。 */
-      '<rect x="0" y="176" width="900" height="11" fill="#a4977c" fill-opacity=".33"/>' +
+      '<path d="M0 201h900" stroke="#cec6b0" stroke-width="2"/>' +
+      /* ヘッドボードがマットレスへ落とす影。ぼかして接地させる。 */
+      '<rect x="0" y="172" width="900" height="16" fill="#8d7f63" fill-opacity=".42" ' +
+        'filter="url(#bdSoft)"/>' +
       /* 敷きシーツ。 */
       '<rect x="0" y="200" width="900" height="46" fill="url(#bdSheet)"/>' +
       /* シーツの浅いしわ。間隔も丈も揃えない。 */
@@ -595,20 +658,19 @@
         '<path d="M470 216c30 6 46 2 58-4"/>' +
         '<path d="M690 212c22 8 41 5 56-2"/>' +
       '</g>' +
-      /* 掛け布団。上端は直線にせず、たわんだ縁にする。 */
-      '<path d="M0 246c120-9 210 7 316 2 96-4 158-11 262-6 118 6 206-4 322-8v66H0Z" ' +
+      /* 掛け布団の折り返し。記録（シーツ面）はこの下に続くので、絵の
+         側は「めくった縁」までを描き、下端で切る。 */
+      '<path d="M0 252c120-9 210 7 316 2 96-4 158-11 262-6 118 6 206-4 322-8v60H0Z" ' +
         'fill="url(#bdQuilt)"/>' +
-      /* 折り返しの厚み。縁のすぐ下に一段明るい帯。 */
-      '<path d="M0 246c120-9 210 7 316 2 96-4 158-11 262-6 118 6 206-4 322-8v13' +
+      '<path d="M0 252c120-9 210 7 316 2 96-4 158-11 262-6 118 6 206-4 322-8v14' +
         'c-116 4-204 14-322 8-104-5-166 2-262 6-106 5-196-11-316-2Z" ' +
-        'fill="#eef3f2" fill-opacity=".75"/>' +
+        'fill="#eef3f2" fill-opacity=".8"/>' +
       /* 布団のひだ。長さも間隔も不揃いにする。 */
-      '<g fill="none" stroke="#a8b7b7" stroke-opacity=".55" stroke-width="1.8" stroke-linecap="round">' +
-        '<path d="M96 274c14 12 30 15 44 9"/>' +
-        '<path d="M243 281c9 9 21 12 31 8"/>' +
-        '<path d="M395 272c17 14 36 16 51 8"/>' +
-        '<path d="M596 278c12 10 26 13 38 8"/>' +
-        '<path d="M742 271c19 13 38 15 54 7"/>' +
+      '<g fill="none" stroke="#a8b7b7" stroke-opacity=".5" stroke-width="1.8" stroke-linecap="round">' +
+        '<path d="M96 280c14 11 30 14 44 8"/>' +
+        '<path d="M243 286c9 8 21 11 31 7"/>' +
+        '<path d="M395 278c17 13 36 15 51 7"/>' +
+        '<path d="M596 284c12 9 26 12 38 7"/>' +
       '</g>' +
       '</svg>' +
 
