@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SeiZen | 医療・介護を整理する</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <link rel="stylesheet" href="../shared/shell.css">
+  <link rel="stylesheet" href="area.css">
+</head>
+<!-- data-area がナビの現在地、data-root が prototype/ までの相対パス。
+     左のガイドブックは shared/shell.js が下の空の aside へ描く。
+
+     1領域に2つの成果物UI（医療＝手帳／介護＝ベッド）を縦に持つ。
+     骨格が別物なので、共有するのは状態の語彙だけ（正本 §13）。 -->
+<body data-area="medical-care" data-root="../">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+
+    <!-- ══ 医療ゾーン ══════════════════════════════════
+         造形は手帳。表紙に本人の識別情報（救急で最初に読まれる）、
+         見開きに記録、透明ポケットに持ち歩くカード類。 -->
+    <section class="zone zone-med" id="zoneMed">
+      <div class="sec-h">
+        <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6.5 3h11a1.5 1.5 0 0 1 1.5 1.5V21l-7-3-7 3V4.5A1.5 1.5 0 0 1 6.5 3Z"/><path d="M12 7.5v6M9 10.5h6"/></svg></span>
+        <h3>医療</h3><span class="cnt" id="cntMed"></span>
+      </div>
+      <p class="sec-lead">もしものときも、いつものことも。かかりつけ・薬・伝えることを、ここに。</p>
+      <!-- 手帳。表紙・見開き・ポケットを render.js が描く。 -->
+      <div class="sec" id="medBook"></div>
+    </section>
+
+    <!-- ══ 介護ゾーン ══════════════════════════════════
+         造形はベッド。ヘッドボードが記録カードを載せる地になる。 -->
+    <section class="zone zone-care" id="zoneCare">
+      <div class="sec-h">
+        <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 18v-8M3 14h18v4M21 18v-6a2 2 0 0 0-2-2h-7v4"/><circle cx="7.5" cy="11" r="1.9"/></svg></span>
+        <h3>介護</h3><span class="cnt" id="cntCare"></span>
+      </div>
+      <p class="sec-lead">支えてもらう。つながる。安心して暮らす。</p>
+      <div class="sec" id="careBed"></div>
+    </section>
+
+  </div></main>
+</div>
+<div class="toast" id="toast"></div>
+<script src="../shared/areas.js"></script>
+<script src="../shared/shell.js"></script>
+<script src="state.js"></script>
+<script src="render.js"></script>
+</body>
+</html>
