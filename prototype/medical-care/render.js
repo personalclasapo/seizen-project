@@ -140,6 +140,54 @@
 
   /* ══ 医療｜手帳 ═══════════════════════════════════════ */
 
+  /* ── 手帳の造り ─────────────────────────────────────
+     手帳を「緑の角丸矩形」で済ませない（CLAUDE.md）。綴じのある本
+     として組む。
+
+       1) 背（スパイン）… 左端の一段濃い帯と、そこに走る綴じ目
+       2) 綴じ糸        … 背に等間隔で並ぶステッチ
+       3) 型押しの罫    … 表紙の内側を回る細い箔の線
+       4) しおり        … 上から垂れる細いリボン
+
+     背は縦に伸びてよい（本が厚くなるだけ）ので幅なりに伸ばし、
+     しおりの結び目のように形が決まっているものは原寸で置く。      */
+  function bookBinding() {
+    return '<svg class="bk-spine" viewBox="0 0 46 400" preserveAspectRatio="none" ' +
+      'aria-hidden="true" focusable="false">' +
+      '<defs>' +
+        '<linearGradient id="bkSp" x1="0" y1="0" x2="1" y2="0">' +
+          '<stop offset="0" stop-color="#1c3f2e"/>' +
+          '<stop offset=".45" stop-color="#2c5a42"/>' +
+          '<stop offset=".82" stop-color="#1b3d2c"/>' +
+          '<stop offset="1" stop-color="#2f6046"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+      /* 背の地。 */
+      '<rect width="46" height="400" fill="url(#bkSp)"/>' +
+      /* 綴じの溝。背と表紙の境。 */
+      '<path d="M38 0v400" stroke="#14301F" stroke-width="3" stroke-opacity=".8"/>' +
+      '<path d="M41.5 0v400" stroke="#4a7d5e" stroke-width="1.5" stroke-opacity=".5"/>' +
+      '</svg>' +
+      /* 綴じ糸。等間隔のステッチ。糸1目の長さは本の高さで変わらない
+         ので、伸ばさずに <pattern> で縦へ繰り返す。 */
+      '<svg class="bk-stitch" aria-hidden="true">' +
+        '<defs>' +
+          '<pattern id="bkStitch" x="0" y="0" width="10" height="24" ' +
+            'patternUnits="userSpaceOnUse">' +
+            '<path d="M5 5v13" stroke="#8fae97" stroke-opacity=".5" ' +
+              'stroke-width="2.4" stroke-linecap="round"/>' +
+          '</pattern>' +
+        '</defs>' +
+        '<rect width="100%" height="100%" fill="url(#bkStitch)"/>' +
+      '</svg>' +
+      /* しおり。上から垂れ、先が V に切られている。 */
+      '<svg class="bk-ribbon" viewBox="0 0 22 96" aria-hidden="true">' +
+        '<path d="M0 0h22v78l-11-9-11 9Z" fill="#c58c55"/>' +
+        '<path d="M0 0h22v10H0Z" fill="#a97243" fill-opacity=".55"/>' +
+        '<path d="M14 0h8v78l-4-3.3Z" fill="#000" fill-opacity=".12"/>' +
+      '</svg>';
+  }
+
   function medSection(no, key, title, lead, body, cls) {
     return '<div class="bs ' + (cls || '') + '">' +
       '<div class="bs-h"><span class="bs-no">' + no + '</span>' +
@@ -330,6 +378,7 @@
 
     medEl.innerHTML =
       '<div class="bk">' +
+        bookBinding() +
         /* 表紙。救急で最初に読まれる識別情報を、いちばん上に置く。 */
         '<div class="bk-cover">' +
           '<div class="bk-title">' +
@@ -367,6 +416,115 @@
   }
 
   /* ══ 介護｜ベッド ═══════════════════════════════════════ */
+
+  /* ── ベッドの絵 ─────────────────────────────────────
+     介護ベッドを描く。角丸の矩形に色を敷いただけでは「茶色い板」に
+     しかならないので、物として組む（CLAUDE.md）。
+
+       1) 支柱（左右）と笠木、その間に縦の桟 … ヘッドボードの骨格
+       2) マットレス と 掛け布団の折り返し   … 枕が載る面
+       3) 柵（サイドレール）                 … 介護ベッドの記号
+       4) リモコン（ボタン＋コード）         … 介護が必要な生活の記号
+
+     枕は HTML 側（.bed-pillow）が持つ。文字が載るので、絵の中では
+     なく上に重ねる。ここで描くのはその「下地」まで。
+
+     幅は preserveAspectRatio="none" で伸ばさず、slice で中央を保つ。
+     縦は固定寸なので、幅が変わっても桟や柵の太さが歪まない。       */
+  /* 支柱1本。柱・球の飾り・そのハイライト。左右で使い回す。 */
+  function bedPost() {
+    return '<rect x="14" y="24" width="32" height="184" rx="16" fill="url(#bdPost2)"/>' +
+      '<circle cx="30" cy="22" r="19" fill="#d8b993"/>' +
+      '<circle cx="30" cy="22" r="19" fill="none" stroke="#b18f63" stroke-width="1.5"/>' +
+      '<circle cx="24" cy="16" r="6.5" fill="#f0e2cc" fill-opacity=".85"/>' +
+      /* 柱に巻く帯。作りを一段見せる。 */
+      '<rect x="12" y="52" width="36" height="7" rx="3.5" fill="#b48f61"/>' +
+      '<defs><linearGradient id="bdPost2" x1="0" y1="0" x2="1" y2="0">' +
+        '<stop offset="0" stop-color="#a8825a"/>' +
+        '<stop offset=".35" stop-color="#d9bb96"/>' +
+        '<stop offset="1" stop-color="#9c764d"/>' +
+      '</linearGradient></defs>';
+  }
+
+  function bedScene() {
+    return '<svg class="bed-svg" viewBox="0 0 900 300" preserveAspectRatio="none" ' +
+      'aria-hidden="true" focusable="false">' +
+      '<defs>' +
+        /* 木の面。上が明るく下が沈む。 */
+        '<linearGradient id="bdWood" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="#cfae87"/>' +
+          '<stop offset=".55" stop-color="#bd9769"/>' +
+          '<stop offset="1" stop-color="#a88254"/>' +
+        '</linearGradient>' +
+        '<linearGradient id="bdPost" x1="0" y1="0" x2="1" y2="0">' +
+          '<stop offset="0" stop-color="#a8825a"/>' +
+          '<stop offset=".35" stop-color="#d3b48f"/>' +
+          '<stop offset="1" stop-color="#9c764d"/>' +
+        '</linearGradient>' +
+        /* 寝具。ほぼ白いが、影で面を出す。 */
+        '<linearGradient id="bdSheet" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="#fbf9f2"/>' +
+          '<stop offset="1" stop-color="#e9e5d8"/>' +
+        '</linearGradient>' +
+        '<linearGradient id="bdQuilt" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="#dfe7e6"/>' +
+          '<stop offset="1" stop-color="#c4d0d0"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+
+      /* 壁。ヘッドボードの背後。 */
+      '<rect width="900" height="300" fill="#efe7da"/>' +
+
+      /* ── ヘッドボード（横に伸びてよい部分）──
+         背板・笠木・桟・寝具は幅なりに伸びる。伸びても意味が壊れない
+         （板は横長になるだけ）。 */
+      '<rect x="20" y="26" width="860" height="150" rx="10" fill="url(#bdWood)"/>' +
+      '<g stroke="#96774f" stroke-opacity=".45" stroke-width="2">' +
+        Array.from({ length: 13 }, (_, i) =>
+          '<path d="M' + (78 + i * 62) + ' 44V162"/>').join('') +
+      '</g>' +
+      /* 笠木（上桟）。板の上に載る一本。 */
+      '<rect x="8" y="12" width="884" height="28" rx="14" fill="#d8b993"/>' +
+      '<rect x="8" y="12" width="884" height="11" rx="5.5" fill="#e6cba9"/>' +
+
+      /* ── 寝具 ── */
+      '<rect x="0" y="176" width="900" height="72" fill="url(#bdSheet)"/>' +
+      '<path d="M0 196h900" stroke="#d8d2c2" stroke-width="2"/>' +
+      /* 掛け布団の折り返し。 */
+      '<rect x="0" y="238" width="900" height="62" fill="url(#bdQuilt)"/>' +
+      '<path d="M0 238h900" stroke="#b7c4c4" stroke-width="2"/>' +
+      /* 掛け布団のしわ。折り返しの下に柔らかい弧を数本。 */
+      '<g fill="none" stroke="#aebcbc" stroke-opacity=".6" stroke-width="2" stroke-linecap="round">' +
+        '<path d="M90 262q40 12 80 0M330 266q40 12 80 0M580 262q40 12 80 0"/>' +
+      '</g>' +
+      '</svg>' +
+
+      /* ── 伸ばしてはいけない物 ──────────────────────
+         支柱の球飾りとリモコンは、伸ばすと楕円・平たい板になって
+         「何の絵か」が壊れる。幅に追従させず、左右の端と決まった
+         位置に原寸で置く（iPhone のステータスバーと同じ考え方）。 */
+      '<svg class="bed-post bed-post-l" viewBox="0 0 60 210" aria-hidden="true">' +
+        bedPost() + '</svg>' +
+      '<svg class="bed-post bed-post-r" viewBox="0 0 60 210" aria-hidden="true">' +
+        bedPost() + '</svg>' +
+      '<svg class="bed-remote-svg" viewBox="0 0 60 190" aria-hidden="true">' +
+        /* コード。笠木のあたりから垂れる。 */
+        '<path d="M34 0c0 34-18 40-18 74" fill="none" stroke="#b6b0a2" ' +
+          'stroke-width="4" stroke-linecap="round"/>' +
+        /* 本体 */
+        '<rect x="1.5" y="74" width="40" height="94" rx="11" fill="#f2f0e8" ' +
+          'stroke="#aca696" stroke-width="2.5"/>' +
+        /* 画面の窓 */
+        '<rect x="9" y="83" width="25" height="16" rx="4.5" fill="#9fb0a4"/>' +
+        /* ボタン */
+        '<g fill="#b9b3a6">' +
+          '<rect x="10" y="108" width="23" height="8" rx="4"/>' +
+          '<rect x="10" y="122" width="23" height="8" rx="4"/>' +
+          '<rect x="10" y="136" width="23" height="8" rx="4"/>' +
+          '<rect x="10" y="150" width="23" height="8" rx="4"/>' +
+        '</g>' +
+      '</svg>';
+  }
 
   function careSection(no, key, title, lead, body) {
     return '<div class="cs">' +
@@ -529,7 +687,7 @@
     careEl.innerHTML =
       '<div class="bed">' +
         '<div class="bed-head">' +
-          '<div class="bed-remote" aria-hidden="true"><i></i><i></i><i></i><i></i></div>' +
+          bedScene() +
           '<div class="bed-pillows">' +
             '<div class="bed-pillow bed-pillow-main">' +
               '<span class="bed-pillow-ic">' +

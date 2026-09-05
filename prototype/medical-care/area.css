@@ -73,11 +73,22 @@ button.st:hover{filter:brightness(.97)}
      .bk-pocket 透明ポケット。持ち歩くカード類が挿さっている。
    ══════════════════════════════════════════════════════════════ */
 
-.bk{position:relative;border-radius:14px;
+/* 手帳。左端に背（綴じ）があるので、その幅ぶん中身を右へ寄せる。
+   物の形（背・綴じ糸・しおり）は SVG、配置だけが CSS（CLAUDE.md）。 */
+.bk{position:relative;border-radius:14px;overflow:hidden;
   background:linear-gradient(168deg,#2f5c46,#244836);
   border:1px solid #234534;
   box-shadow:0 16px 34px -18px rgba(30,60,44,.5),inset 0 1px 0 #ffffff22;
-  padding:20px 20px 22px}
+  padding:20px 20px 22px 60px}
+/* 背。左端いっぱいに立てる。縦は伸びてよい（本が厚くなるだけ）。 */
+.bk-spine{position:absolute;left:0;top:0;width:46px;height:100%;display:block}
+/* 綴じ糸。背の上に縦へ敷く。糸の間隔は伸びてよい（本の高さに応じて
+   ステッチの間が空くだけ）ので、SVG 側で preserveAspectRatio="none"。 */
+.bk-stitch{position:absolute;left:12px;top:26px;width:10px;height:calc(100% - 52px)}
+/* しおり。表紙の上端から垂れ、氏名カードの手前に出る。器が
+   overflow:hidden なので、外へはみ出さず内側で終わる長さにする。 */
+.bk-ribbon{position:absolute;z-index:2;top:0;right:26px;width:22px;height:78px;
+  filter:drop-shadow(0 3px 5px rgba(20,40,28,.4))}
 
 /* 表紙。緑の地に、革の型押しのような細い罫だけ。 */
 .bk-cover{position:relative;display:flex;align-items:flex-end;gap:18px;
@@ -226,41 +237,50 @@ button.st:hover{filter:brightness(.97)}
    介護｜ベッド
    ------------------------------------------------------------------
      .bed         ベッドぜんたい。
-     .bed-head    ヘッドボード（木の面）。枕とリモコンが載る。
+     .bed-svg     ベッドの絵。支柱・笠木・桟・マットレス・掛け布団・
+                  柵・リモコン（コード付き）を SVG で描く。
+     .bed-head    絵を敷く器。枕はこの上に重なる。
      .bed-pillow  枕。左＝領域名、右＝この整理で成立させる状態。
-     .bed-remote  リモコン。介護が必要な生活であることの記号。
      .bed-body    ヘッドボードの下に敷かれる記録カードの束。
 
-   再現度はまず薄く。木目は単色＋細い罫だけで、陰影は控えめに。
+   物の形は SVG、物の配置は CSS（CLAUDE.md）。角丸の矩形で
+   ベッドの代用をしない。
    ══════════════════════════════════════════════════════════════ */
 
 .bed{position:relative}
 
 /* ヘッドボード。木の面。上端に薄い笠木、下は記録カードへ続く。 */
-.bed-head{position:relative;padding:22px 26px 30px;
-  border-radius:16px 16px 0 0;
-  background:linear-gradient(178deg,#c2a079,#b08d68);
-  border:1px solid #9c7d59;border-bottom:0;
-  box-shadow:inset 0 1px 0 #ffffff50}
-/* 笠木。板の上辺だけ一段明るくして厚みを出す。 */
-.bed-head:before{content:"";position:absolute;left:0;right:0;top:0;height:9px;
-  border-radius:15px 15px 0 0;background:#d2b28c;border-bottom:1px solid #a5865f}
-/* 縦の板の継ぎ目。木目のかわりの細い罫。 */
-.bed-head:after{content:"";position:absolute;left:26px;right:26px;top:9px;bottom:0;
-  background:repeating-linear-gradient(90deg,
-    transparent 0 78px,#00000012 78px 79px);
-  pointer-events:none}
+/* ヘッドボードは絵（.bed-svg）が受け持つ。CSS は器と、絵の上に
+   枕を置く位置だけ（CLAUDE.md：SVG が物の形、CSS が物の配置）。 */
+/* 絵を背景として敷き、枕はヘッドボードの手前・マットレスの上に
+   重なる。絵の下側（マットレス・掛け布団・柵）が枕の下に見えるよう、
+   器の下側に余白を残す。 */
+/* 右にリモコンの居場所を空ける（枕がリモコンを隠さないよう、
+   右の padding をリモコンの幅ぶん厚く取る）。 */
+.bed-head{position:relative;padding:96px 150px 54px 46px;
+  border-radius:16px 16px 0 0;overflow:hidden;
+  background:#efe7da;border:1px solid #9c7d59;border-bottom:0}
+/* 伸びてよい部分（板・寝具）は器いっぱいに引き伸ばす。 */
+.bed-svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* 伸ばしてはいけない物は原寸で、左右の端と決まった位置に置く。
+   幅が変わっても球飾りは真円、リモコンは同じ形のまま。 */
+.bed-post{position:absolute;top:0;width:60px;height:210px}
+.bed-post-l{left:14px}
+.bed-post-r{right:14px}
+.bed-remote-svg{position:absolute;top:8px;right:96px;width:60px;height:190px}
 
 .bed-pillows{position:relative;z-index:1;display:flex;gap:16px;flex-wrap:wrap;
   align-items:stretch}
 
-/* 枕。角の丸い柔らかい面。中身が主役なので飾りは最小限。 */
+/* 枕。角の丸い柔らかい面。中身が主役なので飾りは最小限。
+   左右で丸みを変え、少し傾けて「置かれている」ようにする。 */
 .bed-pillow{flex:1;min-width:210px;padding:18px 22px;
-  border-radius:16px 18px 16px 18px;
-  background:linear-gradient(#fdfbf3,#f4f0e2);
-  border:1px solid #e0d9c4;
-  box-shadow:0 6px 16px rgba(60,45,25,.2),inset 0 1px 0 #fff}
-.bed-pillow-main{flex:1 1 300px;display:flex;align-items:center;gap:14px}
+  border-radius:22px 26px 24px 20px;
+  background:linear-gradient(166deg,#fffdf7,#f2eee0);
+  border:1px solid #ded6bf;
+  box-shadow:0 10px 22px -6px rgba(60,45,25,.34),inset 0 2px 3px #fff}
+.bed-pillow-main{flex:1 1 300px;display:flex;align-items:center;gap:14px;
+  transform:rotate(-.5deg)}
 .bed-pillow-ic{display:grid;place-items:center;width:44px;height:44px;flex:none;
   border-radius:11px;background:var(--gr-bg);color:var(--gr);
   border:1px solid #cbdfd1}
@@ -268,22 +288,8 @@ button.st:hover{filter:brightness(.97)}
 .bed-pillow h4{margin:0;font-family:var(--font-serif);font-size:26px;font-weight:600;
   letter-spacing:.08em}
 .bed-pillow-main p{margin:3px 0 0;font-size:11.5px;color:var(--ink3)}
-.bed-pillow-say{display:flex;align-items:center}
+.bed-pillow-say{display:flex;align-items:center;transform:rotate(.6deg)}
 .bed-pillow-say p{margin:0;font-size:12.5px;line-height:2;color:var(--ink2)}
-
-/* リモコン。ヘッドボードの端に掛かっている。狭い幅では隠す
-   （情報を持たない飾りなので、詰まったら最初に落ちてよい）。 */
-.bed-remote{position:absolute;z-index:2;right:26px;top:26px;
-  width:30px;padding:7px 0 9px;border-radius:7px;
-  background:linear-gradient(#f2f0e9,#dedbd1);border:1px solid #b9b5a8;
-  box-shadow:0 4px 10px rgba(40,30,15,.24)}
-.bed-remote i{display:block;width:14px;height:4px;margin:0 auto 4px;
-  border-radius:2px;background:#b0aca0}
-.bed-remote i:first-child{width:16px;height:6px;background:#9aa89d;margin-bottom:6px}
-.bed-remote i:last-child{margin-bottom:0}
-/* リモコンのコード。ヘッドボードの上へ伸びる。 */
-.bed-remote:before{content:"";position:absolute;left:50%;top:-18px;
-  width:2px;height:18px;background:#b9b5a8}
 
 /* 記録カードの束。ヘッドボードの下、シーツの上に置かれている。 */
 .bed-body{position:relative;padding:20px 22px 24px;
@@ -490,8 +496,23 @@ button.st:hover{filter:brightness(.97)}
   .bed-body{padding:14px 12px 16px;border-radius:0 0 13px 13px}
   .bed-pillow{min-width:0;padding:14px 16px}
   .bed-pillow h4{font-size:22px}
-  /* リモコンは情報を持たない飾りなので、詰まったら落とす。 */
-  .bed-remote{display:none}
+  /* 絵は縦を詰める。枕の下に敷く余白もその分だけ減らす。 */
+  /* 狭い幅では、枕を絵に重ねるのをやめる。横幅が足りないと枕が
+     絵を覆い尽くし、ベッドが「茶色い帯」に戻ってしまう。絵は
+     ヘッダーの帯として上に見せ、文字はその下へ素直に置く。 */
+  /* 絵の高さぶんだけ上を空け、文字の帯はその下に置く。絵（.bed-svg）
+     は器の上部にだけ敷く。 */
+  .bed-head{padding:0}
+  .bed-svg{height:132px;bottom:auto}
+  .bed-pillows{display:block;margin-top:132px;padding:12px 14px 14px;
+    background:linear-gradient(#f7f5ee,#f2efe5);border-top:1px solid #ded6c5}
+  .bed-pillow{min-width:0;margin-bottom:9px;padding:13px 15px;transform:none;
+    border-radius:12px;box-shadow:0 2px 7px rgba(60,45,25,.12)}
+  .bed-pillow:last-child{margin-bottom:0}
+  .bed-post{width:44px;height:150px}
+  .bed-post-l{left:6px}
+  .bed-post-r{right:6px}
+  .bed-remote-svg{top:2px;right:64px;width:40px;height:126px}
   .cs{padding:13px 13px 14px}
 
   /* 週の帯は7列だと潰れるので横スクロールにする。 */
