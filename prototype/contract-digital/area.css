@@ -382,21 +382,47 @@
 
 /* ── 詳細：画面 ───────────────────────────────────
    索引の上に重ねるオーバーレイではなく、?id= を持つ別画面として
-   本文の中に描く。背景を暗くする幕（scrim）と閉じるボタンは
-   持たない。1件のファイルという実体感を、背後にもう1枚の台紙が
-   右・下へ覗く形で出す（索引の .iblock:before と同じ手つき。
-   シートの中の白／ベージュに紛れないよう、外側の地の上に置く）。 */
-.dtl-file{position:relative}
-.dtl-file:before{content:"";position:absolute;z-index:0;inset:10px -10px -10px 10px;
-  border-radius:14px;border:1px solid #ddd3ab;background:linear-gradient(180deg,#f7f2e2,#efe6cd);
-  box-shadow:0 14px 26px -14px rgba(70,64,50,.4)}
-/* そのとき（post）の項目は、索引の .ib-post と同じグレーグリーンに
-   揃える。台紙の色そのものが「いま／そのとき」を言うので、ここも
-   索引と同じ値をそのまま使う。                                    */
-.dtl-file.dtl-post:before{border-color:#BECDC1;background:linear-gradient(180deg,#E9EFE9,#DDE6DE);
-  box-shadow:0 14px 26px -14px rgba(47,74,55,.4)}
-.sheet{position:relative;z-index:1;display:flex;width:100%;background:#fff;border:1px solid #e7e1d4;border-radius:14px;overflow:hidden;
-  box-shadow:0 1px 2px rgba(62,54,37,.08),0 18px 34px -12px rgba(62,54,37,.22)}
+   本文の中に描く。背景を暗くする幕（scrim）と閉じるボタンは持たない。
+   以前は背後にもう1枚の台紙を右・下へずらして覗かせていたが、奥行き
+   より先に「輪郭線がずれている」ほうが目に入るのでやめた。実体感は
+   表紙の色地・谷折り・載っている紙の落ち影と傾き・空押しで出す。
+
+   系統色は「1件＝1系統色」。索引の束（.ib-pre/.ib-post/
+   .ib-undecided）がすでに持っている いまのうち＝橙／そのとき＝
+   グレーグリーン／振り分け前＝中立 の軸を、そのまま詳細へ引く。
+   節ごとの色（紫・緑・赤・クリーム）は廃止した。1画面に6系統の
+   色が同居していて、どれが状態を言い、どれが分類を言っているのか
+   読めなくなっていたため。系統色は表紙の面・節見出しの太罫・空押し
+   にだけ差し、本文の地は白のままにする（保険の「系統色はカードの
+   縁・封筒・タブ・紋章にだけ差す」と同じ置き方）。
+
+     --bd-back / gusset / flap … 表紙の3面。明度を back < gusset <
+        flap の順に段階付けして、折れと厚みを見せる。
+     --bd-edge  … 表紙の縁・ラベル面の区切り
+     --bd-kc    … 濃い差し色。節見出しの2px罫・アイコン・見出し文字。
+                  索引の見出し（.ib-pre .ib-ttl b 等）と同じ値。
+     --bd-sh    … その系統の影の色み（rgb 3値）                    */
+.dtl-file{position:relative;
+  --bd-back:#D3CDBA;--bd-gusset:#DED9C8;--bd-flap:#E9E5D7;--bd-edge:#BDB6A0;
+  --bd-kc:#6D6350;--bd-sh:70,64,50}
+.dtl-file.dtl-pre{
+  --bd-back:#D9BE8E;--bd-gusset:#E4CDA4;--bd-flap:#EEDCBC;--bd-edge:#C0A063;
+  --bd-kc:#A4650F;--bd-sh:122,90,42}
+.dtl-file.dtl-post{
+  --bd-back:#B9CCBE;--bd-gusset:#C8D8CC;--bd-flap:#D9E4DB;--bd-edge:#A3BAAA;
+  --bd-kc:#3D6B52;--bd-sh:47,74,55}
+
+/* 開いたバインダー。見開きの全面が表紙の色地で、紙の目をうっすら
+   入れる。左ページはこの地に直接刷るラベル面、右ページはこの地の上に
+   白い用紙が載る（＝綴じられた紙）。以前はここが白一色で、地と載り物
+   の前後関係が無いまま淡色カードだけが並んでいた。               */
+.sheet{position:relative;z-index:1;display:flex;width:100%;
+  border:1px solid var(--bd-edge);border-radius:12px;overflow:hidden;
+  background:
+    repeating-linear-gradient(0deg,#ffffff26 0 1px,transparent 1px 3px),
+    linear-gradient(176deg,var(--bd-flap),var(--bd-back));
+  box-shadow:inset 0 1px 0 #ffffff70,0 2px 4px rgba(var(--bd-sh),.14),
+    0 18px 38px -16px rgba(var(--bd-sh),.42)}
 
 /* 前へ｜戻る｜次へ を1行に収める。grid の 1fr auto 1fr で、前へ／次への
    有無や長さに関わらず「戻る」を画面の真ん中に固定する。前へ／次へは
@@ -432,74 +458,147 @@
 .dtl-lb-r{text-align:right}
 .dtl-lb small{display:block;font-size:9px;font-weight:600;color:#a5a199}
 
-/* 左：リング金具のある綴じ代。変わらない事実（ファイルNo.・契約情報・
-   登録日）を持つ。ページが長くなっても読んでいる間ずっと見えるよう、
-   sticky で追従させる。綴じ目には薄い影を足し、リングがページを
-   押さえている厚みを出す。
+/* 左：上から見た「開いたリングバインダー」の左ページ＝表紙の内側。
+   ここは白い紙を置かず、表紙の色地に直接刷る。変わらない事実
+   （この1件が何か・契約情報・登録日）だけを持ち、ページが長くなっても
+   読んでいる間ずっと見えるよう sticky で追従させる。
+   リング金具は左ページと右ページ（.page）の綴じ目＝中央のミゾに
+   またがせ、そこで両ページを綴じているように見せる。
    幅は 236px を基準にしつつ縮められる（flex-shrink:1）。作業面が
-   狭まったら、情報量の一定なこちら＝綴じ代を先に詰めて、読ませたい
-   本文（.page）の幅を守る。下限は中身（契約情報のラベル＋値）が
-   耐えられる 186px。                                              */
+   狭まったら、情報量の一定なこちらを先に詰めて、読ませたい本文
+   （.page）の幅を守る。下限は 200px。                             */
 .rings{position:sticky;top:16px;
-  /* 綴じ代｜本体 = 236 : 604 の比率で分ける。flex-basis:0 の比率配分に
+  /* 左ページ｜本体 = 236 : 604 の比率で分ける。flex-basis:0 の比率配分に
      すると、.page が min-width:0 で無限に折り返せても「作業面の一定
-     割合」を綴じ代が取り、作業面が狭まれば綴じ代も比例して詰まる。
-     ただし詰まりすぎると中身が持たないので 200〜236px に収める。   */
+     割合」を左ページが取り、作業面が狭まれば左ページも比例して詰まる。 */
   flex:236 1 0;min-width:200px;max-width:236px;
-  background:linear-gradient(180deg,#f2efe6,#eae6da);padding:26px 20px;display:flex;flex-direction:column;align-items:stretch;text-align:center}
-.rings:after{content:"";position:absolute;top:0;right:-1px;bottom:0;width:1px;background:rgba(70,64,50,.16)}
-.ring{position:absolute;left:-13px;width:44px;height:13px}
+  padding:24px 22px 26px;
+  display:flex;flex-direction:column;align-items:stretch;text-align:left}
+
+/* 谷折り。左ページの右端で影が深まり、稜線で切り替わって右側に明線が
+   立つ。以前は左右から寄せた内影だけで、稜線（明線）が無いぶん折り目
+   ではなく汚れに見えていた。.page 基準なので、左ページの幅が伸縮
+   しても勝手に追従する。                                          */
+.page:before{content:"";position:absolute;top:0;bottom:0;left:0;width:26px;
+  transform:translateX(-50%);z-index:2;pointer-events:none;
+  background:linear-gradient(90deg,rgba(var(--bd-sh),0) 0%,rgba(var(--bd-sh),.2) 40%,
+    rgba(var(--bd-sh),.34) 49%,#ffffff87 53%,#ffffff33 66%,rgba(var(--bd-sh),0) 100%)}
+
+/* リング金具：5本。左ページ（.rings）と右ページ（.page）の綴じ目に
+   またがる。.ring は sticky な .rings 基準の絶対配置なので、.rings
+   右辺から right:-17px、幅 30px のうち 13px を .rings 側・17px を
+   .page 側へ出す。.rings は sticky なので金具は画面に留まり、.page
+   本文がその下を流れる（＝綴じられたページが送られていく見え方）。 */
+.ring{position:absolute;left:auto;right:-17px;width:30px;height:13px;z-index:3}
 .ring:before{content:"";position:absolute;inset:0;border-radius:7px;background:linear-gradient(180deg,#6b7079,#3c4149 45%,#23262b);box-shadow:0 1px 3px rgba(0,0,0,.35)}
 .ring:after{content:"";position:absolute;left:2px;top:2px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#8b9099 60%,#4a4f57)}
 .ring.r1{top:16%}.ring.r2{top:32%}.ring.r3{top:48%}.ring.r4{top:64%}.ring.r5{top:80%}
-.filecard{width:126px;margin:0 auto;padding:13px 8px 15px;background:#fff;border-radius:5px;box-shadow:0 2px 7px rgba(70,64,50,.16)}
-.filecard small{display:block;font-size:12.5px;font-weight:700;color:#6b6963;letter-spacing:.02em}
-.filecard b{display:block;margin-top:7px;font-size:14px;font-weight:700;color:#454b44}
-.filecard b i{font-style:normal;font-size:25px;letter-spacing:.03em;margin-left:3px}
-.filecard .rule{margin:9px auto 0;width:56px;height:2px;border-radius:2px;background:#e8933c}
+
+/* ── 表紙のラベル面：一覧との繋ぎ ──────────────────────
+   索引（iPhone の画面）の各行が持っていた印（.mark：角丸正方形の
+   ロゴ／頭文字）を、そのまま大きくして表紙の先頭に置く。同じ印を
+   下に空押し（.rwm）でもう一度出す。ホーム画面にある角丸正方形が、
+   そのままバインダーの表紙に型押しされている、という繋がり。
+   端末の中にしかなかった契約が、家族が開ける物に起こされた——という
+   この領域の筋を、入口と詳細で共有する唯一の印が受け持つ。      */
+/* 印・サービス名・種類は表紙のラベル面。3つを中央に揃えて、背表紙の
+   タイトルとして読ませる（左揃えだと、下の契約情報の表と同じ列に
+   見えて、ラベル面としてのまとまりが出ない）。               */
+.rlabel{position:relative;z-index:1;padding-bottom:16px;
+  border-bottom:2px solid var(--bd-edge);text-align:center}
+.rlabel .rmark{margin-left:auto;margin-right:auto}
+/* 状態バッジ＋対応完了の切り替えは、タイトル側／本文側の複製を幅で
+   出し分ける。全体表示（右ページに独立した見出し行がある）では
+   本文側だけを見せる。 */
+.rlabel-ops{display:none}
+.rmark{width:46px;height:46px;border-radius:12px;font-size:20px;
+  background:#fffdf6;color:var(--bd-kc);
+  box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(var(--bd-sh),.24),
+    0 6px 14px -6px rgba(var(--bd-sh),.55)}
+.rmark.mark-logo svg{width:56%;height:56%}
+.rname{display:block;margin-top:12px;font-family:var(--font-serif);
+  font-size:21px;font-weight:600;letter-spacing:.06em;line-height:1.35;color:#3a3227}
+.rcat{display:block;margin-top:4px;font-size:11px;font-weight:600;
+  letter-spacing:.05em;color:#3a32279e}
+.rname .ev,.rcat .ev{display:inline-block}
+.rname .ef{width:100%;font-family:var(--font);font-size:15px}
+
+/* 空押しの透かし。白の線に、ぼかし0の暗い落ち影を重ねて「へこみ」に
+   見せる（保険の紋章 .lf-crest と同じ作り方。印がアプリのアイコンで
+   あることだけがこの領域固有）。                                  */
+.rwm{position:absolute;right:-8px;bottom:86px;z-index:0;
+  display:grid;place-items:center;width:146px;height:146px;
+  color:#fff;opacity:.4;pointer-events:none;
+  filter:drop-shadow(0 1.5px 0 rgba(var(--bd-sh),.38))}
+.rwm svg{width:100%;height:100%;fill:currentColor}
+.rwm i{font-style:normal;font-size:112px;font-weight:800;line-height:1}
+/* No. と時期。表紙に刷った通し番号なので、白い札は持たせず、ラベル面の
+   続きとして地に直接刷る。数字は等幅。時期の色帯（.rule）は廃止した
+   ——見開きの地そのものが「いまのうち／そのとき」を言っているので、
+   同じことを二度言わせない。 */
+.filecard{width:auto;margin:15px 0 0;padding:0;background:none;
+  border-radius:0;box-shadow:none;text-align:left}
+.filecard small{display:block;font-size:9.5px;font-weight:700;
+  letter-spacing:.12em;color:#3a32279e}
+.filecard b{display:block;margin-top:2px;font-size:12.5px;font-weight:700;
+  letter-spacing:.06em;color:#3a3227;font-variant-numeric:tabular-nums}
+.filecard b i{font-style:normal;font-size:19px;letter-spacing:.04em;margin-left:4px}
+.filecard .rule{display:none}
 /* 時期ラベル。pre/post は押すとセレクトに化ける。押せることは、
    ホバー（フォーカス）で点線が出ることで示す（.ev と同じ手つき）。 */
 .filecard small{position:relative}
 .fc-grouplabel{border-bottom:1px dashed transparent;cursor:pointer;transition:border-color .12s,color .12s}
-.fc-grouplabel:hover,.fc-grouplabel:focus-visible{border-bottom-color:#b0a893;color:#6b6963;outline:none}
+.fc-grouplabel:hover,.fc-grouplabel:focus-visible{border-bottom-color:var(--bd-kc);color:#3a3227;outline:none}
 /* 編集中は時期セレクトをラベルの場所にそのまま出す。 */
 .fc-groupsel{width:100%;padding:3px 4px;border:1px solid var(--gr);border-radius:5px;background:#fff;
   font-family:inherit;font-size:11px;font-weight:700;color:#454b44;text-align:center;
   box-shadow:0 0 0 3px #1E5A3D14;cursor:pointer;appearance:none}
 .fc-groupsel:focus{outline:none}
-.filecard.fc-editing{box-shadow:0 2px 7px rgba(70,64,50,.16),0 0 0 2px #bfd3c3}
-/* 契約情報／カード情報。rmeta と同じ中央寄せに揃え、飛び出した
-   リング金具（左端）と地の色が近い左寄せでは起きていた衝突を、
-   そもそも左端に文字を置かないことで避ける。編集ボタンだけは
-   右上隅に置くので、そこだけ絶対配置で中央寄せの外へ出す。       */
-.rspine{position:relative;margin-top:22px;padding-top:18px;border-top:1px dashed #d8d0bc}
-.rsp-h{margin-bottom:10px}
-.rsp-h span{font-size:11px;font-weight:700;color:#8a8578;letter-spacing:.04em}
-.rsp-edit{position:absolute;top:14px;right:0;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid transparent;border-radius:6px;background:none;padding:0;color:#a5a199;cursor:pointer}
+.filecard.fc-editing{box-shadow:0 0 0 3px #ffffff8c}
+/* 契約情報／カード情報。表紙の地に直接刷る群なので、白い囲みも
+   中央寄せも持たない。行の区切りは白のヘアライン（暗い罫は色地の上で
+   汚れに見える）、群の宣言は小さく字間を開けた見出し。編集ボタンだけは
+   右上隅に絶対配置で出すが、リング金具の左端とは 9px あく。      */
+.rspine{position:relative;margin-top:20px}
+.rsp-h{margin-bottom:7px}
+.rsp-h span{font-size:10px;font-weight:700;letter-spacing:.15em;color:#3a322794}
+.rsp-edit{position:absolute;top:-2px;right:0;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid transparent;border-radius:4px;background:none;padding:0;color:#3a322794;cursor:pointer}
 .rsp-edit svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.9}
-.rsp-edit:hover{border-color:#d8d0bc;background:#fdfcf8;color:#6b6963}
+.rsp-edit:hover{border-color:var(--bd-edge);background:#ffffff8c;color:#3a3227}
 .rsp-edit.on{border-color:var(--gr);background:var(--gr);color:#fff}
-.rsp-row{margin-bottom:13px}
-.rsp-row:last-child{margin-bottom:0}
-.rsp-row small{display:block;font-size:10px;color:var(--ink3)}
-.rsp-row b{display:block;margin-top:3px;font-size:12.5px;font-weight:700;color:#454b44;letter-spacing:.01em}
-.rsp-row b em{display:block;font-style:normal;font-size:11px;color:#7d7a76;letter-spacing:.06em;margin-top:1px}
+.rsp-row{display:flex;align-items:baseline;gap:10px;padding:7px 0;
+  border-top:1px solid #ffffff5c}
+.rsp-row:first-of-type{border-top:0}
+.rsp-row small{flex:0 0 66px;font-size:10.5px;color:#3a32279e}
+.rsp-row b{flex:1;min-width:0;font-size:12.5px;font-weight:700;line-height:1.55;color:#3a3227}
+.rsp-row b em{display:block;font-style:normal;font-size:11px;color:#3a32279e;letter-spacing:.06em;margin-top:1px}
 .rsp-row .ef{width:100%;font-size:12px}
 .rsp-row .ev{display:inline-block}
-/* 登録日・最終更新日。契約情報の下段。編集しない補足なので値の色を
-   落とす。デスクトップでは「変わらない事実」の塊から点線で仕切る。 */
-.rsp-row-meta b{color:#7d7a76}
-.rsp-row-meta-first{margin-top:22px;padding-top:18px;border-top:1px dashed #d8d0bc}
-.rfoot{margin-top:auto;padding-top:18px;color:#a09b8d}
-.rfoot svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5}
-.rfoot span{display:block;margin-top:8px;font-size:10px;line-height:1.7}
+/* 登録日・最終更新日。編集しない補足なので値の色を落とし、
+   「変わらない事実」の塊からは破線で仕切る（1px 破線＝従属）。 */
+.rsp-row-meta b{color:#3a322794;font-weight:600}
+.rsp-row-meta-first{margin-top:16px;padding-top:14px;border-top:1px dashed #ffffff7a}
+
+/* 明細を確認済み。契約情報の下に、同じ破線区切りで控えめに。 */
+.stmt-checked{position:relative;z-index:1;margin-top:16px;padding-top:14px;
+  border-top:1px dashed #ffffff7a}
+.stmt-checked svg{width:12px;height:12px;stroke:#3a322794;fill:none;stroke-width:2.4;vertical-align:-1px;margin-right:5px}
+.stmt-tx{display:inline;min-width:0}
+.stmt-tx b{font-size:10px;font-weight:700;color:#3a322794;letter-spacing:.12em}
+.stmt-cov{display:block;margin-top:7px;font-size:12.5px;font-weight:700;color:#3a3227;letter-spacing:.02em}
+.stmt-at{display:block;margin-top:4px;font-size:10px;color:#3a32279e}
+
+/* 版面の添え物。表紙のいちばん下。 */
+.rfoot{position:relative;z-index:1;margin-top:auto;padding-top:20px;color:#3a32277a}
+.rfoot svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.5}
+.rfoot span{display:block;margin-top:7px;font-size:10px;line-height:1.7}
 
 /* 追加したサービスだけに出る削除の一角。綴じ代のいちばん下、点線で
    区切ってから置く。ふだんはグレーの控えめなボタン、押すと画面内で
    確認を展開する。 */
-.rdelete{margin-top:16px;padding-top:14px;border-top:1px dashed #d8d0bc}
+.rdelete{position:relative;z-index:1;margin-top:16px;padding-top:14px;border-top:1px dashed #ffffff7a}
 .rdel-open{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e0dbcd;
-  border-radius:7px;background:#fff;font-family:inherit;font-size:11px;font-weight:700;color:#8a8578;cursor:pointer}
+  border-radius:4px;background:#ffffff8c;font-family:inherit;font-size:11px;font-weight:700;color:#3a322794;cursor:pointer}
 .rdel-open svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.9}
 .rdel-open:hover{border-color:#dcae9f;background:#fdf6f4;color:#c9544b}
 .rdelete.confirming{border-top-color:#e6c4bb}
@@ -511,110 +610,158 @@
 .rdel-no{border:1px solid #d8d0bc;background:#fff;color:#6b6963}
 .rdel-no:hover{background:#f8f6f0}
 
-/* 右：本体。綴じ目側の縁に薄い影を落とし、リングに押さえられた
-   ページの厚みを出す。                                          */
-/* 本体は綴じ代と 604:236 の比率で分ける（flex:604 1 0）。作業面が
-   狭まると両方が比例で縮み、綴じ代が先に下限（200px）で止まったあとは
-   本体だけが縮む。 */
-.page{flex:604 1 0;min-width:0;background:#fff;box-shadow:inset 9px 0 12px -10px rgba(56,50,34,.16)}
-.pg-h{display:flex;align-items:center;gap:14px;padding:22px 28px 18px;border-bottom:1px solid #f0ece3}
-.pg-h .nm{font-size:27px;font-weight:800;letter-spacing:-.03em}
-.pg-h .cat{padding-left:14px;border-left:1px solid #e2ddd0;font-size:13px;color:#7d7a76}
-/* バッジは名前・カテゴリと同じ「この項目について」の並びに置く。
-   右端は開閉ボタンだけの場所にする。                              */
-.pg-h .pol{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;white-space:nowrap}
-.pg-h .pol:before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
-.pg-h .pol{padding:4px 12px;border-radius:11px;font-size:11.5px}
-.pg-h .pol:before{width:7px;height:7px}
-.hb-gr{background:#e8f2ea;color:#3b8a5c}.hb-or{background:#fdf0e2;color:#c9781d}.hb-rd{background:#fbeceb;color:#c9544b}.hb-gy{background:#f4f2eb;color:#6d7169}
-/* 対応完了の切り替え。バッジのすぐ隣に置く軽いピル。押した後の
-   「戻す」も含め、右端の開閉ボタン（.pg-collapse）とは役割も見た目も
-   分けるので、色は付けずグレーの縁取りだけで存在を示す。          */
-.complete-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border:1px solid #e2ddd0;border-radius:20px;background:#fff;font-family:inherit;font-size:11px;font-weight:700;color:#8a8578;cursor:pointer}
-.complete-btn svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4}
-.complete-btn:hover{background:#f8f6f0}
-.complete-btn.on{background:#f4f2eb;border-color:#e5e1d3;color:#6d7169}
-/* 対応方針／アカウント情報／手続き方法／メモをまとめて開閉する。
-   内容ではなく見え方の操作なので、前へ／次へと同じ軽いゴースト
-   ボタンにして、行の右端だけに独立して置く。                      */
-.pg-collapse{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border:0;border-radius:6px;background:none;font-family:inherit;font-size:10.5px;font-weight:700;color:#8a8578;cursor:pointer;white-space:nowrap}
-.pg-collapse:hover{background:#f4f2ea;color:#6b6963}
-.pg-collapse .chev{color:#a9a294;font-size:9px;transition:transform .15s}
+/* 右：開いたバインダーの右ページ。表紙の色地はそのまま見せ、その上に
+   白い用紙が載る（＝リングで綴じられた紙）。地と載り物の前後関係が
+   ここで生まれる。以前はここが白の全面で、地が無いぶん、載っている
+   ものを一つずつ囲みで区切るしかなかった——淡色カードが4枚反復して
+   いた原因はこれ。囲みをやめる代わりに、奥行きは紙の層で出す。
+   本体は左ページと 604:236 の比率で分ける（flex:604 1 0）。       */
+.page{position:relative;flex:604 1 0;min-width:0;padding:22px 22px 26px 26px}
+/* 状態と、状態に対する操作だけの行。名前・カテゴリは左ページ（表紙の
+   ラベル）へ移したので、ここでは持たない。 */
+/* 状態バッジ。全体表示では右ページの左上——.pg-h の先頭に、対応完了
+   トグル・開閉トグルと並ぶ「いまの状態」の並びとして置く。表紙側
+   （.rlabel）には持たせない。縦積みでは pg-h 自体が細切れの帯に
+   なるので、タイトルの帯（.rlabel）側へ絶対配置で移す（@media）。 */
+.pg-h{display:flex;align-items:center;gap:10px;margin-bottom:15px}
+.pg-body{padding:0}
+/* 状態バッジ。表紙のラベル面＝タイトルの帯に乗るので、白いチップで
+   浮かせる。準備済み／対応完了のときはこれ自体が押せるボタンで、
+   クリックで直接切り替わる（確認が必要のときは押せない span のまま）。
+   独立した「対応完了にする」ボタンは持たせない——バッジと同じ事実を
+   ボタンでもう一度言うだけになり、囲みを持たせるとバッジより主張が
+   強くなってしまっていた。押せることはホバーでだけ示す（保険の
+   ck-list の行と同じ考え方：押せる場所自体を目立たせすぎない）。   */
+.pol{display:inline-flex;align-items:center;gap:7px;padding:4px 12px;
+  border:0;border-radius:20px;font-family:inherit;font-size:11.5px;font-weight:700;white-space:nowrap}
+.pol:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+button.pol{cursor:pointer}
+button.pol:hover{filter:brightness(.96)}
+.hb-gr{background:#e8f2ea;color:#2f6a48}.hb-or{background:#fdf0e2;color:var(--or)}
+.hb-rd{background:#fbeceb;color:#c9544b}.hb-gy{background:#f4f2eb;color:#6d7169}
+/* 節をまとめて開閉する。内容ではなく見え方の操作なので、行の右端だけに
+   独立して置く軽いゴーストボタン。 */
+.pg-collapse{margin-left:auto;display:inline-flex;align-items:center;gap:4px;
+  padding:4px 8px;border:0;border-radius:4px;background:none;font-family:inherit;
+  font-size:10.5px;font-weight:700;color:#3a322794;cursor:pointer;white-space:nowrap}
+.pg-collapse:hover{background:#ffffff70;color:#3a3227}
+.pg-collapse .chev{color:#3a32277a;font-size:9px;transition:transform .15s}
 .pg-collapse .chev.closed{transform:rotate(180deg)}
-.pg-body{padding:14px 22px 24px}
 
-/* 見出しに薄く色を敷いて「帯」にする。中身は白のままにして、
-   押せる場所（帯）と読む場所（白）を面の切り替わりで分ける。 */
-.sect{margin-bottom:13px;border:1px solid #efe9dc;border-radius:11px;overflow:hidden;background:#fff}
-.sect.editing{border-color:#bfd3c3;box-shadow:0 0 0 3px #1E5A3D14}
-.sc-h{display:flex;align-items:center;gap:9px;width:100%;padding:12px 15px;border:0;border-bottom:1px solid rgba(74,64,45,.07);font-family:inherit;text-align:left;cursor:pointer;transition:filter .12s}
-.sc-h.closed{border-bottom:0}
-.sc-h:hover{filter:brightness(.975)}
-.sc-bar{width:4px;height:19px;border-radius:2px;flex:none}
-.sc-h .sic{width:19px;height:19px;flex:none;fill:none;stroke-width:1.8}
-.sc-h h5{margin:0;font-size:15.5px;font-weight:700;letter-spacing:-.01em}
-.sc-h .sub{font-size:12.5px;color:#8a8578;font-weight:600}
-.sc-tail{margin-left:auto;display:flex;align-items:center;gap:12px}
-.sc-edit{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid #e0dbcd;border-radius:7px;background:#fff;font-size:11.5px;font-weight:700;color:#6b6963}
+/* 本紙。サービス側にある事実（アカウント情報・手続き方法）を刷った
+   1枚の用紙。角丸は 4px——紙の裁ち口はほぼ直角で、大きな角丸にすると
+   アプリのカードに見える。                                        */
+.pg-sheet{position:relative;margin-top:17px;padding:21px 23px 23px;
+  background:#fffefb;border:1px solid #e6dcc6;border-radius:4px;
+  box-shadow:0 1px 2px rgba(var(--bd-sh),.14),0 12px 26px -14px rgba(var(--bd-sh),.44)}
+
+/* 別紙。本人と家族があとから足したもの——対応方針（本人が決めたこと）と
+   メモ（家族への申し送り）。サービス側にある事実とは出どころが違うので、
+   紙質・角丸・わずかな傾きを変えて「あとから重ねた」ことを見せる。
+   分け方は造形の都合ではなく出どころなので、飾りにならない。      */
+.pg-slip{position:relative;padding:16px 20px 17px;border-radius:3px;
+  border:1px solid #e6d9bd;background:linear-gradient(180deg,#fdf9ef,#f9f3e4);
+  box-shadow:0 1px 2px rgba(var(--bd-sh),.16),0 10px 20px -12px rgba(var(--bd-sh),.46)}
+/* 要約（.status-panel）のすぐ下に来る1枚。他の紙と紙のあいだと同じ
+   17px を空けないと、表紙に刷った要約と別紙が地続きに見える。 */
+.pg-slip-intent{margin-top:17px;transform:rotate(-.3deg)}
+.pg-slip-memo{margin-top:17px;transform:rotate(.25deg);
+  background:#fffdf6;border-color:#e3d8bf;
+  box-shadow:0 1px 2px rgba(var(--bd-sh),.13),0 8px 18px -12px rgba(var(--bd-sh),.4)}
+/* メモ＝家族への申し送り。書く紙なので罫を敷き、行送りを罫のピッチに
+   合わせる（26px）。 */
+.pg-slip-memo .memo{background:repeating-linear-gradient(180deg,transparent 0 25px,#ece0c6 25px 26px);
+  font-size:12.5px;line-height:26px}
+
+/* 節。囲みも地色も持たない。同じ紙の上を、見出しの太罫だけで割る。
+   囲みが消えるぶん、節の間は余白で離す。
+   罫は3段階で使い分ける（作り直す前は 1px 同値ばかりで階層が読めず、
+   淡色カードの反復だけが残っていた）：
+     2px 系統色  … 節見出しの下。群の宣言
+     1px 淡      … 行の区切り
+     1px 破線    … 補助・従属                                     */
+.sect{margin:0}
+.pg-sheet>.sect+.sect{margin-top:27px}
+/* 編集中は紙の外へ光を回す。以前は緑の枠＋緑の影＋緑のボタンで
+   3重に光っていたので、紙そのものに薄く回すだけにする。         */
+.sect.editing{box-shadow:0 0 0 3px #1E5A3D14;border-radius:3px}
+.sc-h{display:flex;align-items:center;gap:9px;width:100%;
+  padding:0 0 9px;margin-bottom:14px;
+  border:0;border-bottom:2px solid var(--bd-kc);background:none;
+  font-family:inherit;text-align:left;cursor:pointer}
+.sc-h.closed{margin-bottom:0}
+.sc-h .sic{width:17px;height:17px;flex:none;fill:none;stroke:var(--bd-kc);stroke-width:1.8}
+.sc-h h5{margin:0;font-size:14.5px;font-weight:700;letter-spacing:.04em;color:#2f342d}
+.sc-h .sub{font-size:11.5px;color:var(--ink3);font-weight:600}
+.sc-h:hover h5{color:var(--bd-kc)}
+.sc-tail{margin-left:auto;display:flex;align-items:center;gap:11px}
+/* 編集ボタン。紙の上に白いボタンを置くと浮くので、下線だけの
+   控えめな語にする。押されている間だけ塗る。                    */
+.sc-edit{display:inline-flex;align-items:center;gap:5px;padding:3px 2px;
+  border:0;border-bottom:1px solid #d8cfb4;background:none;
+  font-size:11.5px;font-weight:700;color:#6b6963}
 .sc-edit svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.9}
-.sc-edit:hover{border-color:#c3bcaa;background:#fdfcf8}
-.sc-edit.on{border-color:var(--gr);background:var(--gr);color:#fff}
-.sc-tail .ast{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid transparent;border-radius:7px;font-size:11.5px;font-weight:700}
-.sc-tail .ast:hover{border-color:#e0dbcd;background:#fff}
+.sc-edit:hover{border-bottom-color:var(--bd-kc);color:var(--bd-kc)}
+.sc-edit.on{padding:3px 9px;border-bottom:0;border-radius:3px;background:var(--gr);color:#fff}
+.sc-tail .ast{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;
+  border-radius:3px;font-size:11.5px;font-weight:700}
 .sc-tail .ast svg{width:13px;height:13px;fill:none;stroke-width:2.4}
-.sc-h .chev{color:#a9a294;font-size:11px;transition:transform .15s}
+.sc-h .chev{color:#b3ab97;font-size:10px;transition:transform .15s}
 /* 開いていれば「たたむ▲」、閉じていれば「開く▼」。横向きにしない。 */
 .sc-h.closed .chev{transform:rotate(180deg)}
-/* 節の地色は、いまの状況の3項目とそろえる：対応方針＝紫、
-   アカウント状況＝緑、手続き方法＝赤。契約情報・メモは補足なので
-   クリーム。いまの状況そのものは中立のグレーのまま。            */
-.sc-h.t-gy{background:#f6f5f1}.t-gy .sc-bar{background:#a9a294}.t-gy .sic{stroke:#8a8578}.t-gy h5{color:#5c594d}
-.sc-h.t-pu{background:#f9f3f9}.t-pu .sc-bar{background:#b356b3}.t-pu .sic{stroke:#8d3f8d}.t-pu h5{color:#8d3f8d}
-.sc-h.t-gr{background:#eff7f1}.t-gr .sc-bar{background:#6fae82}.t-gr .sic{stroke:#2f6a48}.t-gr h5{color:#2f6a48}
-.sc-h.t-rd{background:#fbeeed}.t-rd .sc-bar{background:#dc8e87}.t-rd .sic{stroke:#c9544b}.t-rd h5{color:#c9544b}
-.sc-h.t-cr{background:#faf6ea}.t-cr .sc-bar{background:#cbb37a}.t-cr .sic{stroke:#8a6c3d}.t-cr h5{color:#8a6c3d}
-.sc-body{padding:16px 15px 17px}
+.sc-body{padding:0}
 
-/* いまの状況｜見出しも囲みも持たない。ページ上部に直接、左に
-   リングで到達度、右に3項目を並べるだけ。押すとその節へ飛ぶ。
-   各項目は「アイコン＋見出し」「大きな○△✕」「補足」の3段で
-   積む（横並びの1行にしない）。アイコンの色は対応方針＝紫／
-   アカウント状況＝緑／手続き方法＝赤の固定色（各節の色とそろえる）。
-   ○△✕の色は項目の色ではなく、済み＝緑／途中＝橙／手つかず＝赤
-   という状態そのものの色。                                      */
-/* 綴じ代（左カラム）の「明細を確認済み」。カード情報スパインの下に、
-   同じ点線区切り・中央寄せで（他の項目と同じ体裁）。確認できた全区間と
-   最終確認日を控えめに。 */
-.stmt-checked{margin-top:22px;padding-top:18px;border-top:1px dashed #d8d0bc}
-.stmt-checked svg{width:12px;height:12px;stroke:#8a8578;fill:none;stroke-width:2.4;vertical-align:-1px;margin-right:5px}
-.stmt-tx{display:inline;min-width:0}
-.stmt-tx b{font-size:11px;font-weight:700;color:#8a8578;letter-spacing:.04em}
-.stmt-cov{display:block;margin-top:8px;font-size:12.5px;font-weight:700;color:#5c594d;letter-spacing:.02em}
-.stmt-at{display:block;margin-top:4px;font-size:10px;color:var(--ink3)}
-
-.status-panel{display:flex;align-items:center;gap:36px;padding:8px 6px 26px;margin-bottom:9px;border-bottom:1px solid #f0ece3}
-.status-ring{position:relative;flex:none;width:98px;height:98px}
-.ring-svg{width:100%;height:100%;transform:rotate(-90deg)}
-.ring-bg{fill:none;stroke:#eee9de;stroke-width:9}
-.ring-fg{fill:none;stroke:#d18017;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .3s}
-.ring-fg.done{stroke:#3b8a5c}
-.ring-tx{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.ring-tx b{font-size:12px;font-weight:700;color:#454b44}
-.ring-tx span{margin-top:2px;font-size:15px;font-weight:800;color:#d18017}
-.ring-tx.done span{color:#3b8a5c}
-.status-items{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.stat-item{display:flex;flex-direction:column;align-items:center;gap:9px;padding:8px 6px;border:0;border-radius:9px;background:none;font-family:inherit;text-align:center;transition:opacity .12s}
-.stat-item:hover{opacity:.78}
-.stat-top{display:flex;align-items:center;gap:7px}
-.stat-ic{flex:none;width:17px;height:17px}
-.stat-ic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8}
-.stat-label{font-size:13px;font-weight:700;color:#454b44}
-.stat-mark{font-size:30px;font-weight:800;line-height:1}
-.stat-mark.mk-ok{color:#3b8a5c}.stat-mark.mk-partial{color:#d18017}.stat-mark.mk-none{color:#c9544b}
-.stat-note{font-size:11.5px;line-height:1.5;color:var(--ink3)}
-.stat-pu .stat-ic{color:#8d3f8d}
-.stat-gr .stat-ic{color:#2f6a48}
-.stat-rd .stat-ic{color:#c9544b}
+/* いまの状況｜1行＝1つの確認欄。表紙の地に直接刷る要約なので、白い紙は
+   持たせない（本紙・別紙とここで3層に分かれる）。
+   印は丸ではなく角の立った枡にする。丸はアプリのバッジに見えるが、枡は
+   書類の確認欄に見える。済み＝✓（塗り）／途中＝!（縁）／手つかず＝
+   空欄のまま。以前の ◎△✕ は文字グリフで、環境のフォント次第で字形が
+   崩れるうえ、30px/800 の丸がダッシュボードのバッジに見えていた。
+   到達度は 98px のドーナツリングをやめ、右上の 3/3 が言う。      */
+.status-panel{position:relative;z-index:1;padding:15px 17px 10px;border-radius:4px;
+  background:#ffffff36;border:1px solid #ffffff54;
+  box-shadow:inset 0 2px 6px -1px rgba(var(--bd-sh),.26),0 1px 0 #ffffff70}
+.st-h{display:flex;align-items:baseline;gap:10px;
+  padding-bottom:10px;margin-bottom:2px;border-bottom:2px solid var(--bd-edge)}
+/* 見出しは、以前のドーナツリングが持っていた「まとめの重み」を
+   文字だけで担う。丸を戻さないぶん、ここは本文より一段大きく。 */
+.st-h b{flex:1;min-width:0;font-size:14px;font-weight:700;
+  letter-spacing:.04em;color:#3a3227}
+/* 到達度。リングの代わりに数字そのものを主役の大きさで置く。
+   白い枡に載せず地の上へ直接刷り、分母だけ沈めて分子を立てる。 */
+.st-tally{flex:none;padding:0;font-size:19px;font-weight:800;
+  letter-spacing:.01em;color:var(--gr2);background:none;box-shadow:none;
+  font-variant-numeric:tabular-nums;line-height:1}
+.st-tally .st-of{font-size:12.5px;font-weight:700;opacity:.5}
+.st-tally.open{color:var(--or)}
+.ckrow{display:flex;align-items:center;gap:11px;width:100%;
+  padding:10px 2px;border:0;border-top:1px solid #ffffff70;background:none;
+  font-family:inherit;text-align:left;cursor:pointer}
+.ckrow:first-of-type{border-top:0}
+.ckrow:hover{background:#ffffff42}
+/* 済んだ行を opacity で薄くするのはやめた。薄い＝重要でない、と
+   読めてしまうが、済んだ項目は「重要でない」のではなく「片付いた」。
+   3つとも同じ重さの確認欄として並べ、差は枡と補足文の色だけで付ける
+   （書類の確認欄も、済んだ欄の文字が薄くなったりはしない）。 */
+/* 枡は書類の確認欄。19px では印に見えず要約が弱かったので、
+   手で押した確認印として読める大きさまで上げる。 */
+.ck-mark{flex:none;display:grid;place-items:center;width:25px;height:25px;
+  border-radius:3px;font-size:15px;font-weight:800;line-height:1}
+/* 済み＝押し終えた印。地に沈む縁だけの枡にして、✓ を緑のインクで
+   置く（塗りつぶすと、残っている ! と同じ強さで主張してしまう）。 */
+.ck-ok  .ck-mark{background:#ffffffa1;border:1.5px solid #b9cdbe;color:var(--gr2)}
+.ck-partial .ck-mark{background:#fff;border:2px solid var(--or);color:var(--or)}
+/* 未対応＝これから押す欄。塗りと影で、面として前に出す。 */
+.ck-none .ck-mark{background:var(--or);color:#fff;
+  box-shadow:0 1px 3px -1px rgba(var(--bd-sh),.5)}
+/* 残っている行だけ、項目名も濃く太らせる。 */
+.ck-none .ck-item,.ck-partial .ck-item{color:#2b2519}
+.ck-ic{flex:none;display:inline-flex;width:16px;height:16px;color:#3a322794}
+.ck-ic svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8}
+.ck-item{flex:none;font-size:13px;font-weight:700;color:#3a3227}
+.ck-note{flex:1;min-width:0;text-align:right;font-size:11.5px;color:#3a32279e;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ck-none .ck-note,.ck-partial .ck-note{color:var(--or);font-weight:700}
 /* 振り分け前｜詳細本体の先頭に置く、いまのうち／そのときへ振り分ける
    ためのカード。「振り分け前」の中立グレーベージュ（索引の .ib-undecided
    と同じ軸）を地にして、まだ時期が決まっていないことを色でも伝える。   */
@@ -711,29 +858,31 @@
 .intent{display:flex;align-items:center;gap:10px}
 .intent svg{width:21px;height:21px;flex:none;fill:none;stroke-width:1.7}
 .intent b{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
-.i-gr{stroke:#3b8a5c}.i-or{stroke:#c9781d}.i-gy{stroke:var(--gy)}
+.i-gr{stroke:#3b8a5c}.i-or{stroke:var(--or)}.i-gy{stroke:var(--gy)}
 .pol-reason{margin:0;font-size:12.5px;line-height:1.85;color:#4a4d47}
 .pol-next{display:flex;gap:9px;align-items:flex-start;margin-top:13px;padding-top:12px;border-top:1px solid #f2ece0;font-size:12.5px;color:#4a4d47;line-height:1.6}
 .pol-next svg{flex:0 0 14px;margin-top:2px;fill:none;stroke:#b6a894;stroke-width:1.8}
 .pol-next b{font-weight:700;color:var(--ink)}
-.fmemo{margin-top:14px;padding:12px 14px;border-radius:8px;background:#f4f4f8;display:flex;gap:10px}
-.fmemo > svg{flex:0 0 15px;margin-top:1px;fill:none;stroke:#7f88b8;stroke-width:1.8}
+/* 家族メモ。以前はここだけ青紫（#f4f4f8 / #5f6cae）で、画面のどの
+   語彙にも属さない島になっていた。囲みをやめ、破線で従属を言う。 */
+.fmemo{margin-top:15px;padding-top:12px;border-top:1px dashed #e2d9c4;display:flex;gap:10px}
+.fmemo > svg{flex:0 0 15px;margin-top:2px;fill:none;stroke:#b6a894;stroke-width:1.8}
 .fmemo .fm{flex:1;min-width:0}
-.fmemo b{display:block;margin-bottom:4px;font-size:12px;font-weight:700;color:#5f6cae}
-.fmemo p{margin:0;font-size:12px;line-height:1.75;color:#63677a}
+.fmemo b{display:block;margin-bottom:4px;font-size:10px;font-weight:700;letter-spacing:.11em;color:var(--ink3)}
+.fmemo p{margin:0;font-size:12px;line-height:1.75;color:#54524b}
 
 /* アカウント情報｜状態は「いまの状況」が持つので、ここは事実の行だけ。 */
 .acc-list .arow:first-child{padding-top:2px}
 .arow{display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid #f2eee5;font-size:12.5px}
 .arow:last-child{border-bottom:0;padding-bottom:2px}
-.arow .aic{display:grid;place-items:center;width:26px;height:26px;flex:none;border-radius:7px;background:#f4f2eb}
+.arow .aic{display:grid;place-items:center;width:26px;height:26px;flex:none;border-radius:3px;background:#f4f0e4}
 .arow .aic svg{width:14px;height:14px;fill:none;stroke:#8a8578;stroke-width:1.7}
 .arow .alb{flex:0 0 168px;color:#454b44}
 .arow .avl{flex:1;min-width:0;color:#454b44;padding-left:14px;border-left:1px solid #f2eee5}
 .arow .ast{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700}
 .arow .ast svg{width:13px;height:13px;fill:none;stroke-width:2.4}
 .cv-ok{color:#3b8a5c}.cv-ok svg{stroke:#3b8a5c}
-.cv-ng{color:#c9781d}.cv-ng svg{stroke:#e0951f}
+.cv-ng{color:var(--or)}.cv-ng svg{stroke:var(--or)}
 .cv-na{color:#8a8578}.cv-na svg{stroke:#8a8578}
 
 /* 「設定なし」を選択肢に持つ行。見た目は他の行と同じ ast ボタンの
@@ -752,7 +901,7 @@
 .proc-status.cv-ok{background:#e8f2ea}.proc-status.cv-ng{background:#fdf0e2}
 .proc2{display:grid;grid-template-columns:1.1fr 1fr;gap:20px;padding:4px 0}
 .pr-lb{display:block;margin-bottom:6px;font-size:12px;font-weight:700;color:#8a6c3d}
-.pr-where{margin:0 0 15px;padding-bottom:11px;border-bottom:1px solid #eef1f5;font-size:12.5px;color:#454b44}
+.pr-where{margin:0 0 15px;padding-bottom:11px;border-bottom:1px solid #f2ecdd;font-size:12.5px;color:#454b44}
 .pr-where .ef-area{min-height:40px;line-height:1.6}
 .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
 .steps li{display:flex;gap:11px;align-items:center;font-size:12.5px;color:#454b44}
@@ -762,16 +911,19 @@
 .step-add:hover{background:#fbfaf5;border-color:#c3bcaa}
 .step-del{flex:none;display:grid;place-items:center;width:22px;height:22px;border:0;border-radius:6px;background:none;color:#c3bcaa;font-size:12px;cursor:pointer}
 .step-del:hover{background:#fbeceb;color:#c9544b}
-.prbox{background:#faf7f1;border-radius:9px;padding:13px 15px;margin-bottom:11px}
+/* 参考リンク／ポイント。淡色の囲みをやめ、左の縦罫で列を立てる。
+   節の囲みを外したのに中で囲みを反復させると、同じことが一段内側で
+   起きるだけになる。囲みの代わりに罫と余白で従属を言う。         */
+.prbox{padding:0 0 0 13px;border-left:2px solid #e0d3b8;margin-bottom:16px}
 .prbox:last-child{margin-bottom:0}
-.prbox .ph{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:12px;font-weight:700;color:#8a6c3d}
-.prbox .ph svg{width:14px;height:14px;fill:none;stroke:#b08e5c;stroke-width:1.8}
-.prbox .ev{font-size:12.5px;color:#7a6134;font-weight:700}
-.prbox.pt .ev{display:block;font-size:12px;color:#5c6673;font-weight:400;line-height:1.8;white-space:pre-line}
-.prbox.pt{background:#f5f4ef}
-.prbox.pt .ph{color:#6b6963}.prbox.pt .ph svg{stroke:#a9a294}
+.prbox .ph{display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:10px;font-weight:700;letter-spacing:.11em;color:#8a6c3d}
+.prbox .ph svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8}
+.prbox .ev{font-size:12.5px;color:#54524b;font-weight:700}
+.prbox.pt .ev{display:block;font-size:12px;color:#54524b;font-weight:400;line-height:1.8;white-space:pre-line}
+.prbox.pt{border-left-color:#ded8c6}
+.prbox.pt .ph{color:var(--ink3)}
 /* 参考リンク｜読む場所では実際にリンクらしく見せ、鉛筆だけを編集の的にする。 */
-.ev-link{font-size:12.5px;color:#4681a0;font-weight:700;text-decoration:underline;text-underline-offset:2px}
+.ev-link{font-size:12.5px;color:var(--bl);font-weight:700;text-decoration:underline;text-underline-offset:2px}
 .ev-link:hover{color:#35637d}
 .ev-editbtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:4px;padding:0;border:0;background:none;color:#c3bcaa;cursor:pointer;vertical-align:middle}
 .ev-editbtn svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2}
@@ -806,7 +958,7 @@
 .ev-na{color:#9a968a;font-style:normal}
 
 /* メモ */
-.memo{padding:13px 15px;border-radius:9px;font-size:12.5px;color:#454b44;line-height:1.8}
+.memo{padding:0;font-size:12.5px;color:#454b44;line-height:1.8}
 
 /* 支払いカードの詳細｜契約・アカウントと丸ごと同じ骨格・見た目を
    使い回すので、専用のCSSは紐づく契約一覧の行間だけ。           */
@@ -843,8 +995,8 @@
    ------------------------------------------------------------------
    外殻は shared/shell.css。ここは索引と詳細シートの側だけ。
    ・索引：2列で並べていた束・カード・行を1列へ。
-   ・詳細シート：横に組んだ「綴じ代（rings）｜本体（page）」を縦に。
-     綴じ代は本体の上の帯として置き、リング金具の飾りは畳む。
+   ・詳細シート：横に組んだ「左ページ（rings）｜本体（page）」を縦に。
+     左ページは本体の上の帯として置き、リング金具は2枚の境目へ移す。
    値は tokens の --bp-wide / --bp-narrow と対応。@media に var() は
    使えないので数値直書き。                                        */
 
@@ -871,112 +1023,133 @@
   /* 索引の行：矢印を落として名前と状態バッジだけに。 */
   .irow{gap:9px;padding:11px 2px}
 
-  /* ── 詳細シート：綴じ代（.rings） ─────────────────────
-     デスクトップでは「リング綴じの背表紙側」＝変わらない事実を本文の
-     左にずっと見せておく sticky マージン。スマホで縦に積むと背表紙の
-     比喩は成り立たず、ただ長い前置きになる。ここでは比喩を捨て、
-     「この契約の基本情報」を折り目正しくまとめた “おもて表紙” に
-     組み替える：
+  /* ── 詳細シート：左ページ（.rings） ───────────────────
+     デスクトップでは、変わらない事実の左ページと本文（右ページ）を
+     中央のミゾでリング綴じにした「上から見た開いたバインダー」。
+     スマホで縦に積むと、上＝事実の要約ページ／下＝本文ページの
+     2枚が重なる形になる。要約ページ側は縦の丈を詰める：
        ・No. と時期ラベル → 小さな見出し1行（アイデンティティなので残す）
        ・契約情報 → ラベル｜値 の2列組みにして縦の丈を半分に
        ・登録日／更新日 → さらに小さく、下端に1組
        ・版面の飾り（.rfoot の「家族のための記録」）→ 消す
      全体を薄い地色の1ブロックにして、本文の前の要約として置く。     */
-  /* 「綴じ代｜本体」の横組みを縦に。
-     デスクトップで本文の【左辺】を綴じていたリングを、スマホでは
-     本文の【上辺】へ持ってくる（バインダーを90°回して上から綴じる）。
-     リング金具そのものの造形（44×13 の横バー・金属グラデ・光る穴）は
-     全体表示と同じものを使い、変えるのは位置だけ：
-       ・左辺沿い（left:-13px / top:16〜80%）→ 上辺沿い（top:-7px / left:%）
-     背後の台紙（.dtl-file:before）は 2枚に割れるここでは半端なので畳む。 */
-  .dtl-file:before{display:none}
-  /* リングはシートの外へ全部飛び出す（高さ 20px ぶんの余地）。 */
+  /* 「左ページ｜本体」の横組みを縦に。綴じ目もそれに合わせ、外側の
+     上辺ではなく 2枚の“あいだ”＝.rings と .page の水平の境目へ移す
+     （デスクトップと同じ「ページのあいだを綴じる」考え方。スマホは
+     sticky でないぶん金具は素直に一緒にスクロールする）。
+     リング金具の造形（金属グラデ・光る穴）は全体表示と同じ、境目用に
+     10×20 へ縮めたもの。変えるのは位置だけ：
+       ・右辺沿い（right:-17px / top:16〜80%）→ 境目（bottom:-10px / left:%）
+     */
   #detailView{margin-top:0}
-  .dtl-file{padding-top:22px}
   /* シートの地を綴じ代のベージュにする。白のままだと、.rings との
      境目（角丸の内側・上辺）に白が薄く覗いてしまう。白は .page が持つ。 */
-  .sheet{flex-direction:column;overflow:visible;background:#f4f1e8}
+  .sheet{flex-direction:column;overflow:visible}
   .rfoot{display:none}
 
   /* 綴じ代＝本体の上に載る1枚の紙。中身は
      「No.の札（左）｜契約情報（右）」を横に並べ、その下に登録日等を
      全幅で続ける grid。シートの上端にぴったり付ける（margin-top を
      持たせると、その隙間から .sheet の地が帯になって覗く）。
-     全体表示の flex（縦積み・中央寄せ）は解く。 */
+     全体表示の flex（縦積み・中央寄せ）は解く。
+     上余白は詰める：この帯は「本文の前の要約」なので、地色が上に
+     溜まって見えないよう、契約情報のラベル／No. 札がほぼ帯の上端から
+     始まるようにする（左右・下は 16px のまま）。 */
   .rings{position:relative;flex:none;
     width:auto;min-width:0;max-width:none;
-    margin:0;padding:16px 16px 22px;
-    background:#f4f1e8;
-    border-radius:13px 13px 0 0;overflow:visible;
+    margin:0;padding:16px 16px 18px;
+    border-radius:12px 12px 0 0;overflow:visible;
     display:grid;grid-template-columns:auto 1fr;gap:0 18px;align-items:start;
     text-align:left}
+  /* ラベル面（印＋サービス名）は1段目に全幅で。印と名前を横に並べて
+     縦の丈を詰める。空押しは縦積みでは邪魔になるので畳む。
+     縦積みでは pg-h 自体が細切れの帯になるので、状態バッジ＋対応完了の
+     切り替えはここ（タイトルの帯）側の複製を見せ、本文側は隠す。 */
+  .rlabel{grid-column:1 / -1;display:grid;grid-template-columns:auto 1fr auto;
+    gap:0 13px;align-items:center;margin-bottom:13px;padding-bottom:13px;
+    border-bottom:2px solid var(--bd-edge)}
+  .rlabel-ops{display:flex;align-items:center;gap:10px;
+    grid-column:3;grid-row:1 / span 2;align-self:start}
+  .rmark{grid-row:1 / span 2;width:40px;height:40px}
+  .rname{margin-top:0;font-size:18px}
+  .rwm{display:none}
+  .pg-h .pol{display:none}
   /* grid の子（filecard / rspine）が持つ base の上マージンを全部消す。 */
   .rings > *{margin-top:0}
-  /* 右端の縦仕切り罫のかわりに、上辺へ綴じ目の陰を入れる。リングが
-     紙を押さえている厚みを、全体表示の綴じ目と同じ考え方で出す。 */
-  .rings:after{content:"";position:absolute;left:0;right:0;top:0;height:7px;
-    border-radius:13px 13px 0 0;pointer-events:none;
-    background:linear-gradient(180deg,rgba(70,64,50,.16),rgba(70,64,50,0))}
+  /* 谷折り。.rings 自身の下端（bottom:0）を基準にする——ここが
+     ピンの中心と確実に一致する唯一の基準点（.ring も同じ .rings 基準
+     の bottom 指定で置かれている）。.page の上端を基準にすると、この
+     幅では .page 側の実際のレイアウトが .rings の下端と一致せず、
+     谷折りが上にずれて描かれてしまっていた。 */
+  .rings:after{content:"";position:absolute;left:0;right:0;top:auto;bottom:0;
+    height:26px;transform:translateY(50%);pointer-events:none;
+    background:linear-gradient(180deg,rgba(var(--bd-sh),0) 0%,rgba(var(--bd-sh),.14) 40%,
+      rgba(var(--bd-sh),.24) 49%,#ffffff5c 53%,#ffffff1f 66%,rgba(var(--bd-sh),0) 100%)}
 
-  /* リング金具：上辺を綴じる小さな縦リング。全体表示（左辺の 44×13）を
-     そのまま回すと大きすぎるので、上辺用に控えめな 10×20 にする。
-     紙の上端に立ち、シートの外へ全部出る（top:-20px）。色も一段明るく
-     して、5本が黒く主張しすぎないように。left:% で等間隔。
-     base の .ring.r1〜r5{top:…} を打ち消す。 */
-  .ring{left:auto;top:-20px;width:10px;height:20px}
-  .ring:before{border-radius:5px 5px 2px 2px;
+  /* リング金具：2枚の境目を綴じる小さなリング。全体表示（30×13）を
+     そのまま回すと大きいので 10×20 に。境目にまたがって立ち
+     （bottom:-10px）、色は一段明るくして 5本が黒く主張しすぎないように。
+     left:% で等間隔。base の .ring{right:-17px} と .ring.rN{top:…} を
+     打ち消す。 */
+  .ring{right:auto;left:auto;top:auto;bottom:-10px;width:10px;height:20px}
+  .ring:before{border-radius:3px;
     background:linear-gradient(180deg,#9096a0,#5f646d 55%,#4a4e57);
     box-shadow:0 2px 4px rgba(0,0,0,.28)}
   .ring:after{left:2px;top:2px;width:6px;height:6px}
-  .ring.r1,.ring.r2,.ring.r3,.ring.r4,.ring.r5{top:-20px}
+  .ring.r1,.ring.r2,.ring.r3,.ring.r4,.ring.r5{top:auto;bottom:-10px}
   .ring.r1{left:10%}.ring.r2{left:30%}.ring.r3{left:50%}
   .ring.r4{left:70%}.ring.r5{left:90%}
 
-  /* ファイルカード＝「いまのうち／No.003」の白い札。grid の左カラム。
-     全体表示と同じ白地・角丸・影・時期色の下線。中の文字は中央寄せ。
-     札そのものは、右の契約情報グリッドの高さに対して上下中央に置く。 */
-  .filecard{width:132px;margin:0;padding:12px 10px 13px;
-    grid-column:1;grid-row:1;align-self:center;justify-self:start;text-align:center}
-  .filecard small{display:block}
-  .filecard b{display:block;margin-top:5px;font-size:13px}
-  .filecard b i{font-size:22px;margin-left:3px}
-  .filecard .rule{margin:9px auto 0;width:46px}
+  /* No. と時期。全体表示と同じ「地に刷った1行」のまま、grid の左カラムへ。
+     右の契約情報グリッドと頭を揃える（align-self:start）。 */
+  .filecard{width:auto;margin:0;padding:0;
+    grid-column:1;grid-row:2;align-self:start;justify-self:start;text-align:left}
 
   /* 契約情報：右カラム（col2）。「ラベル／値」の小マスを 4列で並べる。
      契約情報 5項目＋登録日 2項目＝7項目がそのまま流れて 2段に収まり、
      登録日と最終更新日も横に並ぶ（列を固定すると縦積みになるので、
      auto-flow に任せる）。見出しテキストは隠し、編集ペンはカード
      右上へ絶対配置。 */
-  .rspine{position:static;grid-column:2;grid-row:1;margin:0;padding:0 28px 4px 0;border-top:0;
+  .rspine{position:static;grid-column:2;grid-row:2;margin:0;padding:0 28px 4px 0;border-top:0;
     display:grid;grid-template-columns:repeat(4,1fr);gap:12px 12px;align-content:start}
-  .rsp-h{grid-column:1 / -1;margin:0;min-height:0;line-height:0}
+  /* 見出し行は表示しない。display:contents で box を消し、grid の空行と
+     その row-gap（12px）を作らせない。中の span は隠し、編集ペンは
+     .rings（position:relative）基準の絶対配置なので影響を受けない。 */
+  .rsp-h{display:contents}
   .rsp-h span{display:none}
-  .rsp-edit{position:absolute;top:12px;right:12px}
-  .rsp-row{margin:0;padding:0;border-top:0;min-width:0}
+  .rsp-edit{position:absolute;top:auto;right:12px}
+  .rsp-row{display:block;margin:0;padding:0;border-top:0;min-width:0}
+  .rsp-row small{display:block;flex:none}
   .rsp-row small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rsp-row b em{display:block}
   /* 登録日・最終更新日は編集しない補足なので、値の色だけ落とす。
      位置は auto-flow のまま（列を固定しない）。 */
-  .rsp-row-meta small{font-size:9.5px;color:#a5a199}
-  .rsp-row-meta b{font-size:11px;color:#8a8578}
+  .rsp-row-meta-first{margin:0;padding:0;border-top:0}
+  .rsp-row-meta small{font-size:9.5px}
+  .rsp-row-meta b{font-size:11px}
   /* 明細確認済み・削除は下に全幅で（点線区切り）。 */
   .stmt-checked,.rdelete{grid-column:1 / -1;margin:0;
-    padding:12px 0;border-top:1px dashed #ddd5c2}
+    padding:12px 0;border-top:1px dashed #ffffff7a}
   .rfoot{display:none}
 
-  /* 本体：綴じ代の下に続く白いページ。縦組みでは flex:604 1 0 の
-     basis:0 が縦に効いて高さ0になるので内容なりへ。
-     綴じ代（ベージュ）との境目がはっきりするよう、上に区切り線を置き、
-     綴じ目側の内影も上へ回して「めくったページ」の厚みを出す。
+  /* 本体：左ページの下に続くページ。縦組みでは flex:604 1 0 の basis:0 が
+     縦に効いて高さ0になるので内容なりへ。地は表紙の色地のままで、白い紙
+     （.pg-sheet / .pg-slip）がその上に載る関係は全体表示と変えない。
+     谷折りは縦の線ではなく2枚のあいだの水平な折り目になるので、
+     .page:before を横向きに引き直す。
      .sheet が overflow:visible なので本体の下角は自分で丸める。 */
-  .page{flex:0 1 auto;border-radius:0 0 13px 13px;
-    border-top:1px solid #d8d0bc;
-    box-shadow:inset 0 12px 16px -12px rgba(56,50,34,.3)}
-  .pg-h{flex-wrap:wrap;gap:8px 12px;padding:26px 16px 18px}
-  .pg-h .nm{font-size:22px}
-  .pg-h .cat{padding-left:0;border-left:0}
+  .page{flex:0 1 auto;border-radius:0 0 12px 12px;padding:34px 16px 22px}
+  /* .page:before（.page の上端基準）は、この幅では .page の上端が
+     真の綴じ目（.rings の下端／ピンの中心）と一致しないため、谷折りが
+     15px ほど上にずれて描かれてしまっていた。ここでは無効化し、
+     谷折りは .rings:after（.rings 自身の下端基準＝確実にピンの中心と
+     一致する）へ描き直す。                                        */
+  .page:before{content:none}
+  .pg-h{flex-wrap:wrap;gap:8px 10px;margin-bottom:13px}
   .pg-collapse{margin-left:auto}
-  .pg-body{padding:12px 14px 20px}
+  .pg-sheet{padding:18px 16px 19px}
+  .pg-slip{padding:14px 16px 15px}
+  .pg-body{padding:0}
 
   /* 前へ｜戻る｜次へ：前へ／次への当たり判定にサービス名が入ると
      左右で幅が揃わず中央の3タブがずれる。サービス名は隠し、「前へ」
@@ -991,12 +1164,20 @@
   .dtl-lb small{display:inline;font-size:11px;font-weight:700;color:#6b6963}
   .dtl-back{justify-self:center}
 
-  /* いまの状況：リング＋3項目の横並びを縦に。3項目は横1列のまま
-     （○△✕は小さくても読める）。 */
-  .status-panel{flex-direction:column;gap:16px;align-items:stretch}
-  .status-ring{align-self:center}
-  .status-items{gap:4px}
-  .stat-mark{font-size:24px}
+  /* いまの状況：確認欄は縦積みでも1行のまま。補足が長いと項目名を押し
+     出すので、狭いところでは補足を次の行へ送る。 */
+  .ckrow{flex-wrap:wrap}
+  .ck-note{flex:1 0 100%;margin-left:36px;text-align:left;white-space:normal}
+  /* 縦積みでは表紙の地が画面幅いっぱいの一枚の塗りになり、その上の
+     半透明パネル（#ffffff36）が地に溶けて、要約全体がのっぺりする。
+     かといって本紙（.pg-sheet）と同じ白い紙にすると、すぐ下の
+     「対応方針」と同じ重さの札が2枚続き、要約が節のひとつに見える。
+     ここは中間に置く：地よりは白く起こしつつ、本紙よりは色地を
+     透かせ、影も浅くして「表紙に直接刷った要約」のままにする。  */
+  .status-panel{padding:16px 16px 11px;border-radius:6px;
+    background:#fffdf78c;border-color:#ffffff96;
+    box-shadow:inset 0 1px 0 #ffffffb8,0 1px 3px -1px rgba(var(--bd-sh),.3)}
+  .ckrow{border-top-color:#ffffff8f}
 
   /* 対応方針：2列 → 縦。縦罫は横罫へ。 */
   .policy{grid-template-columns:1fr}
@@ -1033,14 +1214,13 @@
 
 @media (max-width:400px){
   .chips,.pbc-chips{grid-template-columns:1fr}
-  .pg-h .nm{font-size:20px}
-  .status-items{grid-template-columns:1fr}
+  .rname{font-size:17px}
   /* 幅が足りないので、札の横に契約情報を並べるのをやめ縦に。 */
   .rings{grid-template-columns:1fr}
   .filecard{grid-column:1;grid-row:auto}
   /* 幅が足りないので 2列。7項目がそのまま流れ、登録日と最終更新日は
      最後の行に横並びで収まる。 */
-  .rspine{grid-column:1;grid-row:auto;padding-top:12px;border-top:1px dashed #ddd5c2;
+  .rspine{grid-column:1;grid-row:auto;padding-top:12px;border-top:1px dashed #ffffff7a;
     grid-template-columns:repeat(2,1fr)}
   /* 確認ピルは絶対配置をやめ、本文の頭に普通に置く。 */
   .proc-status-row{position:static;margin:0 0 12px}

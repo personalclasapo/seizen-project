@@ -149,10 +149,24 @@
       esc(cur ? cur.label : value) + '</span>';
   }
 
+  /* 空押しの透かし。一覧の行と同じ印を、地色もチップも持たせずに
+     グリフだけ取り出す。色と沈み具合は CSS（.rwm）が決める。
+     ホーム画面にある角丸正方形が、そのままバインダーの表紙に
+     型押しされている、という繋がりをここで作る。                  */
+  function markWatermarkHTML(name) {
+    const m = S.markOf(name);
+    const inner = m.logo
+      ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="' + m.logo + '"/></svg>'
+      : '<i>' + esc(m.ch) + '</i>';
+    return '<span class="rwm" aria-hidden="true">' + inner + '</span>';
+  }
+
   function markHTML(name, cls) {
     const m = S.markOf(name);
     const border = m.border ? ';border:1px solid ' + m.border : '';
-    const style = 'background:' + m.bg + ';color:' + m.fg + border;
+    /* 表紙の印（.rmark）だけは地色を area.css 側で決める。索引の冷たい
+       グレー地は、暖色の表紙の上では浮いてしまう。 */
+    const style = cls === 'rmark' ? '' : 'background:' + m.bg + ';color:' + m.fg + border;
     if (m.logo)
       return '<span class="mark mark-logo ' + (cls || '') + '" style="' + style + '">' +
         '<svg viewBox="0 0 24 24" fill="currentColor"><path d="' + m.logo + '"/></svg></span>';
@@ -367,15 +381,18 @@
   /* ── 詳細：セクション ─────────────────────────────── */
 
   /* バッジの隣に置く、対応完了の切り替えボタン。準備済みのときだけ
-     「対応完了にする」を出し、対応完了の後は「準備済みに戻す」に
-     変わる。確認が必要（open）のときはそもそも出さない＝完了は
-     準備済みからしか踏めない。                                    */
-  function completeToggleHTML(b) {
-    if (b.kind === 'ready')
-      return '<button type="button" class="complete-btn" data-complete="1">' + IC.check + '対応完了にする</button>';
-    if (b.kind === 'done')
-      return '<button type="button" class="complete-btn on" data-complete="1">' + IC.loop + '準備済みに戻す</button>';
-    return '';
+     以前は独立した「対応完了にする／準備済みに戻す」ボタンを別に
+     持たせていたが、バッジと同じ事実をボタンでもう一度言うだけの
+     もので、囲みを持たせるとバッジより主張が強くなってしまう。
+     バッジ自体をボタン化し、クリックで直接切り替える（ck-list の
+     行が押せる欄を兼ねるのと同じ考え方）。確認が必要（open）の
+     ときは押せない＝完了は準備済みからしか踏めない。               */
+  function badgeHTML(b, txt, cls) {
+    const clickable = b.kind === 'ready' || b.kind === 'done';
+    const tag = clickable ? 'button' : 'span';
+    const attrs = clickable ? ' type="button" data-complete="1"' : '';
+    return '<' + tag + ' class="pol ' + cls + ' hb-' + b.tone + '"' + attrs + '>' +
+      esc(txt) + '</' + tag + '>';
   }
 
   /* 支払い手段の詳細シートに出す「明細を確認済み」の一角。確認できた
@@ -425,8 +442,12 @@
   }
 
   /* editable を渡した節は、見出しの右に編集ボタンを持つ。開閉の的の
-     中に置くので、その部分だけクリックを止めて開閉に伝えない。     */
-  function sectionHTML(key, tone, icon, title, sub, body, alwaysOpen, editable, state) {
+     中に置くので、その部分だけクリックを止めて開閉に伝えない。
+     節ごとの地色（紫・緑・赤・クリーム）は持たない。1件＝1系統色に
+     寄せ、節の区別はアイコンと見出しの太罫が受け持つ（罫の色はこの
+     項目の時期＝--bd-kc）。囲みも地色も無いので、節は帯ではなく
+     「紙の上の見出し」になる。                                    */
+  function sectionHTML(key, icon, title, sub, body, alwaysOpen, editable, state) {
     const closed = !alwaysOpen && closedSections.has(key);
     const on = editSection === key;
     const stateBtn = state
@@ -438,8 +459,8 @@
         (on ? IC.check + '入力を終える' : IC.pen + '編集する') + '</span>'
       : '';
     return '<div class="sect' + (on ? ' editing' : '') + '">' +
-      '<button class="sc-h ' + tone + (closed ? ' closed' : '') + '" type="button" data-sect="' + key + '">' +
-        '<span class="sc-bar"></span>' + icon.replace('<svg', '<svg class="sic"') +
+      '<button class="sc-h' + (closed ? ' closed' : '') + '" type="button" data-sect="' + key + '">' +
+        icon.replace('<svg', '<svg class="sic"') +
         '<h5>' + esc(title) + '</h5>' + (sub ? '<span class="sub">' + esc(sub) + '</span>' : '') +
         '<span class="sc-tail">' + stateBtn + editBtn +
         (alwaysOpen ? '' : '<span class="chev">▲</span>') + '</span></button>' +
@@ -457,36 +478,37 @@
     account: { icon: 'person', tone: 'gr' },
     proc:    { icon: 'clip',   tone: 'rd' }
   };
-  const STATUS_MARK = { ok: '◎', partial: '△', none: '✕' };
+  /* 枡の中身。済み＝✓、途中と手つかず＝!。空欄のままにすると、いちばん
+     対応が要る行がいちばん静かに見えてしまう。✕ は「該当なし」に読める
+     ので使わない。段は枡の塗り分けで付ける（縁取り＝途中／塗り＝手つかず）。 */
+  const CK_GLYPH = { ok: '\u2713', partial: '!', none: '!' };
 
   function statusHTML(it, who) {
     const rows = S.statusRows(it, who);
     const total = rows.length;
     const okCount = rows.filter(r => r.mark === 'ok').length;
     const done = okCount === total;
-    const rad = 42, c = 2 * Math.PI * rad;
-    const offset = c * (1 - okCount / total);
 
+    /* 1行＝1つの確認欄。枡・見出し・補足を横に並べる。ドーナツ
+       リングと ◎△✕ の文字グリフはやめた。グリフは環境のフォント
+       次第で字形が崩れるうえ、丸はアプリのバッジに見える。枡なら
+       書類の確認欄に見えるし、描画なのでどこでも同じ形で出る。   */
     const items = rows.map(r => {
       const cat = STATUS_CAT[r.key];
-      return '<button class="stat-item stat-' + cat.tone + '" type="button" data-goto="' + r.key + '">' +
-        '<span class="stat-top"><span class="stat-ic">' + IC[cat.icon] + '</span>' +
-        '<span class="stat-label">' + esc(r.title) + '</span></span>' +
-        '<span class="stat-mark mk-' + r.mark + '">' + STATUS_MARK[r.mark] + '</span>' +
-        '<span class="stat-note">' + esc(r.note) + '</span></button>';
+      return '<button class="ckrow ck-' + r.mark + '" type="button" data-goto="' + r.key + '">' +
+        '<span class="ck-mark">' + CK_GLYPH[r.mark] + '</span>' +
+        '<span class="ck-ic">' + IC[cat.icon] + '</span>' +
+        '<span class="ck-item">' + esc(r.title) + '</span>' +
+        '<span class="ck-note">' + esc(r.note) + '</span></button>';
     }).join('');
 
-    return '<div class="status-panel">' +
-      '<div class="status-ring">' +
-        '<svg class="ring-svg" viewBox="0 0 100 100">' +
-          '<circle class="ring-bg" cx="50" cy="50" r="' + rad + '"/>' +
-          '<circle class="ring-fg' + (done ? ' done' : '') + '" cx="50" cy="50" r="' + rad +
-            '" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '"/>' +
-        '</svg>' +
-        '<div class="ring-tx' + (done ? ' done' : '') + '"><b>' + (done ? '準備完了' : '確認中') + '</b>' +
-        '<span>' + okCount + '/' + total + '</span></div>' +
+    return '<div class="status-panel' + (done ? ' done' : '') + '">' +
+      '<div class="st-h">' +
+        '<b>家族が対応できる状態か</b>' +
+        '<span class="st-tally' + (done ? '' : ' open') + '">' + okCount +
+          '<span class="st-of">/' + total + '</span></span>' +
       '</div>' +
-      '<div class="status-items">' + items + '</div>' +
+      '<div class="ck-list">' + items + '</div>' +
     '</div>';
   }
 
@@ -739,6 +761,23 @@
     return '<div class="rings">' +
         '<span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>' +
         '<span class="ring r4"></span><span class="ring r5"></span>' +
+        markWatermarkHTML(it.name) +
+        /* 表紙のラベル面。一覧の行が持っていた印をそのまま大きくして
+           先頭に置く。名前・カテゴリは右ページの見出しから移した。
+           表紙に貼るラベルなので、右ページ（書き換わる記録）ではなく
+           こちら（この1件が何かを名指す面）に属する。               */
+        '<div class="rlabel">' +
+          markHTML(it.name, 'rmark') +
+          '<b class="rname">' + ev('name', it.name, 'line', '例：DHC 定期便') + '</b>' +
+          '<small class="rcat">' + ev('category', it.category, 'line', '例：化粧品') + '</small>' +
+          /* 状態バッジ（縦積み用）。全体表示ではここは隠し、.pg-h 側の
+             同じバッジを見せる。幅で出し分けるための複製で、内容は
+             常に同じ事実（b.tone/bTxt）から作る。バッジ自体が押せる
+             ボタンなので、対応完了の切り替えを別に持たせない。       */
+          '<span class="rlabel-ops">' +
+            badgeHTML(b, bTxt, 'pol-title') +
+          '</span>' +
+        '</div>' +
         fileCardHTML(it) +
         spineContractHTML(it) +
         '<div class="rfoot">' + IC.box + '<span>家族のための<br>契約・アカウント記録</span></div>' +
@@ -750,20 +789,35 @@
            サービスも編集でき、保存は state.js の editDiff が id ごとに
            差分を持つ。名前を変えると markOf の頭文字/ロゴ判定は既定へ
            落ちる（追加サービスと同じ挙動）。                          */
+        /* 名前・カテゴリは左ページ（表紙のラベル）へ移した。ここは
+           いまの状態のバッジ（押すと切り替わる）と、開閉の操作だけの
+           行にする。                                              */
         '<div class="pg-h">' +
-          '<span class="nm">' + ev('name', it.name, 'line', '例：DHC 定期便') + '</span>' +
-          '<span class="cat">' + ev('category', it.category, 'line', '例：化粧品') + '</span>' +
-          '<span class="pol hb-' + b.tone + '">' + esc(bTxt) + '</span>' +
-          completeToggleHTML(b) +
-          pgCollapseHTML() + '</div>' +
+          badgeHTML(b, bTxt, 'pol-body') +
+          pgCollapseHTML() +
+        '</div>' +
+        /* 右ページは3枚の紙に分ける。囲みを外したぶんの奥行きを、
+           カードの反復ではなく紙の前後で出す。分け方は造形の都合では
+           なく出どころ：本紙＝サービス側にある事実、別紙＝本人と家族が
+           あとから足したもの（保険の証券／確認の紙／手紙と同じ考え方を、
+           この領域の出どころで引き直す）。                          */
         '<div class="pg-body">' +
           (undecided ? sortBlockHTML() : '') +
           statusHTML(it) +
-          sectionHTML('policy', 't-pu', IC.flag, '対応方針', '', policyHTML(it), false, true) +
-          sectionHTML('account', 't-gr', IC.person, S.GROUP_UI[it.group].accountTitle,
-            S.GROUP_UI[it.group].accountSub, accountHTML(it), false, true) +
-          sectionHTML('proc', 't-rd', IC.clip, '手続き方法', procSub(it), procedureHTML(it), false, true) +
-          sectionHTML('memo', 't-cr', IC.pen, 'メモ', '', memoHTML(it), false, true) +
+          /* 本人が決めたこと。サービス側にはない、この人の意思。 */
+          '<div class="pg-slip pg-slip-intent">' +
+            sectionHTML('policy', IC.flag, '対応方針', '', policyHTML(it), false, true) +
+          '</div>' +
+          /* 本紙。サービス側にある事実を、1枚の白い用紙の上で太罫だけで割る。 */
+          '<div class="pg-sheet">' +
+            sectionHTML('account', IC.person, S.GROUP_UI[it.group].accountTitle,
+              S.GROUP_UI[it.group].accountSub, accountHTML(it), false, true) +
+            sectionHTML('proc', IC.clip, '手続き方法', procSub(it), procedureHTML(it), false, true) +
+          '</div>' +
+          /* 家族への申し送り。もう一枚の足した紙。 */
+          '<div class="pg-slip pg-slip-memo">' +
+            sectionHTML('memo', IC.pen, 'メモ', '', memoHTML(it), false, true) +
+          '</div>' +
         '</div>' +
       '</div>';
   }
@@ -814,6 +868,10 @@
     return '<div class="linked-list">' + f.linked.map(linkedRowHTML).join('') + '</div>';
   }
 
+  /* 支払い手段の種別。左ページの札に出す語（spineCardInfoHTML の
+     見出し語と対）。                                              */
+  const CARD_KIND = { card: 'クレジットカード', bank: '口座振替', emoney: '電子マネー' };
+
   function cardSheetHTML(card) {
     const f = S.cardFacts(card.id);
     const b = S.itemBadge(card);
@@ -821,26 +879,39 @@
     return '<div class="rings">' +
         '<span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>' +
         '<span class="ring r4"></span><span class="ring r5"></span>' +
-        '<div class="filecard"><small>支払いカード</small><b>' + esc(card.name) + '</b>' +
-          '<div class="rule" style="background:#4681a0"></div></div>' +
+        markWatermarkHTML(card.name) +
+        '<div class="rlabel">' +
+          markHTML(card.name, 'rmark') +
+          '<b class="rname">' + esc(card.name) + '</b>' +
+          '<small class="rcat">' + esc(card.info.issuer) + '</small>' +
+          '<span class="rlabel-ops">' +
+            badgeHTML(b, bTxt, 'pol-title') +
+          '</span>' +
+        '</div>' +
+        '<div class="filecard"><small>支払い手段</small><b>' + esc(CARD_KIND[card.kind] || 'その他') + '</b></div>' +
         spineCardInfoHTML(card) +
         statementCheckedHTML(card) +
       '</div>' +
       '<div class="page">' +
-        '<div class="pg-h"><span class="nm">' + esc(card.name) + '</span>' +
-          '<span class="cat">' + esc(card.info.issuer) + '</span>' +
-          '<span class="pol hb-' + b.tone + '">' + esc(bTxt) + '</span>' +
-          completeToggleHTML(b) +
-          pgCollapseHTML() + '</div>' +
+        '<div class="pg-h">' +
+          badgeHTML(b, bTxt, 'pol-body') +
+          pgCollapseHTML() +
+        '</div>' +
         '<div class="pg-body">' +
           (f.linked.length ? '<div class="pc-warn" style="margin:0 4px 18px">' + IC.warn +
             'このカードを止めると、' + f.linked.length + '件の支払いが止まります</div>' : '') +
           statusHTML(card, '家族') +
-          sectionHTML('policy', 't-pu', IC.flag, '対応方針', '', policyHTML(card, '家族の方針'), false, true) +
-          sectionHTML('account', 't-gr', IC.person, S.GROUP_UI.card.accountTitle, '', accountHTML(card), false, true) +
-          sectionHTML('proc', 't-rd', IC.clip, '手続き方法', procSub(card), procedureHTML(card), false, true) +
-          sectionHTML('clinked', 't-cr', IC.link, '紐づく契約一覧', '（' + f.linked.length + '件）', clinkedHTML(card), false, false) +
-          sectionHTML('memo', 't-cr', IC.pen, 'メモ', '', memoHTML(card), false, true) +
+          '<div class="pg-slip pg-slip-intent">' +
+            sectionHTML('policy', IC.flag, '対応方針', '', policyHTML(card, '家族の方針'), false, true) +
+          '</div>' +
+          '<div class="pg-sheet">' +
+            sectionHTML('account', IC.person, S.GROUP_UI.card.accountTitle, '', accountHTML(card), false, true) +
+            sectionHTML('proc', IC.clip, '手続き方法', procSub(card), procedureHTML(card), false, true) +
+            sectionHTML('clinked', IC.link, '紐づく契約一覧', '（' + f.linked.length + '件）', clinkedHTML(card), false, false) +
+          '</div>' +
+          '<div class="pg-slip pg-slip-memo">' +
+            sectionHTML('memo', IC.pen, 'メモ', '', memoHTML(card), false, true) +
+          '</div>' +
         '</div>' +
       '</div>';
   }
@@ -867,19 +938,26 @@
     if (openId) renderSheet();
   }
 
-  /* 背後に覗く台紙の色は、索引の束（.ib-pre/.ib-post）と同じ軸で
-     出し分ける。カードはどちらの軸にも乗らないので、今はどちらの
-     クラスも付けない（クリームのまま）。                          */
+  /* 見開きの系統色は、索引の束（.ib-pre/.ib-post/.ib-undecided）と
+     同じ軸で出し分ける。表紙の3面・節見出しの太罫・背後の台紙まで
+     すべてこのクラスが決める（area.css の --bd-*）。支払い手段は
+     どちらの時期にも乗らないので、素の .dtl-file＝中立のまま。   */
+  const DTL_GROUP = ['dtl-pre', 'dtl-post', 'dtl-undecided'];
+  function setDtlGroup(g) {
+    DTL_GROUP.forEach(c => dtlFile.classList.remove(c));
+    if (g) dtlFile.classList.add('dtl-' + g);
+  }
+
   function renderSheet() {
     detailNav.innerHTML = detailNavHTML();
     const it = S.findItem(openId);
     if (it) {
-      dtlFile.classList.toggle('dtl-post', it.group === 'post');
+      setDtlGroup(it.group);
       sheet.innerHTML = sheetHTML(it); focusEditor(); return;
     }
     const c = S.findCard(openId);
     if (c) {
-      dtlFile.classList.remove('dtl-post');
+      setDtlGroup(null);
       sheet.innerHTML = cardSheetHTML(c); focusEditor(); return;
     }
   }
