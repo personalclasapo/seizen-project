@@ -25,20 +25,29 @@
        editSection … 節ごとにまとめて開く { key } */
   let editing = null;
   let editSection = null;
+  /* 足したばかりの行へ画面を送るか（次の render() で一度だけ実行）。 */
+  let scrollToEditingAfterRender = false;
   /* 削除の確認を開いている行の id。 */
   let confirmDelete = null;
+  /* 候補ピッカーの開き具合。picker=どの項目の候補パネルを開いているか
+     （'condition' | 'treatment' | 'device' | null）。pickerGroups=その中で
+     展開している系統見出し（"condition/循環器・血管" のような鍵の集合）。 */
+  let picker = null;
+  let pickerGroups = new Set();
+  /* 治療中の病気・状態を全件見せるモーダルを開いているか。 */
+  let condModal = false;
 
-  /* どの節が、どの path を受け持つか。前方一致。 */
+  /* どの節が、どの path を受け持つか。前方一致。
+     左エリア＝本人そのもの／右エリア＝場面。                         */
   const SEC_OF = {
-    person:  ['medical.person.'],
-    clinic:  ['medical.clinics'],
-    pharm:   ['medical.pharmacies'],
-    /* 病名と治療は1つの節（体の状態）にまとめたので、両方を受け持つ。 */
-    cond:    ['medical.conditions', 'medical.treatments'],
-    tell:    ['medical.tells'],
-    meds:    ['medical.meds.'],
-    docs:    ['medical.pocket', 'medical.papers'],
-    slips:   ['medical.voice', 'medical.memo'],
+    person:   ['medical.person.'],
+    current:  ['medical.conditions', 'medical.treatments', 'medical.devices'],
+    vitals:   ['medical.allergies', 'medical.adverse'],
+    daily:    ['medical.daily.'],
+    memo:     ['medical.memo'],
+    visit:    ['medical.clinics'],
+    medsrc:   ['medical.medSources'],
+    supplies: ['medical.supplies'],
     level:   ['care.level', 'care.place'],
     manager: ['care.manager.'],
     service: ['care.services'],
@@ -56,8 +65,6 @@
   const XMARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
     'stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
   const TEL = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2Z"/></svg>';
-  const WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
-    'stroke-linecap="round"><path d="M12 4 2.5 20.5h19L12 4Z"/><path d="M12 10v4.5M12 17.6v.1"/></svg>';
 
   const svgIc = (d, w) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
     'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="' +
@@ -74,8 +81,14 @@
   };
   const PERSON_IC = '<circle cx="12" cy="7.6" r="3.5"/>' +
     '<path d="M4.8 20.5c0-4 3.2-7 7.2-7s7.2 3 7.2 7"/>';
+  /* 顔写真のプレースホルダー。写真が未登録のあいだ、枠の中に置く
+     本人のしるし（正本 §11：空欄と該当なしを同じにしない――ここは
+     「まだ貼っていない」欄なので、空白ではなく人の形を残す）。 */
+  const PHOTO_PH = '<svg class="sf-photo-ph" viewBox="0 0 72 72" aria-hidden="true">' +
+    '<circle cx="36" cy="28" r="13" fill="#c8bfa6"/>' +
+    '<path d="M13 66c0-13 10-22 23-22s23 9 23 22Z" fill="#c8bfa6"/>' +
+    '</svg>';
   const CLINIC_IC = '<path d="M4 20V7.5L12 4l8 3.5V20"/><path d="M12 9.5v6M9 12.5h6"/>';
-  const PHARM_IC = '<path d="M8.5 4.5h7M12 4.5v3"/><path d="M6.5 9.5h11L16 20H8L6.5 9.5Z"/>';
   /* 節見出しの記号。番号のかわりに、その節が何の話かを記号で言う。 */
   const WARN_IC  = '<path d="M12 3.5 2 20.5h20L12 3.5Z"/><path d="M12 10v4.6M12 17.6v.1"/>';
   const PULSE_IC = '<path d="M3 12.5h3.6l2-5.2 3 10 2.4-6.4 1.6 1.6H21"/>';
@@ -87,6 +100,35 @@
                    '<path d="M9 12h6M9 15.5h4"/>';
   /* 要介護度＝制度上の区分。段階を表す階段の記号。 */
   const LEVEL_IC = '<path d="M3.5 19h5v-4h5v-4h5.5"/><path d="M19 11v8H3.5"/>';
+
+  /* 「体に合わないもの」（アレルギー・副作用歴）の欄のしるし。
+     警告標識（三角＋！・丸に×）はこの面には強すぎるので使わない。
+     手つきは他の欄の見出し記号と同じ静かな線画――薬包と、それを
+     はねる小さな線。 */
+  const VITALS_IC =
+    '<path d="M9 3.5h6M10 3.5v3.2L5.5 15c-1 1.9-.2 4 1.7 4.6.5.2 1 .3 1.6.3h6.4' +
+    'c.6 0 1.1-.1 1.6-.3 1.9-.6 2.7-2.7 1.7-4.6L14 6.7V3.5"/>' +
+    '<path d="M7 12.5h10"/><path d="M8.5 8.5 15.5 15.5"/>';
+  /* 普段の状態｜会話・認知・移動・食事。 */
+  const TALK_IC = '<path d="M4 5.5h16v10H9.5L5 19v-3.5H4Z"/>';
+  const COG_IC  = '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.2 2"/>';
+  const WALK_IC = '<circle cx="14" cy="4.5" r="1.9"/>' +
+    '<path d="M10.5 21 12 14.5l-3-2 1-4.5 4-1 2.5 3.5H20"/>' +
+    '<path d="M11 12.5 7 14l-2.5 5"/>';
+  const MEAL_IC = '<path d="M6 3v7a2.4 2.4 0 0 0 4.8 0V3M8.4 3v18M18 3c-1.8 1-2.8 3-2.8 6.5 0 2 1 3 2 3.3V21"/>';
+
+  /* 薬を確認するところ｜入口の種類ごとの記号。 */
+  const MEDSRC_IC = {
+    paper:  '<path d="M6.5 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-11Z"/><path d="M6.5 3v18"/>' +
+            '<path d="M9.5 8h6M9.5 12h6"/>',
+    digital:'<rect x="6.5" y="2.5" width="11" height="19" rx="2.4"/><path d="M10.5 18.6h3"/>',
+    myna:   '<rect x="3.5" y="6" width="17" height="12" rx="1.6"/>' +
+            '<circle cx="8.8" cy="11" r="2"/>' +
+            '<path d="M5.6 15.6c0-1.8 1.4-2.8 3.2-2.8s3.2 1 3.2 2.8"/>' +
+            '<path d="M14.5 10.5h4M14.5 13.5h4"/>',
+    pharmacy: '<path d="M8.5 4.5h7M12 4.5v3"/><path d="M6.5 9.5h11L16 20H8L6.5 9.5Z"/>',
+    other:  '<circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/>'
+  };
 
   /* ── 編集プリミティブ ───────────────────────────────
      ev()       … 一行／複数行テキスト。開いていれば入力欄。
@@ -102,13 +144,24 @@
       if (kind === 'area')
         return '<textarea class="i-ef i-ef-area" data-ef="1" data-path="' + path + '"' + ph + '>' +
           esc(value || '') + '</textarea>';
+      /* 生年月日は自由記述にしない。カレンダーから選ぶ日付欄にする。
+         未入力のときは、今日を基準にした近年ではなく1990年あたりを
+         初期表示にしたい（家族の生年月日は今日から遠いことが多い）。
+         value を仮の日付にすると「もう入力済み」に見えてしまうので、
+         value は空のまま、min でピッカーの開始年だけ1990年に寄せる。 */
+      if (kind === 'date')
+        return '<input type="date" class="i-ef" data-ef="1" data-path="' + path + '"' +
+          (value ? '' : ' min="1990-01-01"') +
+          ' value="' + esc(value || '') + '">';
       return '<input class="i-ef" data-ef="1" data-path="' + path + '"' + ph +
         ' value="' + esc(value || '') + '">';
     }
     const empty = value === '' || value == null;
-    return '<span class="i-ev' + (empty ? ' i-ev-empty' : '') + '" data-edit="' + path +
+    const shown = kind === 'date' ? S.formatBirth(value) : value;
+    const isEmpty = kind === 'date' ? !shown : empty;
+    return '<span class="i-ev' + (isEmpty ? ' i-ev-empty' : '') + '" data-edit="' + path +
       '" data-kind="' + (kind || 'line') + '">' +
-      (empty ? esc(placeholder || '未入力') : esc(value)) + '</span>';
+      (isEmpty ? esc(placeholder || '未入力') : esc(shown)) + '</span>';
   }
   function evSelect(path, value, choices) {
     if (isOpen(path)) {
@@ -120,6 +173,25 @@
     const empty = value === '' || value == null;
     return '<span class="i-ev' + (empty ? ' i-ev-empty' : '') + '" data-edit="' + path +
       '" data-kind="select">' + (empty ? '未選択' : esc(value)) + '</span>';
+  }
+
+  /* 部位セレクト。継続処置・体内機器の行に付く。value は部位の鍵
+     （'chest' など）。空文字は「候補から自動で当てる」。generic な
+     change ハンドラが el.value をそのまま書き戻すので、表示は
+     部位名でも保存されるのは鍵。 */
+  function evRegionSelect(path, value) {
+    const cur = value || '';
+    if (isOpen(path)) {
+      const opt = (v, label, sel) =>
+        '<option value="' + v + '"' + (sel ? ' selected' : '') + '>' + esc(label) + '</option>';
+      return '<select class="i-ef i-ef-sel cef-region" data-ef="1" data-path="' + path + '">' +
+        opt('', '部位：自動', !cur) +
+        S.BODY_REGIONS.filter(r => r.key !== 'unknown').map(r =>
+          opt(r.key, r.label, cur === r.key)).join('') +
+        opt('unknown', '部位未設定', cur === 'unknown') +
+        '</select>';
+    }
+    return '';
   }
 
   /* 状態バッジ。押すと次の状態へ回る（正本 §11）。 */
@@ -139,11 +211,15 @@
   }
   function secOn(key) { return editSection && editSection.key === key; }
 
-  /* 行を消すボタン（節を開いているときだけ出す）。 */
+  /* 行を消すボタン（節を開いているときだけ出す）。1度目のクリックで
+     「削除しますか？」の文字を出す――アイコンの意味を途中で変えない
+     （✕ が ✓ に化けると、何が起きるのか読めない）。 */
   function delBtn(id) {
     if (confirmDelete === id) {
-      return '<button type="button" class="rowdel" data-delyes="' + id +
-        '" aria-label="削除する" style="border-color:#e0b3ae;color:#c9544b">' + DONE + '</button>';
+      return '<span class="rowdel-ask">削除しますか？' +
+        '<button type="button" class="rowdel-yes" data-delyes="' + id + '">削除</button>' +
+        '<button type="button" class="rowdel-no" data-delno="1">やめる</button>' +
+        '</span>';
     }
     return '<button type="button" class="rowdel" data-del="' + id +
       '" aria-label="この行を削除">' + XMARK + '</button>';
@@ -193,22 +269,889 @@
       '</svg>' +
       /* しおり。上から垂れ、先が V に切られている。 */
       '<svg class="bk-ribbon" viewBox="0 0 22 96" aria-hidden="true">' +
-        '<path d="M0 0h22v78l-11-9-11 9Z" fill="#c58c55"/>' +
+        '<path d="M0 0h22v96l-11-11-11 11Z" fill="#c58c55"/>' +
         '<path d="M0 0h22v10H0Z" fill="#a97243" fill-opacity=".55"/>' +
-        '<path d="M14 0h8v78l-4-3.3Z" fill="#000" fill-opacity=".12"/>' +
+        '<path d="M14 0h8v96l-4-4Z" fill="#000" fill-opacity=".12"/>' +
       '</svg>';
   }
 
-  /* 節。番号は振らない。①→⑦の順に埋めていくものではなく、救急で
-     読む節（伝えること）も、辿るための節（薬の入口）も、性質が別だから
-     （正本 §12：入力率を進捗にしない）。見出しは記号＋文字で分ける。 */
-  function medSection(key, icon, title, lead, body, cls) {
-    return '<div class="bs ' + (cls || '') + '">' +
-      '<div class="bs-h"><span class="bs-ic">' + svgIc(icon, 16) + '</span>' +
-      '<h5>' + esc(title) + '</h5>' +
-      (lead ? '<small>' + esc(lead) + '</small>' : '') +
-      editBtn(key) + '</div>' +
-      '<div class="bs-body">' + body + '</div></div>';
+  /* 場面。右面の単位はこれ1種類だけ。「いつ・何が起きたとき」に
+     何を見るかで割る。項目の種類で割ると分類の羅列になる。
+
+     場面ごとに重みが違う（救急＞通院＞家族が動くとき）ので、見出しの
+     大きさ・地・上の余白は CSS 側の .sc-emg / .sc-visit / .sc-family
+     が持つ。ここは骨だけ。番号は振らない（順に埋めるものではない）。 */
+  function scene(key, title, lead, body, cls) {
+    return '<section class="scene ' + (cls || '') + '">' +
+      '<div class="scene-h">' +
+        '<h5>' + esc(title) + '</h5>' +
+        (lead ? '<small>' + esc(lead) + '</small>' : '') +
+        editBtn(key) + '</div>' +
+      '<div class="scene-body">' + body + '</div></section>';
+  }
+
+  /* 左面＝本人そのもの。場面によらず変わらない事実だけを置く。
+     器は敷かないが、罫だけで流すと13個の等価なスロットに見える
+     （＝羅列）。手帳の記入面には欄の「格」があり、それが階層に
+     なっている――一等は太い罫と記入枠、二等は罫の走る記入欄、
+     三等は細い罫の備考欄。左面もその3つの格で組む。
+
+       一等 .sf-head  … 識別欄（氏名・生年月日・年齢・血液型）
+       二等 .sf-sec   … 現在の医療状態
+       三等 .sf-sub   … 普段の状態・メモ                            */
+
+  /* 一等｜識別欄。手帳の表紙裏にある記入欄。救急で最初に読まれるので、
+     面の頭として太い罫で締める。生年月日・年齢・血液型はどれも同格の
+     記入欄で並べ、罫の上に書く（血液型だけを枠で囲うと、四角に入った
+     一文字が診断名のように強く読めてしまうため、他の欄と同じ扱いに
+     揃える）。
+
+     年齢は生年月日から決まる値なので、別に入力させると二重管理に
+     なり、生年月日を直しても値がずれたまま残る（正本の線）。だから
+     年齢欄は編集を持たず、生年月日から毎回計算して表示するだけ。   */
+  function personBlock() {
+    const p = S.data.medical.person || {};
+    const age = S.ageFromBirth(p.birth);
+    /* 生年月日の input[type=date] はブラウザのネイティブ最小幅を持ち、
+       CSS だけでは3列の横並びに縮め切れない（左面の幅を超えて右の
+       場面パネルに重なって見えたのはこれが原因）。編集中だけ生年月日
+       を単独の行にし、年齢・血液型はその下に回す。表示専用のときは
+       文字列なので幅の心配が無く、今まで通り横一列でよい。         */
+    const editingPerson = secOn('person');
+    /* 顔写真。手帳に貼った一枚の証明写真。押すと差し替え（ファイルを
+       選ぶ）、写真があれば右肩に外すボタン。写真は data URI で持つ
+       ので、他の欄と同じ「その場で書き換え」の手つきに寄せる。 */
+    const photo = '<button type="button" class="sf-photo' +
+        (p.photo ? ' has' : '') + '" data-photo="1" ' +
+        'aria-label="' + (p.photo ? '顔写真を差し替える' : '顔写真を貼る') + '">' +
+        (p.photo
+          ? '<img src="' + esc(p.photo) + '" alt="本人の顔写真">'
+          : PHOTO_PH + '<span class="sf-photo-hint">写真を貼る</span>') +
+      '</button>' +
+      (p.photo
+        ? '<button type="button" class="sf-photo-clr" data-photoclr="1" ' +
+          'aria-label="顔写真を外す">' + XMARK + '</button>'
+        : '');
+    return '<div class="sf-head">' +
+      '<div class="sf-idcard">' +
+      '<div class="sf-photo-wrap">' + photo + '</div>' +
+      '<div class="sf-idmain">' +
+      '<div class="sf-nm">' +
+        '<span class="sf-lb">本人</span>' +
+        '<h4>' + ev('medical.person.name', p.name, 'line', '氏名') + '</h4>' +
+        editBtn('person') +
+      '</div>' +
+      '<div class="sf-idrow' + (editingPerson ? ' sf-idrow-edit' : '') + '">' +
+        '<div class="sf-fld">' +
+          '<span class="sf-fld-lb">生年月日</span>' +
+          '<span class="sf-fld-v">' +
+            ev('medical.person.birth', p.birth, 'date', '生年月日') + '</span>' +
+        '</div>' +
+        '<div class="sf-fld sf-fld-age">' +
+          '<span class="sf-fld-lb">年齢</span>' +
+          '<span class="sf-fld-v sf-fld-ro">' +
+            (age == null ? '<span class="i-ev-empty">—</span>' : esc(age + '歳')) + '</span>' +
+        '</div>' +
+        '<div class="sf-fld sf-fld-blood">' +
+          '<span class="sf-fld-lb">血液型</span>' +
+          '<span class="sf-fld-v">' +
+            evSelect('medical.person.blood', p.blood, S.BLOOD_TYPES) + '</span>' +
+        '</div>' +
+      '</div>' +
+      '</div>' + /* .sf-idmain */
+      '</div>' + /* .sf-idcard */
+      '</div>';
+  }
+
+  /* ═══ 現在の医療状態 ═══════════════════════════════════
+     5項目。入力単位が項目ごとに違う（病名／継続行為／存在物／
+     原因＋反応／薬・治療＋起きたこと）ので、同じ「候補チップ」
+     フォームにしない（参考：入力分類と表示構造を意図的に分ける）。
+
+       閲覧 … 相関図。病気 →「治療中」→ 治療・機器。下にアレルギー・
+              副作用歴の囲み。
+       編集 … 項目ごとに「あり／なし」を選び、「あり」の
+              ときだけ中身のフォームを開く。「なし」＝確認したうえで
+              無い。まだ押していないのは空欄（§11）。                                        */
+
+  /* 病名の脇のしるし。診断名は描けないので、関わる臓器・系統の形で
+     見分ける（診察票のアイコンの手つき）。viewBox 0 0 24 24、線。
+     左右対称に組めるものは軸 x=12 で対称にして、雑に見えないよう
+     にする。 */
+
+  /* 心臓｜左右対称のハート。上の窪みと下の尖りを軸に合わせる。 */
+  const IC_HEART =
+    '<path d="M12 20.5C12 20.5 3.5 15 3.5 8.8 3.5 5.8 5.9 3.8 8.5 3.8 10.4 3.8 11.4 4.9 12 6' +
+    'c.6-1.1 1.6-2.2 3.5-2.2 2.6 0 5 2 5 5C20.5 15 12 20.5 12 20.5Z"/>';
+  /* 心臓＋心電図｜ハートの中を横切る1拍ぶんの波形。 */
+  const IC_HEART_ECG = IC_HEART +
+    '<path d="M6.5 11.2h2.2l1-2.2 1.6 5 1.4-4 .9 1.2h2.4"/>';
+  /* 脳｜左右2つの半球。上部が波打ち、下に脳幹。軸 x=12 で対称に
+     組み、片側だけの「豆」に見えないようにする。 */
+  const IC_BRAIN =
+    /* 外周（左半球の上→前頭→下、右も対称）。 */
+    '<path d="M12 5.2c-1-1-2.6-1.3-3.9-.6-1 .5-1.7 1.5-1.9 2.6-1.1.3-2 1.2-2.2 2.4' +
+    '-.9.6-1.4 1.7-1.2 2.8.1 1 .7 1.9 1.6 2.4-.1 1.2.5 2.4 1.6 3 .9.5 2 .5 2.9 0' +
+    'M12 5.2c1-1 2.6-1.3 3.9-.6 1 .5 1.7 1.5 1.9 2.6 1.1.3 2 1.2 2.2 2.4' +
+    '.9.6 1.4 1.7 1.2 2.8-.1 1-.7 1.9-1.6 2.4.1 1.2-.5 2.4-1.6 3-.9.5-2 .5-2.9 0"/>' +
+    /* 正中の溝と脳幹。 */
+    '<path d="M12 5.2v10.6"/>' +
+    '<path d="M10.5 15.8c0 2 .5 3.5 1.5 4.5 1-1 1.5-2.5 1.5-4.5"/>' +
+    /* しわ（回）を左右対称に。 */
+    '<path d="M8.4 8.2c.9.7 1.9.8 3 .3M15.6 8.2c-.9.7-1.9.8-3 .3' +
+    'M8 12c1 .8 2.2.9 3.4.2M16 12c-1 .8-2.2.9-3.4.2"/>';
+  /* 肺｜気管（縦）→ 左右の気管支 → 2つの肺葉。木のような形。 */
+  const IC_LUNGS =
+    '<path d="M12 3.2v6.3M8.6 7.6 12 9.5l3.4-1.9"/>' +
+    '<path d="M8.6 7.6c.4 2.9-1.6 4.6-3.2 7.3C4.3 16.8 3.8 18.8 3.8 20c0 1.1.9 1.8 2.2 1.5' +
+    '2.6-.5 4.6-2.3 4.6-5.3V9.5Z"/>' +
+    '<path d="M15.4 7.6c-.4 2.9 1.6 4.6 3.2 7.3 1.1 1.9 1.6 3.9 1.6 5.1 0 1.1-.9 1.8-2.2 1.5' +
+    '-2.6-.5-4.6-2.3-4.6-5.3V9.5Z"/>';
+  /* 腎臓｜そら豆を2つ、内側にへこみを向けて。上に血管が1本ずつ。 */
+  const IC_KIDNEY =
+    '<path d="M8.6 5C6 5 4.5 7.6 4.5 11.5S6 18 8 18c1.8 0 2.7-1.4 2.7-3.3 0-1.5-.9-2.3-.9-3.7' +
+    's.9-2.3.9-3.6C10.7 6 10 5 8.6 5Z"/>' +
+    '<path d="M15.4 5C18 5 19.5 7.6 19.5 11.5S18 18 16 18c-1.8 0-2.7-1.4-2.7-3.3 0-1.5.9-2.3.9-3.7' +
+    's-.9-2.3-.9-3.6C13.3 6 14 5 15.4 5Z"/>' +
+    '<path d="M8.6 5V3M15.4 5V3"/>';
+  /* 血糖（糖尿病）｜血のしずく＋中に「＋」。 */
+  const IC_DROP =
+    '<path d="M12 3.5c3.4 4.2 5.5 7.3 5.5 10.3a5.5 5.5 0 0 1-11 0c0-3 2.1-6.1 5.5-10.3Z"/>';
+  const IC_DROP_PLUS = IC_DROP + '<path d="M12 10v6M9 13h6"/>';
+  /* 骨｜対角の骨幹＋両端の二瘤の骨頭。骨幹は太い線、骨頭は円を
+     2つずつ重ねる。 */
+  const IC_BONE =
+    '<path d="M7.5 7.5 16.5 16.5" stroke-width="2.4"/>' +
+    '<circle cx="6" cy="6.4" r="2.1"/><circle cx="7.6" cy="4.8" r="2.1"/>' +
+    '<circle cx="18" cy="17.6" r="2.1"/><circle cx="16.4" cy="19.2" r="2.1"/>';
+  /* 関節｜2つの骨頭が向き合う。 */
+  const IC_JOINT =
+    '<path d="M9 4c0 3-2 4-2 6.5S9 15 9 18M15 4c0 3 2 4 2 6.5S15 15 15 18"/>' +
+    '<circle cx="8" cy="10.5" r="1.4"/><circle cx="16" cy="10.5" r="1.4"/>';
+
+  const COND_IC = {
+    '高血圧':   IC_HEART_ECG,
+    '糖尿病':   IC_DROP_PLUS,
+    '脂質異常症': IC_DROP,
+    '心房細動・不整脈': IC_HEART_ECG,
+    '心不全':   IC_HEART,
+    '狭心症・心筋梗塞': IC_HEART_ECG,
+    '脳梗塞・脳出血後': IC_BRAIN,
+    '喘息':     IC_LUNGS,
+    'COPD・慢性呼吸器疾患': IC_LUNGS,
+    '慢性腎臓病': IC_KIDNEY,
+    'がん':     '<circle cx="12" cy="12" r="4.5"/><path d="M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M5.6 5.6l2.5 2.5M15.9 15.9l2.5 2.5M18.4 5.6l-2.5 2.5M8.1 15.9l-2.5 2.5"/>',
+    '認知症':   IC_BRAIN,
+    'パーキンソン病': IC_BRAIN,
+    'てんかん': IC_BRAIN,
+    '骨粗しょう症': IC_BONE,
+    '関節リウマチ': IC_JOINT,
+    'うつ病・精神疾患': IC_BRAIN
+  };
+  const COND_FALLBACK =
+    '<circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v7M8.5 12h7"/>';
+  /* ── 相関図（閲覧）───────────────────────────────── */
+
+  /* 上段の病名1つ。アイコン → 病名 → 一言（淡く）。 */
+  function condCell(r) {
+    const ic = COND_IC[r.text] || COND_FALLBACK;
+    const note = S.conditionNote(r);
+    return '<li class="cmap-cell">' +
+      '<span class="cmap-ic">' + svgIc(ic, 26) + '</span>' +
+      '<span class="cmap-tx">' + esc(r.text) + '</span>' +
+      (note ? '<span class="cmap-note">（' + esc(note) + '）</span>' : '') +
+      '</li>';
+  }
+  /* 上段に並べる病名は4つまで。5つ以上あるときは4つ目の後ろに
+     「ほか◯件」を置き、押すと全件をモーダルで見せる。 */
+  const COND_MAX = 4;
+  /* 「あり」でないときの一言。「なし」＝確認したうえで無い、
+     それ以外（未確認）＝まだ書かれていない（§11）。 */
+  function presenceNote(kind) {
+    return S.grpOf(kind).presence === 'なし' ? '該当なし' : 'まだ書かれていません';
+  }
+  /* ── 体の処置マップ ───────────────────────────────────
+     医療機器・続けている処置を、名前を並べたリストではなく人体
+     シルエットに刺したピンで見せる（正本 §4-2：造形を持つ）。
+     救急でまず要るのは「体の中に金属があるか」「どこに何が入って
+     いるか」――部位が形で分かることが要点。
+
+       体内にある機器 … 塗りの円板のピン（緑）
+       続けている処置 … 白抜きのリングのピン（オレンジ）
+       部位未設定     … 体の脇に置く（§11：空欄と同じにしない）
+
+  ── 人体シルエット ───────────────────────────────────
+     `assets/body-front.svg` を読み込んで使う。自前のベジェ曲線で
+     描くのは諦めた――関節（肩・肘・手・膝・足首）のある人体の輪郭は
+     座標を手で置いて詰める作業に向かず、何度書き直しても腕が胴に
+     飲まれる／脚が棒になる、といった破綻が残った。
+
+     素材は Wikimedia Commons の Human silhouette gender neutral.svg
+     （パブリックドメイン／CC0）から正面の1体を取り出したもの。
+     出どころと理由は assets/body-front.README.md に置いた。
+
+     CLAUDE.md の「モチーフは SVG で描く」は「角丸の矩形で代用するな
+     ＝対象に見える造形を出せ」という要求なので、既製の PD 素材を
+     使うことはこれに反しない（破綻した自作を置くほうが反する）。
+
+     素材はここに直接埋め込む。ファイルを fetch すると file:// で開いた
+     ときに CORS で拒まれ、体だけが消える（プロトタイプは file:// で
+     直接開いて確認する）。5.8KB なので埋め込んで差し支えない。元の
+     ファイルは assets/body-front.svg に残してあるので、描き替えたい
+     ときはそちらを直してここへ貼り直す。
+
+     viewBox は 0 0 151 321、中心軸 x=75.5。部位のアンカーは
+     state.js の BODY_REGIONS がこの座標系で持つ。                  */
+  const BODY_VB = { w: 151.02, h: 321.46 };
+  const BODY_ART =
+    '<g transform="translate(-3.486,-19.026)"><path transform="matrix(1,0,0,1,0,0)" d="M79 54' +
+    '.282H68.824c.038 4.586-1.385 8.232-6.538 11.407-7.58 4.67-9.766 1.589-16.504 5.364-7.18 ' +
+    '4.022-9.839 16.322-12.894 25.27-2.701 7.914-3.117 16.702-4.642 24.654-.96 5.011-3.727 6.' +
+    '429-4.641 12.172-1.757 11.036-3.522 24.117-4.596 34.05-.276 2.561-2.591 3.421-3.874 4.53' +
+    '8-1.219 1.06-2.22 1.889-3.999 3.642-.543.535-.672 1.678-1.192 2.751-.444.915-1.52 1.539-' +
+    '1.807 2.352-.817 2.305-3.163 3.662-2.55 4.548.571.823 2.963-.165 4.11-.981.735-.523 1.36' +
+    '2-1.352 1.457-2.282.916-.331 2.108-2.771 2.696-2.658.255.049.358 4.46-.575 7.508-.363 1.' +
+    '188-.67 1.746-.674 2.528-.006 1.006-.16 3.338-.28 4.41-.178 1.575.308 3.032 1.256 3.104.' +
+    '221.017 1.34-.282 1.348-2.017.003-.633.08-1.127.196-1.94.2-1.41 1.494-4.138 1.725-5.36.0' +
+    '73-.386.352-1.376.62-1.344.082.01-.405 2.901-.686 4.113-.311 1.344.145 2.27-.003 5.033-.' +
+    '129 2.425.035 3.81 1.266 3.857.389.015 1.558.013 1.588-3.536.01-1.045.366-2.909.633-4.71' +
+    '7.196-1.328.213-2.719 1.035-4.298-.045 1.672-.144 1.89-.228 3.518-.052 1-.405 6.609-.105' +
+    ' 4.25.126-.994-1.25 4.052.94 4.15.731.033 1.703-.889 2.127-7.134.124-1.828.436-4.288.92-' +
+    '5.66.278 1.198.342 1.72.34 2.309 0 .417.182 1.77-.008 3.119-.275 1.938-.424 3.24.59 3.35' +
+    '3.563.063 1.243-.686 1.658-2.026.144-.468.1-1.138.254-1.678.516-1.826.189-3.734.364-4.95' +
+    '8.24-1.666.536-2.492.768-3.213.238-.741.558-2.94.586-5.338.029-2.398-.968-2.465-.583-8.9' +
+    '18.384-6.453 8.154-18.314 9.738-27.921.473-2.867 1.92-5.448 2.661-8.237 1.276-4.802 1.52' +
+    '6-9.863 3.064-14.587 1.138-3.498 4.521-10.065 4.521-10.065s3.182 11.689 3.818 15.85c1.98' +
+    '5 12.977-3.566 24.173-6.04 38.02-1.97 11.022-4.033 18.866-3.904 33.362.153 17.179 3.793 ' +
+    '32.78 4.084 42.012.037 1.167-1.263 5.772-1.05 10.691.214 4.919-.912 11.933-.846 18.338.1' +
+    '54 15.018 4.941 26.356 6.856 33.113.94 3.315 2.014 8.499 2.072 11.147.078 3.488-1.054 3.' +
+    '863-1.29 5.849-.171 1.447 1.404 3.98 1.432 4.53 0 0-1.043 1.238-1.213 2-.24 1.068.41 2.0' +
+    '44-.065 2.763-.95 1.44-.887.8-1.376 1.576-.506.802-3.655 4.06-4.223 5.238-.448.93-.328 1' +
+    '.605-.152 2.641.244 1.439.81 2.807 2.358 2.398.478.321 1.065 1.026 1.485.333.117.795 1.6' +
+    '84.863 2.444.514 1.09.992 3.102.854 4.167-.008 1.423 1.224 5.613.643 5.96-1.689 1.357-.5' +
+    '92 1.717-1.758 1.496-3.055-.37-2.172-.335-4.06-.712-6.231-.295-1.69-.157-4.057.783-5.499' +
+    ' 1.485-2.278.777-6.197.323-6.985-.453-.787-.22-15.214.078-23.764.276-7.938 2.694-15.697 ' +
+    '3.063-23.632.157-3.378-.512-6.76-.365-10.138.199-4.552 1.255-9.03 1.678-13.566.389-4.172' +
+    '.263-8.388.79-12.545 1.88-14.845 6.893-16.859 8.44-44.09m0 0c1.548 27.231 6.56 29.245 8.' +
+    '441 44.09.527 4.157.401 8.374.79 12.545.423 4.537 1.48 9.014 1.678 13.566.147 3.379-.522' +
+    ' 6.76-.365 10.138.37 7.935 2.787 15.693 3.063 23.632.298 8.551.531 22.976.078 23.764-.45' +
+    '4.788-1.162 4.707.323 6.985.94 1.442 1.078 3.808.783 5.499-.377 2.17-.343 4.059-.712 6.2' +
+    '3-.22 1.298.139 2.464 1.496 3.056.347 2.332 4.537 2.913 5.96 1.689 1.065.862 3.078 1 4.1' +
+    '67.008.76.349 2.327.28 2.444-.514.42.693 1.007-.012 1.485-.333 1.548.409 2.114-.96 2.358' +
+    '-2.398.176-1.036.296-1.712-.152-2.64-.568-1.18-3.717-4.437-4.223-5.239-.489-.776-.426-.1' +
+    '36-1.376-1.576-.475-.72.174-1.695-.065-2.763-.17-.762-1.213-2-1.213-2 .028-.55 1.603-3.0' +
+    '83 1.432-4.53-.236-1.986-1.368-2.36-1.29-5.849.058-2.648 1.132-7.832 2.072-11.147 1.915-' +
+    '6.758 6.702-18.096 6.856-33.113.066-6.406-1.06-13.419-.847-18.338s-1.086-9.524-1.05-10.6' +
+    '91c.292-9.231 3.932-24.833 4.085-42.012.13-14.497-1.933-22.34-3.903-33.362-2.475-13.847-' +
+    '8.026-25.043-6.041-38.02.636-4.161 3.818-15.85 3.818-15.85s3.383 6.567 4.521 10.065c1.53' +
+    '8 4.725 1.788 9.786 3.064 14.587.74 2.789 2.188 5.37 2.66 8.237 1.585 9.607 9.355 21.468' +
+    ' 9.74 27.921s-.613 6.52-.584 8.918c.028 2.397.348 4.597.586 5.338.232.721.529 1.547.768 ' +
+    '3.213.176 1.224-.152 3.132.365 4.958.152.54.109 1.21.254 1.678.414 1.34 1.094 2.089 1.65' +
+    '7 2.026 1.014-.114.865-1.415.59-3.353-.19-1.348-.008-2.702-.009-3.119-.002-.59.063-1.111' +
+    '.341-2.31.484 1.373.796 3.833.92 5.661.424 6.245 1.396 7.167 2.128 7.134 2.189-.098.813-' +
+    '5.144.94-4.15.299 2.359-.054-3.25-.106-4.25-.084-1.628-.183-1.846-.228-3.518.822 1.58.83' +
+    '9 2.97 1.035 4.298.267 1.808.624 3.672.633 4.717.03 3.549 1.2 3.551 1.588 3.536 1.23-.04' +
+    '7 1.395-1.432 1.266-3.857-.148-2.764.308-3.689-.003-5.033-.281-1.212-.768-4.103-.685-4.1' +
+    '13.267-.032.546.958.619 1.344.231 1.222 1.524 3.95 1.726 5.36.116.813.192 1.307.195 1.94' +
+    '.008 1.735 1.127 2.034 1.348 2.017.948-.072 1.434-1.53 1.257-3.104-.12-1.072-.275-3.404-' +
+    '.28-4.41-.006-.782-.312-1.34-.675-2.528-.933-3.047-.83-7.46-.575-7.508.588-.113 1.78 2.3' +
+    '27 2.696 2.658.095.93.722 1.759 1.457 2.282 1.147.816 3.539 1.804 4.11.98.613-.885-1.733' +
+    '-2.242-2.55-4.547-.287-.813-1.363-1.437-1.807-2.352-.52-1.073-.649-2.216-1.192-2.751-1.7' +
+    '8-1.753-2.78-2.582-3.999-3.642-1.283-1.117-3.598-1.977-3.874-4.537-1.074-9.934-2.839-23.' +
+    '014-4.596-34.051-.914-5.743-3.68-7.16-4.641-12.172-1.525-7.951-1.94-16.74-4.642-24.653-3' +
+    '.055-8.95-5.714-21.25-12.894-25.271-6.738-3.775-8.923-.693-16.504-5.364-5.153-3.175-6.57' +
+    '6-6.821-6.538-11.407H78.998"/><path transform="matrix(1,0,0,1,0,0)" d="M79 59.397c-3.914' +
+    ' 0-7.324-2.644-10.175-5.115-.86-.746-1.197-4.034-1.914-4.866-.748.224-2.416-.196-2.946-1' +
+    '.32-.736-1.56-2.257-4.293-2.194-7.266.03-1.354.961-3.111 2.909-3.104-.284-9.913 5.816-16' +
+    '.699 14.317-16.7 8.5 0 14.6 6.786 14.319 16.7 1.947-.009 2.88 1.748 2.909 3.103.063 2.97' +
+    '3-1.457 5.705-2.193 7.266-.53 1.124-2.199 1.544-2.946 1.32-.717.833-1.053 4.12-1.914 4.8' +
+    '66-2.85 2.472-6.26 5.116-10.173 5.117-3.914 0-7.323-2.645-10.173-5.117-.86-.746-1.197-4.' +
+    '033-1.914-4.866-.747.224-2.415-.196-2.946-1.32-.735-1.56-2.256-4.293-2.192-7.266.029-1.3' +
+    '55.96-3.112 2.908-3.104-.282-9.913 5.819-16.699 14.32-16.699 8.5.001 14.6 6.787 14.316 1' +
+    '6.7 1.948-.007 2.88 1.75 2.909 3.104.063 2.973-1.458 5.705-2.194 7.266-.53 1.125-2.198 1' +
+    '.544-2.946 1.32-.717.832-1.053 4.12-1.914 4.866-2.85 2.47-6.26 5.115-10.174 5.115"/></g>';
+
+  /* ピン1本。体内機器＝塗りの円板（緑）、続けている処置＝白抜きの
+     リング（オレンジ）。 */
+  function bmapPin(x, y, filled) {
+    return '<circle class="bmap-pin ' + (filled ? 'is-dev' : 'is-tr') +
+      '" cx="' + x + '" cy="' + y + '" r="4.6"/>';
+  }
+
+  /* ラベルカード1枚（foreignObject の中の HTML）。品名を主に、目的・
+     補足を下に。部位が分かれば品名の後ろに括弧で添える（部位名だけを
+     見出しにはしない――リーダー線が体の該当部を指せば十分）。 */
+  /* note が体の部位そのもの（「右膝」など）を言っているかどうか。
+     そのときだけ品名の後ろに括弧で添える（部位名ラベルは出さない――
+     リーダー線が体の該当部を指せば十分）。 */
+  const NOTE_IS_PLACE = /^(右|左|両)?(膝|ひざ|肘|ひじ|肩|かた|手首|足首|手|足|腕|脚|胸|腹|首|頭|背|腰|眼|耳)/;
+  function bmapCard(it) {
+    const r = it.row;
+    const noteIsPlace = r.note && NOTE_IS_PLACE.test(r.note);
+    const suffix = noteIsPlace ? '（' + r.note + '）' : '';
+    const sub = [];
+    if (r.purpose) sub.push('<span class="bmc-purpose">' + esc(r.purpose) + '</span>');
+    if (r.note && !noteIsPlace) sub.push('<span class="bmc-note">' + esc(r.note) + '</span>');
+    return '<div class="bmap-card ' + (it.filled ? 'is-dev' : 'is-tr') + '">' +
+      '<span class="bmc-name">' + esc(r.text) + esc(suffix) + '</span>' +
+      (sub.length ? '<span class="bmc-sub">' + sub.join('') + '</span>' : '') +
+      '</div>';
+  }
+
+  /* 体の処置マップ本体。trItems / dvItems は行の配列。
+     ピンが1つも無くても人体シルエットは描く――ここは「体のどこに
+     何があるか」の地図なので、地図そのものは消さない。空のときは
+     図の下に一言だけ添える（noteText）。 */
+  function bodyMap(trItems, dvItems, noteText) {
+    const all = []
+      .concat((dvItems || []).map(r => ({ row: r, filled: true })))
+      .concat((trItems || []).map(r => ({ row: r, filled: false })));
+
+    /* 図は viewBox 0 0 380 250。素材（151×321）は縦を 236 に収まる
+       よう縮めて中央へ置く。左右に 122 幅のカード欄。 */
+    const VB_W = 380, VB_H = 250;
+    const BODY_H = 236;
+    const BS = BODY_H / BODY_VB.h;               /* 素材の縮尺 */
+    const OX = VB_W / 2 - (BODY_VB.w * BS) / 2;  /* 素材の左端 x */
+    const OY = (VB_H - BODY_H) / 2;              /* 素材の上端 y */
+    /* 素材の座標 → 図の座標。 */
+    const bx = x => OX + x * BS;
+    const by = y => OY + y * BS;
+    const TOP = 4, BOT = VB_H - 4;
+    const CW = 122;   /* カード幅 */
+    const TXW = 98;   /* カード内テキスト幅（枠・余白を引いた実寸） */
+    /* 文字列が TXW に何行で収まるか。日本語は全角なので字数×字幅で
+       足りる（英数が混じるぶんは切り上げが吸収する）。 */
+    const linesOf = (s, px) => Math.max(1, Math.ceil((String(s || '').length * px) / TXW));
+    /* カードの高さ見積り。foreignObject は高さを固定するので、足りないと
+       中身が切れる。行の高さ・行間・上下余白を多めに見る。 */
+    const cardH = it => {
+      const r = it.row;
+      const isPlace = r.note && NOTE_IS_PLACE.test(r.note);
+      const name = r.text + (isPlace ? '（' + r.note + '）' : '');
+      let h = linesOf(name, 11) * 15;                    /* 品名 */
+      if (r.purpose) h += linesOf(r.purpose, 9.5) * 13 + 2;  /* 何のため */
+      if (r.note && !isPlace) h += linesOf(r.note, 9.5) * 13 + 1;  /* 頻度・条件 */
+      return h + 16;                                     /* 上下余白＋枠 */
+    };
+
+    /* 各項目にピンの点を与える。同じ部位に複数来たら少しずらす。
+       アンカーは素材の座標系なので bx()/by() で図の座標へ直す。 */
+    const seen = {};
+    const nodes = all.map(it => {
+      const key = S.regionOfRow(it.row);
+      const reg = S.bodyRegion(key);
+      const n = (seen[key] = (seen[key] || 0) + 1);
+      const dx = n > 1 ? ((n % 2) ? 1 : -1) * Math.ceil((n - 1) / 2) * 8 : 0;
+      const dy = n > 1 ? ((n % 2) ? -1 : 1) * 4 : 0;
+      return {
+        it: it,
+        side: reg.side,
+        px: bx(reg.at[0]) + dx,
+        py: by(reg.at[1]) + dy
+      };
+    });
+
+    const svgCards = [];
+    const leaders = [];
+    const pins = [];
+
+    const layoutSide = (side) => {
+      const list = nodes.filter(nd => nd.side === side)
+        .sort((a, b) => a.py - b.py);
+      const cx = side === 'l' ? 2 : VB_W - 2 - CW;    /* カード左端 */
+      const edgeX = side === 'l' ? cx + CW : cx;      /* リーダーが刺さる辺 */
+      let cursor = TOP;
+      list.forEach(nd => {
+        const h = cardH(nd.it);
+        let top = Math.max(cursor, nd.py - h / 2);
+        if (top + h > BOT) top = BOT - h;
+        cursor = top + h + 10;
+        const midY = top + h / 2;
+        const cls = nd.it.filled ? 'is-dev' : 'is-tr';
+
+        /* カードは箱の上端に合わせる（箱の中で上下中央に置くと、箱と
+           カードの高さの差だけ実際の位置がずれ、隣のカードと重なる）。
+           箱の高さは見積りなので、描画後に実測して組み直す
+           （relayoutCards）。そのための目印を data- に持たせる。 */
+        svgCards.push(
+          '<foreignObject class="bmap-fo" x="' + cx + '" y="' + top +
+            '" width="' + CW + '" height="' + h + '"' +
+            ' data-side="' + side + '" data-px="' + nd.px + '" data-py="' + nd.py +
+            '" data-edge="' + edgeX + '" data-bend="' +
+            (side === 'l' ? edgeX + 14 : edgeX - 14) + '">' +
+            '<div xmlns="http://www.w3.org/1999/xhtml" class="bmap-cardwrap ' +
+              (side === 'l' ? 'to-r' : 'to-l') + '">' + bmapCard(nd.it) + '</div>' +
+          '</foreignObject>');
+        /* リーダー：カードの辺 → 少し水平 → ピン。ピンの色を帯びる。 */
+        const bend = side === 'l' ? edgeX + 14 : edgeX - 14;
+        leaders.push('<path class="bmap-leader ' + cls + '" d="M' + edgeX + ' ' +
+          midY + 'H' + bend + 'L' + nd.px + ' ' + nd.py + '"/>');
+        pins.push(bmapPin(nd.px, nd.py, nd.it.filled));
+      });
+    };
+    layoutSide('l');
+    layoutSide('r');
+
+    /* 素材を縮めて中央へ。色は CSS（.bmap-body の fill）で当てる
+       ――素材は黒で塗られているので、ここで上書きする。 */
+    const body =
+      '<g class="bmap-body" transform="translate(' + OX.toFixed(2) + ',' +
+        OY.toFixed(2) + ') scale(' + BS.toFixed(5) + ')">' + BODY_ART + '</g>';
+
+    /* viewBox の左右に 6 ずつ余白を足す（カードの縁が切れないように）。 */
+    const empty = !all.length;
+    return '<div class="bmap' + (empty ? ' is-empty' : '') + '" data-editsec="current">' +
+      '<svg class="bmap-svg" viewBox="-6 0 ' + (VB_W + 12) + ' ' + VB_H + '" ' +
+        'role="img" aria-label="体のどこに治療・機器があるか">' +
+        body +
+        leaders.join('') + svgCards.join('') + pins.join('') +
+      '</svg>' +
+      (empty
+        ? '<p class="bmap-empty">' +
+          esc(noteText || '体内の機器・続けている処置はありません') + '</p>'
+        : '<div class="bmap-legend">' +
+            '<span class="bmap-lg"><i class="bmap-sw is-dev"></i>体内にある機器</span>' +
+            '<span class="bmap-lg"><i class="bmap-sw is-tr"></i>続けている処置・管理</span>' +
+          '</div>') +
+      '</div>';
+  }
+
+  /* 相関図｜上下2段。
+       上段 … 治療中の病気・状態を幅いっぱいに並べる（名前が折れない）。
+       下段 … 体の処置マップ（人体シルエットに治療・機器のピン）。
+     病名の束とマップは上下に置くだけ。以前は間に「治療中」ハブを
+     挟んで、右のリストが特定の1病名に対応すると読ませないための
+     緩衝にしていたが、リストをやめて体そのものへ刺すマップにした
+     いま、その役目はマップが果たす（ピンは部位に刺さり、病名には
+     繋がらない）。ハブは束からの線の受け皿でしかなく、削除した。 */
+  function currentMap() {
+    const condG = S.grpOf('condition');
+    const trG   = S.grpOf('treatment');
+    const dvG   = S.grpOf('device');
+
+    const condItems = condG.presence === 'あり'
+      ? (condG.items || []).filter(r => r.text) : [];
+    const condShown = condItems.slice(0, COND_MAX).map(condCell).join('');
+    const condRest  = condItems.length - COND_MAX;
+    const trItems = trG.presence === 'あり'
+      ? (trG.items || []).filter(r => r.text) : [];
+    const dvItems = dvG.presence === 'あり'
+      ? (dvG.items || []).filter(r => r.text) : [];
+    /* 空のときシルエットの下に添える一言。両方「なし」なら該当なし、
+       それ以外はまだ書かれていない。 */
+    const emptyNote = (trG.presence === 'なし' && dvG.presence === 'なし')
+      ? '体内の機器・続けている処置は該当なし'
+      : '体内の機器・続けている処置は、まだ書かれていません';
+    const map = bodyMap(trItems, dvItems, emptyNote);
+
+    const topBody = condItems.length
+      ? '<ul class="cmap-cells">' + condShown + '</ul>' +
+        (condRest > 0
+          ? '<button type="button" class="cmap-morebtn" data-condmodal="1">' +
+            'ほか' + condRest + '件をすべて見る</button>'
+          : '')
+      : '<p class="cmap-none" data-editsec="current">' +
+        esc(presenceNote('condition')) + '</p>';
+    const rightBody = map;
+
+    return '<div class="cmap">' +
+      '<div class="cmap-top">' +
+        '<span class="cmap-clb">治療中の病気・状態</span>' + topBody +
+      '</div>' +
+      '<div class="cmap-mapwrap">' + rightBody + '</div>' +
+      '</div>';
+  }
+
+  /* ── 編集フォーム（項目ごとに形が違う）───────────────── */
+
+  /* 「あり／なし」の2択。入力の分岐だけ（あり＝中身を開く、なし＝
+     閉じて「該当なし」）。どちらも押していない間は未確認＝空欄。
+     状態バッジのような見せ方はしない。 */
+  function presencePicker(kind) {
+    const g = S.grpOf(kind);
+    return '<div class="pgz" role="group" aria-label="この項目の有無">' +
+      ['あり', 'なし'].map(o =>
+        '<button type="button" class="pgz-b' + (g.presence === o ? ' on' : '') +
+        '" data-presence="' + kind + '|' + o + '">' + esc(o) + '</button>').join('') +
+      '</div>';
+  }
+
+  const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
+
+  /* 候補ピッカー。チップを平置きにすると20個超が画面を埋めるので、
+     「＋ 候補から選ぶ」で開くパネルにし、中は系統ごとに畳む。
+     選ぶと本文の行に足す／外す（data-chip="kind|値"、機器は
+     "device:body" / "device:daily" で群も渡す）。                   */
+  function candidatePicker(kind, groups, chosenSet) {
+    if (picker !== kind) {
+      return '<button type="button" class="pick-open" data-pick="' + kind + '">' +
+        '＋ 候補から選ぶ</button>';
+    }
+    const body = groups.map(([name, list]) => {
+      const key = kind + '/' + name;
+      const open = pickerGroups.has(key);
+      const n = list.filter(c => chosenSet.has(c)).length;
+      const chips = open
+        ? '<div class="chipz">' + list.map(c => {
+            const grp = kind === 'device'
+              ? (S.DEVICE_CHOICES.body.indexOf(c) > -1 ? ':body' : ':daily') : '';
+            return '<button type="button" class="chip' + (chosenSet.has(c) ? ' on' : '') +
+              '" data-chip="' + kind + grp + '|' + esc(c) + '">' + esc(c) + '</button>';
+          }).join('') + '</div>'
+        : '';
+      return '<div class="pick-grp' + (open ? ' open' : '') + '">' +
+        '<button type="button" class="pick-gh" data-pickgrp="' + esc(key) + '">' +
+          '<span class="pick-gch">' + CHEVRON + '</span>' + esc(name) +
+          (n ? '<span class="pick-gn">' + n + '</span>' : '') +
+        '</button>' + chips +
+        '</div>';
+    }).join('');
+    return '<div class="pick">' +
+      '<div class="pick-h">候補から選ぶ' +
+        '<button type="button" class="pick-close" data-pick="' + kind + '">閉じる</button>' +
+      '</div>' + body +
+      '</div>';
+  }
+
+  /* 病気・治療・機器の「あり」フォーム。
+       ・追加する操作（候補から選ぶ／自由に書く）を先頭に置く
+         ――一覧の下に埋めると「どうやって足すのか」が読めない。
+       ・足した項目は1件ずつカードにし、病名（見出し）とその補足
+         （一言／何のため…）が同じカードに入っていると分かる形にする。 */
+  function pickListForm(kind) {
+    const g = S.grpOf(kind);
+    const items = g.items || [];
+    const chosen = new Set(items.map(r => r.text).filter(Boolean));
+    const groups = kind === 'condition' ? S.CONDITION_CHOICE_GROUPS
+      : kind === 'treatment' ? S.TREATMENT_CHOICE_GROUPS
+      : S.DEVICE_CHOICE_GROUPS;
+
+    const store = kind + 's';
+    const withRegion = kind === 'treatment' || kind === 'device';
+
+    /* カード内の補足フィールド1つ（ラベルと入力欄を横に並べる）。 */
+    const fld = (label, hint, inputHtml) =>
+      '<div class="cef-fld">' +
+        '<span class="cef-flb">' + label +
+          (hint ? '<em>' + hint + '</em>' : '') + '</span>' +
+        '<span class="cef-fv">' + inputHtml + '</span>' +
+      '</div>';
+    /* よく使う語をチップで平置き。押すと欄に入る（もう一度で外す）。
+       datalist（黒背景のネイティブ候補）はやめ、他の欄と同じチップの
+       手つきに揃える。それ以外は下の欄に直接書ける。 */
+    const chipField = (label, hint, path, cur, choices, ph) =>
+      '<div class="cef-fld cef-fld-col">' +
+        '<span class="cef-flb">' + label +
+          (hint ? '<em>' + hint + '</em>' : '') + '</span>' +
+        '<span class="cef-fv cef-fv-col">' +
+          '<span class="chipz cef-chipz">' + choices.map(c =>
+            '<button type="button" class="chip' + (cur === c ? ' on' : '') +
+            '" data-setval="' + path + '|' + esc(c) + '">' + esc(c) + '</button>').join('') +
+          '</span>' +
+          ev(path, cur, 'line', ph) +
+        '</span>' +
+      '</div>';
+
+    const cards = items.map((r, i) => {
+      const p = 'medical.' + store + '.items.' + i + '.';
+      const grpSel = kind === 'device'
+        ? fld('種類', '', evSelect(p + 'group',
+            S.DEVICE_GROUPS[r.group] || S.DEVICE_GROUPS.body,
+            [S.DEVICE_GROUPS.body, S.DEVICE_GROUPS.daily]))
+        : '';
+      const noteFld = kind === 'condition'
+        ? chipField('いまの扱い', '任意', p + 'note', r.note || '',
+            S.CONDITION_NOTE_CHOICES, '自由に書く')
+        : '';
+      let ptFlds = '';
+      if (withRegion) {
+        const autoKey = S.regionOfRow(r);
+        ptFlds =
+          fld('何のため', '', ev(p + 'purpose', r.purpose, 'line',
+            '例：血糖値をコントロールするため')) +
+          fld('頻度・条件', '任意', ev(p + 'note', r.note, 'line',
+            '例：1日2回（朝・夜）／夜間のみ／右膝')) +
+          fld('体の部位', '', evRegionSelect(p + 'region', r.region) +
+            (!r.region
+              ? '<small class="cef-region-auto">' +
+                (autoKey === 'unknown'
+                  ? '自動で当てられません'
+                  : '自動：' + esc(S.bodyRegion(autoKey).label)) + '</small>'
+              : ''));
+      }
+      return '<li class="cef-item">' +
+        '<div class="cef-item-h">' +
+          '<span class="cef-name">' +
+            ev(p + 'text', r.text, 'line', S.currentKind(kind).placeholder) +
+          '</span>' +
+          delBtn(r.id) +
+        '</div>' +
+        (grpSel || noteFld || ptFlds
+          ? '<div class="cef-item-b">' + grpSel + noteFld + ptFlds + '</div>'
+          : '') +
+        '</li>';
+    }).join('');
+
+    const addBar =
+      '<div class="cef-add">' +
+        candidatePicker(kind, groups, chosen) +
+        '<button type="button" class="cef-freebtn" data-add="' + kind + '">' +
+          '候補にないものを書く</button>' +
+      '</div>';
+
+    return '<div class="cef">' +
+      addBar +
+      (cards
+        ? '<ul class="cef-items">' + cards + '</ul>'
+        : '<p class="cef-empty i-ev-empty">まだありません。上のボタンから足してください。</p>') +
+      '</div>';
+  }
+
+  /* 反応・起きたことのチップ群（畳まず平置き）。1行＝1カードの
+     頭に置く――「まず起きたことを選ぶ」を先にする。書く人は原因の
+     物質名を覚えていないことが多いので、選べる方から入る。 */
+  function reactionChips(dataKey, choices, chosen) {
+    const set = new Set(chosen || []);
+    return '<div class="chipz">' + choices.map(x =>
+      '<button type="button" class="chip' + (set.has(x) ? ' on' : '') +
+      '" data-multi="' + dataKey + '|' + esc(x) +
+      '">' + esc(x) + '</button>').join('') + '</div>';
+  }
+
+  /* アレルギーの「あり」フォーム。1行＝1カード。
+       起きた反応（チップ）→ 原因になったもの（任意・自由記述）
+     「原因の種類」セレクト（薬／食べ物／…）は廃止――物質名から
+     種類は分かるし、閲覧側でも使っていなかった。原因は思い出せる
+     範囲でよく、空でも成立する。 */
+  function allergyForm() {
+    const g = S.grpOf('allergy');
+    const items = g.items || [];
+    const rows = items.map((r, i) => {
+      const p = 'medical.allergies.items.' + i + '.';
+      return '<li class="cef-card">' +
+        '<div class="cef-card-h">' +
+          '<span class="cef-card-n">' + (i + 1) + '</span>' + delBtn(r.id) +
+        '</div>' +
+        '<div class="cef-line cef-line-col">' +
+          '<span class="cef-lb">起きた反応</span>' +
+          reactionChips('medical.allergies.items.' + i + '|reactions',
+            S.ALLERGY_REACTIONS, r.reactions) +
+        '</div>' +
+        '<div class="cef-line cef-line-col">' +
+          '<span class="cef-lb">原因になったもの<em>分かれば。そばなど食べ物も</em></span>' +
+          ev(p + 'cause', r.cause, 'line', '例：ペニシリン、そば、造影剤') +
+        '</div>' +
+        '</li>';
+    }).join('');
+    return '<div class="cef">' +
+      (rows ? '<ul class="cef-list">' + rows + '</ul>' : '') +
+      '<button type="button" class="rowadd" data-add="allergy">＋ アレルギーを足す</button>' +
+      '</div>';
+  }
+
+  /* 副作用歴の「あり」フォーム。1行＝1カード。
+       起きたこと（チップ）→ 思い当たる薬・治療（任意・自由記述）
+     アレルギーと同じ骨。副作用は「何の薬だったか」を覚えていない
+     ことがさらに多いので、原因は完全に任意にして、まず起きたことを
+     選ばせる。「今後避けるよう言われたか」の欄は廃止――この節は
+     すべて"受診時に伝える＝避けるもの"なので、行ごとに持つ意味が
+     薄かった。 */
+  function adverseForm() {
+    const g = S.grpOf('adverse');
+    const items = g.items || [];
+    const rows = items.map((r, i) => {
+      const p = 'medical.adverse.items.' + i + '.';
+      return '<li class="cef-card">' +
+        '<div class="cef-card-h">' +
+          '<span class="cef-card-n">' + (i + 1) + '</span>' + delBtn(r.id) +
+        '</div>' +
+        '<div class="cef-line cef-line-col">' +
+          '<span class="cef-lb">起きたこと</span>' +
+          reactionChips('medical.adverse.items.' + i + '|events',
+            S.ADVERSE_EVENTS, r.events) +
+        '</div>' +
+        '<div class="cef-line cef-line-col">' +
+          '<span class="cef-lb">思い当たる薬・治療<em>分かれば。覚えていなければ空欄で</em></span>' +
+          ev(p + 'cause', r.cause, 'line', '例：解熱鎮痛薬、手術後の点滴') +
+        '</div>' +
+        '</li>';
+    }).join('');
+    return '<div class="cef">' +
+      (rows ? '<ul class="cef-list">' + rows + '</ul>' : '') +
+      '<button type="button" class="rowadd" data-add="adverse">＋ 副作用歴を足す</button>' +
+      '</div>';
+  }
+
+  /* 編集モードの1項目。頭に見出し（右端に「編集を終える」チェック）、
+     次に説明、「あり／なし」、「あり」のときだけフォーム。
+     チェックはどの項目の見出しにも置く――節が縦に長いので、上まで
+     スクロールして戻らなくても、その場で保存して閉じられるように。 */
+  function editItem(kind, lead) {
+    const g = S.grpOf(kind);
+    const body = g.presence !== 'あり'
+      ? ''
+      : kind === 'allergy' ? allergyForm()
+      : kind === 'adverse' ? adverseForm()
+      : pickListForm(kind);
+    /* 節の鉛筆は、その項目が属する節の鍵で（病気・治療・機器＝current、
+       アレルギー・副作用歴＝vitals）。 */
+    const secKey = (kind === 'allergy' || kind === 'adverse') ? 'vitals' : 'current';
+    return '<div class="cei">' +
+      '<div class="cei-h">' +
+        '<span class="cei-lb">' + esc(S.currentKind(kind).label) + '</span>' +
+        editBtn(secKey) +
+      '</div>' +
+      (lead ? '<p class="cei-lead">' + esc(lead) + '</p>' : '') +
+      presencePicker(kind) +
+      body +
+      '</div>';
+  }
+
+  /* 現在の医療状態（病気・治療・機器）。閲覧＝相関図、編集＝3項目の
+     フォーム。アレルギー・副作用歴は別の節（vitals）に分けた――
+     いま治療していることと、体に入れてはいけないものは別のことで、
+     編集も別に開きたい。 */
+  function currentStateBlock() {
+    const on = secOn('current');
+    if (!on) return '<div class="cur">' + currentMap() + '</div>';
+    return '<div class="cur cur-edit">' +
+      editItem('condition') +
+      editItem('treatment', '毎日の内服薬はここではなく「薬を確認するところ」で扱います。') +
+      editItem('device') +
+      '</div>';
+  }
+
+  /* 体に合わないもの（アレルギー・副作用歴）。閲覧＝1つの表、
+     編集＝2項目のフォーム。節見出しは leftFace 側が持つ。 */
+  function vitalsBlock() {
+    const on = secOn('vitals');
+    if (!on) return '<div class="cur-vitals">' + vitalsView() + '</div>';
+    return '<div class="cur-vitals cur-edit">' +
+      editItem('allergy', '薬や食べ物などに対するアレルギー反応。') +
+      editItem('adverse', 'アレルギーではないが、薬や治療で強い症状が出たこと。') +
+      '</div>';
+  }
+
+  /* アレルギー・副作用歴の閲覧。
+     この2つは「体に入れると良くない反応が出るもの」という一つのこと
+     で、読む側（家族・医療者）には1本の禁忌リスト。だから別々の囲み・
+     別々の警告記号で切らず、「原因 → 反応」を全行そろえた1つの表に
+     して、種別は行末の淡いしるしに落とす。
+     presence が「あり」なら行、そうでなければ一言（該当なし／未記入）。 */
+  function vitalsRow(kind, r) {
+    /* 原因（左）と反応（右）を分けて持つ。ラベルの " → " に頼らず
+       素の値から組み、列を全行でそろえる。causeKind／drug は種類
+       セレクト・薬名欄を廃止する前の旧データの穴埋め。 */
+    const cause = kind === 'allergy'
+      ? (r.cause || (r.causeKind && r.causeKind !== '薬' ? r.causeKind : '') || '')
+      : [r.cause, r.drug].filter(Boolean).join('｜');
+    const list = kind === 'allergy' ? r.reactions : r.events;
+    const react = (list || []).filter(x => x && x !== '詳細不明').join('・');
+    const tag = kind === 'allergy' ? 'アレルギー' : '副作用';
+    /* 原因（物質名）は任意。書いてあれば「原因 → 反応」で先頭に置く
+       ――医療者はまず「何を投与してはいけないか」を読みたい。書いて
+       なければ書き忘れではないので「（未記入）」を出さず、反応だけを
+       先頭に置いて矢印も消す。 */
+    const inner = cause
+      ? '<span class="vv-cause">' + esc(cause) + '</span>' +
+        '<span class="vv-arw" aria-hidden="true"></span>' +
+        '<span class="vv-react">' + esc(react || '反応は未記入') + '</span>'
+      : '<span class="vv-react-lead">' +
+        esc(react || '内容がまだ書かれていません') + '</span>';
+    return '<li class="vv-row">' +
+      inner +
+      '<span class="vv-tag vv-tag-' + kind + '">' + tag + '</span>' +
+      '</li>';
+  }
+  function vitalsView() {
+    const kinds = ['allergy', 'adverse'];
+    const grp = k => S.grpOf(k);
+    /* 「あり」で中身のある行を、種別をまたいで1本に並べる。 */
+    const rows = kinds.flatMap(k =>
+      grp(k).presence === 'あり'
+        ? (grp(k).items || []).map(r => vitalsRow(k, r))
+        : []).join('');
+    /* 行が無い種別について一言添える。「該当なし」（確認して無い）と
+       未確認（まだ書かれていない）を混ぜない（§11）。両方とも同じ
+       状態なら1文にまとめる。 */
+    const LB = { allergy: 'アレルギー', adverse: '強い副作用歴' };
+    const empties = kinds.filter(k =>
+      grp(k).presence !== 'あり' ||
+      !(grp(k).items || []).some(r => S.currentRowLabel(k, r)));
+    const phrase = k => {
+      const p = grp(k).presence;
+      return p === 'なし' ? '確認したうえで無し'
+        : p === 'あり' ? '内容がまだ書かれていません'
+        : 'まだ書かれていません';
+    };
+    let note = '';
+    if (empties.length === 2 && phrase('allergy') === phrase('adverse')) {
+      note = phrase('allergy') === '確認したうえで無し'
+        ? '合わない薬・食べ物は、確認したうえで無し'
+        : phrase('allergy');
+    } else {
+      note = empties.map(k => LB[k] + 'は、' + phrase(k)).join(' ／ ');
+    }
+    return '<div class="vv">' +
+      (rows ? '<ul class="vv-list">' + rows + '</ul>' : '') +
+      (note ? '<p class="vv-note" data-editsec="vitals">' + esc(note) + '</p>' : '') +
+      '</div>';
+  }
+
+  /* 三等の欄｜囲みの備考欄。
+
+     文章を書く欄なので、行罫ではなく囲みの箱にする。二等（チェックの
+     列）と形が違うから格が違って見える――どちらも「ラベル＋罫線」だと
+     大きさを変えても同じ欄に見え、羅列が残る。
+     4つの箱が並ぶので、記号は箱の見出しとして働く。               */
+  function dailyBlock() {
+    const d = S.data.medical.daily || {};
+    const box = (icon, label, path, val, ph) =>
+      '<div class="dbox">' +
+        '<span class="dbox-h">' + svgIc(icon, 13) + esc(label) + '</span>' +
+        '<span class="dbox-tx">' + ev(path, val, 'line', ph) + '</span>' +
+      '</div>';
+    return '<div class="daily">' +
+      box(TALK_IC, '会話', 'medical.daily.talk', d.talk, '会話の様子') +
+      box(COG_IC, '認知', 'medical.daily.cognition', d.cognition, '日常の判断力') +
+      box(WALK_IC, '移動', 'medical.daily.mobility', d.mobility, '歩行・移動の様子') +
+      box(MEAL_IC, '食事', 'medical.daily.meal', d.meal, '食事の様子') +
+      '</div>';
+  }
+
+  /* 左エリア。本人そのもの。器は敷かず、手帳の記入面の「欄の格」で
+     階層を作る（一等＝識別欄／二等＝医療状態／三等＝備考）。
+
+     節見出しは配下の小見出しより強くする。以前は節が 10.5px の
+     添え字で、その中の小見出しが 11.5px の太字――親より子が強く、
+     5つの小見出しがトップレベルに並んで見えていた（＝羅列の骨）。 */
+  function leftFace() {
+    return '<div class="sf">' +
+      personBlock() +
+      '<div class="sf-sec">' +
+        '<span class="sf-glb">現在の医療状態' + editBtn('current') + '</span>' +
+        currentStateBlock() +
+      '</div>' +
+      '<div class="sf-sec sf-sec-vitals">' +
+        '<span class="sf-glb sf-glb-vitals">' +
+          svgIc(VITALS_IC, 13) + '体に合わないもの' +
+          '<span class="sf-glb-sub">受診時に必ず伝える</span>' +
+          editBtn('vitals') +
+        '</span>' +
+        vitalsBlock() +
+      '</div>' +
+      '<div class="sf-sub">' +
+        '<span class="sf-sglb">普段の状態' + editBtn('daily') + '</span>' +
+        dailyBlock() +
+      '</div>' +
+      memoBlock() +
+      /* 未記入の欄。記入面なので罫は面の下端まで刷ってある――中身の
+         終わりで罫も終わると、面が途中で切れて見える。空いた罫は
+         「まだ書かれていない欄」として読める（正本 §11）。        */
+      '<div class="sf-rules" aria-hidden="true"></div>' +
+      '</div>';
   }
 
   /* 主な医療機関。1件ずつが「かかっている先」として並立するので、
@@ -217,7 +1160,9 @@
      の順で、上から重要度が下がる。                                 */
   function clinicsBlock() {
     const m = S.data.medical;
-    const on = secOn('clinic');
+    /* 節の鍵は scene('visit', …) 側と揃える（薬局・薬は節の中に
+       自前の鉛筆を持つので、そちらは別の鍵のままでよい）。 */
+    const on = secOn('visit');
     const cards = (m.clinics || []).map((c, i) => {
       const p = 'medical.clinics.' + i + '.';
       const tags = on
@@ -244,238 +1189,157 @@
       (on ? '<button type="button" class="rowadd" data-add="clinic">＋ 医療機関を足す</button>' : '');
   }
 
-  /* ② かかりつけ薬局 */
-  function pharmBlock() {
+  /* 薬を確認するところ。標準の入口（紙・電子・マイナポータル・
+     かかりつけ薬局・その他）を1本のリストに並べる。標準行は常設で
+     消せない（§11：確認していない＝未確認であって、欄は消えない）。
+     かかりつけ薬局だけは複数あり得るので、2件目以降を足せる。
+     ――以前は「主な医療機関」側の薬局実体を参照していたが、家族が
+     「薬をどこで確認するか」を1か所で辿れるほうがよいので、ここで
+     完結させ、連絡先も自前で持つ。 */
+  function medSourcesBlock() {
     const m = S.data.medical;
-    const on = secOn('pharm');
-    const rows = (m.pharmacies || []).map((c, i) => {
-      const p = 'medical.pharmacies.' + i + '.';
-      return '<div class="cl cl-ph">' +
-        '<span class="cl-ic">' + svgIc(PHARM_IC, 16) + '</span>' +
-        '<span class="cl-name">' + ev(p + 'name', c.name, 'line', '薬局の名前') + '</span>' +
-        '<span class="cl-tel">' + TEL + ev(p + 'tel', c.tel, 'line', '電話番号') + '</span>' +
-        '<span class="cl-note">' + ev(p + 'note', c.note, 'line', '補足') + '</span>' +
-        stBadge('medical.pharmacies.' + i) +
-        (on ? delBtn(c.id) : '') +
+    const on = secOn('medsrc');
+    const rows = (m.medSources || []).map((r, i) => {
+      const kind = S.medSrcKind(r.kind);
+      const ic = MEDSRC_IC[r.kind] || MEDSRC_IC.other;
+      const p = 'medical.medSources.' + i + '.';
+
+      /* 補足は書いてあるとき（または編集中）だけ行を出す。空の補足で
+         毎行「補足」プレースホルダを立てると、該当なし・未確認の行が
+         中身のある行より重く見える。 */
+      const noteRow = (r.note || on)
+        ? '<span class="ms-note">' + ev(p + 'note', r.note, 'line', '補足') + '</span>'
+        : '';
+      let body;
+      if (r.kind === 'pharmacy') {
+        body =
+          '<span class="ms-where">' + ev(p + 'name', r.name, 'line', '薬局の名前') +
+            '<small class="ms-tel">' + TEL +
+              ev(p + 'tel', r.tel, 'line', '電話番号') + '</small>' + '</span>' +
+          noteRow;
+      } else {
+        body = '<span class="ms-where">' +
+          ev(p + 'where', r.where, 'line', 'どこで見られるか') + '</span>' + noteRow;
+      }
+
+      return '<div class="ms' + (r.kind === 'pharmacy' ? ' ms-pharm' : '') + '">' +
+        '<span class="ms-ic">' + svgIc(ic, 18) + '</span>' +
+        '<span class="ms-tx">' +
+          '<span class="ms-kind">' + esc(kind.label) + '</span>' +
+          body +
+        '</span>' +
+        stBadge('medical.medSources.' + i) +
+        (on && S.canRemoveMedSource(r.id) ? delBtn(r.id) : '') +
         '</div>';
     }).join('');
-    return (rows || '<p class="i-ev-empty">まだ登録がありません。</p>') +
-      (on ? '<button type="button" class="rowadd" data-add="pharm">＋ 薬局を足す</button>' : '');
+    return '<div class="mslist">' + rows + '</div>' +
+      (on ? '<button type="button" class="rowadd" data-add="pharm">＋ かかりつけ薬局を足す</button>' : '');
   }
 
-  /* ③④ タグの並び（病名・治療）。編集では読点区切りの一行になる。 */
-  function tagBlock(path, list, cls, placeholder) {
-    if (isOpen(path)) {
-      return '<div class="tagrow">' + ev(path, S.tagsToText(list), 'line', placeholder) + '</div>';
-    }
-    if (!(list || []).length) {
-      return '<div class="tagrow"><span class="i-ev i-ev-empty" data-edit="' + path +
-        '" data-kind="line">' + esc(placeholder) + '</span></div>';
-    }
-    return '<div class="tagrow">' + list.map(t =>
-      '<span class="tag ' + cls + '">' + esc(t) + '</span>').join('') + '</div>';
-  }
+  /* 医療で必要になるものと所在。
+       見出し … 制度側で決まっているカテゴリ（診察券・お薬手帳・
+                受給者証…）。固定で、消せない。
+       実物   … その下にぶら下がる1枚ずつ。名前（どのカードか）と
+                「どこにあるか」を書く。足す・消すは実物だけ。
 
-  /* ⑤ 医療機関に必ず伝えること。この領域の核。 */
-  function tellBlock() {
-    const m = S.data.medical;
-    const on = secOn('tell');
-    /* 1件ずつを「読み上げる1項目」として組む。左に何の話か（種別）、
-       右に読み上げる文。文字は本文より大きく――救急隊員に見せる／
-       家族が声に出す場所なので、小さい字で3行並べない。            */
-    const rows = (m.tells || []).map((t, i) => {
-      const type = S.tellType(t.type);
-      const p = 'medical.tells.' + i + '.';
-      const kindLine = on
-        ? evSelect(p + 'type', t.type, Object.keys(S.TELL_TYPES))
-        : esc(type.label);
-      return '<li class="tell' + (type.urgent ? ' tell-urgent' : '') + '">' +
-        '<span class="tell-kind">' + kindLine + '</span>' +
-        '<span class="tell-tx">' +
-          ev(p + 'text', t.text, 'line', type.placeholder || '伝えることを書く') + '</span>' +
-        '<span class="tell-st">' + stBadge('medical.tells.' + i) +
-          (on ? delBtn(t.id) : '') + '</span>' +
-        '</li>';
-    }).join('');
+     ＊造形（カードケース／引き出し）は今回は外して、暫定で素の
+       階層リストにしている。棚（カテゴリ）に物（実物）が入って
+       いる構造は変えないので、造形はあとで被せ直せる。            */
+  function suppliesBlock() {
+    const s = S.data.medical.supplies || {};
+    /* 節の鍵は scene('supplies', …) 側と揃える。ここがずれると
+       鉛筆を押しても中身が編集に入らない。 */
+    const on = secOn('supplies');
 
-    /* 空・未確認のものがあれば注意を出す。いざというとき家族が言えない。 */
-    const pending = S.tellsUnresolved();
-    const warn = pending.length
-      ? '<div class="tell-warn">' + WARN + '<span><b>' + pending.length +
-        '件</b>、まだ確かめられていません。救急のとき家族が伝えられるよう、' +
-        '本人かかかりつけ医に確認しておきます。</span></div>'
-      : '';
-
-    return (rows ? '<ul class="telllist">' + rows + '</ul>'
-                 : '<p class="i-ev-empty">まだ登録がありません。</p>') + warn +
-      (on ? '<button type="button" class="rowadd" data-add="tell">＋ 伝えることを足す</button>' : '');
-  }
-
-  /* 薬の正確な情報への入口。ここは「入口」なので、4行の表ではなく
-     行き先そのものを大きく出す。左＝どこを見ればよいか（行き先）、
-     右＝いま服薬があるか（前提）と申し送り。                       */
-  function medsBlock() {
-    const md = S.data.medical.meds;
-    const kind = md.bookKind || '未確認';
-    /* 電子なら端末の中、紙なら物として在る。記号を変える。 */
-    const isDigital = kind.indexOf('電子') > -1;
-    const ic = isDigital
-      ? '<rect x="6.5" y="2.5" width="11" height="19" rx="2.4"/><path d="M10.5 18.6h3"/>'
-      : '<path d="M6.5 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-11Z"/><path d="M6.5 3v18"/>' +
-        '<path d="M9.5 8h6M9.5 12h6"/>';
-
-    return '<div class="entry">' +
-      '<div class="entry-go">' +
-        '<span class="entry-ic">' + svgIc(ic, 26) + '</span>' +
-        '<div class="entry-tx">' +
-          /* 種別も押して変えられる。読み取り面では太字だが、
-             ev と同じ data-edit を持たせて編集への入口を塞がない。 */
-          '<span class="entry-lb">お薬手帳は' +
-            (isOpen('medical.meds.bookKind')
-              ? evSelect('medical.meds.bookKind', md.bookKind, S.MEDBOOK_KINDS)
-              : '<b class="i-ev" data-edit="medical.meds.bookKind" data-kind="select">' +
-                esc(kind) + '</b>') + '</span>' +
-          '<span class="entry-where">' +
-            ev('medical.meds.bookWhere', md.bookWhere, 'line', 'どこで見られるか') + '</span>' +
-          '<span class="entry-sub">' +
-            ev('medical.meds.appWhere', md.appWhere, 'line', '手帳・アプリの場所') + '</span>' +
+    const cats = S.SUPPLY_CATS.map(cat => {
+      const list = s[cat.key] || [];
+      const rows = list.map((r, i) => {
+        const p = 'medical.supplies.' + cat.key + '.' + i + '.';
+        return '<li class="sup-item">' +
+          '<span class="sup-name">' +
+            ev(p + 'name', r.name, 'line', 'どのカード・手帳か') + '</span>' +
+          '<span class="sup-where">' +
+            ev(p + 'where', r.where, 'line', 'どこにあるか') + '</span>' +
+          stBadge('medical.supplies.' + cat.key + '.' + i) +
+          (on ? delBtn(r.id) : '') +
+          '</li>';
+      }).join('');
+      return '<div class="sup-cat">' +
+        '<div class="sup-cat-h">' +
+          '<span class="sup-cat-nm">' + esc(cat.label) + '</span>' +
+          (cat.hint ? '<em class="sup-cat-hint">' + esc(cat.hint) + '</em>' : '') +
         '</div>' +
-      '</div>' +
-      '<div class="entry-side">' +
-        '<div class="entry-row"><span>現在の服薬</span>' +
-          (isOpen('medical.meds.taking')
-            ? evSelect('medical.meds.taking', md.taking, ['あり', 'なし', '未確認'])
-            : '<span class="pill">' + esc(md.taking || '未確認') + '</span>') + '</div>' +
-        '<div class="entry-row"><span>確認</span>' + stBadge('medical.meds') + '</div>' +
-        '<p class="entry-note">' +
-          ev('medical.meds.note', md.note, 'line', '家族への申し送り') + '</p>' +
-      '</div>' +
-      '</div>';
-  }
-
-  /* ⑦ 書類。持ち歩くもの（ポケット）／自宅にあるもの（表）。 */
-  function docsBlock() {
-    const m = S.data.medical;
-    const on = secOn('docs');
-
-    const slots = (m.pocket || []).map((r, i) => {
-      const p = 'medical.pocket.' + i + '.';
-      return '<div class="pocket-slot">' +
-        '<span class="pocket-item">' +
-          (on ? evSelect(p + 'item', r.item, S.POCKET_ITEMS) : esc(r.item)) + '</span>' +
-        '<span class="pocket-where">' + ev(p + 'where', r.where, 'line', 'どこにあるか') + '</span>' +
-        stBadge('medical.pocket.' + i) +
-        (on ? delBtn(r.id) : '') +
+        (rows
+          ? '<ul class="sup-items">' + rows + '</ul>'
+          : '<p class="sup-empty i-ev-empty" data-editsec="supplies">' +
+            'まだ書かれていません</p>') +
+        (on
+          ? '<button type="button" class="rowadd sup-add" data-add="supply|' +
+            cat.key + '">＋ 足す</button>'
+          : '') +
         '</div>';
     }).join('');
 
-    const papers = (m.papers || []).map((r, i) => {
-      const p = 'medical.papers.' + i + '.';
-      return '<tr><th>' + ev(p + 'item', r.item, 'line', '書類の種類') + '</th>' +
-        '<td>' + ev(p + 'where', r.where, 'line', '保管場所') + '　' +
-        stBadge('medical.papers.' + i) +
-        (on ? ' ' + delBtn(r.id) : '') + '</td></tr>';
-    }).join('');
-
-    return '<div class="bk-docs">' +
-      '<div class="pocket">' +
-        '<div class="pocket-h">' +
-          svgIc('<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18"/>', 14) +
-          '持ち歩くもの</div>' +
-        (slots || '<p class="i-ev-empty">まだ登録がありません。</p>') +
-        (on ? '<button type="button" class="rowadd" data-add="pocket">＋ 足す</button>' : '') +
-      '</div>' +
-      '<div class="papers">' +
-        '<div class="pocket-h">' +
-          svgIc('<path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/>', 14) +
-          '自宅にあるもの</div>' +
-        '<table class="kv"><tbody>' + papers + '</tbody></table>' +
-        (on ? '<button type="button" class="rowadd" data-add="paper">＋ 足す</button>' : '') +
-      '</div>' +
-      '</div>';
+    return '<div class="sup">' + cats + '</div>';
   }
 
-  /* 本人の声＋通院メモ。手帳に挟んだ紙。 */
-  function slipsBlock() {
+  /* メモ。三等の欄（備考）。手帳の記入面の末尾にある自由記入欄で、
+     構造化するほどではない医療情報を書く。付箋のように面から浮かせ
+     ない――浮かせると、器を持たない他の欄の中で1つだけ物になり、
+     格の並び（一等→二等→三等）から外れて見える。                 */
+  function memoBlock() {
     const m = S.data.medical;
     const memoLines = String(m.memo || '').split('\n').filter(Boolean);
-    return '<div class="bk-slips">' +
-      '<div class="slip slip-voice">' +
-        '<div class="slip-h">本人より</div>' +
-        ev('medical.voice', m.voice, 'line', '本人のことば') +
-        '<cite>── 本人</cite>' +
-      '</div>' +
+    return '<div class="sf-sub bk-slips">' +
       '<div class="slip slip-memo">' +
-        '<div class="slip-h">メモ</div>' +
+        '<div class="slip-h">メモ' + editBtn('memo') + '</div>' +
         (isOpen('medical.memo')
-          ? ev('medical.memo', m.memo, 'area', '通院のメモ（1行1件）')
+          ? ev('medical.memo', m.memo, 'area', 'メモ（1行1件）')
           : (memoLines.length
               ? '<ul>' + memoLines.map(l => '<li>' + esc(l) + '</li>').join('') + '</ul>'
-              : '<span class="i-ev i-ev-empty" data-edit="medical.memo" data-kind="area">通院のメモ</span>')) +
+              : '<span class="i-ev i-ev-empty" data-edit="medical.memo" data-kind="area">メモ</span>')) +
       '</div>' +
       '</div>';
   }
 
   function renderMedical() {
     if (!medEl) return;
-    const m = S.data.medical;
-    const p = m.person || {};
 
     medEl.innerHTML =
       '<div class="bk">' +
         bookBinding() +
-        /* 表紙。救急で最初に読まれる識別情報を、いちばん上に置く。 */
+        /* 表紙。本人の識別情報は左エリア（leftFace）が持つので、
+           ここは表紙の題だけ。同じ事実を表紙と左面の2箇所に出すと、
+           どちらが正かが読み手に決められない。 */
         '<div class="bk-cover">' +
           '<div class="bk-title">' +
             '<h4>医療の記録</h4>' +
             '<p>この記録があれば、はじめての場所でも安心して診てもらえます。</p>' +
           '</div>' +
-          '<div class="bk-id">' +
-            '<div class="bk-id-name">' +
-              '<b>' + ev('medical.person.name', p.name, 'line', '氏名') + '</b>' +
-              '<span>様</span>' + editBtn('person') +
-            '</div>' +
-            '<dl>' +
-              '<dt>生年月日</dt><dd>' + ev('medical.person.birth', p.birth, 'line', '生年月日') + '</dd>' +
-              '<dt>血液型</dt><dd>' + ev('medical.person.blood', p.blood, 'line', '血液型') + '</dd>' +
-            '</dl>' +
-          '</div>' +
         '</div>' +
 
-        '<div class="bk-page">' +
-          /* 救急で読む節を最初に置く。①→⑦と順に埋めるものではない
-             ので番号は振らず、性質の近いものだけを並べる。 */
-          medSection('tell', WARN_IC, '医療機関に必ず伝えること',
-            '救急のとき、まっさきに伝えます。', tellBlock(), 'bs-tell') +
-          /* 医療機関と薬局は「かかっている先」という一続き。薬局だけで
-             節を立てると1行の帯が独立して、医療機関と同じ重みになる。 */
-          medSection('clinic', CLINIC_IC, 'かかっている先',
-            'いつも診てもらっている医療機関と、調剤してもらう薬局です。',
-            clinicsBlock() +
-            '<div class="subsec">' +
-              '<span class="subsec-lb">' + svgIc(PHARM_IC, 13) + 'かかりつけ薬局' +
-                editBtn('pharm') + '</span>' +
-              pharmBlock() +
-            '</div>') +
-          /* 病名と治療は、どちらも「本人の体の状態」を短い語で言うもの。
-             別々の節に立てると同じ重みの帯が2本続くので、1つの節の中で
-             2欄に分ける（節の数を減らし、強弱をつける）。 */
-          '<div class="bs bs-pair">' +
-            '<div class="bs-h"><span class="bs-ic">' + svgIc(PULSE_IC, 16) + '</span>' +
-              '<h5>体の状態</h5><small>いま治療中のことと、続けている処置です。</small>' +
-              editBtn('cond') + '</div>' +
-            '<div class="bs-body pairgrid">' +
-              '<div class="pair-col"><span class="pair-lb">治療中の病気・状態</span>' +
-                tagBlock('medical.conditions', m.conditions, 'tag-cond', '病名（読点区切り）') + '</div>' +
-              '<div class="pair-col"><span class="pair-lb">継続している治療・処置</span>' +
-                tagBlock('medical.treatments', m.treatments, 'tag-treat', '治療・処置（読点区切り）') + '</div>' +
-            '</div>' +
+        /* 見開き。手帳は開くと2面ある。左右で役割を変える：
+             左 … 本人そのもの。個人情報・現在の医療状態・普段の状態・
+                  メモ。器を持たせず、罫と文字の大小だけで置く。
+                  救急でまず読むもの（病名・アレルギー・副作用歴）は
+                  「現在の医療状態」が持つ。別に「伝えること」の節を
+                  設けると、同じ内容の写しになる（派生ビューは置かない）。
+             右 … 場面。いつもの通院・薬を確認するところ・必要なものと
+                  所在。                                          */
+        '<div class="bk-spread">' +
+          '<div class="bk-page bk-page-l">' + leftFace() + '</div>' +
+          '<div class="bk-page bk-page-r">' +
+            /* いつもの通院。日常の側。かかりつけ薬局は「薬を確認する
+               ところ」に一本化したので、ここには持たない。 */
+            scene('visit', 'いつもの通院', 'かかっている先の連絡先です。',
+              clinicsBlock(), 'sc-visit') +
+            /* 薬を確認するところ。複数の入口への案内。 */
+            scene('medsrc', '薬を確認するところ', '最新の薬の情報への入口です。',
+              medSourcesBlock(), 'sc-medsrc') +
+            /* 医療で必要になるものと所在。探し物の場面。 */
+            scene('supplies', '医療で必要になるものと所在', 'カードと書類の在りかです。',
+              suppliesBlock(), 'sc-supplies') +
           '</div>' +
-          medSection('meds', PILL_IC, '薬の正確な情報への入口',
-            'くすりの詳しい内容は、ここから確認できます。', medsBlock()) +
-          medSection('docs', DOC_IC, '医療関係書類',
-            '診察券や医療の書類の保管場所です。', docsBlock()) +
-          '<div class="bs">' + slipsBlock() + '</div>' +
         '</div>' +
       '</div>';
   }
@@ -911,9 +1775,86 @@
 
   /* ══ 描画とカウント ═══════════════════════════════════ */
 
+  /* 治療中の病気・状態を全件見せるモーダル。相関図では4つまでしか
+     置かないので、5件以上あるとき「ほか◯件」から開く。手帳の面の
+     外（body 直下）に scrim ごと置く――面の中に入れると、外側クリック
+     で編集を閉じるハンドラや手帳のはみ出し隠しと干渉する。
+     他領域にモーダルの前例は無いので、ここで完結させる（正本 §13）。 */
+  let condModalEl = null;
+  function renderCondModal() {
+    if (!condModal) {
+      if (condModalEl) { condModalEl.remove(); condModalEl = null; }
+      return;
+    }
+    const items = (S.grpOf('condition').items || []).filter(r => r.text);
+    const rows = items.map(r =>
+      '<li class="cm-row">' +
+        '<span class="cm-ic">' +
+          svgIc(COND_IC[r.text] || COND_FALLBACK, 15) + '</span>' +
+        '<span class="cm-tx">' + esc(S.conditionLabel(r)) + '</span>' +
+      '</li>').join('');
+    if (!condModalEl) {
+      condModalEl = document.createElement('div');
+      condModalEl.className = 'cm-scrim';
+      document.body.appendChild(condModalEl);
+    }
+    condModalEl.innerHTML =
+      '<div class="cm-panel" role="dialog" aria-modal="true" aria-label="治療中の病気・状態">' +
+        '<div class="cm-h">' +
+          '<span class="cm-h-tx">治療中の病気・状態<em>' + items.length + '件</em></span>' +
+          '<button type="button" class="cm-close" data-condmodal-close="1" ' +
+            'aria-label="閉じる">' + XMARK + '</button>' +
+        '</div>' +
+        '<ul class="cm-list">' + rows + '</ul>' +
+      '</div>';
+  }
+
+  /* 体の処置マップ｜カードの高さを実測して組み直す。
+     foreignObject は高さを固定するので、描く前は中身の折り返し行数が
+     分からず、見積りで置くしかない。見積りがずれると隣のカードと
+     重なる。描画後にここで実測し、上から詰め直してリーダー線も
+     引き直す（見積りは初回の当て置きでしかない）。 */
+  function relayoutCards(root) {
+    const svg = root && root.querySelector('.bmap-svg');
+    if (!svg) return;
+    const foList = [...svg.querySelectorAll('.bmap-fo')];
+    if (!foList.length) return;
+    const leaderList = [...svg.querySelectorAll('.bmap-leader')];
+    const vb = svg.viewBox.baseVal;
+    const TOP = vb.y + 4, BOT = vb.y + vb.height - 4;
+
+    ['l', 'r'].forEach(side => {
+      const list = foList.filter(fo => fo.dataset.side === side)
+        .sort((a, b) => (+a.dataset.py) - (+b.dataset.py));
+      let cursor = TOP;
+      list.forEach(fo => {
+        const card = fo.querySelector('.bmap-card');
+        if (!card) return;
+        /* 実測（CSS px）を viewBox の単位へ直す。SVG は幅なりに
+           拡縮されるので、その比を掛ける。 */
+        const scale = vb.width / svg.getBoundingClientRect().width;
+        const h = card.getBoundingClientRect().height * scale + 2;
+        const py = +fo.dataset.py;
+        let top = Math.max(cursor, py - h / 2);
+        if (top + h > BOT) top = BOT - h;
+        cursor = top + h + 8;
+        fo.setAttribute('y', top);
+        fo.setAttribute('height', h);
+        /* リーダー線を引き直す。カードの縦中央からピンへ。 */
+        const leader = leaderList[foList.indexOf(fo)];
+        if (leader) {
+          leader.setAttribute('d', 'M' + fo.dataset.edge + ' ' + (top + h / 2) +
+            'H' + fo.dataset.bend + 'L' + fo.dataset.px + ' ' + py);
+        }
+      });
+    });
+  }
+
   function render() {
     renderMedical();
     renderCare();
+    renderCondModal();
+    relayoutCards(medEl);
 
     /* 見出しの件数。まだ辿れないものがあれば出す（正本 §12：入力率
        ではなく、必要な状態がどこまで成立しているか）。 */
@@ -933,14 +1874,19 @@
       if (el) {
         el.focus();
         if (el.select && editing.kind !== 'area') el.select();
+        if (scrollToEditingAfterRender) {
+          const card = el.closest('.cef-item') || el;
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     }
+    scrollToEditingAfterRender = false;
   }
 
   /* ── 編集の確定 ─────────────────────────────────────
      開いている入力欄の値を state へ書き戻す。配列で持っている項目
-     （病名・治療・箇条書き）は専用の適用関数を通す。               */
-  const TAG_PATHS  = ['medical.conditions', 'medical.treatments'];
+     （診療科・箇条書き）は専用の適用関数を通す。                   */
+  const TAG_PATHS  = [];
   const LINE_PATHS = ['care.notes'];
 
   function applyOne(path, value) {
@@ -952,6 +1898,11 @@
     if (m) {
       const sv = S.data.care.services[+m[1]];
       return S.setServiceName(sv, String(value).trim());
+    }
+    /* 医療機器の群セレクトは日本語ラベルで選ばれる。body/daily へ戻す。 */
+    if (/^medical\.devices\.items\.\d+\.group$/.test(path)) {
+      const key = value === S.DEVICE_GROUPS.daily ? 'daily' : 'body';
+      return S.applyValue(path, key);
     }
     return S.applyValue(path, value);
   }
@@ -974,17 +1925,72 @@
   }
   function commitSection() {
     if (!editSection) return;
+    const key = editSection.key;
     const changed = flushInputs();
     editSection = null;
     editing = null;
+    picker = null;
+    pickerGroups.clear();
     if (changed) S.save();
     render();
+    /* 編集を閉じるとフォームが畳まれてページ高が縮む――スクロール
+       位置がそのままだと、閉じた節がはるか下（または画面外）に
+       残る。閉じた節の見出しを画面内に戻す。 */
+    scrollSectionIntoView(key);
+  }
+  /* 節の見出し（閲覧モードの鉛筆 .i-secedit[data-editsec=KEY]）を
+     画面の上寄りに収める。render 直後に呼ぶ。 */
+  function scrollSectionIntoView(key) {
+    const anchor = document.querySelector('.i-secedit[data-editsec="' + key + '"]');
+    if (!anchor) return;
+    const head = anchor.closest('.sf-glb, .sf-sglb, .subsec-lb, .cm-h, .sec-h') || anchor;
+    const y = head.getBoundingClientRect().top + window.pageYOffset - 84;
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
   }
   function cancelAll() {
     editing = null;
     editSection = null;
     confirmDelete = null;
+    picker = null;
+    pickerGroups.clear();
     render();
+  }
+
+  /* 顔写真を選ぶ。<input type=file> を作って開き、選ばれた画像を
+     縮小してから data URI で state へ入れる。手帳に貼る証明写真は
+     小さくてよいので、長辺 480px・JPEG 品質 .82 まで落とす。      */
+  function pickPhoto() {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/*';
+    inp.addEventListener('change', () => {
+      const file = inp.files && inp.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 480;
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+          else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+          const cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          let uri;
+          try { uri = cv.toDataURL('image/jpeg', 0.82); }
+          catch (err) { uri = String(reader.result); }
+          S.data.medical.person.photo = uri;
+          S.save();
+          render();
+        };
+        img.onerror = () => show('画像を読み込めませんでした');
+        img.src = String(reader.result);
+      };
+      reader.onerror = () => show('画像を読み込めませんでした');
+      reader.readAsDataURL(file);
+    });
+    inp.click();
   }
 
   /* ── 操作 ───────────────────────────────────────────
@@ -1004,6 +2010,23 @@
         return;
       }
 
+      /* 顔写真。押すとファイルを選び、読み込んで data URI で持つ。
+         大きい写真はキャンバスで長辺 480px まで縮めてから保存する
+         （localStorage の仮保存に載る大きさに抑える）。 */
+      const ph = e.target.closest('[data-photo]');
+      if (ph) { pickPhoto(); return; }
+      const phc = e.target.closest('[data-photoclr]');
+      if (phc) {
+        S.data.medical.person.photo = '';
+        S.save();
+        render();
+        return;
+      }
+
+      /* 治療中の病気・状態｜「ほか◯件」で全件モーダルを開く。 */
+      const cmo = e.target.closest('[data-condmodal]');
+      if (cmo) { condModal = true; render(); return; }
+
       /* 節ごとの編集を開く／閉じる。 */
       const se = e.target.closest('[data-editsec]');
       if (se) {
@@ -1012,7 +2035,87 @@
         if (editing) flushInputs();
         editing = null;
         confirmDelete = null;
+        picker = null;
+        pickerGroups.clear();
         editSection = { key: key };
+        render();
+        return;
+      }
+
+      /* 現在の医療状態｜「あり／なし」を選ぶ。 */
+      const pz = e.target.closest('[data-presence]');
+      if (pz) {
+        flushInputs();
+        const [kind, val] = pz.dataset.presence.split('|');
+        if (val !== 'あり') { picker = null; pickerGroups.clear(); }
+        if (S.setPresence(kind, val)) S.save();
+        render();
+        return;
+      }
+
+      /* 候補ピッカーの開閉。data-pick="kind"。 */
+      const pk = e.target.closest('[data-pick]');
+      if (pk) {
+        flushInputs();
+        const kind = pk.dataset.pick;
+        if (picker === kind) { picker = null; pickerGroups.clear(); }
+        else { picker = kind; pickerGroups.clear(); }
+        render();
+        return;
+      }
+      /* 系統見出しの展開・折りたたみ。data-pickgrp="kind/系統名"。 */
+      const pg = e.target.closest('[data-pickgrp]');
+      if (pg) {
+        const key = pg.dataset.pickgrp;
+        if (pickerGroups.has(key)) pickerGroups.delete(key);
+        else pickerGroups.add(key);
+        render();
+        return;
+      }
+
+      /* 現在の医療状態｜候補チップの入り切り（病気・治療・機器）。
+         data-chip="kind|値"、機器は kind が "device:body" / "device:daily"。 */
+      const cz = e.target.closest('[data-chip]');
+      if (cz) {
+        flushInputs();
+        const [kraw, value] = cz.dataset.chip.split('|');
+        const [kind, grp] = kraw.split(':');
+        const g = S.grpOf(kind);
+        g.items = g.items || [];
+        const at = g.items.findIndex(r => r.text === value);
+        if (at > -1) g.items.splice(at, 1);
+        else {
+          const row = S.addCurrentRow(kind);
+          row.text = value;
+          if (kind === 'device' && grp) row.group = grp;
+        }
+        S.save();
+        render();
+        return;
+      }
+
+      /* 行の中の複数選択（反応・起きたこと）。
+         data-multi="medical.allergies.items.0|reactions|値" */
+      const mz = e.target.closest('[data-multi]');
+      if (mz) {
+        flushInputs();
+        const [rowPath, field, value] = mz.dataset.multi.split('|');
+        S.toggleInArray(S.getByPath(rowPath), field, value);
+        S.save();
+        render();
+        return;
+      }
+
+      /* 候補チップで1つの値を入れる／外す（ひとこと等）。
+         data-setval="path|値"。同じ値ならトグルで空に戻す。 */
+      const sv = e.target.closest('[data-setval]');
+      if (sv) {
+        flushInputs();
+        const at = sv.dataset.setval.indexOf('|');
+        const path = sv.dataset.setval.slice(0, at);
+        const value = sv.dataset.setval.slice(at + 1);
+        S.setByPath(path, (S.getByPath(path) || '') === value ? '' : value);
+        S.save();
         render();
         return;
       }
@@ -1023,13 +2126,33 @@
         flushInputs();
         const what = add.dataset.add;
         if (what === 'clinic') S.addClinic();
-        else if (what === 'pharm') S.addPharmacy();
-        else if (what === 'tell') S.addTell('other');
+        else if (what === 'pharm') {
+          const row = S.addPharmacySource();
+          editing = { path: 'medical.medSources.' +
+            (S.data.medical.medSources.length - 1) + '.name', kind: 'line' };
+          scrollToEditingAfterRender = true;
+        }
+        else if (what.indexOf('supply|') === 0) {
+          const catKey = what.split('|')[1];
+          S.addSupply(catKey);
+          const idx = (S.data.medical.supplies[catKey] || []).length - 1;
+          editing = { path: 'medical.supplies.' + catKey + '.' + idx + '.name',
+            kind: 'line' };
+          scrollToEditingAfterRender = true;
+        }
+        else if (what === 'condition' || what === 'treatment' || what === 'device') {
+          S.addCurrentRow(what);
+          /* 足したその行の名前欄をすぐ開く。開かないと画面のいちばん上に
+             空カードが増えるだけで「どこに書くのか」が読めない。
+             render() が data-path の欄へ focus し、下で見える位置へ送る。 */
+          const idx = (S.grpOf(what).items || []).length - 1;
+          const path = 'medical.' + what + 's.items.' + idx + '.text';
+          editing = { path: path, kind: 'line' };
+          scrollToEditingAfterRender = true;
+        }
+        else if (what === 'allergy') S.addAllergy();
+        else if (what === 'adverse') S.addAdverse();
         else if (what === 'service') S.addService('', 'home');
-        else if (what === 'pocket')
-          S.data.medical.pocket.push({ id: 'pk-' + Date.now(), item: '診察券', where: '', state: '未確認' });
-        else if (what === 'paper')
-          S.data.medical.papers.push({ id: 'pp-' + Date.now(), item: '', where: '', state: '未確認' });
         else if (what === 'cpaper')
           S.data.care.papers.push({ id: 'cp-' + Date.now(), item: '', where: '', state: '未確認' });
         S.save();
@@ -1037,9 +2160,11 @@
         return;
       }
 
-      /* 行を消す。1度目で確認、2度目で実行。 */
+      /* 行を消す。1度目で「削除しますか？」、[削除] で実行、[やめる] で戻す。 */
       const del = e.target.closest('[data-del]');
       if (del) { confirmDelete = del.dataset.del; render(); return; }
+      const dno = e.target.closest('[data-delno]');
+      if (dno) { confirmDelete = null; render(); return; }
       const yes = e.target.closest('[data-delyes]');
       if (yes) {
         S.removeAny(yes.dataset.delyes);
@@ -1071,7 +2196,11 @@
       }
     });
 
-    /* セレクトは選ばれた瞬間に書き戻す。 */
+    /* セレクトは選ばれた瞬間に書き戻す。日付欄はここに含めない――
+       年・月・日を1桁ずつ打っている途中でも change が飛ぶことがあり、
+       そのたびに render() で input が作り直されてフォーカスが切れる
+       （キー入力が1回で止まって見えるバグの原因だった）。日付欄は
+       他の文字欄と同じく、Enter か編集終了の操作で確定させる。     */
     host.addEventListener('change', e => {
       const el = e.target.closest('[data-ef][data-path]');
       if (!el || el.tagName !== 'SELECT') return;
@@ -1084,9 +2213,18 @@
   wire(medEl);
   wire(careEl);
 
+  /* 病名モーダルの閉じ方｜×ボタン・scrim の外側・Escape。 */
+  function closeCondModal() { if (condModal) { condModal = false; render(); } }
+  document.addEventListener('click', e => {
+    if (!e.target.isConnected) return;
+    if (e.target.closest('[data-condmodal-close]')) { closeCondModal(); return; }
+    if (condModal && e.target.classList.contains('cm-scrim')) closeCondModal();
+  });
+
   /* Enter で確定、Escape で閉じる。節ごとの編集中は、Enter はその欄を
      確定して節は開いたまま。Escape は節ごと閉じる。 */
   document.addEventListener('keydown', e => {
+    if (condModal && e.key === 'Escape') { e.stopPropagation(); closeCondModal(); return; }
     if (editSection) {
       if (e.key === 'Escape') { e.stopPropagation(); commitSection(); return; }
       if (editing && e.key === 'Enter' &&

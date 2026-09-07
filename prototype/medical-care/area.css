@@ -58,6 +58,15 @@ button.st:hover{filter:brightness(.97)}
   border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink3)}
 .rowdel:hover{border-color:#e0b3ae;color:var(--rd)}
 .rowdel svg{width:13px;height:13px}
+/* 削除の確認。アイコンを化けさせず、文字で問う。 */
+.rowdel-ask{display:inline-flex;align-items:center;gap:6px;flex:none;
+  font-size:11px;color:var(--ink3)}
+.rowdel-yes,.rowdel-no{padding:3px 10px;border-radius:6px;font-family:inherit;
+  font-size:11px;font-weight:700;cursor:pointer;border:1px solid}
+.rowdel-yes{background:#fbeceb;border-color:#e0b3ae;color:#c24a3f}
+.rowdel-yes:hover{background:#f7ddda}
+.rowdel-no{background:#fff;border-color:var(--line);color:var(--ink2)}
+.rowdel-no:hover{border-color:#b9b2a0}
 .rowadd{display:inline-flex;align-items:center;gap:6px;margin-top:9px;
   padding:6px 13px;border:1px dashed var(--line2);border-radius:8px;
   background:#fff;color:var(--gr2);font-family:inherit;font-size:12px;font-weight:650}
@@ -67,10 +76,10 @@ button.st:hover{filter:brightness(.97)}
    医療｜手帳
    ------------------------------------------------------------------
      .bk        手帳ぜんたい。表紙の色帯 → 見開き → ポケット。
-     .bk-cover  表紙。本人の識別情報（氏名・生年月日・血液型）。
+     .bk-cover  表紙。本人の識別情報（氏名・生年月日・年齢・血液型）。
                 救急で最初に読まれるので、いちばん上に大きく置く。
      .bk-page   見開きの紙。記録はこの上に並ぶ。
-     .bk-pocket 透明ポケット。持ち歩くカード類が挿さっている。
+     .sup       医療で必要になるものと所在。カテゴリ（棚）＋実物（物）。
    ══════════════════════════════════════════════════════════════ */
 
 /* 手帳。左端に背（綴じ）があるので、その幅ぶん中身を右へ寄せる。
@@ -87,7 +96,9 @@ button.st:hover{filter:brightness(.97)}
 .bk-stitch{position:absolute;left:12px;top:26px;width:10px;height:calc(100% - 52px)}
 /* しおり。表紙の上端から垂れ、氏名カードの手前に出る。器が
    overflow:hidden なので、外へはみ出さず内側で終わる長さにする。 */
-.bk-ribbon{position:absolute;z-index:2;top:0;right:26px;width:22px;height:78px;
+/* viewBox（22×96）と同じ比で置く。高さを詰めると先の V が
+   切り落とされて、ただの帯になる。 */
+.bk-ribbon{position:absolute;z-index:2;top:0;right:26px;width:22px;height:96px;
   filter:drop-shadow(0 3px 5px rgba(20,40,28,.4))}
 
 /* 表紙。緑の地に、革の型押しのような細い罫だけ。 */
@@ -100,10 +111,24 @@ button.st:hover{filter:brightness(.97)}
   letter-spacing:.06em}
 .bk-title p{margin:5px 0 0;font-size:11px;color:#cdd8cd;letter-spacing:.04em}
 
-/* 氏名カード。表紙に挿してある一枚。救急で読まれる identifiers。 */
-.bk-id{flex:none;min-width:236px;padding:12px 16px;border-radius:8px;
-  background:linear-gradient(#fdfcf5,#f5f2e7);color:var(--ink);
-  border:1px solid #d8d2c0;box-shadow:0 4px 12px rgba(20,40,28,.24)}
+/* 氏名カード。表紙に挿してある一枚。救急で読まれる identifiers。
+   厚紙の一枚なので角は 2px まで。挿してあるから水平ではなく、
+   わずかに傾いて浮く。上辺に受け光、下辺に紙の小口、外に落ち影。 */
+.bk-id{position:relative;flex:none;min-width:236px;padding:12px 16px;
+  border-radius:2px;
+  background:linear-gradient(163deg,#fdfcf5,#f7f4ea 52%,#f2eee1);
+  color:var(--ink);
+  transform:rotate(-.7deg);
+  box-shadow:
+    inset 0 1px 0 #fffffff2,
+    inset 0 -1px 0 #d8d2c0,
+    0 0 0 1px #cdc6b23d,
+    0 2px 3px -1px #14281c33,
+    0 7px 14px -4px #14281c3d,
+    0 16px 24px -12px #14281c47}
+/* 挿してある口。カードの下端が表紙の紙に差し込まれて陰になる。 */
+.bk-id:after{content:"";position:absolute;left:5px;right:5px;bottom:-3px;height:3px;
+  background:linear-gradient(#00000026,#0000);pointer-events:none}
 .bk-id-name{display:flex;align-items:baseline;gap:7px;
   padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #e6e1d3}
 .bk-id-name b{font-size:18px;font-weight:700;letter-spacing:.02em}
@@ -113,16 +138,590 @@ button.st:hover{filter:brightness(.97)}
 .bk-id dt{color:var(--ink3)}
 .bk-id dd{margin:0;font-weight:600}
 
-/* 見開きの紙。記録はこの上に並ぶ。 */
-.bk-page{background:var(--paper);border:1px solid #ded8c8;border-radius:10px;
-  padding:6px 22px 22px;box-shadow:inset 0 1px 0 #fff,0 2px 8px rgba(40,60,48,.1)}
+/* ── 見開き ─────────────────────────────────────────
+   手帳は開くと2面ある。左右で役割が違う：
+     左（.bk-page-l）… 本人そのもの。変わらない事実。器なし。
+     右（.bk-page-r）… 場面。いつ・何が起きたときに何を見るか。
+   中央がノド（谷）。左面は右辺が、右面は左辺が谷に落ちる。      */
+/* 畳むかどうかは器（.bk）の実幅で決める。.bk-spread 自身を container に
+   すると、自分の幅を自分で問い合わせることになり畳めない。         */
+.bk{container-type:inline-size}
+.bk-spread{display:grid;grid-template-columns:minmax(0,10fr) minmax(0,9fr);
+  background:var(--paper);
+  border-radius:1px 4px 4px 1px;
+  box-shadow:
+    inset 0 0 0 1px #00000012,
+    inset 0 2px 5px -2px #0000002b,
+    0 1px 0 #ffffff2e,
+    2px 3px 7px -2px #00000030}
 
-/* 節。番号は振らない（①→⑦と順に埋めるものではない）。記号＋文字
-   の見出しで、その節が何の話かを言う。
+/* 見開きの紙。紙に10pxの角丸はない。地には紙の繊維を薄く敷く。 */
+.bk-page{position:relative;min-width:0;
+  padding:18px 22px 22px;
+  background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px)}
+/* 左面。右辺がノドへ落ちるので、そちら側に影を寄せる。 */
+.bk-page-l{border-radius:1px 0 0 1px;
+  background-image:
+    linear-gradient(270deg,#c9bfa54d 0,#c9bfa517 11px,#0000 26px),
+    repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px)}
+/* 右面。左辺がノド。綴じの折り目を1本入れる。 */
+.bk-page-r{border-radius:0 4px 4px 0;padding-left:26px;
+  background-image:
+    linear-gradient(90deg,#c9bfa54d 0,#c9bfa517 11px,#0000 26px),
+    repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px);
+  box-shadow:inset 1px 0 0 #d9d0b866}
 
-   節をすべて同じ重みで並べない。救急で読む節（.bs-tell）は別格で、
-   辿るための節はその下に従属する。強弱は「地の色・見出しの大きさ・
-   上の余白」の3つでつける。                                       */
+/* 器が狭いときは見開きを畳む（1面の手帳になる）。 */
+@container (max-width:660px){
+  .bk-spread{grid-template-columns:minmax(0,1fr)}
+  .bk-page-l{border-radius:1px 4px 0 0;
+    background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px);
+    border-bottom:1px solid #ded6c2;padding-bottom:20px}
+  /* 畳んだときは左右が上下に並ぶので、面の下端を埋める罫は要らない
+     （下に続きがある＝途中で切れて見えない）。 */
+  .sf-rules{display:none}
+  .bk-page-r{border-radius:0 0 4px 4px;padding-left:22px;box-shadow:none;
+    background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px)}
+}
+
+/* ── 左エリア｜本人そのもの ───────────────────────────
+   器は敷かない（カードを与えると右エリアの場面と同じ重さになる）。
+   ただし罫だけで流すと、13個の等価なスロットが縦に並ぶ＝羅列になる。
+
+   手帳の記入面が羅列に見えないのは、罫があるからではなく、欄の
+   「格」が違うから。氏名欄は大きな明朝で立て、生年月日・年齢・
+   血液型は同格の記入罫、既往は罫が数本、備考は小さい。ひとつの面の
+   中で欄の作りが変わり、それが階層になる。左面もその3つの格で組む：
+
+     一等 .sf-head … 識別欄。太い罫で締め、氏名だけ大きな見出しで持つ
+     二等 .sf-sec  … 現在の医療状態。罫の走る記入欄
+     三等 .sf-sub  … 普段の状態・メモ。細い罫の備考欄
+
+   節見出しは配下の小見出しより必ず強くする。以前は節が 10.5px の
+   添え字、その中の小見出しが 11.5px の太字で親子が逆転しており、
+   5つの小見出しがトップレベルに並んで見えていた。               */
+
+/* 印刷インク。罫も欄の記号も、同じ一色から引く（刷ってある面）。 */
+.sf{--rule:#d9d0b8;--rule2:#e6dfcc;--stamp:#a99c78}
+
+/* ── 一等｜識別欄 ─────────────────────────────────── */
+.sf-head{padding-bottom:15px;border-bottom:2.5px solid #bfb492}
+/* 顔写真＋氏名・生年月日の並び。写真は手帳に貼った証明写真の一枚
+   （厚紙のように角は 2px、外に薄い落ち影）。狭ければ写真の下へ回す。 */
+.sf-idcard{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.sf-idmain{flex:1;min-width:200px}
+.sf-photo-wrap{position:relative;flex:none}
+.sf-photo{position:relative;display:block;width:72px;height:88px;padding:0;
+  border:none;border-radius:2px;overflow:hidden;cursor:pointer;
+  background:#efeade;
+  box-shadow:
+    inset 0 0 0 1px #cdc6b2,
+    0 1px 2px -1px #14281c33,
+    0 4px 9px -3px #14281c33}
+.sf-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.sf-photo-ph{width:100%;height:100%;display:block}
+.sf-photo-hint{position:absolute;left:0;right:0;bottom:0;padding:3px 2px;
+  font-size:8.5px;font-weight:700;text-align:center;letter-spacing:.02em;
+  color:#7a715a;background:#f3eede}
+.sf-photo:hover .sf-photo-hint{background:#e9e2cd}
+.sf-photo.has:hover:after{content:"差し替え";position:absolute;inset:auto 0 0 0;
+  padding:4px 2px;font-size:9px;font-weight:700;text-align:center;color:#fff;
+  background:#0009}
+.sf-photo-clr{position:absolute;top:-7px;right:-7px;display:grid;place-items:center;
+  width:22px;height:22px;border-radius:50%;
+  border:1px solid var(--line);background:#fff;color:var(--ink3);cursor:pointer}
+.sf-photo-clr:hover{border-color:#e0b3ae;color:var(--rd)}
+.sf-photo-clr svg{width:12px;height:12px}
+.sf-nm{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sf-lb{font-size:10px;color:var(--ink3);letter-spacing:.1em}
+.sf-nm h4{flex:1;min-width:0;margin:0;
+  font-family:var(--font-serif);font-size:27px;font-weight:600;letter-spacing:.04em}
+/* 生年月日・年齢・血液型は横に並ぶ3つの欄。どれも記入罫の上に
+   書く同格の欄で、枠は持たせない（血液型だけを四角で囲うと、
+   診断名のように強く読めてしまうため）。 */
+/* 3欄は折り返さず、常に横一列で並べる。どの欄も中身の幅だけを
+   取って左詰めにする――どれか1つを flex:1 で伸ばすと、その欄の
+   罫だけ不自然に間延びし、残り2欄が右へ寄って離れて見える
+   （3つの並びではなく「1つ＋離れた2つ」に見えていたのが崩れの
+   正体だった）。幅が足りない場面は .sf-fld-v のフォントを詰めて
+   収める（正本CLAUDE.mdの3段ブレークポイントで対応する）。      */
+.sf-idrow{display:flex;align-items:flex-end;gap:26px;margin-top:14px;flex-wrap:wrap}
+/* 編集中は生年月日が input[type=date] になる。ネイティブUIは
+   ブラウザが最小幅を強制し、CSS の縮小指定だけでは効かないことが
+   あるため、横並びのまま詰めようとすると左面の幅を超えて右の
+   場面パネルに重なる。編集中だけ生年月日を独立の行にし、年齢・
+   血液型はその下の行へ回す（表示専用のときは文字列で幅の心配が
+   無いので、今まで通り横一列でよい）。                          */
+.sf-idrow-edit .sf-fld:first-child{flex:0 0 100%}
+.sf-idrow-edit{row-gap:12px}
+.sf-fld{display:flex;flex-direction:column;gap:3px;flex:none;min-width:0}
+.sf-fld-lb{font-size:9.5px;color:var(--ink3);letter-spacing:.09em;white-space:nowrap}
+/* 生年月日は記入罫の上に書く欄。罫は欄の中身ぶんだけ伸ばす。 */
+.sf-fld-v{display:inline-block;font-size:15px;font-weight:600;line-height:1.5;
+  padding:0 2px 4px;border-bottom:1px solid var(--rule)}
+/* 日付欄（カレンダー入力）も同じ罫の上に乗せる。 */
+.sf-fld-v .i-ef{border:none;border-radius:0;padding:0 2px 4px;background:none;
+  font:inherit;color:inherit;min-width:0;vertical-align:top}
+.sf-fld-v .i-ef:focus{outline:none;background:#fbf8ee}
+/* 血液型のセレクトは select 既定の枠・高さ・矢印を持つので、
+   input と同じにリセットしないと罫からはみ出たりズレたりする
+   （appearance を消し、矢印は SVG の三角形1つに差し替える。
+   グラデーション2枚を重ねる書き方は位置がずれて二重に見えたり
+   罫の外へはみ出したりしたので、単純な1枚絵に変えた）。
+   幅は .sf-fld-v 側だけで決め、select は width:100% で内側に
+   収める（両方に幅を指定すると二重になってはみ出す）。         */
+.sf-fld-blood .sf-fld-v{width:56px;box-sizing:border-box}
+.sf-fld-v select.i-ef{appearance:none;-webkit-appearance:none;
+  width:100%;box-sizing:border-box;padding-right:14px;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0 5 6 10 0Z" fill="%23a99c78"/></svg>');
+  background-position:right 1px center;background-size:8px 5px;background-repeat:no-repeat}
+/* 年齢・血液型は値が短いので、罫の最低幅だけ揃える。 */
+.sf-fld-age .sf-fld-v{min-width:44px;text-align:center}
+.sf-fld-blood .sf-fld-v select.i-ef{text-align-last:center}
+/* 年齢は生年月日から決まる読み取り専用の値。記入罫の上に置くのは
+   同じだが、書き込める他の欄と紛れないよう地色をわずかに落とす。 */
+.sf-fld-ro{color:var(--ink3)}
+
+/* ── 二等｜現在の医療状態 ────────────────────────────
+   面の本体。節の見出しは配下のラベルよりはっきり強く、上の余白は
+   厚く取って、識別欄との間に段差を作る。                        */
+.sf-sec{margin-top:26px}
+.sf-glb{display:flex;align-items:center;gap:6px;margin-bottom:13px;
+  padding-bottom:6px;border-bottom:1px solid var(--rule);
+  font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:.02em}
+
+/* ── 三等｜備考欄（普段の状態・メモ）─────────────────
+   一段小さく、罫も細い。二等より静かでよい。                    */
+.sf-sub{margin-top:22px}
+.sf-sglb{display:flex;align-items:center;gap:6px;margin-bottom:9px;
+  font-size:10.5px;font-weight:700;color:var(--ink3);letter-spacing:.06em}
+
+/* ── 二等の欄の形｜チェック式の記入欄 ─────────────────
+   項目が並ぶ面なので、骨はチェックの列にする。□ は刷ってある枠で、
+   中身が有れば ✓ が入り、無ければ空の □ が残る。中身を抜いても面に
+   □ の列が残るので、「記入する欄がここにある」ことが読める。
+   ラベルと罫だけの作りだと、空のとき「未入力」の字しか残らない。 */
+.cur-grp{margin-top:14px}
+.cur-grp:first-child{margin-top:0}
+.cur-glb{display:flex;align-items:center;gap:5px;margin-bottom:4px;
+  font-size:10px;font-weight:600;color:var(--ink3);letter-spacing:.07em}
+.cur-glb svg{color:var(--stamp)}
+.crlist{list-style:none;margin:0;padding:0}
+.cr{display:flex;align-items:baseline;gap:9px;padding:4px 0 5px;
+  border-bottom:1px solid var(--rule2)}
+.cr:last-child{border-bottom:0}
+/* 刷ってあるチェック枠。行の骨はこれ。 */
+.cr-box{flex:none;display:grid;place-items:center;
+  width:14px;height:14px;align-self:center;
+  border:1.2px solid var(--rule);border-radius:1px;background:#fffdf6;
+  color:var(--stamp)}
+.cr-box svg{width:10px;height:10px}
+.cr-tx{flex:1;min-width:0;font-size:12.5px;line-height:1.7}
+.cr-other .cr-tx{color:var(--ink2)}
+/* 空の欄。枠と記入罫だけが残り、字は入らない。行の高さは埋まった行と
+   揃える（揃わないと、空欄が詰まって「余り」に見える）。 */
+.cr-empty{align-items:center}
+.cr-empty .cr-tx{min-height:21px;color:var(--ink3)}
+.cr-empty .cr-tx .i-ev-empty{color:#c4bda9}
+
+/* アレルギー・副作用歴＝「体に合わないもの」。
+   「現在の医療状態」とは別の節（自前の見出し・自前の鉛筆）。いま
+   治療していることと、体に入れてはいけないものは別のことなので、
+   節も編集も分ける。
+   受診時に必ず伝える情報だが、これは本人が整理する面であって救急隊
+   が見る面ではない。だから赤枠・濃い地・警告記号で隔離せず、他の節
+   と同じ手帳の欄にする。区別は「囲み」ではなく「原因 → 反応 を
+   全行そろえた1つの表」で作る。 */
+.sf-sec-vitals{margin-top:20px}
+/* 節見出し｜他の節（.sf-glb）と同じ格。記号を頭に、用途を淡く添える。
+   鉛筆は .i-secedit の margin-left:auto で右端へ。 */
+.sf-glb-vitals svg{color:var(--stamp);flex:none}
+.sf-glb-sub{margin-left:6px;font-weight:500;letter-spacing:.03em;
+  color:var(--ink3);font-size:9.5px}
+
+.cur-vitals{padding-top:2px}
+
+/* 行｜「原因 → 反応」を1つの文として左から流す。原因を太字、反応を
+   淡色でそのまま続ける。列でそろえない――原因の長さは行ごとに違う
+   ので、列を切ると短い値のときに矢印までの余白が空いて散らかる。
+   種別タグだけ右端にそろえる。 */
+.vv-list{list-style:none;margin:0;padding:0}
+.vv-row{display:flex;align-items:baseline;gap:6px;padding:6px 0;
+  font-size:12.5px;line-height:1.6;border-bottom:1px solid var(--rule2)}
+.vv-row:last-child{border-bottom:0}
+.vv-cause{font-weight:600;color:var(--ink)}
+/* 矢印｜文中の区切り。原因があるときだけ出す。 */
+.vv-arw{flex:none;color:var(--rule);font-size:11px}
+.vv-arw::before{content:"→"}
+.vv-react{color:var(--ink2);min-width:0}
+/* 原因なし行の反応は、原因と同じ格（太字・濃い）で先頭に置く。 */
+.vv-react-lead{font-weight:600;color:var(--ink)}
+/* 種別｜見出しではなく行の属性。右端にそろえる小さなしるし。 */
+.vv-tag{flex:none;margin-left:auto;align-self:center;padding:1px 7px;
+  border-radius:2px;font-size:9.5px;font-weight:700;letter-spacing:.04em;
+  border:1px solid var(--rule);color:var(--ink3);background:#fffdf6}
+.vv-note{margin:6px 0 0;font-size:11px;color:var(--ink3);cursor:pointer}
+/* 種別が2つ並ぶときだけ、ごく淡く色で見分ける（同種の連続を読むため
+   で、警告ではない）。 */
+.vv-list:has(.vv-tag-allergy):has(.vv-tag-adverse) .vv-tag-adverse{
+  border-color:#dcc9c3;color:#8a6a62}
+
+/* 狭い幅｜原因＋反応が1行に収まらないときは折り返す。上段＝原因＋
+   種別タグ、下段＝反応（頭を少し下げて続きと分かるように）。矢印は
+   改行で境界が付くので消す。 */
+@media (max-width:560px){
+  .vv-row{flex-wrap:wrap;row-gap:2px;padding:8px 0}
+  .vv-arw{display:none}
+  .vv-tag{order:2}
+  .vv-react{order:3;flex-basis:100%;padding-left:14px;
+    border-left:1px solid var(--rule);margin-left:1px}
+}
+
+/* 伝えるか選ぶチェック。押せる丸。編集中だけ出る。 */
+/* ── 現在の医療状態｜編集フォーム ─────────────────────
+   5項目は入力単位が違うので、同じフォームにしない。各項目は
+   「あり／なし」を先に選び、「あり」で中身を開く。主役は
+   「足したものの一覧」。                                        */
+.cur-edit .cei{padding:20px 0 22px;border-bottom:1px solid var(--rule)}
+.cur-edit .cei:first-child{padding-top:6px}
+.cur-edit .cei:last-child{border-bottom:0}
+/* セクション見出し｜中の病名カード（14px）より強く。番号のかわりに
+   何の節かを言う見出しなので、配下より一段大きく・太く。
+   右端に「編集を終える」チェック（節が長いので、各見出しに置いて
+   その場で保存できるようにする）。 */
+.cei-h{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.cei-lb{font-size:15px;font-weight:800;color:var(--ink);letter-spacing:.01em}
+/* 見出しのチェックは、節見出し（現在の医療状態）のものより控えめに。 */
+.cei-h .i-secedit{width:30px;height:26px}
+.cei-h .i-secedit.on{background:var(--gr);border-color:var(--gr);color:#fff}
+.cei-lead{margin:2px 0 10px;font-size:11.5px;color:var(--ink3);line-height:1.6}
+
+/* 「あり／なし」。2連トグル。押されるまではどちらもオフ（未確認）。 */
+.pgz{display:inline-flex;border:1px solid var(--rule);border-radius:8px;
+  overflow:hidden;margin-bottom:12px}
+.pgz-b{padding:6px 20px;background:#fdfcf6;border:none;border-left:1px solid var(--rule2);
+  font-family:inherit;font-size:12px;font-weight:650;color:var(--ink2);cursor:pointer}
+.pgz-b:first-child{border-left:0}
+.pgz-b:hover{background:#f6f3e8}
+.pgz-b.on{background:var(--gr);color:#fff}
+
+/* ── 病気・治療・機器の「あり」フォーム ─────────────────
+   足す操作を先頭に、足した項目を1件ずつカードで下に積む。 */
+.cef{margin-top:8px}
+
+/* 足すバー（先頭）。候補ピッカーと「候補にないものを書く」。 */
+.cef-add{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.pick-open{padding:7px 14px;border:1px solid var(--gr);border-radius:8px;
+  background:var(--gr);color:#fff;
+  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.pick-open:hover{background:var(--gr-d)}
+.cef-freebtn{padding:7px 13px;border:1px dashed var(--line2);border-radius:8px;
+  background:#fff;color:var(--gr2);
+  font-family:inherit;font-size:12px;font-weight:650;cursor:pointer}
+.cef-freebtn:hover{background:#f7faf7;border-color:#a9c0ac}
+.cef-empty{font-size:11.5px;margin:0}
+
+/* 足した項目｜1件＝1カード。病名（見出し）とその補足が同じ枠。 */
+.cef-items{list-style:none;margin:0;padding:0;display:flex;
+  flex-direction:column;gap:8px}
+.cef-item{border:1px solid var(--rule);border-radius:8px;background:#fdfcf6;
+  overflow:hidden}
+/* 見出し行｜病名そのもの。編集中でも「入力欄」ではなく見出しに
+   見えるよう、枠を外して大きな太字で置く（下線だけ残す）。 */
+.cef-item-h{display:flex;align-items:center;gap:8px;padding:9px 10px 8px}
+.cef-name{flex:1;min-width:0}
+.cef-name .i-ef,.cef-name .i-ev{width:100%;padding:1px 0;border:0;
+  border-bottom:1px solid var(--rule);border-radius:0;background:none;
+  font-size:14px;font-weight:700;color:var(--ink)}
+.cef-name .i-ef:focus{outline:none;border-bottom-color:var(--gr)}
+/* 未入力の呼び水（例：高血圧）は入力済みに見えないよう淡く・細く。 */
+.cef-name .i-ev-empty{color:#c4bda9;font-weight:400}
+.cef-name .i-ef::placeholder{color:#c4bda9;font-weight:400}
+.cef-item-h .rowdel,.cef-item-h .rowdel-ask{margin-left:auto;flex:none}
+/* 補足｜見出しの下、地色を一段変えて「この病名にぶら下がる」を見せる。 */
+.cef-item-b{padding:8px 10px 10px;border-top:1px solid var(--rule2);
+  background:#faf8f0;display:flex;flex-direction:column;gap:7px}
+.cef-fld{display:flex;align-items:baseline;gap:9px}
+.cef-flb{flex:none;width:74px;font-size:10.5px;font-weight:600;
+  color:var(--ink3);line-height:1.5;text-align:right}
+.cef-flb em{display:block;font-style:normal;font-weight:400;font-size:9px;
+  color:#b4ab92}
+.cef-fv{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;
+  flex-wrap:wrap}
+.cef-fv .i-ev,.cef-fv .i-ef{flex:1;min-width:100px}
+.cef-fv select.i-ef{flex:none;min-width:120px}
+.cef-region-auto{font-size:10px;color:var(--stamp);font-style:normal}
+/* チップ＋自由入力の欄（ひとこと等）。ラベルは上、下にチップと欄。 */
+.cef-fld-col{flex-direction:column;align-items:stretch;gap:5px}
+.cef-fld-col .cef-flb{width:auto;text-align:left}
+.cef-fv-col{flex-direction:column;align-items:stretch;gap:6px}
+.cef-chipz{padding:0;gap:5px}
+.cef-chipz .chip{padding:3px 10px;font-size:11px}
+.cef-fv-col .i-ef,.cef-fv-col .i-ev{flex:none;width:100%;min-width:0}
+
+/* 候補パネル。開いたときだけ場所を取る。 */
+.pick{flex:1 1 100%;margin-top:2px;border:1px solid var(--rule);border-radius:8px;
+  background:#fdfcf6;overflow:hidden}
+.pick-h{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 11px;border-bottom:1px solid var(--rule2);
+  font-size:10.5px;font-weight:700;color:var(--ink3);letter-spacing:.06em}
+.pick-close{padding:2px 9px;border:1px solid var(--line);border-radius:6px;
+  background:#fff;font-family:inherit;font-size:10.5px;font-weight:650;
+  color:var(--ink2);cursor:pointer}
+.pick-close:hover{border-color:#b9b2a0}
+/* 系統の見出し（畳める）。 */
+.pick-grp{border-bottom:1px solid var(--rule2)}
+.pick-grp:last-child{border-bottom:0}
+.pick-gh{display:flex;align-items:center;gap:7px;width:100%;padding:8px 11px;
+  background:none;border:none;font-family:inherit;font-size:12px;font-weight:650;
+  color:var(--ink);cursor:pointer;text-align:left}
+.pick-gh:hover{background:#f6f3e8}
+.pick-gch{display:grid;place-items:center;width:14px;height:14px;flex:none;
+  color:var(--ink3);transition:transform .12s}
+.pick-gch svg{width:13px;height:13px}
+.pick-grp.open .pick-gch{transform:rotate(90deg)}
+.pick-gn{display:inline-grid;place-items:center;min-width:16px;height:16px;
+  padding:0 4px;border-radius:8px;background:var(--gr);color:#fff;
+  font-size:10px;font-weight:700}
+/* チップ。パネルの中だけに出る。 */
+.chipz{display:flex;flex-wrap:wrap;gap:6px;padding:2px 11px 11px}
+.chip{padding:4px 11px;border-radius:14px;border:1px solid var(--rule);
+  background:#fff;font-family:inherit;font-size:11.5px;color:var(--ink2);cursor:pointer}
+.chip:hover{border-color:#a9c0ac;background:#f7faf7}
+.chip.on{background:var(--gr-bg);border-color:#a9c9b1;color:#2f6647;font-weight:650}
+/* 反応・起きたこと（アレルギー・副作用歴の複数選択）は畳まず平置き。 */
+.cef-line-col .chipz{padding:0}
+
+/* アレルギー・副作用歴の1行は、複数のフィールドを持つ小さなカード。
+   overflow:hidden で、中の入力が角丸の外へはみ出さないようにする。 */
+/* カードの ul。ブラウザ既定の list-style と 40px の inline 余白を消す
+   （消し忘れると、カードだけ左に字下げされて幅が狭く見える）。 */
+.cef-list{list-style:none;margin:0;padding:0}
+.cef-card{padding:10px 11px 11px;margin-top:8px;border:1px solid var(--rule2);
+  border-radius:3px;background:#fdfcf6;list-style:none;overflow:hidden}
+/* カード頭｜通し番号と削除ボタンだけの行。削除ボタンを入力欄と同じ
+   flex 行に置くと幅計算がずれて右へはみ出すので、頭の行に分ける。 */
+.cef-card-h{display:flex;align-items:center;margin-bottom:8px}
+.cef-card-n{display:grid;place-items:center;min-width:18px;height:18px;
+  padding:0 5px;border-radius:9px;background:#efece1;color:var(--ink3);
+  font-size:10px;font-weight:700}
+.cef-card-h .rowdel,.cef-card-h .rowdel-ask{margin-left:auto}
+
+.cef-line{display:flex;align-items:baseline;gap:8px;margin-top:11px}
+.cef-line:first-child{margin-top:0}
+.cef-line-col{flex-direction:column;align-items:stretch;gap:5px}
+.cef-lb{flex:none;width:88px;font-size:10.5px;font-weight:600;color:var(--ink3);
+  line-height:1.4}
+/* 縦組み（ラベルが上）のときはラベル幅を解く。補足（em）は同じ行に
+   続ける――縦組みなら幅に余裕がある。 */
+.cef-line-col .cef-lb{width:auto}
+.cef-lb em{display:block;font-style:normal;font-weight:400;color:#b4ab92;
+  font-size:9px}
+.cef-line-col .cef-lb em{display:inline;margin-left:6px}
+/* 入力・select はどちらも「残り幅を埋めて、必要なら縮む」。width:100%
+   に flex:none を重ねると親からはみ出すので、必ず flex:1 / min-width:0。 */
+.cef-line .i-ev,.cef-line .i-ef{flex:1 1 auto;min-width:0;width:auto;max-width:100%}
+.cef-line-col .i-ev,.cef-line-col .i-ef{width:100%}
+
+/* ── 二等｜相関図（閲覧時）─────────────────────────────
+   現在の医療状態を「読む」ときの姿。上下2段で組む。
+
+     上段 … 治療中の病気・状態を幅いっぱいに並べる（名前が折れない）。
+     下段 … 体の処置マップ（人体シルエットに治療・機器のピン）。
+
+   間に「治療中」ハブは挟まない。以前はリスト（治療・処置／機器）を
+   病名に直結させないための緩衝だったが、体そのものへ刺すマップに
+   変えたいま、その役目はマップが果たす。上段とマップは縦に置くだけ。 */
+.sf-sec{container-type:inline-size}
+.cmap{display:flex;flex-direction:column;align-items:stretch;
+  gap:0;padding:4px 0 2px}
+.cmap-clb{display:flex;align-items:center;gap:5px;margin-bottom:7px;
+  font-size:10px;font-weight:600;color:var(--ink3);letter-spacing:.07em}
+.cmap-clb svg{color:var(--stamp);flex:none}
+
+/* 上段の病名｜アイコン＋病名＋一言の3層。横に4つまで並べる。
+   アイコンは器（角丸チップ）に入れず、臓器・系統の形そのものを
+   はっきり見せる。病名は太字（2行まで）、一言はその下に淡く括弧。
+   5つ目からは「ほか◯件をすべて見る」でモーダル。 */
+.cmap-cells{list-style:none;margin:0;padding:0;
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px 14px}
+.cmap-cell{display:flex;flex-direction:column;align-items:center;gap:6px;
+  text-align:center}
+.cmap-ic{flex:none;display:grid;place-items:center;width:34px;height:34px;
+  color:#5c7150}
+.cmap-ic svg{width:26px;height:26px}
+/* 病名。記号の前後では折らない（「心房細動・／不整脈」で折れる）。 */
+.cmap-tx{min-width:0;font-size:12px;font-weight:700;line-height:1.35;
+  color:var(--ink);word-break:keep-all;overflow-wrap:anywhere}
+/* いまの扱い（治療中／経過観察中／術後・再発予防で服薬中…）。病名の下、淡く。 */
+.cmap-note{font-size:10.5px;font-weight:500;color:var(--ink3);line-height:1.3;
+  word-break:keep-all;overflow-wrap:anywhere}
+.cmap-morebtn{display:block;width:fit-content;margin:10px auto 0;padding:2px 0;
+  background:none;border:none;
+  font-family:inherit;font-size:11.5px;font-weight:650;color:var(--gr2);
+  cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.cmap-morebtn:hover{color:var(--gr)}
+@container (max-width:360px){
+  .cmap-cells{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@container (max-width:250px){
+  .cmap-cells{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* 「あり」でないときの一言。押すと編集へ。 */
+.cmap-none{margin:2px 0 0;font-size:11.5px;color:var(--ink3);cursor:pointer}
+.cmap-none:hover{color:var(--gr2)}
+
+/* 病名の束と、下のマップの間。 */
+.cmap-top{padding-bottom:10px}
+
+/* ── 体の処置マップ ───────────────────────────────────
+   医療機器・続けている処置を、人体シルエットに刺したピンで見せる
+   （正本 §4-2）。ピンから外側のラベルカードへリーダー線。
+     体内にある機器   … 塗りの円板（緑）／線も緑
+     続けている処置   … 白抜きのリング（オレンジ）／線もオレンジ
+   カードには 品名（＋部位）／何のため／頻度・条件 を出す。
+   図は viewBox 0 0 340 250。シルエットは中央、右半分を反転コピー。 */
+.cmap-mapwrap{display:flex;justify-content:center}
+.bmap{cursor:pointer;width:100%}
+.bmap-svg{display:block;width:100%;max-width:470px;height:auto;margin:0 auto}
+/* シルエット｜assets/body-front.svg（パブリックドメイン素材）。
+   素材は黒塗りなので、ここで色を上書きする（inline style を持つ
+   パスもあるので !important で押さえる）。 */
+.bmap-body path{fill:#dfe3d6 !important;stroke:none !important}
+/* リーダー線｜ピンの色を帯びる。 */
+.bmap-leader{fill:none;stroke-width:1.1}
+.bmap-leader.is-dev{stroke:#5f8a63}
+.bmap-leader.is-tr{stroke:#c9803f}
+/* ピン｜体内＝塗りの緑、処置＝白抜き＋オレンジの輪。 */
+.bmap-pin{stroke-width:2}
+.bmap-pin.is-dev{fill:#3f6b4f;stroke:#3f6b4f}
+.bmap-pin.is-tr{fill:#fff;stroke:#cf7f3c}
+/* ラベルカード（foreignObject 内の HTML）。 */
+.bmap-fo{overflow:visible}
+.bmap-cardwrap{display:flex}
+.bmap-cardwrap.to-r{justify-content:flex-end}
+.bmap-cardwrap.to-l{justify-content:flex-start}
+.bmap-card{align-self:flex-start;display:flex;flex-direction:column;gap:2px;
+  width:100%;padding:5px 8px;border-radius:6px;background:#fff;
+  border:1px solid var(--rule);box-shadow:0 1px 3px rgba(40,50,35,.12);
+  border-left:3px solid transparent}
+.bmap-card.is-dev{border-left-color:#3f6b4f}
+.bmap-card.is-tr{border-left-color:#cf7f3c}
+.bmc-name{font-size:11px;font-weight:700;color:var(--ink);line-height:1.3;
+  word-break:keep-all;overflow-wrap:anywhere}
+.bmc-sub{display:flex;flex-direction:column;gap:1px}
+.bmc-purpose{font-size:9.5px;color:var(--ink2);line-height:1.3}
+.bmc-note{font-size:9.5px;color:var(--ink3);line-height:1.3}
+/* 凡例。図の下に小さく。 */
+.bmap-legend{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center;
+  margin-top:4px}
+.bmap-lg{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ink3)}
+.bmap-sw{width:10px;height:10px;border-radius:50%;flex:none}
+.bmap-sw.is-tr{background:#fff;box-shadow:inset 0 0 0 2px #cf7f3c}
+.bmap-sw.is-dev{background:#3f6b4f}
+/* ピンが1つも無いとき。シルエットは残し、下に一言だけ添える。 */
+.bmap.is-empty .bmap-svg{max-width:150px}
+.bmap-empty{margin:4px 0 0;text-align:center;font-size:11px;color:var(--ink3);
+  cursor:pointer}
+.bmap-empty:hover{color:var(--gr2)}
+
+/* ── 治療中の病気・状態｜全件モーダル ─────────────────
+   相関図には4つまでしか置かない。5件以上あるとき「ほか◯件をすべて
+   見る」から、ここで全件を一覧する。手帳の面の外（body 直下）に置く。
+   医療領域にモーダルの前例は無いので、ナビのドロワーと同じ scrim の
+   手つきだけ借りて、中身はこの領域で完結させる（正本 §13）。 */
+.cm-scrim{position:fixed;inset:0;z-index:60;display:grid;place-items:center;
+  padding:24px;background:rgba(20,40,28,.4)}
+.cm-panel{width:min(420px,100%);max-height:calc(100vh - 48px);overflow:auto;
+  background:var(--paper,#fdfcf6);border:1px solid var(--rule);border-radius:6px;
+  box-shadow:0 12px 40px rgba(20,40,28,.25)}
+.cm-h{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:13px 16px;border-bottom:1px solid var(--rule2);
+  position:sticky;top:0;background:inherit}
+.cm-h-tx{font-size:13px;font-weight:700;color:var(--ink)}
+.cm-h-tx em{margin-left:7px;font-style:normal;font-weight:600;font-size:11px;
+  color:var(--ink3)}
+.cm-close{display:grid;place-items:center;width:28px;height:28px;flex:none;
+  border:1px solid var(--line);border-radius:7px;background:#fff;
+  color:var(--ink2);cursor:pointer}
+.cm-close:hover{border-color:#b9b2a0}
+.cm-close svg{width:15px;height:15px}
+.cm-list{list-style:none;margin:0;padding:6px 10px}
+.cm-row{display:flex;align-items:center;gap:10px;padding:8px 6px;
+  border-bottom:1px solid var(--rule2)}
+.cm-row:last-child{border-bottom:0}
+.cm-ic{flex:none;display:grid;place-items:center;width:28px;height:28px;
+  border-radius:8px;background:#fdfcf6;border:1px solid var(--rule);color:#7a6a44}
+.cm-ic svg{width:15px;height:15px}
+.cm-tx{min-width:0;font-size:12.5px;font-weight:600;line-height:1.5}
+
+/* ── 三等の欄の形｜囲みの備考欄 ───────────────────────
+   文章を書く欄なので、行罫ではなく囲みの箱にする。二等（チェックの
+   列）と形が違うから格が違って見える――どちらも「ラベル＋罫線」だと、
+   大きさを変えても同じ欄に見えて羅列が残る。
+   箱は2列に組む。縦一列だと、形は違っても並びの拍子が二等と同じに
+   なってしまう。                                                */
+/* 列数は左面の実幅で決める（viewport ではない）。左面は見開きの
+   6/17 しかないので、狭ければ1列に落ちる。 */
+.sf-sub{container-type:inline-size}
+.daily{display:grid;grid-template-columns:1fr;gap:8px}
+@container (min-width:240px){.daily{grid-template-columns:1fr 1fr}}
+/* 編集中は1列に戻す。2列だと入力欄が半幅になり、書いている文章の
+   後ろが見えない（読むための組みと、書くための組みは別）。 */
+.daily:has(.i-ef){grid-template-columns:1fr}
+.dbox{padding:8px 10px 9px;border:1px solid var(--rule2);border-radius:2px;
+  background:#fdfcf6}
+.dbox-h{display:flex;align-items:center;gap:5px;margin-bottom:4px;
+  font-size:9.5px;font-weight:600;color:var(--ink3);letter-spacing:.06em}
+.dbox-h svg{color:var(--stamp);flex:none}
+.dbox-tx{display:block;font-size:11.5px;line-height:1.65;color:var(--ink2)}
+.dbox-tx .i-ev-empty{color:#c4bda9}
+
+/* 未記入の欄。記入面なので罫は面の下端まで刷ってある。中身の終わりで
+   罫も終わると面が途中で切れて見え、下の空白がただの余白になる。
+   下端まで走らせると、その空白が「まだ書かれていない欄」になる。
+
+   高さは中身では決まらない（右面がどれだけ長いかで決まる）ので、
+   面いっぱいに伸びる1本として置き、余った分をこれが受ける。     */
+.sf{display:flex;flex-direction:column;min-height:100%}
+.sf-rules{flex:1;min-height:52px;margin-top:16px;
+  background-image:repeating-linear-gradient(
+    #0000 0 25px,var(--rule2) 25px 26px);
+  /* 下へ向かって消える。罫が最後まで同じ濃さだと、面の下半分が
+     「罫だけの面」になり、未記入の欄ではなくノートの余りに見える。
+     数本だけ残して抜くと、記入欄がまだ続いていることは伝わる。 */
+  -webkit-mask-image:linear-gradient(#000,#0000 190px);
+  mask-image:linear-gradient(#000,#0000 190px)}
+
+/* ── 右エリア｜場面 ──────────────────────────────────
+   単位は .scene 1種類だけ。ただし3つを同じ重みで並べない――同じ
+   拍子が続くことが羅列の正体なので、場面ごとに骨から変える：
+
+     通院（.sc-visit）         … 中。見出しは本文の続きの大きさ。
+     薬の入口（.sc-medsrc）    … 中。
+     必要なもの（.sc-supplies）… 小。見出しをラベルまで落とし、地に溶かす。
+
+   記号タイル（旧 .bs-ic）は置かない。同じタイルを配ると、それ自体が
+   新しい羅列になる。強弱は大きさと余白でつける。                  */
+.scene + .scene{margin-top:26px}
+.scene-h{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;
+  margin-bottom:11px}
+.scene-h h5{margin:0;font-size:14px;font-weight:700;letter-spacing:-.01em}
+.scene-h small{flex:1;min-width:120px;font-size:11px;color:var(--ink3)}
+
+/* 通院・薬の入口。中くらい。地は持たず、上に細い罫だけ。 */
+.sc-visit .scene-h h5,.sc-medsrc .scene-h h5{font-size:14px}
+
+/* 医療で必要になるものと所在。いちばん静かでよい（探し物のときだけ
+   開く）。見出しをラベルの大きさまで落とす。 */
+.sc-supplies{padding-top:4px}
+.sc-supplies .scene-h{gap:7px;margin-bottom:9px}
+.sc-supplies .scene-h h5{font-size:11.5px;font-weight:700;color:var(--ink2);
+  letter-spacing:.04em}
+.sc-supplies .scene-h small{font-size:10.5px}
+
+/* 旧・節の骨。介護側（.cs）が使う。 */
 .bs{padding:16px 0 18px;border-bottom:1px solid #ece6d6}
 .bs:last-child{border-bottom:0;padding-bottom:4px}
 .bs-h{display:flex;align-items:center;gap:10px;margin-bottom:11px}
@@ -138,12 +737,25 @@ button.st:hover{filter:brightness(.97)}
 
 /* 主な医療機関。1件ずつが並立するのでカードで横に並べる。器の実幅で
    列数を決める（viewport ではない）。 */
-.bs:has(.mcgrid){container-type:inline-size}
+.scene:has(.mcgrid),.bs:has(.mcgrid){container-type:inline-size}
 .mcgrid{display:grid;grid-template-columns:1fr;gap:11px}
-@container (min-width:560px){.mcgrid{grid-template-columns:1fr 1fr}}
+@container (min-width:440px){.mcgrid{grid-template-columns:1fr 1fr}}
 
-.mc{padding:12px 14px 13px;border-radius:10px;
-  background:#f4f8fa;border:1px solid #d8e5ec}
+/* 医療機関。手帳に貼り込んだ診察案内の一枚。紙なので角は 2px、
+   左辺に綴じの糊しろを持ち、そこだけ色が濃い。「複数が並立する」
+   ことは .mcgrid の段組みが言うので、器は静かでよい。            */
+.mc{position:relative;padding:12px 14px 13px 17px;
+  border-radius:2px;
+  background:linear-gradient(171deg,#f7fbfc,#f1f7fa 58%,#eaf2f7);
+  box-shadow:
+    inset 0 1px 0 #ffffffdb,
+    inset 0 0 0 1px #d3e1e9a6,
+    0 1px 2px #3f5c6b1f,
+    0 3px 7px -3px #3f5c6b2b}
+/* 糊しろ。貼り込んだ左辺。 */
+.mc:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:linear-gradient(90deg,#bcd3df,#bcd3df57);
+  border-radius:2px 0 0 2px;pointer-events:none}
 .mc-top{display:flex;align-items:center;gap:8px;margin-bottom:7px}
 .mc-ic{display:grid;place-items:center;width:27px;height:27px;flex:none;
   border-radius:8px;background:#fff;border:1px solid #cbdce6;color:#4a7f9c}
@@ -160,99 +772,28 @@ button.st:hover{filter:brightness(.97)}
 .mc-tel{display:flex;align-items:center;gap:5px;color:var(--gr2);font-weight:700}
 .mc-tel svg{width:12px;height:12px;flex:none}
 
-/* 節の中の小見出し。独立した節にするほどではないもの（薬局）を、
-   親の節にぶら下げる。見出しは本文サイズまで落とす。 */
-.subsec{margin-top:13px;padding-top:12px;border-top:1px dashed #ded8c6}
-.subsec-lb{display:flex;align-items:center;gap:6px;margin-bottom:7px;
-  font-size:11.5px;font-weight:700;color:var(--ink2)}
-.subsec-lb svg{color:#4d8262;flex:none}
-.subsec-lb .i-secedit{width:24px;height:24px}
-.subsec-lb .i-secedit svg{width:13px;height:13px;color:inherit}
-
 /* 2欄でひとまとめにする節（体の状態）。器の実幅で1列に落とす。 */
 .bs:has(.pairgrid){container-type:inline-size}
 .pairgrid{display:grid;grid-template-columns:1fr;gap:12px}
 @container (min-width:520px){.pairgrid{grid-template-columns:1fr 1fr}}
 .pair-lb{display:block;margin-bottom:5px;font-size:11px;color:var(--ink3)}
 
-/* かかりつけ薬局。1件が普通なので帯のまま。ただし医療機関と
-   取り違えないよう色を変える。 */
-.cl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  padding:11px 14px;margin-bottom:7px;border-radius:9px;
-  background:#f4f8f4;border:1px solid #dbe8dd}
-.cl:last-child{margin-bottom:0}
-.cl-ic{display:grid;place-items:center;width:26px;height:26px;flex:none;
-  border-radius:7px;background:#fff;border:1px solid #cfe0d3;color:#4d8262}
-.cl-ic svg{width:16px;height:16px}
-.cl-name{font-weight:700;font-size:13px}
-.cl-tel{display:inline-flex;align-items:center;gap:5px;
-  color:var(--gr2);font-size:12px;font-weight:650}
-.cl-tel svg{width:13px;height:13px}
-.cl-note{flex:1;min-width:140px;font-size:11.5px;color:var(--ink3)}
-
-/* ③④ タグの並び（病名・治療）。 */
-.tagrow{display:flex;gap:7px;flex-wrap:wrap;
-  padding:11px 14px;border-radius:9px;background:#f6f7f2;border:1px solid #e5e5d8}
-.tag-cond{background:#e8eef3;color:#3c5f7d}
-.tag-treat{background:#e9f0ea;color:#3f6b4e}
-
-/* ⑤ 医療機関に必ず伝えること。この領域の核。
-   救急で家族が読み上げる情報なので、他の節と同じ見た目にしない。 */
-/* 救急で読む節。ここだけ別格――紙面から浮き上がった1枚として、
-   見出しも中身も一段大きく、上下に余白を余分に取る。 */
-.bs-tell{margin:2px -14px 6px;padding:17px 18px 18px;border-radius:12px;
-  background:linear-gradient(#fef5f4,#fce9e7);border:1.5px solid #e0a49e;
-  box-shadow:0 1px 0 #ffffffcc inset,0 6px 16px -8px #9c4a4340}
-.bs-tell .bs-h h5{font-size:16px}
-.bs-tell+.bs{padding-top:20px}
-.bs-tell .bs-ic{background:#fbe5e3;border-color:#e6b3ae;color:var(--rd)}
-.bs-tell .bs-h h5{color:#a8322a}
-.bs-tell .bs-h small{color:#b0736d}
-/* 読み上げる項目。左に「何の話か」の札、右に読み上げる文。文は本文
-   より大きい――救急隊員に見せる／家族が声に出す場所なので、小さい字を
-   3行並べる形にしない。 */
-.telllist{list-style:none;margin:0;padding:0;
-  background:#fff;border:1px solid #eecdc9;border-radius:9px;overflow:hidden}
-.tell{display:grid;grid-template-columns:132px 1fr auto;align-items:center;
-  gap:14px;padding:11px 14px;border-top:1px solid #f5dedb}
-.tell:first-child{border-top:0}
-.tell-kind{font-size:10.5px;font-weight:700;color:#a8322a;line-height:1.5;
-  padding:3px 9px;border-radius:6px;background:#fbeceb;text-align:center}
-.tell-tx{min-width:0;font-size:14px;font-weight:600;line-height:1.65;
-  color:#3c2a28}
-.tell-st{display:flex;align-items:center;gap:6px}
-/* 伝え漏らすと処置が危険になるものは、左に太い赤帯を立てる。 */
-.tell-urgent{box-shadow:inset 4px 0 0 var(--rd)}
-.tell-urgent .tell-kind{background:#f7dbd9}
-/* 伝えることが空・未確認のときの注意。 */
-.tell-warn{display:flex;align-items:flex-start;gap:8px;margin-top:9px;
-  padding:9px 12px;border-radius:8px;background:#fff6ee;border:1px solid #ecc79c;
-  font-size:11.5px;color:#8a5209;line-height:1.7}
-.tell-warn svg{width:15px;height:15px;flex:none;margin-top:2px}
-
-/* 薬の情報への入口。「入口」なので行き先を大きく出す。左＝どこを
-   見ればよいか、右＝前提（服薬の有無）と申し送り。 */
-.bs:has(.entry){container-type:inline-size}
-.entry{display:grid;grid-template-columns:1fr;gap:12px}
-@container (min-width:560px){.entry{grid-template-columns:1.35fr 1fr}}
-.entry-go{display:flex;align-items:center;gap:14px;padding:14px 16px;
-  border-radius:10px;background:linear-gradient(#f2f7f3,#e9f1ec);
-  border:1px solid #cbdfd1}
-.entry-ic{display:grid;place-items:center;width:46px;height:46px;flex:none;
-  border-radius:11px;background:#fff;border:1px solid #cbdfd1;color:var(--gr)}
-.entry-tx{min-width:0}
-.entry-lb{display:block;font-size:11.5px;color:var(--ink2)}
-.entry-lb b{font-size:13px;color:var(--gr);font-weight:700}
-/* 行き先そのもの。ここが一番大きい。 */
-.entry-where{display:block;font-size:16px;font-weight:700;line-height:1.5;
-  margin-top:1px}
-.entry-sub{display:block;font-size:11.5px;color:var(--ink3);margin-top:2px}
-.entry-side{display:flex;flex-direction:column;gap:7px;padding:12px 14px;
-  border-radius:10px;background:#f8f6ef;border:1px solid #e5dfcd}
-.entry-row{display:flex;align-items:center;gap:9px;font-size:12px}
-.entry-row>span:first-child{flex:none;width:66px;color:var(--ink3);font-size:11px}
-.entry-note{margin:2px 0 0;padding-top:8px;border-top:1px solid #e5dfcd;
-  font-size:11.5px;color:var(--ink2);line-height:1.75}
+/* 薬を確認するところ。標準の入口を並べた1本のリスト。行き先を
+   大きく出す。かかりつけ薬局（.ms-pharm）だけは連絡先を持つので、
+   行き先の下に電話番号が付く。 */
+.mslist{display:flex;flex-direction:column}
+.ms{display:flex;align-items:flex-start;gap:11px;padding:10px 0;
+  border-top:1px solid #e7e0c8}
+.ms:first-child{border-top:0;padding-top:2px}
+.ms-ic{flex:none;display:grid;place-items:center;width:30px;height:30px;
+  margin-top:1px;color:var(--gr)}
+.ms-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ms-kind{font-size:11px;font-weight:700;color:var(--ink2)}
+.ms-where{display:block;font-size:14.5px;font-weight:700;line-height:1.5}
+.ms-where .ms-tel{display:inline-flex;align-items:center;gap:4px;
+  margin-left:8px;font-size:11px;font-weight:650;color:var(--gr2)}
+.ms-where .ms-tel svg{width:11px;height:11px}
+.ms-note{display:block;font-size:11.5px;color:var(--ink3);margin-top:1px}
 
 .kv{width:100%;border-collapse:collapse;font-size:12.5px}
 .kv th,.kv td{padding:8px 12px;border-bottom:1px solid #ece6d6;text-align:left;
@@ -263,50 +804,60 @@ button.st:hover{filter:brightness(.97)}
 .pill{display:inline-block;padding:1px 10px;border-radius:10px;
   background:var(--gr-bg);color:#2f6647;font-size:11px;font-weight:700}
 
-/* ⑦ 書類。持ち歩くもの（ポケット）と自宅にあるもの（表）で役割を分ける。 */
-.bk-docs{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+/* ⑦ 医療で必要になるものと所在。
+   カテゴリ（見出し）＝棚、その下の実物＝棚に入っている物。カテゴリは
+   固定で消せない。実物は「どのカード・手帳か」と「どこにあるか」を
+   持つ1行。
 
-/* 透明ポケット。カードが上下にずれて挿さっている。 */
-.pocket{position:relative;padding:12px 13px 14px;border-radius:10px;
-  background:linear-gradient(#eef1f0,#e5eae8);border:1px solid #d3dad7}
-.pocket-h{display:flex;align-items:center;gap:7px;margin-bottom:9px;
-  font-size:11.5px;font-weight:700;color:var(--ink2)}
-.pocket-h svg{width:14px;height:14px;color:#7d8a85}
-.pocket-slot{position:relative;display:flex;align-items:center;gap:5px 9px;
-  flex-wrap:wrap;padding:9px 12px;margin-bottom:-1px;
-  background:#fff;border:1px solid #d7ded9;border-radius:7px}
-/* 透明シートの照り。カードの上に薄い斜めのハイライトを重ねる。 */
-.pocket-slot:after{content:"";position:absolute;inset:0;border-radius:7px;
-  background:linear-gradient(112deg,#ffffff00 34%,#ffffffcc 46%,#ffffff00 58%);
-  pointer-events:none}
-.pocket-slot:last-of-type{margin-bottom:0}
-.pocket-item{font-weight:700;font-size:12px;flex:none}
-/* カードの記載は折り返して全部見せる。挿さっている物の名前が
-   途中で切れると、家族はいざというとき何を探せばよいか分からない。 */
-.pocket-where{flex:1 1 100%;min-width:0;font-size:11.5px;color:var(--ink2);
-  line-height:1.6;word-break:break-word}
+   ＊造形（カードケース／引き出し）は今回は外して、暫定で素の階層
+     リストにしている。棚に物が入っている構造は変えないので、造形は
+     あとで被せ直せる。                                            */
+.sc-supplies{container-type:inline-size}
+.sup{display:flex;flex-direction:column;gap:14px}
 
-/* 自宅にある書類。 */
-.papers .kv th{width:130px}
+/* カテゴリの見出し。制度側の括りなので、静かに・詰めて置く。 */
+.sup-cat-h{display:flex;align-items:baseline;gap:8px;
+  padding-bottom:5px;margin-bottom:6px;
+  border-bottom:1px solid #e3ddcb}
+.sup-cat-nm{font-size:12px;font-weight:700;color:var(--ink2);
+  letter-spacing:.02em}
+.sup-cat-hint{font-style:normal;font-size:10.5px;color:var(--ink3)}
 
-/* 本人の声＋通院メモ。手帳に挟んだ紙。 */
-.bk-slips{display:grid;grid-template-columns:1fr 1fr;gap:16px;
-  margin-top:16px;align-items:start}
-.slip{padding:13px 16px;border-radius:3px;font-size:12px;line-height:1.9;
-  box-shadow:0 3px 10px rgba(40,50,35,.14)}
-.slip-h{display:flex;align-items:center;gap:7px;margin-bottom:6px;
-  font-size:10.5px;font-weight:700;letter-spacing:.04em}
-.slip-voice{background:#fdf6dc;border:1px solid #eddfae;color:#5f5322;
-  transform:rotate(-.5deg)}
-.slip-voice .slip-h{color:#93803a}
-.slip-voice cite{display:block;margin-top:7px;font-size:11px;font-style:normal;
-  text-align:right;color:#93803a}
-.slip-memo{background:#fffdf7;border:1px solid #e4dfcd;color:var(--ink2);
-  background-image:repeating-linear-gradient(#fffdf7 0 25px,#eae4d2 25px 26px);
-  transform:rotate(.4deg)}
-.slip-memo .slip-h{color:var(--ink3)}
-.slip-memo ul{margin:0;padding-left:17px}
-.slip-memo li{margin-bottom:2px}
+/* 実物の行。カテゴリの下に一段下げて並べる（棚に入っている物）。 */
+.sup-items{list-style:none;margin:0;padding:0 0 0 12px;
+  border-left:2px solid #ece5d2;
+  display:flex;flex-direction:column;gap:3px}
+.sup-item{display:flex;align-items:baseline;gap:6px 10px;flex-wrap:wrap;
+  padding:5px 0}
+.sup-item + .sup-item{border-top:1px solid #efe9da}
+.sup-name{flex:none;min-width:120px;font-size:12.5px;font-weight:650}
+.sup-where{flex:1;min-width:120px;font-size:11.5px;color:var(--ink2);
+  line-height:1.55;word-break:break-word}
+
+/* 実物がまだ無いカテゴリ。空欄と「無い」を混ぜない（§11）――
+   「まだ書かれていません」を一段下げて置く。 */
+.sup-empty{margin:0 0 0 12px;padding:4px 0;
+  border-left:2px solid #ece5d2;padding-left:12px;
+  font-size:11.5px}
+
+.sup-add{margin-left:12px;margin-top:5px}
+
+/* メモ。三等の欄（記入面の末尾にある自由記入欄）。付箋のように面から
+   浮かせない――器を持たない他の欄の中で1つだけ物になり、格の並び
+   （一等→二等→三等）から外れて見える。地も影も傾きも持たず、
+   罫だけが刷ってある欄として置く。                                 */
+.bk-slips{display:block}
+/* メモも三等なので、普段の状態と同じ囲みの箱にする（格が同じものは
+   同じ形）。ただし1つで幅いっぱいを取り、中は記入罫。 */
+.slip-memo{padding:9px 12px 10px;border:1px solid var(--rule2);
+  border-radius:2px;background:#fdfcf6;font-size:12px}
+.slip-memo .slip-h{display:flex;align-items:center;gap:5px;margin-bottom:5px;
+  font-size:9.5px;font-weight:600;color:var(--ink3);letter-spacing:.06em}
+.slip-memo ul{margin:0;padding:0;list-style:none}
+.slip-memo li{padding:0 1px;font-size:11.5px;line-height:23px;
+  border-bottom:1px solid var(--rule2);color:var(--ink2)}
+.slip-memo li:last-child{border-bottom:0}
+.slip-memo .i-ef-area{line-height:23px}
 
 /* ══════════════════════════════════════════════════════════════
    介護｜ベッド
@@ -572,8 +1123,6 @@ button.st:hover{filter:brightness(.97)}
   .bk-page{padding:4px 16px 18px}
   .bed-head{padding:20px 20px 28px}
   .bed-body{padding:18px 16px 20px}
-  .bk-docs{grid-template-columns:1fr}
-  .bk-slips{grid-template-columns:1fr}
 }
 
 @media (max-width:900px){
@@ -583,12 +1132,15 @@ button.st:hover{filter:brightness(.97)}
   .bk-title h4{font-size:20px}
   .bk-id{min-width:0;width:100%}
   .bk-page{padding:2px 13px 14px}
+  /* 左面。識別欄は氏名を詰め、未記入の罫は畳む（1面の手帳では
+     見開きの下端という概念が無く、罫だけが伸びても意味が無い）。 */
+  .sf-nm h4{font-size:23px}
+  .sf-idrow{gap:14px}
+  .sf-rules{display:none}
+  /* 備考の箱は狭い幅では1列。2列のままだと1つが細くなりすぎ、
+     箱の中で文章が縦に折り返して読めなくなる。 */
+  .daily{grid-template-columns:1fr}
   .bs{padding:14px 0}
-  .bs-tell{margin:4px -7px;padding:13px 12px 14px}
-
-  /* 医療機関の帯は、狭い幅では縦に積む。 */
-  .cl{align-items:flex-start}
-  .cl-doctor{margin-left:0}
 
   .bed-head{padding:16px 14px 24px;border-radius:13px 13px 0 0}
   .bed-body{padding:14px 12px 16px;border-radius:0 0 13px 13px}
@@ -622,5 +1174,5 @@ button.st:hover{filter:brightness(.97)}
   .cm-sticky,.know-sticky{width:auto;max-width:250px;margin:2px auto 0}
   .kv th{width:110px}
   .cs .kv th{width:120px}
-  .papers .kv th{width:110px}
+  .sup-name{min-width:0}
 }
