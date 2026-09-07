@@ -6,10 +6,11 @@
 
    正本§13により、ここで作った形を他領域へ機械的に持ち出さない。 */
 
-/* 通帳は読む幅を優先して細く保つ。索引を並べる契約・デジタルとは
-   別の値でよい。見出しの位置・幅は shared のまま（作業面の左端）で、
-   幅を絞って中央へ寄せるのは記録の側だけ。                        */
-.sec{max-width:840px}
+/* 見開きは印字面（268px）と記帳面を横に並べるので、閉じた通帳を1枚
+   ずつ読ませていた頃（840px）より幅が要る。索引を2列で並べる契約・
+   デジタル（1080px）とは別の値でよい。見出しの位置・幅は shared の
+   まま（作業面の左端）で、幅を決めるのは記録の側だけ。            */
+.sec{max-width:1000px}
 
 /* 見出しアイコンをこの領域だけ一回り大きくする。契約・デジタルと
    共有の .sec-icon には手を入れず、ここで上書きするだけに留める。 */
@@ -44,9 +45,6 @@
 .sh-sit .st.r-gy{background:#f0eee7;color:var(--gy)}
 .sh-sit .st.r-urg{background:var(--or-bg);color:#a35a0d}
 .sh-sit .st.na{background:#f0eee7;color:#a9a498;font-weight:600}
-/* 仕組みは無いが別の手を検討している、という状態。対象外の灰とは
-   分ける。参照・検討の色（bl）を薄く敷く。                       */
-.sh-sit .st.alt{background:#eaf0f5;color:var(--bl);font-weight:600}
 /* 仕組みが無い銀行は、その事実自体が読ませどころ。名前だけ落とす。 */
 .sh-sit.none .ic{background:#f2f0ea;color:#b0aca0}
 .sh-sit.none .nm{color:#a9a498}
@@ -65,67 +63,279 @@
 /* 目次から送られてきた通帳は、一瞬だけ縁が光る。着いた先が
    どれかを、位置だけに頼らせない。                              */
 @keyframes pbhit{
-  from{box-shadow:inset 0 3px 5px -3px #4b422b3d,0 0 0 3px #3b785566,0 3px 6px -1px #4b422b2e,0 12px 22px -10px #4b422b40}
-  to{box-shadow:inset 0 3px 5px -3px #4b422b3d,0 0 0 3px #3b785500,0 3px 6px -1px #4b422b2e,0 12px 22px -10px #4b422b40}}
-.pb.hit{animation:pbhit 1.6s ease-out}
+  from{box-shadow:0 0 0 3px var(--bk-kc),0 18px 38px -16px rgba(var(--bk-sh),.46)}
+  to{box-shadow:0 0 0 3px #ffffff00,0 18px 38px -16px rgba(var(--bk-sh),.46)}}
+.pb.hit .pb-open{animation:pbhit 1.6s ease-out}
 
-/* ── カード：1銀行=1カード。白背景・フラット・淡い枠線。 ── */
-/* 外枠は宙に浮いた板。右下に台紙を覗かせると影が片側へ寄って安く
-   見えるので、台紙は敷かない。下は外へ落ち影、上は耳などに回り込ま
-   ないよう内側へ落とし込む影、左右は薄い拡散影でつなぐ。契約・
-   デジタルの「振り分け前」の板と同じ手つき。                      */
-.pb{position:relative;border-radius:18px;margin-bottom:32px;background:#fff;border:1px solid #d5cdb6;
-  box-shadow:
-    inset 0 3px 5px -3px #4b422b3d,
-    0 0 0 1px #4b422b12,
-    0 3px 6px -1px #4b422b2e,
-    0 12px 22px -10px #4b422b40}
-.pb:before{display:none}
-/* ゴールド罫はヘッダーの緑に挟む。内側シャドウを緑→金→緑の順で
-   重ね、罫の下に緑を3px残す。 */
-.cv{position:relative;display:flex;align-items:baseline;gap:12px;padding:18px 48px 22px 24px;background:linear-gradient(180deg,#3c7455,#2e6146 55%,#26523b);border-radius:18px 18px 0 0;box-shadow:inset 0 1px 0 #ffffff59,inset 0 -3px 0 #26523b,inset 0 -6px 0 var(--gold),inset 0 -22px 16px -14px #00000038;color:#fff}
-.pb.gy .cv{background:linear-gradient(180deg,#9d9384,#8b8172 55%,#7a7166)}
-.cv .nm{font-size:18px;font-weight:700;letter-spacing:.02em}
-.cv .kd{font-size:12px;color:#ffffffb8}
-.cv .bd{margin-left:auto;font-size:11.5px;font-weight:700;padding:5px 13px;border-radius:20px;background:var(--or-bg);color:#a35a0d}
-.cv .bd.off{background:#ffffff26;color:#ffffffd9;font-weight:600}
-.body{padding:22px 24px 6px}
+/* ══ 記録：開いた通帳の見開き ═══════════════════════════
+   一覧に並んだ表紙（.pb-book）が、そのまま開く。見開きの全面が
+   表紙の色地で、左ページは通帳の1ページ目＝地に直接印字された
+   動かない事実（銀行名・支店・口座番号・名義）、右ページはその地に
+   載る白い紙＝SeiZen と家族が足した記録（代理の仕組みと進捗）。
+   その下にもう一枚、持ち物を確かめた紙が挟まる。
 
-/* 番号見出し：①②③。インク色でひと回り大きく。 */
-.blk{margin-bottom:26px}
-.blk-h{display:flex;align-items:baseline;gap:9px;margin-bottom:13px}
-.blk-h .num{flex:none;color:#454b44;font-size:17px;font-weight:700}
-.blk-h b{font-size:16px;font-weight:700;color:#3a3f38}
-.blk-h span{font-size:11.5px;color:var(--ink3)}
+   作り直す前はここが白いカード＋①②③の番号見出しで、地と載り物の
+   前後関係が無く、どれが通帳に印字された事実で、どれが家族が足した
+   記録なのかが形から読めなかった（＝ただの情報羅列）。
 
-/* ① 必要時の対応：2枚並列カード。カード自体はクリックの的にせず、
-   バッジ・対象者・補足のそれぞれをクリックした場所だけが入力欄に
-   なる（口座情報・持ち物と同じ作法）。背景は白のまま、進捗は
-   バッジで右上に置く。カード全体を状態色で塗ると読みにくいので避ける。 */
-/* stretch で両カードの高さを揃える。片方のメモが伸びても、もう
-   片方が置いていかれない。                                       */
-.sit-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
-/* 制度そのものが主役なので、枠線を太く色づけて立たせる。地は白の
-   まま。枠の色は進捗と連動し、急ぐものほど強く出る。            */
-.sit{position:relative;border:3px solid #d9d5c8;border-radius:12px;padding:16px 17px;background:#fff}
-.sit.s-r-urg{border-color:#e8b878}
-.sit.s-r-gr{border-color:#9dc0a6}
-.sit.s-r-or{border-color:#e8b878}
-.sit.s-r-gy{border-color:#d9d5c8}
-/* バッジが1段でも2段でもヘッダーの高さを変えない。左右のカードで
-   点線から下の位置がずれないための固定。                        */
-.sit-row{display:flex;align-items:center;gap:12px;min-height:62px}
-/* 大きめのアイコンの右に、状況と制度名を縦に積む。 */
-.sit-head{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
-.sit-ic{flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:#eeefe9;color:#5c6b5c}
-.sit-ic svg{width:26px;height:26px}
+   保険・契約と同じ「左＝動かない事実／右＝本文」の分け方を取るが、
+   これは向こうの形を持ち出したのではなく、通帳そのものが持っている
+   階層（印字面と記帳面）から出ている。造形の語彙は通帳のもの――
+   綴じ・小口・記帳の罫――で、リング金具（契約）もフォルダの耳
+   （保険）も使わない（正本§13）。
+
+   系統色＝代理の仕組みの状況。家族が一番判断したい軸を色に取る。
+   一覧の表紙（.pb-book）とこの見開きは、どちらも state.js の
+   S.bankStatus() を経由するので、同じ銀行なら必ず同じ色になる。
+     .bk-urg  … 今のうちにしか申し込めない手続きが残っている（濃い橙）
+     .bk-open … 仕組みはあるが、まだ片付いていない（急ぎではない・
+                淡い橙）。urgent と見分くよう彩度を落とす。
+     .bk-ok   … 使える仕組みが全部片付いている（緑）
+     .bk-none … この銀行には仕組みがない（グレー）
+   色は表紙の地・節見出しの太罫・空押しにだけ差し、本文の地は白。
+     --bk-back/gusset/flap … 表紙の3面。back<gusset<flap の順に
+        明度を上げて、折れと厚みを見せる。
+     --bk-edge … 表紙の縁・印字面の区切り
+     --bk-kc   … 濃い差し色。節見出しの2px罫・アイコン
+     --bk-sh   … その系統の影の色み（rgb 3値）                    */
+.pb{position:relative;margin:0 0 46px;
+  --bk-back:#3F7A58;--bk-gusset:#4A8965;--bk-flap:#569A73;--bk-edge:#27553E;
+  --bk-kc:#2F6A48;--bk-sh:26,58,42}
+.pb.bk-urg{
+  --bk-back:#8A6A3A;--bk-gusset:#9A7A46;--bk-flap:#AC8B55;--bk-edge:#6B5028;
+  --bk-kc:#A35A0D;--bk-sh:82,60,28}
+.pb.bk-open{
+  --bk-back:#95815F;--bk-gusset:#A6926E;--bk-flap:#B9A67F;--bk-edge:#71603F;
+  --bk-kc:#8A6A32;--bk-sh:80,66,42}
+.pb.bk-none{
+  --bk-back:#8B8172;--bk-gusset:#9A9082;--bk-flap:#A99F91;--bk-edge:#6B6252;
+  --bk-kc:#6D6350;--bk-sh:70,64,50}
+
+/* 開いた通帳。全面が表紙の色地。紙の目をうっすら横縞で入れる。
+   左ページの下辺は .pb-left の padding-bottom を、sticky の解除後も
+   最後の口座情報と削除鍵が重ならないための退避領域として使う。 */
+.pb-open{position:relative;display:flex;align-items:stretch;width:100%;
+  border:1px solid var(--bk-edge);border-radius:6px 12px 12px 6px;
+  background:
+    repeating-linear-gradient(0deg,#ffffff14 0 1px,transparent 1px 3px),
+    linear-gradient(176deg,var(--bk-flap),var(--bk-back));
+  box-shadow:inset 0 1px 0 #ffffff59,0 2px 4px rgba(var(--bk-sh),.16),
+    0 18px 38px -16px rgba(var(--bk-sh),.46)}
+
+/* 綴じ。一覧の表紙（.pb-spine）と同じ製本の折り返しを、開いた側の
+   左外辺にも回す。冊子が開いても綴じは残る、という繋がり。契約の
+   リング金具と違い、綴じは中央のミゾには来ない――通帳は糸綴じで、
+   金具が見えないため。                                            */
+.pb-open:before{content:"";position:absolute;left:0;top:0;bottom:0;width:13px;z-index:4;
+  pointer-events:none;border-radius:6px 0 0 6px;
+  background:linear-gradient(90deg,rgba(var(--bk-sh),.85),rgba(var(--bk-sh),.5) 40%,
+    #ffffff2b 74%,rgba(var(--bk-sh),.3));
+  box-shadow:inset 1.5px 0 0 #ffffff26,inset -6px 0 8px -6px #0000004d}
+
+/* 小口。閉じたページ束の層を右辺・下辺に薄く覗かせる（一覧の
+   .pb-edge と同じ）。開いた側でも冊子だと分かる。 */
+.pb-fore{position:absolute;z-index:0;pointer-events:none;
+  background:repeating-linear-gradient(#efe9d8 0 1.5px,#d5cbac 1.5px 3px)}
+.pb-fore.r{top:8px;bottom:7px;right:-3px;width:3px;border-radius:0 2px 2px 0}
+.pb-fore.b{left:14px;right:-3px;bottom:-3px;height:3px;border-radius:0 0 2px 2px}
+
+/* ── 左ページ：通帳の印字面 ──────────────────────────
+   白い紙は置かず、表紙の色地に直接刷る。銀行が刷った事実だけを
+   持ち、右を読んでいる間ずっと見えるよう sticky で追従させる。
+   広い見開きでは全体の約25%へ抑え、右の判断・対応記録に十分な幅を
+   渡す。文字を縮めるのでなく、余白と装飾の占有も合わせて詰める。 */
+.pb-left{position:sticky;top:16px;z-index:1;
+  flex:180 1 0;min-width:184px;max-width:230px;align-self:flex-start;
+  padding:22px 14px 72px 26px}
+
+/* 地紋の空押し。一覧の表紙で薄く敷いていた織り柄が、開いた内面では
+   大きな型押しになる。白の線に暗い落ち影を付けて、へこみに見せる。
+   置き場所は印字面の右上――下に置くと口座の増減で高さが変わり、
+   但し書きや削除欄に噛んで柄の切れ端に見えるため。               */
+.pb-emboss{position:absolute;right:12px;top:16px;z-index:0;
+  width:96px;height:96px;opacity:.13;pointer-events:none;
+  filter:drop-shadow(0 1.5px 0 rgba(var(--bk-sh),.5))}
+.pb-emboss svg{width:100%;height:100%}
+
+.pb-label{position:relative;z-index:1;padding-bottom:16px;
+  border-bottom:2px solid var(--bk-edge)}
+.pb-bankcap{font-size:10px;font-weight:700;letter-spacing:.14em;color:#ffffffab}
+.pb-bankname{margin:4px 0 0;font-family:var(--font-serif);font-size:23px;font-weight:600;
+  letter-spacing:.08em;line-height:1.3;color:#fff;
+  text-shadow:0 1px 0 rgba(var(--bk-sh),.5)}
+/* 状態は印字面の右上、一覧の表紙と同じ鑑札。 */
+.pb-state{display:inline-block;margin-top:11px;font-size:10.5px;font-weight:700;
+  padding:4px 11px;border-radius:20px;background:var(--or-bg);color:#a35a0d;
+  box-shadow:0 1px 2px #00000030,inset 0 1px 0 #ffffff70}
+.pb-state.off{background:#ffffff2b;color:#ffffffe0;font-weight:600;
+  box-shadow:inset 0 0 0 1px #ffffff33}
+/* 素性行。名義・口座数は「この通帳は誰の、いくつの口座か」という
+   銀行1件の素性で、支店・番号の明細とは別の階層。一覧の表紙
+   （passbook.js の meta）と同じ ラベル＋値 の組み方に揃える――
+   同じ実体を別画面で見せているので、読み方も同じにする。        */
+.pb-meta2{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;
+  margin-top:10px;font-size:11px;color:#ffffffb8}
+.pb-meta2 i{font-style:normal;margin-right:5px;font-size:9.5px;color:#ffffff8a;
+  letter-spacing:.06em}
+/* ＋は素性行の右端。罫だけの行を作らず、口座の話をしている行に乗せる。 */
+.pb-meta2 .pb-bh-add{margin-left:auto}
+
+/* 口座の節。「口座情報」という見出しは、その下にあるものが口座情報
+   なのは自明なので置かない（正本§15：項目を一覧化する画面にしない）。
+   節の変わり目は .pb-label の下罫（2px）がそのまま担う。        */
+.pb-acctsec{position:relative;z-index:1;margin-top:16px}
+/* ＋。「口座を追加」を常設ボタンから、保険・契約と同じ小さな操作
+   導線へ畳んだ。読む面（印字面）に常時ノイズを置かない。         */
+.pb-bh-add{flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;padding:0;border:1px solid #ffffff42;border-radius:5px;
+  background:none;color:#ffffffc0;cursor:pointer}
+.pb-bh-add:hover{border-color:#ffffff8a;background:#ffffff1f;color:#fff}
+/* 記帳面（白地）の節見出しに乗る＋は色を反転。 */
+.pb-bh .pb-bh-add{margin-left:auto;border-color:#ddd0ae;color:#8a7a58}
+.pb-bh .pb-bh-add:hover{border-color:var(--bk-kc);background:#fbf6ea;color:var(--bk-kc)}
+
+/* PC見開きでは、保険の左面と同じ「項目名＋値」で口座の素性を読む。
+   口座と口座の間だけを控えめに分け、種類・支店・番号・用途の内部は
+   ラベルの揃いと行間で読ませる。                                    */
+.pb-acct{position:relative;z-index:1;
+  padding:13px 30px 14px 0;border-top:1px solid #ffffff30}
+.pb-acct:first-of-type{border-top:0}
+.pb-acct:last-of-type{padding-bottom:0}
+.pb-acct-field{display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px;align-items:baseline}
+.pb-acct-field+.pb-acct-field{margin-top:7px}
+.pb-acct-label{font-size:10px;font-weight:600;letter-spacing:.06em;color:#ffffff8a}
+.pb-acct-value{min-width:0;font-size:12.5px;font-weight:600;line-height:1.35;color:#fff;overflow-wrap:anywhere}
+.pb-acct-kind .pb-acct-value{font-size:11px;font-weight:700;letter-spacing:.04em;color:#ffffffd9}
+.pb-acct-br{font-size:12px;font-weight:500;color:#ffffffb8}
+.pb-acct-no{font-size:14px;font-weight:700;line-height:1.35;
+  color:#fff;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.pb-acct-owner .pb-acct-value{font-size:11px;font-weight:500;color:#ffffffa0}
+/* 未入力のプレースホルダー。地の文字より弱くして、実データと
+   見分けられるようにする（読む面で「本当の支店名か」と迷わせない）。 */
+.pb-acct-ph{color:#ffffff70;font-weight:400}
+/* 用途は印字面では小さな刷り込み。バッジにすると状態に見える。 */
+.pb-uses{display:flex;flex-wrap:wrap;gap:5px}
+.pb-use{font-size:10px;font-weight:600;letter-spacing:.04em;color:#ffffffd6;
+  background:#ffffff2b;border-radius:3px;padding:2px 8px}
+.pb-use.q{background:#ffffff17;color:#ffffff96;font-weight:400}
+/* 印字面は読むための面。行全体を編集の的にはせず、右上の鉛筆だけを
+   入り口にする。軽い輪郭にして、口座情報より先に読ませない。 */
+.pb-acct-edit{position:absolute;top:11px;right:0;display:grid;place-items:center;
+  width:21px;height:21px;padding:0;border:0;background:transparent;
+  color:#ffffffa8;cursor:pointer}
+.pb-acct:first-of-type .pb-acct-edit{top:0}
+.pb-acct-edit:hover{color:#fff}
+.pb-acct-edit:focus-visible{outline:2px solid #fff;outline-offset:2px}
+
+/* 見開き全体（.pb-open）の左下角に固定。右ページの方が長いので
+   左ページの流れに入れると中途半端な高さで浮くため、通帳そのものの
+   隅に置く。銀行1件を丸ごと消す操作なので、口座情報より一段引いた
+   位置に保つ。解除後の衝突余白は .pb-left の下 padding が担い、鍵の
+   bottom 値は動かさない。                                             */
+.pb-del{position:absolute;z-index:5;left:26px;bottom:10px}
+.pb-del.confirming{left:auto;right:24px;bottom:16px;width:min(360px,calc(100% - 48px));
+  padding:14px 16px;border-radius:8px;background:rgba(var(--bk-sh),.94);
+  box-shadow:0 10px 24px -8px rgba(0,0,0,.4)}
+
+/* ── 谷折り ──────────────────────────────────────────
+   左ページの右端で影が深まり、稜線で切り替わって右側に明線が立つ。
+   .pb-right 基準なので、左ページが伸縮しても勝手に追従する。      */
+.pb-right{position:relative;flex:604 1 0;min-width:0;padding:22px 24px 22px 22px;
+  display:flex;flex-direction:column}
+/* 右ページが左ページより短いと、記帳面の下に色地の帯が余る。谷折り
+   （.pb-right:before）は全高スパンなので、最後のブロック＝メモの便箋を
+   下まで伸ばして、折り線とメモをカード下端まで届かせる。            */
+.pb-right>.pb-letter:last-child{flex:1 1 auto}
+.pb-right:before{content:"";position:absolute;top:0;bottom:0;left:0;width:26px;
+  transform:translateX(-50%);z-index:2;pointer-events:none;
+  background:linear-gradient(90deg,rgba(var(--bk-sh),0) 0%,rgba(var(--bk-sh),.2) 40%,
+    rgba(var(--bk-sh),.34) 49%,#ffffff87 53%,#ffffff33 66%,rgba(var(--bk-sh),0) 100%)}
+
+/* ── 右ページ：色地に載る白い記帳面 ────────────────────
+   通帳に印字されていない、SeiZen と家族が足した記録。角丸は紙らしく
+   小さく（4px）。大きな角丸はアプリのカードに見えて、紙に見えない。 */
+.pb-sheet{position:relative;background:#fffefb;border:1px solid #e6dcc6;border-radius:4px;
+  padding:22px 24px 24px;
+  box-shadow:0 1px 2px rgba(var(--bk-sh),.12),0 12px 26px -14px rgba(var(--bk-sh),.5)}
+
+/* 節の見出し。淡色カードの反復はやめ、同じ白紙の上を太罫だけで割る。 */
+.pb-block+.pb-block{margin-top:26px}
+.pb-bh{display:flex;align-items:center;gap:9px;margin-bottom:14px;
+  padding-bottom:9px;border-bottom:2px solid var(--bk-kc)}
+.pb-bh-ic{flex:none;display:block;color:var(--bk-kc)}
+.pb-bh b{font-size:15px;font-weight:700;letter-spacing:.04em;color:#2f342d}
+.pb-bh span{font-size:11px;color:var(--ink3)}
+
+/* カテゴリのメモ。持ち物の紙の下にもう一枚挟まる便箋（保険の
+   pv-letter を踏襲）。銀行1件に対して家族が言い添えるひとこと
+   ―― 仕組みが無い銀行なら任意後見や口座集約の相談状況、ある
+   銀行なら手続きの段取りなど。必要時の対応（制度ごと）のメモ
+   とは別。押した場所がそのまま入力欄になる。                   */
+.pb-letter{position:relative;margin-top:16px;padding:15px 20px 18px;border-radius:3px;
+  background:#fffdf6;border:1px solid #e3d8bf;transform:rotate(.26deg);
+  box-shadow:0 1px 2px rgba(var(--bk-sh),.12),0 8px 18px -12px rgba(var(--bk-sh),.46)}
+.pb-right>.pb-letter:last-child{display:flex;flex-direction:column}
+.pb-right>.pb-letter:last-child>.pb-letter-body{flex:1 1 auto}
+.pb-letter-h{display:flex;align-items:center;gap:8px;margin-bottom:7px;
+  font-size:11.5px;font-weight:700;letter-spacing:.08em;color:#7a6f52}
+.pb-letter-h .pb-secedit{margin-left:auto}
+.pb-letter-ic{flex:none;display:block;color:#8a7c56}
+.pb-letter-body{background:repeating-linear-gradient(180deg,transparent 0 28px,#ece1c9 28px 29px)}
+.pb-memo-val{display:block}
+.pb-memo-val p{margin:0;font-family:var(--font-serif);font-size:13.5px;line-height:29px;
+  letter-spacing:.03em;color:#3a3227}
+.pb-memo-empty{color:#a89f88 !important;font-size:12px !important}
+.pb-memo-ef{width:100%;min-height:58px;box-sizing:border-box;padding:2px 6px;margin:0 -6px;
+  border:1px solid #b6c6b8;border-radius:5px;background:#fff;resize:vertical;
+  font-family:var(--font-serif);font-size:13.5px;line-height:1.9;color:#3a3227}
+.pb-memo-ef:focus{outline:none;border-color:var(--gr);box-shadow:0 0 0 2px #1E5A3D22}
+
+/* 通帳の但し書き。「必要時の対応」ブロックの締めくくりに添える。
+   独立した箱にすると読み始める前に重く乗ってしまうので、地文の
+   一段控えめな注記（.sit-when と同じトーン）に留める。以前は左の
+   印字面（動かない事実）に紛れていたが、これは SeiZen と家族が
+   足した注記で、右ページの性質のもの。                          */
+.ft{margin-top:16px;padding-top:14px;border-top:1px dashed #e6e1d3;
+  font-size:11.5px;color:#8e8b82;line-height:1.7}
+
+/* 代理の仕組みが1つも無い銀行。「必要時の対応」の中身が空になるので、
+   その事実を一言だけ述べてメモへ送る。囲みは作らず、地文で控えめに。 */
+.pb-nomeans{margin:14px 0 0;font-size:12.5px;color:#6b6350;line-height:1.8}
+
+/* もしものときの手続き：制度カード1枚が「案内＋その持ち物の確認欄」で
+   一つの書類。以前は説明を白紙に、持ち物を別の挟み紙（.pb-slip）に
+   割っていたが、同じ制度の話は一続きに読ませる。カードは読ませるための
+   器が主役なので水平のまま置き、薄い枠と影だけで「1枚の紙」を示す
+   （旧 .pb-slip の紙の質感は色と影に引き継ぐ）。丈は揃えない――持ち物の
+   点数差で下辺がずれるのは、別々の書類である自然な結果。          */
+.sit-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.sit{position:relative;min-width:0;padding:0;overflow:hidden;border-radius:4px;
+  background:linear-gradient(180deg,#fffefb,#fdfbf5);
+  border:1px solid #e7ddc7;
+  box-shadow:0 1px 2px rgba(var(--bk-sh),.10),0 10px 22px -14px rgba(var(--bk-sh),.42)}
+/* 説明ゾーン。カード上半分の白地。 */
+.sit-body{padding:15px 15px 14px}
+/* 列が半分の幅になったので、アイコン＋見出しとバッジを横に並べると
+   どちらも潰れる。見出しの下にバッジを送って縦に積む。            */
+.sit-row{display:flex;flex-direction:column;align-items:flex-start;gap:9px}
+/* アイコンの右に、状況と制度名を縦に積む。末尾に節の鉛筆。 */
+.sit-head{display:flex;align-items:center;gap:11px;width:100%;min-width:0}
+.sit-head .pb-secedit{margin-left:auto;align-self:flex-start}
+.sit-ic{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#eeefe9;color:#5c6b5c}
+.sit-ic svg{width:22px;height:22px}
+/* 制度名は列の中で折り返してよい。記帳面は見開きの右半分なので、
+   nowrap のままだと2列が器を押し広げて見開きごと横に溢れる。     */
 .sit-headtx{min-width:0}
-.sit-cap{font-size:11.5px;color:var(--ink3);line-height:1.5;white-space:nowrap}
-.sit-mean{margin:2px 0 0;font-size:16px;font-weight:700;color:#2f342d;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* 進捗バッジはボタン化。ステータス自体をクリックすると select に変わる。
+.sit-cap{font-size:11.5px;color:var(--ink3);line-height:1.5}
+.sit-mean{margin:2px 0 0;font-size:15px;font-weight:700;color:#2f342d;line-height:1.4;
+  overflow-wrap:anywhere}
+/* 進捗バッジはボタン化。バッジ自体をクリックすると select に変わる。
    「今のうちだけ」の注釈はそのバッジの真下に添える。本文の流れを
    分断しないので、左右のカードで点線から下の位置が揃う。          */
-.sit-badge-wrap{flex:none;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px;align-self:stretch}
+/* 名乗り（アイコン・状況・制度名・バッジ）と説明本文の間に、
+   細い区切りで息継ぎを1つ入れる。 */
+.sit-badge-wrap{display:flex;align-items:baseline;gap:9px;width:100%;min-width:0;flex-wrap:wrap;
+  padding-bottom:12px;border-bottom:1px solid #efe8d7}
 .sit-badge{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;border:0;font-family:inherit;cursor:pointer;white-space:nowrap}
 .sit-badge:hover{filter:brightness(.96)}
 .sit-badge.r-gr{background:#e3ede5;color:#2f6a48}
@@ -138,35 +348,88 @@
 .sit-badge-lead{white-space:nowrap}
 .sit-badge-tail{font-size:10.5px;font-weight:700;color:#3f77a8;white-space:nowrap}
 select.sit-badge-ef{font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:20px;border:1px solid #b6c6b8;background:#fff;cursor:pointer}
-/* バッジ下は対応日の置き場。空のときも同じ高さを取るので左右が揃う。 */
-.sit-sub{height:16px;font-size:11px;line-height:16px;text-align:right;color:#a09b8c;white-space:nowrap}
-.sit-sub.empty{visibility:hidden}
+/* 対応日はバッジの隣。空のときは場所を取らない（縦積みになったので、
+   左右の高さを揃えるための空欄はもう要らない）。                 */
+.sit-sub{font-size:11px;color:#a09b8c;white-space:nowrap}
+.sit-sub.empty{display:none}
 /* 制度の説明が本体、その下の補足は一段控えめに。 */
 .sit-about{margin-top:13px;font-size:12.5px;color:#454b44;line-height:1.75}
 .sit-when{margin-top:6px;font-size:11.5px;color:#8e8b82;line-height:1.7}
-/* 対象者とメモは点線の下に、ラベルと値の明細として並べる。 */
-/* ラベルと値は同じ行送りに揃える。文字サイズが違っても1行目の
-   高さが一致するので、値が複数行に伸びてもラベルは頭に残る。     */
-.sit-dl{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;align-items:start;margin:12px 0 0;padding-top:12px;border-top:1px dashed #e6e1d3}
-.sit-dl dt{font-size:11.5px;color:var(--ink3);white-space:nowrap;line-height:21px}
-.sit-dl dd{margin:0;min-width:0}
-.sit-val{display:inline-block;font-size:13px;line-height:21px;color:#3a3f38;cursor:pointer;border-radius:4px;padding:0 6px;margin:0 -6px;transition:background .12s}
-.sit-val:hover{background:#f2f0e8}
+/* 担当者とメモは同じ明細ではない。担当者は人物を主語にした一行、
+   メモは補足を書き留める淡い記録面として、読む順と重要度を分ける。 */
+.sit-record{display:grid;gap:10px;margin-top:16px}
+.sit-person{display:flex;align-items:center;gap:9px;min-width:0}
+.sit-person-ic{flex:none;display:grid;place-items:center;width:29px;height:29px;
+  border-radius:50%;background:#eef2ec;color:#657565}
+.sit-person-ic svg{width:16px;height:16px}
+.sit-record-copy{flex:1;min-width:0}
+.sit-record-label{font-size:10.5px;font-weight:600;line-height:1.25;color:#8e8b82;
+  letter-spacing:.04em}
+.sit-record-value{min-width:0;margin-top:2px}
+.sit-person .sit-val{font-weight:600;color:#353c35}
+/* メモは便箋（.pb-letter）に本役があるので、ここでは囲みを外し、
+   任せる人と同じ「アイコン＋ラベル＋値」の並びに揃える。下の持ち物
+   ゾーンの色地と、囲みの色が近接して競合するのも避ける。          */
+.sit-note{display:flex;align-items:flex-start;gap:9px;min-width:0}
+.sit-note-ic{flex:none;display:grid;place-items:center;width:29px;height:29px;
+  border-radius:50%;background:#eef2ec;color:#918a79}
+.sit-note-ic svg{width:15px;height:15px}
+.sit-note .sit-val{font-size:12.5px;line-height:1.55}
+.sit-val{display:inline-block;max-width:100%;font-size:13px;line-height:21px;color:#3a3f38;
+  overflow-wrap:anywhere}
 .sit-val.ph{color:#b6b1a5}
 .sit-who-ef,.sit-note-ef{width:100%;font-size:13px;padding:2px 6px;line-height:21px;border:1px solid #b6c6b8;border-radius:5px}
+/* 節の鉛筆が編集中（レ点）のときは、カードの縁を系統色でひと差し
+   目立たせる。保険の ck-editing と同じ手つき。                    */
+.sit.sit-editing{border-color:var(--gr)}
 
-/* ② 手続きに必要なもの：制度ごとの列。アイコンは地色なし。
-   1行目に名前と状態、2行目に保管場所を置く2段組み。            */
-.kit-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.kit-col{border:1px solid #e4dfd0;border-radius:12px;overflow:hidden;background:#fff}
-.kit-col-h{display:flex;align-items:center;gap:9px;padding:12px 17px;border-bottom:1px solid #e8e3d3;background:#f4f6f1}
-.kit-col-h .ic{flex:none;color:var(--gr2)}
-.kit-col-h .ic svg{width:18px;height:18px}
-.kit-col-h .nm{font-size:14.5px;font-weight:700;color:#3a3f38}
-.kit ul{list-style:none;margin:0;padding:4px 8px}
-/* 項目の切れ目は「必要時の対応」と同じ点線でそろえる。 */
-.kit li{display:block;padding:11px 9px;border-top:1px dashed #e6e1d3}
-.kit li:first-child{border-top:0}
+/* 節ごとの編集ボタン。見出し・便箋の末尾に置く小さな鉛筆だけ。開くと
+   チェック（レ点）に変わり、系統色で塗って「編集中」を示す
+   （保険の i-secedit と同じ造形）。                                */
+.pb-secedit{flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;padding:0;border:1px solid transparent;border-radius:5px;background:none;
+  color:#8e8b8278;cursor:pointer}
+.pb-secedit svg{width:13px;height:13px}
+.pb-secedit:hover{border-color:#c7c2b0;background:#ffffffa8;color:#3a3f38}
+.pb-secedit.on{border-color:var(--gr);background:var(--gr);color:#fff}
+
+/* 持ち物ゾーン：制度カードの下半分。一段沈んだ記入欄として、生成りの
+   罫入り地に置く（旧 .pb-slip の紙質をカードの中へ引き込んだもの）。
+   説明ゾーンとの境は border-top ＋ 内側の落ち影で「へこみ」を作る。 */
+.sit-kit{background:linear-gradient(180deg,#faf4e6,#f7f1e2);
+  border-top:1px solid #e9ddc0;
+  box-shadow:inset 0 3px 5px -3px rgba(var(--bk-sh),.16);
+  padding:11px 15px 13px}
+.sit-kit-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;
+  padding-bottom:8px;border-bottom:1px dashed #e2d4b3}
+.sit-kit-h .pb-secedit{color:#7a6a4878}
+.sit-kit-h .pb-secedit:hover{border-color:#d8c89a;background:#fffdf6}
+.sit-kit-h .pb-secedit.on{border-color:var(--gr);background:var(--gr);color:#fff}
+.sit-kit-cap{font-size:11px;font-weight:700;letter-spacing:.08em;color:#7a6a48}
+/* 保管場所を鉛筆で一括編集中は、ゾーンの縁を系統色でひと差し。 */
+.sit-kit.sit-kit-editing{box-shadow:inset 0 0 0 1px var(--gr),inset 0 3px 5px -3px rgba(var(--bk-sh),.16)}
+/* 進捗の点列。確認済み＝塗り、未確認＝白抜き、対象外＝細いダッシュ。
+   数字が「あと何個」を、点の並びが「どこが空いているか」を伝える。 */
+.sit-kit-dots{display:inline-flex;align-items:center;gap:3px}
+.sit-kit-dots i{flex:none;width:6px;height:6px;border-radius:50%;box-sizing:border-box}
+.sit-kit-dots i.d{background:var(--gr2)}
+.sit-kit-dots i.o{border:1.5px solid var(--or)}
+.sit-kit-dots i.n{width:7px;height:1.5px;border-radius:0;background:#cdc6b4}
+.sit-kit-tally{margin-left:auto;flex:none;font-size:11px;font-weight:800;letter-spacing:.04em;
+  color:var(--gr2);font-variant-numeric:tabular-nums}
+/* 鉛筆が並ぶ分、件数バッジ側の右マージンは詰める。 */
+.sit-kit-h .pb-secedit{margin-left:0}
+.sit-kit-tally.open{color:var(--or)}
+/* 品目リスト。行の造形（2段組み：アイコン＋名前＋状態／保管場所）は
+   従来のまま。ゾーンの内側パディングを .sit-kit が持つので ul は詰める。 */
+.kit{min-width:0}
+/* render.js は <ul class="kit"> を直に描く。ul の既定 padding-inline-start
+   （ブラウザ既定で40px）を消さないと、品目のアイコンがカード左端から
+   40px も右に押し出される。 */
+ul.kit{list-style:none;margin:0;padding:0}
+/* 品目は罫で刻まず、名前・状態・保管場所を1つの塊として余白で離す。 */
+.kit li{display:block;padding:0}
+.kit li+li{margin-top:12px}
 .kit-l1{display:flex;align-items:center;gap:12px}
 .kit .ic2{flex:none;color:#6b6963}
 .kit .ic2 svg{width:19px;height:19px}
@@ -177,68 +440,83 @@ select.sit-badge-ef{font-size:12.5px;font-weight:700;padding:5px 10px;border-rad
 .kit .st:hover{background:#f2f0e8}
 .ok .st{color:var(--gr2)}.no .st{color:var(--or)}.na .st{color:#a9a498;font-weight:500}
 select.kit-st-ef{flex:none;font-size:12px;padding:3px 6px;border:1px solid #b6c6b8;border-radius:5px;background:#fff;cursor:pointer}
-.kit-l2{margin:5px 0 0 31px}
-.kit .wh{display:inline-block;font-size:12px;color:var(--ink3);cursor:pointer;border-radius:4px;padding:2px 6px;margin:-2px -6px;transition:background .12s}
-.kit .wh:hover{background:#f2f0e8}
-.kit .wh.ph{color:#c3bfb4}
-.kit-wh-ef{width:100%;font-size:12px;padding:4px 7px;border:1px solid #b6c6b8;border-radius:5px}
-.kit-empty{padding:16px 17px;font-size:12.5px;color:#a9a498}
+.kit-l2{margin:4px 0 0 29px}
+.kit .wh{display:inline-block;font-size:11.5px;color:#3a322794}
+.kit .wh.ph{color:#b3a988}
+.kit-wh-ef{width:100%;font-size:12px;padding:4px 7px;border:1px solid #cbb98f;border-radius:5px}
 
-/* ③ 口座情報：見出し行がグレー、値行が白の素朴な表。行はクリックで編集。 */
-.acctinfo{border:1px solid #e4dfd0;border-radius:12px;overflow:hidden}
-.acctinfo table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
-.acctinfo th:nth-child(1),.acctinfo td:nth-child(1){width:16%}
-.acctinfo th:nth-child(2),.acctinfo td:nth-child(2){width:16%}
-.acctinfo th:nth-child(3),.acctinfo td:nth-child(3){width:16%}
-.acctinfo th:nth-child(4),.acctinfo td:nth-child(4){width:16%}
-.acctinfo th:nth-child(5),.acctinfo td:nth-child(5){width:36%}
-.acctinfo th{padding:10px 17px;background:#f2f0e8;text-align:left;font-size:11.5px;font-weight:700;color:var(--gy)}
-.acctinfo td{padding:12px 17px;border-top:1px solid #eee9dc;font-size:13.5px;color:#3a3f38;background:#fff}
-.acctinfo tr:first-child td{border-top:0}
-.acctinfo tr:not(.edit){cursor:pointer;transition:background .12s}
-.acctinfo tr:not(.edit):hover td{background:#f9f8f2}
-.acctinfo td .u{font-size:11px;background:#e3edee;color:var(--gr);border-radius:3px;padding:2px 9px;margin-right:5px;white-space:nowrap;display:inline-block}
-.acctinfo td .u.q{background:#efece4;color:var(--ink3)}
-.acctinfo tr.edit td{vertical-align:top;padding:10px 12px}
-.acctinfo td .ef{width:100%}
-.acctinfo td select.ef{flex:none}
-.acctinfo .ed{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.acctinfo .roles{display:flex;gap:5px;flex-wrap:wrap;padding:0}
-.acctinfo .eact{width:100%;margin:6px 0 0;justify-content:flex-end}
+/* ── 印字面の口座の書き換え ──────────────────────────
+   色地の上に置く入力欄なので、地を白に起こしてから組む。表ではなく
+   1口座ずつの記帳なので、ラベルを縦に積む。                      */
+.acctform{position:relative;z-index:1;margin-top:15px;padding:14px 14px 12px;
+  border-radius:5px;background:#fffefb;border:1px solid var(--bk-edge);
+  box-shadow:0 4px 12px -6px rgba(var(--bk-sh),.6)}
+.acctform .fr{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.acctform .fr small{flex:0 0 46px;font-size:10.5px;color:var(--ink3)}
+.acctform .ef{flex:1;min-width:0;width:100%}
+.acctform select.ef{flex:1}
+.acctform-use{margin:2px 0 4px}
+.acctform-use > small{display:block;margin:0 0 6px;font-size:10.5px;color:var(--ink3)}
+.acctform .roles{padding:0;margin-bottom:0}
+/* 保存／やめるは一組の通常操作。削除は同列の同じ大きさにせず、
+   下の控えめな危険操作へ分ける。狭い左面でも通常操作を横に保つ。 */
+.acctform-actions{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-top:10px}
+.acctform .eact{justify-content:center;margin:0}
+.acctform .eact button{min-width:70px;white-space:nowrap}
 
-.ft{margin:2px 24px 20px;padding:12px 16px;background:#f7f4ea;border-radius:9px;font-size:12px;color:#6b6963;display:flex;gap:9px;align-items:flex-start}
-.ft svg{flex:0 0 14px;margin-top:2px}
-
-/* 記帳行（口座の追加・編集フォーム）。①の上、カード本体の外に出す。 */
-.ent{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid #e4dfd0;border-radius:9px;margin-bottom:8px;cursor:pointer;transition:background .12s}
-.ent:hover{background:#f9f8f2}
-.ent .no{width:16px;flex:0 0 16px;color:#b6b1a5;font-size:11px;text-align:center}
-.ent .k{font-size:13.5px;font-weight:600;flex:0 0 88px}
-.ent .d{font-size:12.5px;color:#7d7a76;flex:0 0 auto}
-.ent .uwrap{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
-.ent .u{font-size:11px;background:#e3edee;color:var(--gr);border-radius:3px;padding:2px 9px;white-space:nowrap}
-.ent .u.q{background:#efece4;color:var(--ink3)}
-.ent .ar{color:var(--ink3);font-size:14px}
-.ent.editing{flex-wrap:wrap;row-gap:9px;align-items:center;background:#fdfbf3;cursor:default}
+/* 記帳の但し書き。挟まれた紙の外、記帳面の下。 */
 .f{padding:4px 7px;border:0;border-bottom:1px solid #b6c6b8;background:#fffefa;color:#28382d;font-family:inherit;font-size:13px}.f:focus{outline:none;border-bottom-color:var(--gr);background:#fff}.f::placeholder{color:#b4b0a5}
-.f-kind{flex:0 0 104px;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#71836f 50%),linear-gradient(135deg,#71836f 50%,transparent 50%);background-position:calc(100% - 12px) 52%,calc(100% - 7px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:22px;cursor:pointer}
-.f-branch{flex:0 0 116px}.f-no{flex:0 0 112px;font-variant-numeric:tabular-nums}
-.roles{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1 1 100%;padding-left:28px}.roles .rl{font-size:10.5px;color:var(--ink3);letter-spacing:.08em;margin-right:2px}
+.f-no{font-variant-numeric:tabular-nums}
+.roles{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1 1 100%}.roles .rl{font-size:10.5px;color:var(--ink3);letter-spacing:.08em;margin-right:2px}
 .rtag{font-size:11px;padding:2px 9px;border:1px dashed #cdd6cd;border-radius:3px;background:none;color:#7d8a7e;font-family:inherit;cursor:pointer}.rtag:hover{border-color:#9db39f;color:var(--gr)}.rtag.on{border-style:solid;border-color:#cfe0d1;background:#e3edee;color:var(--gr);font-weight:500}
-.rowact{display:flex;gap:8px;margin-left:auto}.rowact button{padding:6px 14px;border-radius:6px;font-family:inherit;font-size:12px;cursor:pointer}.btn-ok{border:1px solid var(--gr);background:var(--gr);color:#fff;font-weight:600}.btn-ok:hover{background:var(--gr-d)}.btn-no{border:1px solid #ded8ca;background:#fff;color:#8a8578}.btn-no:hover{background:#f5f3ec}
-.addrow{display:flex;align-items:center;gap:9px;width:100%;font-family:inherit;font-size:12.5px;color:var(--gr2);text-align:left;cursor:pointer;margin:0 0 24px;padding:12px 52px 12px 16px;border:1px dashed #dad5c8;border-radius:9px;background:#fffefa;transition:background .15s,border-color .15s}
-.addrow .plus{display:grid;place-items:center;width:19px;height:19px;flex:none;border:1px dashed #b9c9ba;border-radius:3px;color:#6b8e70;font-size:13px;line-height:1}
-.addrow:hover{background:#f6faf6;border-color:#a9c0ac}
-.pb>.del{position:absolute;right:14px;bottom:32px;display:grid;place-items:center;width:30px;height:30px;flex:none;border:0;border-radius:8px;background:transparent;color:#a39c8a;cursor:pointer}
-.pb>.del:hover{background:#f5f0e4;color:#b23b3b}
-.pb>.del svg{width:15px}
-.pb.draft .cv{background:linear-gradient(180deg,#6e8a77,#5f7d6b 55%,#4a6857)}
-.pb.draft{overflow:visible}.pb.draft .cv{overflow:visible;position:relative}
-.namewrap{position:static;flex:1;min-width:0;max-width:280px}
-.f-bank{width:100%;padding:5px 9px;border:0;border-bottom:1px solid #ffffff8c;background:#ffffff1f;color:#fff;font-family:inherit;font-size:16px;font-weight:700;border-radius:3px 3px 0 0}.f-bank:focus{outline:none;border-bottom-color:#fff;background:#ffffff2e}.f-bank::placeholder{color:#ffffff8f;font-weight:400}
-.sug{position:absolute;z-index:5;top:60px;left:26px;width:280px;padding:4px;border:1px solid #e3ded0;border-radius:8px;background:#fff;box-shadow:0 8px 20px #4a412c2e;list-style:none;margin:0}.sug:empty{display:none}
-.sug li{padding:8px 11px;border-radius:5px;color:var(--ink);font-size:13px;cursor:pointer}.sug li:hover,.sug li.hot{background:#eff5f0;color:var(--gr-d)}.sug li small{display:block;margin-top:2px;color:var(--ink3);font-size:10.5px}
-.pending{padding:13px 24px 4px;color:var(--ink3);font-size:11.5px;display:flex;gap:8px;align-items:flex-start}.pending svg{flex:0 0 13px;margin-top:3px}
+
+/* 銀行の削除。印字面のいちばん下（.pb-del）に置く小さな鍵。 */
+.pb-del .del{display:grid;place-items:center;width:30px;height:30px;padding:0;
+  border:1px solid #ffffff5c;border-radius:7px;background:#ffffff1f;
+  color:#ffffffb0;cursor:pointer}
+.pb-del .del:hover{border-color:#e8b3ab;background:#ffffff33;color:#ffd9d4}
+.pb-del .del svg{width:15px}
+/* 削除の確認は2段。押してから、その場で確かめる。 */
+.pb-del.confirming p{margin:0 0 10px;font-size:11px;line-height:1.7;color:#fff;font-weight:600}
+.pb-del-btns{display:flex;gap:8px}
+.pb-del-yes,.pb-del-no{padding:7px 13px;border-radius:7px;font-family:inherit;
+  font-size:11px;font-weight:700;cursor:pointer}
+.pb-del-yes{border:0;background:#b4322e;color:#fff}
+.pb-del-yes:hover{background:#9c2b28}
+.pb-del-no{border:1px solid #ffffff6b;background:#ffffff26;color:#fff}
+.pb-del-no:hover{background:#ffffff3d}
+
+/* ── 銀行を追加するフォーム ──────────────────────────
+   一覧セクションの見出し直下に開く（保険・契約デジタルと同じ手つき）。
+   銀行→最初の1口座を入れて足す。以前は詳細ゾーンの末尾に「まだ開いて
+   いない通帳」を生やしていたが、追加の起点は一覧側に揃えた。         */
+.addform{max-width:none;margin:4px 0 18px;padding:16px 18px;
+  border:1px solid #e0dccb;border-radius:12px;background:#fdfcf7}
+.af-row{display:flex;gap:14px;flex-wrap:wrap}
+.af-row + .af-row{margin-top:12px}
+.af-f{flex:1 1 200px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.af-f-s{flex:0 1 150px}
+.af-f-2{flex:1 1 320px}
+.af-f > span{font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#6b6350}
+.af-sel,.af-in{width:100%;padding:8px 10px;border:1px solid #d6cdb5;border-radius:8px;
+  background:#fff;font-family:inherit;font-size:13px;color:#2f342d}
+.af-sel:focus,.af-in:focus{outline:none;border-color:#8fb190;box-shadow:0 0 0 3px #1E5A3D22}
+.af-means{margin:0;padding:8px 0;font-size:12.5px;font-weight:600;color:#4a5a4c}
+.af-sub{margin:16px 0 8px;font-size:10.5px;font-weight:700;letter-spacing:.08em;
+  color:#8a8272;border-top:1px dashed #e2ddce;padding-top:12px}
+.af-roles{display:flex;flex-wrap:wrap;gap:7px}
+.af-rtag{padding:6px 11px;border:1px solid #d8d3c3;border-radius:999px;background:#fff;
+  font-family:inherit;font-size:11.5px;color:#6b6350;cursor:pointer}
+.af-rtag:hover{background:#f6f3ea}
+.af-rtag.on{border-color:var(--gr);background:var(--gr);color:#fff}
+.af-btns{display:flex;gap:9px;margin-top:16px}
+.af-add{padding:8px 16px;border:0;border-radius:8px;background:var(--gr);color:#fff;
+  font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.af-add:hover{background:var(--gr-d)}
+.af-add:disabled{background:#c7cdd6;cursor:not-allowed}
+.af-cancel{padding:8px 14px;border:1px solid #d6cdb5;border-radius:8px;background:#fff;
+  font-family:inherit;font-size:12.5px;font-weight:700;color:#6b6350;cursor:pointer}
+.af-cancel:hover{background:#f6f3ea}
 
 /* 編集中の入力欄。値のあった場所がそのまま入力欄になる。 */
 .ed{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%}
@@ -250,7 +528,10 @@ select.ef{appearance:none;padding-right:24px;cursor:pointer;background-image:lin
 .eact button{padding:5px 12px;border-radius:5px;font-family:inherit;font-size:11.5px;cursor:pointer}
 .e-ok{border:1px solid var(--gr);background:var(--gr);color:#fff;font-weight:600}.e-ok:hover{background:var(--gr-d)}
 .e-no{border:1px solid #ded8ca;background:#fff;color:#8a8578}.e-no:hover{background:#f5f3ec}
-.e-del{border:1px solid #e8cabb;background:#fff;color:#b45c3a;margin-right:auto}.e-del:hover{background:#fdf3ee;border-color:#dba385}
+.acctform .e-del{align-self:flex-end;padding:2px 0;border:0;background:transparent;
+  color:#b45c3a;font-family:inherit;font-size:10.5px;cursor:pointer}
+.acctform .e-del:hover{color:#9f472b;text-decoration:underline}
+.acctform .e-del:focus-visible{outline:2px solid #b45c3a;outline-offset:2px}
 
 /* ══════════════════════════════════════════════════════════════
    レスポンシブ（成果物UI）
@@ -259,52 +540,115 @@ select.ef{appearance:none;padding-right:24px;cursor:pointer;background-image:lin
    狭い作業面では、横に並べていたものを縦に積み、固定幅の表は
    その器の中で横スクロールさせる。値は tokens の --bp-* と対応。 */
 
-/* 中間幅（≤1200px）：作業面が流動化するので、表紙の目次を1列に、
-   通帳の最大幅も解く。制度・持ち物の2列組みは ≤900px まで保つ。 */
+/* 中間幅（≤1200px）：作業面が流動化するので通帳の最大幅を解く。
+   カード内部（制度・持ち物）の2列組みは ≤900px まで保つ。 */
 @media (max-width:1200px){
-  .pb-shelf{grid-template-columns:minmax(0,1fr)}
   .sec{max-width:none}
 }
 
-/* 狭い幅（≤900px）：1カラム。横並びを縦に積む。 */
-@media (max-width:900px){
-  /* カード本体の余白を詰める。 */
-  .cv{padding:16px 20px 18px 20px;flex-wrap:wrap;gap:6px 12px}
-  .cv .nm{font-size:16px}
-  .cv .bd{margin-left:0}
-  .body{padding:18px 16px 4px}
-  .blk{margin-bottom:22px}
+/* 目次の列数は viewport ではなく「器（.sec）の実幅」で決める。全体
+   表示・中間幅で扱いを分けない。表紙1枚＝300〜420px（全体表示の
+   実測幅）。器に2枚（300×2＋gap22＝622px）入れば2列、入らなければ
+   1列。どちらも中央寄せで、余った幅にカードを伸ばさない。 */
+.sec:has(> .pb-shelf){container-type:inline-size}
+.pb-shelf{grid-template-columns:minmax(300px,420px);justify-content:center}
+@container (min-width:622px){
+  .pb-shelf{grid-template-columns:repeat(2,minmax(300px,420px))}
+}
 
-  /* ①必要時の対応・②持ち物：2列 → 1列。 */
-  .sit-grid,.kit-grid{grid-template-columns:minmax(0,1fr)}
+/* ══ 見開きが狭くなったとき ══════════════════════════════
+   viewport ではなく器（.pb）の実幅で決める（保険の見開きと同じ）。
+   左ページが 268px を引いたあと記帳面に 430px を割れなくなる
+   ≒ 720px で、見開きを縦に開く。左ページは sticky を解いて上へ回り、
+   谷折りは横向きの折り目になる。綴じは冊子の左辺に残す。         */
+.pb{container-type:inline-size}
+
+@container (max-width:720px){
+  /* .pb-open を grid にし、.pb-left は display:contents で「透明な
+     箱」にする。中身（.pb-label / .pb-acctsec）がこの grid に直接
+     参加できるので、名義は銀行名の横／支店などの口座情報はその下、
+     という縦横の組み替えができる（DOM の親子構造は変えない）。
+     削除の鍵は通常時には右下へ絶対配置し、専用のグリッド行を作ら
+     ない。確認を開いたときだけ、確認UIを最下段に置く。             */
+  .pb-open{display:grid;grid-template-columns:1fr;padding-bottom:0}
+  .pb-right:before{display:none}
+
+  .pb-left{display:contents}
+  /* 通常の鍵は見開き右下隅に沿わせる。本文の高さもカード間の余白も
+     使わず、メモの下端に残る既存の余白へ収める。背景は透かす。 */
+  .pb-del{position:absolute;z-index:5;right:0;left:auto;bottom:0;margin:0;padding:0}
+  .pb-del .del{border-color:#ffffff80;background:transparent;color:#ffffffd9;
+    box-shadow:none;width:24px;height:24px;border-radius:6px}
+  .pb-del .del svg{width:12px}
+  .pb-del .del:hover{border-color:#a65344;background:#fff8f488;color:#a65344}
+  .pb-del.confirming{position:static;inset:auto;grid-column:1;order:4;width:auto;margin:0 20px 20px 28px}
+  /* 銀行名＋バッジ＋素性行（名義・口座数）。全体表示ではバッジと
+     素性行（＋含む）を縦に積むが、レスポンシブでは横幅が余るので
+     銀行名の下に一列で並べる。素性行が入り切らなければ折り返して
+     バッジの下へ回り、＋はその素性行の右端に付いて回る。          */
+  .pb-label{grid-column:1;order:1;position:relative;
+    padding:24px 20px 18px 28px;
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+  .pb-label .pb-bankcap,
+  .pb-label .pb-bankname{flex:1 1 100%}
+  .pb-label .pb-state{margin-top:0}
+  /* 素性行はバッジの残り幅いっぱいに伸ばし、＋（margin-left:auto）を
+     このエリアの右端へ寄せる。狭くて入り切らなければ丸ごと折り返す。 */
+  .pb-label .pb-meta2{margin-top:0;flex:1 1 auto}
+  .pb-label .pb-emboss{flex:none}
+  /* 口座は銀行名ブロックの下。横幅が余るので、預金種類・支店番号・
+     用途を1本の横並びにする。入り切らなければ段ごと折り返す。      */
+  .pb-acctsec{grid-column:1;order:2;margin-top:0;
+    padding:16px 20px 16px 28px;display:block}
+  .pb-acct{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;
+    padding:10px 30px 10px 0;border-top:1px solid #ffffff26}
+  .pb-acct:first-of-type{border-top:0;padding-top:0}
+  .pb-acct:last-of-type{padding-bottom:0}
+  /* PCのラベル／値は解き、従来どおり種類・支店・番号・用途を横へ戻す。 */
+  .pb-acct-field{display:contents}
+  .pb-acct-field+.pb-acct-field{margin-top:0}
+  .pb-acct-label{display:none}
+  .pb-acct-no{font-size:14px}
+  .pb-acct-kind .pb-acct-value{display:inline-block;font-size:10.5px;color:#ffffffc4;letter-spacing:.04em}
+  .pb-acct-branch .pb-acct-value{display:inline-block;font-size:11.5px;font-weight:400;color:#ffffffab}
+  .pb-acct-number .pb-acct-value{display:inline-block}
+  .pb-acct-uses .pb-acct-value{display:contents}
+  .pb-acct-owner .pb-acct-value{display:inline-block;font-size:10.5px;color:#ffffff96}
+  .pb-acct-edit{top:9px}
+  .pb-acct:first-of-type .pb-acct-edit{top:0}
+  .pb-emboss{width:104px;height:104px;right:14px;bottom:auto;top:16px}
+
+  /* 横向きの谷折り。銀行名・口座情報の下端がそのまま折り目になる。 */
+  .pb-right{grid-column:1;order:3;position:relative;padding:24px 20px 26px 28px}
+  .pb-right:after{content:"";position:absolute;left:0;right:0;top:0;height:24px;
+    transform:translateY(-50%);pointer-events:none;
+    background:linear-gradient(180deg,rgba(var(--bk-sh),0) 0%,rgba(var(--bk-sh),.2) 40%,
+      rgba(var(--bk-sh),.34) 49%,#ffffff87 53%,#ffffff33 66%,rgba(var(--bk-sh),0) 100%)}
+}
+
+/* 器がさらに狭いとき：記帳面の余白を詰め、2列組みを縦に積む。 */
+@container (max-width:520px){
+  .pb-sheet{padding:19px 17px 20px}
+  .pb-letter{padding-left:16px;padding-right:16px}
+  .pb-bankname{font-size:20px}
+
+  /* 種別・支店番号・用途は1本の横並びのまま。入り切らなければ
+     段ごと折り返す。 */
+  .pb-acctsec{display:block}
+  .pb-acct{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;
+    padding:12px 30px 13px 0;border-top:1px solid #ffffff30}
+  .pb-acct:first-of-type{border-top:0;padding-top:0}
+  .pb-acct:last-of-type{padding-bottom:0}
+  .pb-acct-no{font-size:14px}
+  .pb-acct-kind .pb-acct-value{
+    font-size:10px;color:#ffffff9e;letter-spacing:.05em;
+    border:1px solid #ffffff3d;border-radius:3px;padding:1px 6px}
+
+  /* 制度カード：2列 → 1列。カードは実体（枠・影）を持つので、縦積みでも
+     余白だけで分かれる。 */
+  .sit-grid{grid-template-columns:minmax(0,1fr);gap:16px}
   /* 制度名・状況は nowrap をやめて折り返す（横幅が足りない）。 */
   .sit-cap,.sit-mean{white-space:normal}
   .sit-row{min-height:0}
   .sit-badge-wrap{align-self:flex-start}
-
-  /* ③口座情報：固定幅の5列表は畳まず、器の中で横スクロール。
-     table-layout:fixed と列%指定を解いて内容幅で組む。 */
-  .acctinfo{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .acctinfo table{table-layout:auto;width:auto;min-width:100%}
-  .acctinfo th,.acctinfo td{white-space:nowrap}
-  .acctinfo th:nth-child(n),.acctinfo td:nth-child(n){width:auto}
-  /* 編集行は入力欄が縦に伸びるので折り返しを許す。 */
-  .acctinfo tr.edit td{white-space:normal}
-
-  /* 記帳行（追加・編集フォーム）：1行 → 折り返し。 */
-  .ent{flex-wrap:wrap;row-gap:8px}
-  .ent .k{flex-basis:auto}
-  .ent .uwrap{margin-left:0;width:100%}
-  .f-branch,.f-no{flex:1 1 100%}
-  .roles{padding-left:0}
-
-  /* 銀行名の候補リストは画面幅に合わせる。 */
-  .sug{left:16px;right:16px;width:auto}
-  .namewrap{max-width:none}
 }
-
-@media (max-width:400px){
-  .cv .kd{font-size:11px}
-  .blk-h b{font-size:15px}
-}
-

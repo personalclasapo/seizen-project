@@ -7,10 +7,23 @@
    後のステップで再利用する」を、プロトタイプで試せるようにする
    ためのもの。用途・備え・持ち物が互いを参照できる形にしておく。
 
-   保存はしない。リロードで消えてよい。実在の口座番号や家族の
-   情報をブラウザへ残す導線を、プロトタイプの段階では作らない。   */
+   挙動確認のあいだ手が消えないよう、localStorage に仮保存する
+   （実データではなく仮データの入れ替わりなので、残しても構わない）。
+   初期の仮データに戻したいときは、コンソールで
+   localStorage.removeItem('SeiZenBank.banks') を実行する。         */
 (function (global) {
   'use strict';
+
+  const STORE_KEY = 'SeiZenBank.banks';
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(banks)); } catch (e) { /* 無視 */ }
+  }
+  function loadSaved() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
 
   /* ── 語彙 ───────────────────────────────────────────
      選択肢と、その意味づけを一箇所で決める。画面の色や記号は
@@ -20,13 +33,15 @@
   const ROLES = ['生活費', '給与受取', '年金の受取', '公共料金', 'カード引落', '貯蓄'];
 
   /* 備えの進捗だけを表す状態。「今のうちだけ」は制度そのものの
-     性質であって進捗ではないので、ここには置かない（SITUATIONS側）。 */
+     性質であって進捗ではないので、ここには置かない（SITUATIONS側）。
+     仕組みが無い制度には状態を持たせない（＝進捗のしようがない）。
+     銀行の外で取る手（任意後見・口座の集約など）はカテゴリの
+     「メモ」へ書く。 */
   const PREP_STATES = {
-    '対応済み':       { tone: 'r-gr' },
-    '未対応':         { tone: 'r-or' },
-    '確認中':         { tone: 'r-gy' },
-    '対象外':         { tone: 'r-gy' },
-    '別の方法を検討': { tone: 'r-gy' }
+    '対応済み': { tone: 'r-gr' },
+    '未対応':   { tone: 'r-or' },
+    '確認中':   { tone: 'r-gy' },
+    '対象外':   { tone: 'r-gy' }
   };
 
   /* 持ち物の状態。done は「探せる」ことが確かめられたもの、
@@ -82,7 +97,7 @@
     { id: 'immobile', label: '入院などで動けないとき', hint: 'ATM での引き出しなど',     urgent: false,
       /* about は制度そのものの説明。when はそれがいつ効いてくるかの補足。
          前者を読めば何の手続きか分かり、後者で自分ごとになる。       */
-      about: 'ATMで引き出し・振り込みができるようになる仕組み。',
+      about: 'ATMで引き出し・振り込みができる仕組み。',
       when:  '本人が窓口やATMへ行けないとき、生活費等を家族が動かせます。' },
     { id: 'capacity', label: '判断能力が低下したとき', hint: '窓口での手続き・解約など', urgent: true,
       about: '窓口での手続き・解約などに必要な手続き。',
@@ -110,6 +125,7 @@
       updated: '2025.05.18',
       dormant: false,
       note: '2件の口座はまとめて対象になります。同じ窓口で手続きでき、手数料はかかりません。',
+      memo: '',
       accounts: [
         { id: uid('acc'), kind: '普通預金', branch: '渋谷支店', number: '1234567', owner: '本人（父）', roles: ['生活費', '公共料金'] },
         { id: uid('acc'), kind: '定期預金', branch: '渋谷支店', number: '1234568', owner: '本人（父）', roles: ['貯蓄'] }
@@ -136,6 +152,7 @@
       updated: '2025.05.18',
       dormant: false,
       note: '年金の受取口座です。引き出せなくなると生活費に直接影響します。',
+      memo: '',
       accounts: [
         { id: uid('acc'), kind: '通常貯金', branch: '記号 12345', number: '番号 6789012', owner: '本人（父）', roles: ['年金の受取'] }
       ],
@@ -160,7 +177,8 @@
       name: 'ソニー銀行',
       updated: '2025.05.20',
       dormant: true,
-      note: 'この銀行だけでの対策はできません。ほかの資産とあわせて検討する必要があります。',
+      note: '',
+      memo: '判断能力が下がったときの備えがこの銀行には無い。任意後見契約を結ぶか、元気なうちに三井住友へ口座を集約する方向で家族と相談中。',
       accounts: [
         { id: uid('acc'), kind: '定期預金', branch: '', number: '', owner: '本人（父）', roles: [] }
       ],
@@ -171,7 +189,7 @@
             { item: 'キャッシュカード', state: '未確認',   where: '' },
             { item: '届出印',           state: '登録なし', where: '印鑑の届出がありません' }
           ] },
-        { situation: 'capacity', who: '', state: '別の方法を検討', doneOn: '', note: '任意後見・口座の集約',
+        { situation: 'capacity', who: '', state: '対象外', doneOn: '', note: '',
           kit: [
             { item: '本人確認書類',     state: '未確認',   where: '' },
             { item: '印鑑（実印）',     state: '登録なし', where: '印鑑の届出がありません' },
@@ -181,6 +199,23 @@
       ]
     }
   ];
+
+  /* 保存済みがあれば仮データを丸ごと差し替える。id は "bank-<n>" /
+     "acc-<n>" の形なので、続きの採番が既存分とぶつからないよう
+     seq を合わせ直す。 */
+  const saved = loadSaved();
+  if (Array.isArray(saved)) {
+    banks.length = 0;
+    saved.forEach(b => banks.push(b));
+    banks.forEach(b => {
+      const bn = parseInt(String(b.id).split('-').pop(), 10);
+      if (!isNaN(bn) && bn > seq) seq = bn;
+      b.accounts.forEach(a => {
+        const an = parseInt(String(a.id).split('-').pop(), 10);
+        if (!isNaN(an) && an > seq) seq = an;
+      });
+    });
+  }
 
   /* ── 引き出し ───────────────────────────────────────
      見出しの件数も、警告の文言も、行の色も、事実から毎回引く。
@@ -206,8 +241,11 @@
      状態（未対応・確認中）は、期限そのものが見出しになる。事実は
      一つのまま、その制度の性質に応じて呼び方だけを変える。         */
   const OPEN_STATES = ['未対応', '確認中'];
+  /* まだ片付いていない備え。確認中も、まだ間に合っていないことに
+     変わりはない。表紙の鑑札・系統色・警告はここから引く。         */
+  function isOpen(p) { return OPEN_STATES.includes(p.state); }
   function isUrgentOpen(p) {
-    return OPEN_STATES.includes(p.state) && situation(p.situation).urgent;
+    return isOpen(p) && situation(p.situation).urgent;
   }
 
   /* バッジは「今のうちの対応が必要：確認中」のように2段で読ませる。
@@ -234,12 +272,42 @@
     return kitTally(bank.prep.flatMap(p => p.kit));
   }
 
-  /* カードの表紙に出る状態。備えに未対応・確認中が残っていれば
-     要手続き。確認中もまだ片付いていないことに変わりはない。       */
-  function bankBadge(bank) {
-    if (bank.dormant) return { text: '取 扱 い な し', cls: 'off' };
-    const pending = bank.prep.some(p => OPEN_STATES.includes(p.state));
-    return pending ? { text: '要 手 続 き', cls: 'warn' } : { text: '確 認 中', cls: 'off' };
+  /* 銀行1件の状態を3値に決める、唯一の場所。一覧の表紙（色・鑑札）と
+     記録の見開き（色・鑑札）は、どちらも必ずここを通す。以前は
+     鑑札の文言（bankBadge）と系統色（画面側の bankTone）を別々に
+     判定していて、「対応済みでも鑑札は確認中のまま」「一覧と詳細で
+     色が食い違う」というずれが起きていた。
+       urgent … 期限つきの手続きが片付いていない（最優先）
+       none   … 使える仕組みが一つも無い（休眠を含む）
+       ok     … 使える仕組みが全部片付いている
+       open   … 使える仕組みはあるが、まだ片付いていない
+                （期限つきではないので急ぎではない）                */
+  function bankStatus(bank) {
+    if (bank.prep.some(isUrgentOpen)) return 'urgent';
+    if (bank.dormant) return 'none';
+    const usable = bank.prep.filter(p => prepMeans(bank, p));
+    if (!usable.length) return 'none';
+    return usable.every(p => !isOpen(p)) ? 'ok' : 'open';
+  }
+
+  /* カードの表紙に出る鑑札。文言は bankStatus の4値と1対1で対応する。 */
+  const BANK_BADGE = {
+    urgent: { text: '要 手 続 き',   cls: 'warn' },
+    open:   { text: '対 応 途 中',   cls: 'warn' },
+    ok:     { text: '対 応 済 み',   cls: 'off'  },
+    none:   { text: '取 扱 い な し', cls: 'off'  }
+  };
+  function bankBadge(bank) { return BANK_BADGE[bankStatus(bank)]; }
+
+  /* 名義は口座を跨いで同じことが多い（同じ本人の普通・定期など）。
+     全口座で揃っているときだけ銀行1件の共通事実として括り出し、
+     一致しない・空がある・口座が無いときは null（口座ごとに刷る）。
+     印字面は「同じ値を毎回繰り返さない」実物の通帳の組み方に合わせる。 */
+  function commonOwner(bank) {
+    if (!bank.accounts.length) return null;
+    const first = bank.accounts[0].owner;
+    if (!first) return null;
+    return bank.accounts.every(a => a.owner === first) ? first : null;
   }
 
   /* 「判断能力が低下したとき」の制度は、本人が元気なうちにしか
@@ -272,7 +340,7 @@
   function addBank(name) {
     const master = BANKS.find(b => b.name === name);
     const bank = {
-      id: uid('bank'), name: name, updated: today(), dormant: false, note: '',
+      id: uid('bank'), name: name, updated: today(), dormant: false, note: '', memo: '',
       accounts: [],
       prep: SITUATIONS.map(s => {
         const has = master ? master.means[s.id] !== null : true;
@@ -320,9 +388,9 @@
   global.SeiZenBank = {
     KINDS, ROLES, BANKS, SITUATIONS, KIT_ITEMS_BY_SITUATION,
     PREP_STATES, KIT_STATES, KIT_STATES_BY_ITEM, KIT_STATES_ANY,
-    banks,
-    prepState, kitState, prepMeans, prepStateLabel, accountDetail, tally, kitTally, bankBadge,
-    urgentPreps, criticalRoles,
+    banks, save,
+    prepState, kitState, prepMeans, prepStateLabel, accountDetail, tally, kitTally,
+    bankStatus, bankBadge, urgentPreps, criticalRoles, isOpen, commonOwner,
     findBank, situation, addBank, addAccount, removeAccount, removeBank, today,
     prepStateNames: () => Object.keys(PREP_STATES),
     /* 選択肢は事実の名前をそのまま並べる。期限の言い添えは表示側の

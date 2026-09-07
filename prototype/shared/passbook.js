@@ -12,7 +12,11 @@
        meta: [{ text, lead, label }], … 表紙の素性行（口座数・種別・名義）
        badge: { text, on },        … 右上の鑑札。on=false で控えめ表示
        weaveIndex,                 … 地紋の番号（画面ごとに割り当て）
-       dormant,                    … 休眠口座は表紙を灰に
+       dormant,                    … 休眠口座は表紙を灰に（tone:'gy' の別名）
+       tone,                       … 表紙の色クラス（例：'urg'|'open'|'ok'|'gy'）。
+                                     省略時は既定の緑。銀行口座の記録側
+                                     （area.css の .pb.bk-*）と同じ4値を
+                                     渡せば、一覧と詳細の色が必ず揃う。
        faceExtra,                  … 表紙下部に足す HTML（任意）
        body                        … 記録票（.pb-body）の中身 HTML
      }) → button.pb-book の文字列
@@ -75,7 +79,8 @@
       '</div>';
     const body = '<div class="pb-body">' + (opt.body || '') + '</div>';
 
-    return '<button class="pb-book' + (opt.dormant ? ' gy' : '') + '" type="button" ' +
+    const tone = opt.tone || (opt.dormant ? 'gy' : '');
+    return '<button class="pb-book' + (tone ? ' ' + esc(tone) : '') + '" type="button" ' +
       attr + '="' + esc(opt.key) + '">' +
       weaveSVG(opt.weaveIndex) +
       '<span class="pb-spine" aria-hidden="true"></span>' +

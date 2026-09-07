@@ -12,8 +12,12 @@
    nowrap の子が列を押し広げ、左右で幅がずれる）。 */
 .pb-shelf{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px 22px;margin-bottom:8px}
 
-/* カード全体が1冊の表紙。四辺すべてが冊子の縁で、緑（休眠は灰）が
-   表紙の色。上部に銀行名、その下に一段沈めた記録票（.pb-body）。 */
+/* カード全体が1冊の表紙。四辺すべてが冊子の縁で、緑が既定の表紙色。
+   呼び出し側が tone（'urg'|'open'|'gy'）を渡せば色が変わる――銀行
+   口座の記録側（bank-account/area.css の .pb.bk-*）と同じ4値。
+   一覧の表紙と詳細の見開きが同じ事実（S.bankStatus）を通るので、
+   ここが違う色を持つと一覧と詳細の色が食い違う。呼び出し側の判断を
+   もう一度ここで判定し直さないこと。                              */
 .pb-book{position:relative;display:block;width:100%;padding:0;
   border:0;font-family:inherit;text-align:left;cursor:pointer;color:#fff;
   border-radius:5px 10px 10px 6px;
@@ -35,6 +39,24 @@
     inset 0 -2px 0 #6b6252,inset -2px 0 0 #726959,
     inset 0 -26px 30px -22px #00000030,
     0 0 0 1px #3a2f1c22,0 2px 4px -1px #4b422b33,0 5px 10px -2px #4b422b2b,0 20px 30px -12px #4b422b4a}
+/* 期限つきの手続きが片付いていない（濃い橙）。bank-account の
+   --bk-back/gusset/edge（.pb.bk-urg）と同じ色みを表紙にも敷く。 */
+.pb-book.urg{background:linear-gradient(157deg,#AC8B55,#8A6A3A 46%,#6B5028);
+  box-shadow:
+    inset 0 1.5px 0 #ffffff4d,inset 1.5px 0 0 #ffffff2b,
+    inset 0 -2px 0 #55401f,inset -2px 0 0 #5c451f,
+    inset 0 -26px 30px -22px #00000038,
+    0 0 0 1px #3a2f1c22,0 2px 4px -1px #52381c33,0 5px 10px -2px #52381c2b,0 20px 30px -12px #52381c4a}
+.pb-book.urg .pb-spine{background:linear-gradient(90deg,#4a3418,#6b5028 38%,#ac8b55 74%,#8a6a3a)}
+/* 仕組みはあるがまだ片付いていない（淡い橙）。urg より彩度を落とし、
+   一覧の段階で「急ぎ」と「そのうち」を見分けられるようにする。 */
+.pb-book.open{background:linear-gradient(157deg,#B9A67F,#95815F 46%,#71603F);
+  box-shadow:
+    inset 0 1.5px 0 #ffffff4d,inset 1.5px 0 0 #ffffff2b,
+    inset 0 -2px 0 #594c30,inset -2px 0 0 #5f5230,
+    inset 0 -26px 30px -22px #00000030,
+    0 0 0 1px #3a2f1c22,0 2px 4px -1px #4f452c33,0 5px 10px -2px #4f452c2b,0 20px 30px -12px #4f452c4a}
+.pb-book.open .pb-spine{background:linear-gradient(90deg,#4c4128,#71603f 38%,#b9a67f 74%,#95815f)}
 .pb-book:hover{transform:translateY(-3px);
   box-shadow:
     inset 0 1.5px 0 #ffffff4d,inset 1.5px 0 0 #ffffff2b,inset 0 -2px 0 #1d4331,inset -2px 0 0 #214a37,
