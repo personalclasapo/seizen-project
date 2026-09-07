@@ -419,14 +419,18 @@
       /* メモ。構造化するほどではない医療情報の自由記述欄。 */
       memo: '次回受診：11/12\n血液検査の結果を提出する\n体調の変化があれば家族にも共有',
 
-      /* いつもの通院｜主な医療機関。 */
+      /* いつもの通院｜主な医療機関。行は { name, depts[], reason,
+         doctor, tel, web, hours, state }。web は公式サイト1本
+         （<a target=_blank rel=noopener> で開ける）。hours は診療時間。 */
       clinics: [
         { id: uid('cl'), name: '横浜中央クリニック', depts: ['内科'],
           reason: '高血圧の経過観察', doctor: '山田 一郎 先生',
-          tel: '045-123-4567', state: '確認済み' },
+          tel: '045-123-4567', web: 'https://yokohama-chuo.example.jp',
+          hours: '平日 9:00–12:30 / 14:00–17:30', state: '確認済み' },
         { id: uid('cl'), name: 'みなとみらい循環器クリニック', depts: ['循環器内科'],
           reason: '心房細動の治療', doctor: '鈴木 健一 先生',
-          tel: '045-987-6543', state: '確認済み' }
+          tel: '045-987-6543', web: '',
+          hours: '平日 9:00–12:00 / 15:00–18:00　土 9:00–13:00', state: '確認済み' }
       ],
       /* 薬を確認するところ｜入口を並列で持つ。標準の5つ（紙・電子・
          マイナポータル・かかりつけ薬局・その他）は行が常設で消えない。
@@ -785,7 +789,7 @@
 
   function addClinic() {
     const row = { id: uid('cl'), name: '', depts: [], reason: '', doctor: '',
-      tel: '', state: '未確認' };
+      tel: '', web: '', hours: '', state: '未確認' };
     data.medical.clinics.push(row);
     return row;
   }

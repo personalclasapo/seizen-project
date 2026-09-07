@@ -88,7 +88,6 @@
     '<circle cx="36" cy="28" r="13" fill="#c8bfa6"/>' +
     '<path d="M13 66c0-13 10-22 23-22s23 9 23 22Z" fill="#c8bfa6"/>' +
     '</svg>';
-  const CLINIC_IC = '<path d="M4 20V7.5L12 4l8 3.5V20"/><path d="M12 9.5v6M9 12.5h6"/>';
   /* 節見出しの記号。番号のかわりに、その節が何の話かを記号で言う。 */
   const WARN_IC  = '<path d="M12 3.5 2 20.5h20L12 3.5Z"/><path d="M12 10v4.6M12 17.6v.1"/>';
   const PULSE_IC = '<path d="M3 12.5h3.6l2-5.2 3 10 2.4-6.4 1.6 1.6H21"/>';
@@ -1154,39 +1153,90 @@
       '</div>';
   }
 
+  /* ── 診療案内カード ─────────────────────────────────
+     「いつもの通院」の1件は、手帳に挟んだ診療案内カード1枚。
+     角丸の矩形に色を敷いただけにしない（CLAUDE.md）。契約・デジタル
+     の券面（.paycard）と同じ組み方：カードの「頭」を SVG で描き
+     （固定の実寸比）、その下に印字の続く白い面（.cg-body）を継ぐ。
+
+     頭（.cg-head の SVG）に描くもの：
+       1) 帯     … 診療科の色地。ただし科ごとに塗り分けず、医療の
+                   1色で通す（塗り分けるとカードの列が色見本帳になる）。
+                   彩度は落とす（.paycard の規律）。
+       2) 上角   … 帯の左右上だけ丸める（下は白い面へ続くので角無し）。
+       3) 医療マーク … 帯の右端に白抜きの十字を1つだけ。券面の唯一の
+                   絵柄。
+     印字（診療科名・病院名・理由・連絡先）は HTML。SVG は物の形、
+     HTML は物に刷られた文字。頭の実寸比は名刺と同じ 91:55 に近い
+     帯として置く（カード全体は下に伸びるので固定しない）。         */
+  const CARD_GUIDE_ACCENT = '#5b7f92';   /* 医療の青。彩度控えめ */
+  /* 帯の地。上の2角だけ丸めた色地。preserveAspectRatio=slice で
+     縦横比を保ったまま帯を満たす（帯は単色なので切れても見えない）。
+     十字は帯の中で歪むので SVG には入れず、HTML 側で置く。 */
+  function cardGuideHead() {
+    return '<svg class="cg-head-svg" viewBox="0 0 120 40" ' +
+        'preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">' +
+      '<path d="M0 40 V10 A10 10 0 0 1 10 0 H110 A10 10 0 0 1 120 10 V40 Z" ' +
+        'fill="' + CARD_GUIDE_ACCENT + '"/>' +
+    '</svg>';
+  }
+  /* 帯の右端に置く白抜きの十字。券面の唯一の絵柄（.paycard の規律）。
+     固定サイズの独立グリフなので歪まない。 */
+  const CARD_CROSS = '<svg class="cg-cross" viewBox="0 0 24 24" aria-hidden="true">' +
+    '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z" fill="#ffffff" opacity=".9"/></svg>';
+
   /* 主な医療機関。1件ずつが「かかっている先」として並立するので、
-     帯に潰さずカードで横に並べる。カードの中では
-       診療科（何科か）→ 名前 → 何のために → 誰に → 連絡先
+     診療案内カードを並べる。カードの中では
+       診療科 →（帯の下に）病院名 → 理由 → 主治医・電話・Web・診療時間
      の順で、上から重要度が下がる。                                 */
   function clinicsBlock() {
     const m = S.data.medical;
     /* 節の鍵は scene('visit', …) 側と揃える（薬局・薬は節の中に
        自前の鉛筆を持つので、そちらは別の鍵のままでよい）。 */
     const on = secOn('visit');
+    const head = cardGuideHead();
     const cards = (m.clinics || []).map((c, i) => {
       const p = 'medical.clinics.' + i + '.';
-      const tags = on
-        ? '<div class="mc-depts">' + ev(p + 'depts', S.tagsToText(c.depts), 'line', '診療科（読点区切り）') + '</div>'
-        : '<div class="mc-depts">' + (c.depts || []).map(d =>
-            '<span class="tag tag-dept">' + esc(d) + '</span>').join('') + '</div>';
-      return '<div class="mc">' +
-        '<div class="mc-top">' +
-          '<span class="mc-ic">' + svgIc(CLINIC_IC, 17) + '</span>' +
-          tags + stBadge('medical.clinics.' + i) +
+      const dept = on
+        ? ev(p + 'depts', S.tagsToText(c.depts), 'line', '診療科（読点区切り）')
+        : ((c.depts || []).join('・') || '<span class="i-ev-empty">診療科</span>');
+      /* Web は1本。編集中はただの欄、表示時はリンクとして開ける。 */
+      const web = c.web
+        ? (on
+            ? ev(p + 'web', c.web, 'line', 'https://…')
+            : '<a href="' + esc(c.web) + '" target="_blank" rel="noopener" ' +
+              'class="cg-link">' + esc(webLabel(c.web)) + ' ↗</a>')
+        : (on ? ev(p + 'web', c.web, 'line', 'https://…') : '');
+      return '<div class="cg">' +
+        '<div class="cg-head">' + head +
+          '<span class="cg-dept">' + dept + '</span>' +
+          stBadge('medical.clinics.' + i) +
           (on ? delBtn(c.id) : '') +
+          CARD_CROSS +
         '</div>' +
-        '<div class="mc-name">' + ev(p + 'name', c.name, 'line', '医療機関の名前') + '</div>' +
-        '<div class="mc-reason">' + ev(p + 'reason', c.reason, 'line', '通っている理由') + '</div>' +
-        '<dl class="mc-kv">' +
-          '<dt>担当</dt><dd>' + ev(p + 'doctor', c.doctor, 'line', '担当の先生') + '</dd>' +
-          '<dt>電話</dt><dd class="mc-tel">' + TEL +
-            ev(p + 'tel', c.tel, 'line', '電話番号') + '</dd>' +
-        '</dl>' +
+        '<div class="cg-body">' +
+          '<div class="cg-name">' + ev(p + 'name', c.name, 'line', '医療機関の名前') + '</div>' +
+          '<div class="cg-reason">' + ev(p + 'reason', c.reason, 'line', '通っている理由') + '</div>' +
+          '<dl class="cg-kv">' +
+            '<dt>主治医</dt><dd>' + ev(p + 'doctor', c.doctor, 'line', '担当の先生') + '</dd>' +
+            '<dt>電話</dt><dd class="cg-tel">' + TEL +
+              ev(p + 'tel', c.tel, 'line', '電話番号') + '</dd>' +
+            (web || on
+              ? '<dt>Web</dt><dd>' + (web || '<span class="i-ev-empty">なし</span>') + '</dd>'
+              : '') +
+            '<dt>診療</dt><dd>' + ev(p + 'hours', c.hours, 'line', '診療時間') + '</dd>' +
+          '</dl>' +
+        '</div>' +
         '</div>';
     }).join('');
-    return '<div class="mcgrid">' +
+    return '<div class="cggrid">' +
       (cards || '<p class="i-ev-empty">まだ登録がありません。</p>') + '</div>' +
       (on ? '<button type="button" class="rowadd" data-add="clinic">＋ 医療機関を足す</button>' : '');
+  }
+
+  /* Web の表示名。スキームと末尾スラッシュを落として読みやすく。 */
+  function webLabel(url) {
+    return String(url || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
   }
 
   /* 薬を確認するところ。標準の入口（紙・電子・マイナポータル・
