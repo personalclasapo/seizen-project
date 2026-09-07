@@ -158,8 +158,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .profile svg{width:16px;height:16px;color:#77796f}
 
 /* ── 右：作業面 ─────────────────────────────────── */
+/* clip であって hidden ではない。hidden は作業面をスクロールコンテナに
+   してしまい――実際にはスクロールしないので――中の position:sticky が
+   一切効かなくなる。clip はスクロールコンテナを作らずに角丸へ切るだけ
+   なので、sticky はウィンドウに対して正しく効く（保険の左翼 .pv-left）。
+
+   なお契約・デジタルの左ページ（.rings）は、これとは別に自分の親
+   .sheet が overflow:hidden かつ align-items:stretch なので、ここを
+   直しても追従しない。あちらは版面いっぱいに伸びる前提の造り
+   （.rfoot の margin-top:auto）なので、直すなら別途。              */
 .work{position:relative;z-index:1;display:flex;flex:1;min-width:0;
-  min-height:calc(100vh - 32px);margin-left:-1px;overflow:hidden;
+  min-height:calc(100vh - 32px);margin-left:-1px;overflow:clip;
   background:#fbfaf5;border:1px solid #e2ddd0;border-left:0;border-radius:0 13px 13px 0;
   box-shadow:inset 8px 0 16px rgba(62,54,37,.055),0 4px 15px rgba(72,62,42,.1)}
 .inner{width:100%;padding:29px 44px 40px}

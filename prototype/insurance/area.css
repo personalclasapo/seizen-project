@@ -7,10 +7,11 @@
    通帳（銀行口座）とも索引（契約・デジタル）とも別の骨格でよい。
    ここで作った形を他領域へ機械的に持ち出さない（正本 §13）。
 
-   種類ごとの系統色（state.js の KIND_TONES と対）：
-     .k-life … 生命＝ピンク（亡くなったとき等）
-     .k-med  … 医療＝ブルー（入院・手術）
-     .k-non  … 損保＝ベージュ（事故）
+   カテゴリごとの系統色（state.js の KIND_TONES と対）：
+     .k-death … 死亡保障＝ピンク（亡くなったとき）
+     .k-med   … 医療・就労不能＝ブルー（入院・手術・診断・介護）
+     .k-save  … 貯蓄・年金＝グリーン（満期・年金）
+     .k-prop  … 損害（モノ）＝ベージュ（事故・災害）
    系統色はカードの縁・封筒・タブ・紋章にだけ差す。本文の地は白。 */
 
 .sec{max-width:1000px}
@@ -28,11 +29,13 @@
    --fold-*  … フォルダの3面。明度を back < gusset < flap の順に段階
                付けして折れを見せる。パステルに寄りすぎないよう、
                彩度・濃度は高めに取る。                               */
-.k-life{--kc:#b56b74;--kc-d:#9c545e;--kc-bg:#f7e6e8;--kc-bg2:#fbeff1;--kc-env:#c68f99;
+.k-death{--kc:#b56b74;--kc-d:#9c545e;--kc-bg:#f7e6e8;--kc-bg2:#fbeff1;--kc-env:#c68f99;
   --fold-back:#d3a2ab;--fold-gusset:#dcb1b9;--fold-flap:#e6c3ca;--fold-edge:#bd8590}
-.k-med {--kc:#5f7fa6;--kc-d:#4a6890;--kc-bg:#e4ecf4;--kc-bg2:#eef3f8;--kc-env:#93b0d0;
+.k-med  {--kc:#5f7fa6;--kc-d:#4a6890;--kc-bg:#e4ecf4;--kc-bg2:#eef3f8;--kc-env:#93b0d0;
   --fold-back:#a7c1de;--fold-gusset:#b7cde5;--fold-flap:#cadbee;--fold-edge:#8aa9cc}
-.k-non {--kc:#a98a5b;--kc-d:#8f7145;--kc-bg:#f0e6d3;--kc-bg2:#f6efe0;--kc-env:#bfa377;
+.k-save {--kc:#5f9576;--kc-d:#487a5e;--kc-bg:#e0efe6;--kc-bg2:#edf6f0;--kc-env:#8fc0a5;
+  --fold-back:#a2ceb4;--fold-gusset:#b3d8c2;--fold-flap:#c8e6d3;--fold-edge:#84b89b}
+.k-prop {--kc:#a98a5b;--kc-d:#8f7145;--kc-bg:#f0e6d3;--kc-bg2:#f6efe0;--kc-env:#bfa377;
   --fold-back:#cdb388;--fold-gusset:#d8c29c;--fold-flap:#e4d3b3;--fold-edge:#b79c6f}
 
 /* ══ 一覧ゾーン：証券フォルダを並べた目次 ══════════════════
@@ -47,8 +50,16 @@
    ポケットの凹みは常に中央 → 盾は left:50% 固定 → 幅が変わっても
    必ず凹みに収まる。凹カーブの縦は固定寸なので歪まない。           */
 
-.rack{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:44px 34px;
-  align-items:start;margin:8px 0}
+/* 目次の列数は viewport ではなく「器（.sec）の実幅」で決める。全体
+   表示・中間幅で扱いを分けない。フォルダ1枚＝300〜420px。器に2枚
+   （300×2＋横gap34＝634px）入れば2列、入らなければ1列。どちらも
+   中央寄せで、余った幅にフォルダを伸ばさない。銀行口座の目次と同じ形。 */
+.sec:has(> .rack){container-type:inline-size}
+.rack{display:grid;grid-template-columns:minmax(300px,420px);gap:44px 34px;
+  justify-content:center;align-items:start;margin:8px 0}
+@container (min-width:634px){
+  .rack{grid-template-columns:repeat(2,minmax(300px,420px))}
+}
 
 /* padding：上26（耳）・左右16（本体の覗き）・下40（ポケット）。 */
 .rkfolder{position:relative;display:block;width:100%;
@@ -123,156 +134,348 @@
 /* 目次から送られてきた証券は一瞬だけ縁が光る。 */
 @keyframes pvhit{from{box-shadow:0 0 0 3px var(--kc),0 8px 20px -6px #4b422b33}
   to{box-shadow:0 0 0 3px #ffffff00,0 8px 20px -6px #4b422b33}}
-.pv.hit .pv-sheet{animation:pvhit 1.6s ease-out}
+.pv.hit .pv-folder{animation:pvhit 1.6s ease-out}
 
-/* ══ 詳細ゾーン：証券の記録 ══════════════════════════════
-   現実の証券の情報階層を借りて、SeiZen で使いやすい形へ。券面 →
-   確認する場面 → 問い合わせ先 → 主な情報 → 確認 → その他 → 申し送り。
-   額装の罫は種類の系統色。ブロックの地は白のまま。               */
+/* ══ 詳細ゾーン：フォルダを開いた見開き ══════════════════
+   一覧で見ていたフォルダが開く。見開きの全面がフォルダの色地で、
+   左翼はその地に直接刷られたラベル面（証券に刷られていて動かない
+   事実）、右翼は地の上に白い証券が載る。証券の下には、フォルダへ
+   一緒に挟まれた別の紙――確認の紙と家族への手紙――が続く。
 
-.pv{position:relative;margin:22px 0 40px}
-.pv-tab{position:absolute;top:-14px;left:22px;z-index:2;
+   左翼は sticky。右を読んでいる間も証券番号・受取人・保険金額が
+   視野に残る。左右に分けた実利はここにある。
+
+   罫は3段階で使い分ける（作り直す前は全部 1px 同値で階層が読めず、
+   淡色カードの反復だけが残っていた）：
+     2px 系統色  … セクション見出しの下。群の宣言
+     1px 淡      … 行の区切り
+     1px 破線    … 補助・従属
+
+   角丸は紙らしく小さく取る（3〜5px）。大きな角丸はアプリのカードに
+   見えて、印刷物には見えない。                                    */
+
+/* 切り替えは viewport ではなく器の実幅で決める（目次 .rack と同じ）。 */
+.pv{--lf-w:270px;position:relative;margin:26px 0 46px;container-type:inline-size}
+
+/* 耳。一覧の .rk-tab と同じ形・同じ色で、開いたフォルダの上辺に乗る。 */
+.pv-tab{position:absolute;top:0;left:26px;z-index:2;
   padding:5px 18px 12px;font-size:12px;font-weight:700;color:var(--kc-d);
-  background:var(--kc-tab);border-radius:9px 9px 0 0;
-  box-shadow:inset 0 1px 0 #ffffff8c,0 -1px 2px #4b422b1c}
+  background:var(--fold-flap);
+  border:1px solid var(--fold-edge);border-bottom:0;border-radius:10px 10px 0 0;
+  box-shadow:inset 0 1px 0 #ffffffcc}
 
-/* 証券本体。二重罫の額装：外は淡色パネル、内は系統色の細い罫。 */
-.pv-sheet{position:relative;border-radius:14px;padding:12px;
-  background:#fffdfb;
-  border:1px solid var(--kc-env);
-  box-shadow:0 2px 4px #4b422b1c,0 16px 34px -14px #4b422b40}
-.pv-sheet:before{content:"";position:absolute;inset:7px;border:1px solid var(--kc-env);
-  border-radius:9px;pointer-events:none}
-/* 角の飾り。四隅に系統色の短い罫を2本ずつ。 */
-.pv-sheet:after{content:"";position:absolute;inset:12px;pointer-events:none;
+/* 開いたフォルダ。全面が色地。紙の目を細かい横縞でうっすら入れる。 */
+.pv-folder{position:relative;display:flex;align-items:flex-start;
+  margin-top:18px;border-radius:14px;
+  border:1px solid var(--fold-edge);
   background:
-    linear-gradient(var(--kc),var(--kc)) 0 0/16px 2px no-repeat,
-    linear-gradient(var(--kc),var(--kc)) 0 0/2px 16px no-repeat,
-    linear-gradient(var(--kc),var(--kc)) 100% 0/16px 2px no-repeat,
-    linear-gradient(var(--kc),var(--kc)) 100% 0/2px 16px no-repeat,
-    linear-gradient(var(--kc),var(--kc)) 0 100%/16px 2px no-repeat,
-    linear-gradient(var(--kc),var(--kc)) 0 100%/2px 16px no-repeat,
-    linear-gradient(var(--kc),var(--kc)) 100% 100%/16px 2px no-repeat,
-    linear-gradient(var(--kc),var(--kc)) 100% 100%/2px 16px no-repeat;
-  opacity:.55}
+    repeating-linear-gradient(0deg,#ffffff12 0 1px,transparent 1px 3px),
+    linear-gradient(176deg,var(--fold-gusset),var(--fold-back));
+  box-shadow:inset 0 1px 0 #ffffff70,0 2px 4px #4b422b1c,0 18px 38px -16px #4b422b4d}
 
-/* 券面。会社ロゴ／種類／証券番号。 */
-.pv-face{position:relative;display:flex;align-items:center;gap:14px;
-  padding:18px 20px 16px;margin:6px 6px 0}
-.pv-logo{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:8px;
-  background:var(--kc-bg);color:var(--kc-d);font-size:14px;font-weight:800}
-.pv-title{flex:1;min-width:0}
-.pv-insurer{font-size:12px;color:var(--ink3)}
-.pv-product{margin:2px 0 0;font-size:22px;font-weight:800;letter-spacing:.06em;color:#2f342d}
-.pv-no{flex:none;text-align:right;font-size:13px;font-weight:700;color:#3a3f38;
-  font-variant-numeric:tabular-nums;border:1px solid var(--kc-env);border-radius:7px;padding:6px 12px}
-.pv-no i{display:block;font-style:normal;font-size:9.5px;font-weight:600;color:var(--ink3);letter-spacing:.06em}
+/* 谷折り。左翼の右端で影が深まり、稜線で切り替わって右側に明線が立つ。 */
+.pv-folder:before{content:"";position:absolute;top:0;bottom:0;left:var(--lf-w);
+  width:26px;transform:translateX(-50%);z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,#4b422b00 0%,#4b422b1f 40%,#4b422b33 49%,
+    #ffffff4d 53%,#ffffff1a 66%,#ffffff00 100%)}
 
-/* 当事者。券面のすぐ下に4項目を横並び。 */
-.pv-parties{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
-  margin:10px 12px 0;padding:13px 14px;
-  border-top:1px solid #ece7da;border-bottom:1px solid #ece7da}
-.pv-parties div{font-size:13.5px;font-weight:700;color:#2f342d}
-.pv-parties i{display:block;font-style:normal;font-size:10.5px;font-weight:600;color:var(--ink3);margin-bottom:3px}
+/* ── 左翼：フォルダの内側（ラベル面） ────────────────── */
 
-/* 情報ブロック。地は淡い系統色、見出しの左に小アイコン。 */
-.pv-block{margin:14px 12px 0;border-radius:10px;padding:15px 16px;
-  background:var(--kc-bg2);border:1px solid var(--kc-env)}
-.pv-bh{display:flex;align-items:center;gap:8px;margin-bottom:11px}
-.pv-bh-ic{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:7px;
-  background:#fff;color:var(--kc-d);border:1px solid var(--kc-env)}
-.pv-bh b{font-size:14.5px;font-weight:700;color:#2f342d}
+.pv-left{position:sticky;top:16px;flex:0 0 var(--lf-w);align-self:flex-start;
+  min-width:0;padding:24px 22px 26px}
 
-/* ① 確認する場面。トリガー＋給付名＋説明。 */
-.pv-ben{background:var(--kc-bg2)}
-.ben-row{display:flex;gap:12px;padding:11px 4px;border-top:1px solid #ffffffcf}
-.ben-row:first-of-type{border-top:0;padding-top:2px}
+/* 紋章の空押し。一覧では白丸に収まっていた盾が、開いた内面では大きく
+   淡い型押しになる。白の線に暗い落ち影を付けて、へこみに見せる。   */
+.lf-crest{position:absolute;right:12px;bottom:14px;z-index:0;
+  width:136px;height:136px;color:#fff;opacity:.32;pointer-events:none;
+  filter:drop-shadow(0 1.5px 0 #4b422b3d)}
+.lf-crest svg{width:100%;height:100%}
+
+.lf-label{position:relative;z-index:1;padding-bottom:18px;
+  border-bottom:2px solid var(--fold-edge)}
+.lf-logo{display:block;margin-bottom:13px}
+.lf-logo .brand-svg{display:block}
+.lf-logo .brand-initial{display:grid;place-items:center;width:28px;height:28px;
+  border-radius:6px;background:#ffffff8c;color:var(--kc-d);font-size:11px;font-weight:800}
+.lf-insurer{font-size:11.5px;font-weight:600;letter-spacing:.05em;color:#3a32279e}
+.lf-product{margin:3px 0 0;font-family:var(--font-serif);font-size:27px;font-weight:600;
+  letter-spacing:.1em;line-height:1.3;color:#3a3227}
+/* 編集中はふつうの入力サイズに戻す（見出しの大きさで select を出さない）。 */
+.lf-product .i-pick{font-family:var(--font);letter-spacing:0}
+.lf-product .i-ef{font-size:13px;font-weight:500}
+/* 商品タイプから決まるカテゴリ。商品名の下に小さく添える。 */
+.lf-cat{margin-top:5px;display:inline-block;padding:2px 9px;border-radius:11px;
+  background:var(--kc-bg);color:var(--kc-d);font-size:10px;font-weight:700;letter-spacing:.06em}
+/* 編集中：分類は選ばせず、商品から自動で決まる旨を添える。 */
+.lf-cat-fixed{display:block;background:none;padding:2px 0;color:#3a3227}
+.lf-cat-fixed small{display:block;margin-top:2px;font-size:9.5px;font-weight:400;
+  letter-spacing:0;color:#3a32279e}
+.lf-no{margin-top:15px}
+.lf-no small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.12em;color:#3a32279e}
+.lf-no b{display:block;margin-top:2px;font-size:15px;font-weight:700;letter-spacing:.06em;
+  color:#3a3227;font-variant-numeric:tabular-nums}
+
+.lf-g{position:relative;z-index:1;margin-top:20px}
+.lf-gh{display:flex;align-items:center;margin-bottom:7px;font-size:10px;font-weight:700;
+  letter-spacing:.15em;color:#3a322794}
+.lf-row{display:flex;align-items:baseline;gap:10px;padding:7px 0;
+  border-top:1px solid #ffffff5c}
+.lf-row:first-of-type{border-top:0}
+.lf-row small{flex:0 0 62px;font-size:10.5px;color:#3a32279e}
+.lf-row b{flex:1;min-width:0;font-size:12.5px;font-weight:700;line-height:1.55;color:#3a3227}
+.lf-note{position:relative;z-index:1;margin:17px 0 0;font-size:10.5px;line-height:1.65;
+  color:#3a322794}
+
+/* フォルダ内面のいちばん下。この保険を記録から外す一角。2段の確認。 */
+.lf-del{position:relative;z-index:1;margin-top:16px;padding-top:14px;border-top:1px dashed #ffffff85}
+.lf-del-open{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+  padding:0;border:1px solid #e0d5bb;border-radius:7px;background:#ffffffa8;
+  color:#a99e82;cursor:pointer}
+.lf-del-open:hover{border-color:#dcae9f;background:#fdf6f4;color:#b4322e}
+.lf-del.confirming{border-top-color:#e6c4bb;text-align:center}
+.lf-del.confirming p{margin:0 0 10px;font-size:11px;line-height:1.7;color:#b4322e;font-weight:600}
+.lf-del-btns{display:flex;justify-content:center;gap:8px}
+.lf-del-yes,.lf-del-no{padding:7px 13px;border-radius:7px;font-family:inherit;
+  font-size:11px;font-weight:700;cursor:pointer}
+.lf-del-yes{border:0;background:#b4322e;color:#fff}
+.lf-del-yes:hover{background:#9c2b28}
+.lf-del-no{border:1px solid #d8cdb3;background:#fff;color:#6b6963}
+.lf-del-no:hover{background:#f8f4ec}
+
+/* ── 右翼：載っている白い証券と、挟まれた別の紙 ────────── */
+
+.pv-right{flex:1;min-width:0;padding:22px 22px 26px 20px}
+
+/* 載っている白い証券。角丸は 4px――紙の裁ち口はほぼ直角で、大きな
+   角丸にするとアプリのカードに見える。                            */
+.pv-cert{position:relative;background:#fffefb;border:1px solid #e6dcc6;border-radius:4px;
+  padding:24px 26px 26px;
+  box-shadow:0 1px 2px #4b422b1a,0 12px 26px -14px #4b422b59}
+
+/* 証券の中の節。淡色カードの反復はやめ、同じ白紙の上を見出しの太罫
+   だけで割る。囲みが消えるぶん、節の間は余白で離す。              */
+.pv-block+.pv-block{margin-top:27px}
+.pv-bh{display:flex;align-items:center;gap:9px;margin-bottom:14px;
+  padding-bottom:9px;border-bottom:2px solid var(--kc)}
+.pv-bh-ic{flex:none;display:block;color:var(--kc-d)}
+.pv-bh b{font-size:15px;font-weight:700;letter-spacing:.05em;color:#2f342d}
+
+/* ① この保険で請求できること。場面＋給付名＋説明、最後に特約。 */
+.ben-row{display:flex;gap:13px;padding:13px 0;border-top:1px solid #f2ecdd}
+.ben-row:first-of-type{border-top:0;padding-top:3px}
 .ben-ic{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;
-  background:#fff;color:var(--kc-d)}
+  background:var(--kc-bg);color:var(--kc-d)}
 .ben-tx{min-width:0}
-.ben-line{display:flex;align-items:baseline;gap:10px}
-.ben-line b{font-size:13.5px;font-weight:700;color:#2f342d}
-.ben-name{font-size:12.5px;font-weight:700;color:var(--kc-d)}
-.ben-about{margin-top:3px;font-size:12px;color:#54524b;line-height:1.7}
-.ben-by{margin-left:8px;color:var(--ink3)}
-.ben-note{margin:9px 0 0;font-size:11px;color:var(--ink3)}
+.ben-line{display:flex;align-items:baseline;flex-wrap:wrap;gap:9px}
+.ben-line b{font-size:14.5px;font-weight:700;letter-spacing:.02em;color:#2f342d}
+.ben-name{font-size:11.5px;font-weight:700;color:var(--kc-d);
+  background:var(--kc-bg);border-radius:3px;padding:2px 8px}
+.ben-about{margin-top:4px;font-size:12.5px;color:#54524b;line-height:1.75}
+.ben-by{margin-left:9px;color:var(--ink3)}
+.ben-riders{display:flex;align-items:baseline;gap:12px;margin-top:15px;padding-top:13px;
+  border-top:1px dashed #e2d9c4}
+.ben-riders small{flex:none;font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--ink3)}
+.ben-riders b{font-size:12.5px;font-weight:700;line-height:1.6;color:#3a3f38}
+.ben-note{margin:12px 0 0;font-size:11px;color:var(--ink3)}
 
-/* ② 問い合わせ先。3列。左＝会社、中＝Web、右＝代理店。 */
-.pv-ct{background:#eef0f4;border-color:#dde0e8}
-.pv-ct .pv-bh-ic{border-color:#dde0e8;color:#5b6b86}
-.ct-grid{display:grid;grid-template-columns:1.2fr 1fr 1.2fr;gap:14px}
-.ct-col{background:#fff;border:1px solid #e6e2d6;border-radius:8px;padding:12px 13px}
-.ct-cap{display:inline-block;font-size:10.5px;font-weight:700;color:#fff;
-  border-radius:12px;padding:3px 10px;margin-bottom:8px}
-.ct-cap-a{background:#7e6da6}.ct-cap-b{background:#5b6b86}.ct-cap-c{background:#7e6da6}
-.ct-name{font-size:13px;font-weight:700;color:#2f342d;line-height:1.5}
-.ct-sub{font-size:12px;color:#54524b;line-height:1.6}
-.ct-tel{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:13.5px;font-weight:700;
-  color:var(--gr2);font-variant-numeric:tabular-nums}
-.ct-hours{margin-top:4px;font-size:11px;color:var(--ink3);line-height:1.6}
-.ct-link{display:inline-block;margin-top:7px;font-size:11.5px;font-weight:600;color:#5b6b86;
-  background:#eef0f4;border:1px solid #dde0e8;border-radius:6px;padding:5px 10px}
-.ct-note{margin:9px 0 0;font-size:11px;color:var(--ink3)}
+/* ② 請求するときの窓口。囲みではなく、左の縦罫で列を立てる。 */
+.ct-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));gap:10px 20px}
+.ct-col{padding-left:13px;border-left:2px solid var(--kc-env)}
+.ct-cap{display:block;margin-bottom:7px;font-size:10px;font-weight:700;
+  letter-spacing:.11em;color:var(--kc-d)}
+.ct-name{font-size:13px;font-weight:700;color:#2f342d;line-height:1.55}
+.ct-sub{font-size:12px;color:#54524b;line-height:1.65}
+.ct-tel{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:14px;font-weight:700;
+  letter-spacing:.02em;color:var(--gr2);font-variant-numeric:tabular-nums}
+.ct-hours{margin-top:5px;font-size:10.5px;color:var(--ink3);line-height:1.6}
+.ct-link{display:inline-block;margin-top:9px;padding-bottom:2px;font-size:11.5px;font-weight:700;
+  color:var(--gr2);border-bottom:1px solid #c4d6cb}
+.ct-note{margin:12px 0 0;font-size:11px;color:var(--ink3)}
 
-/* ③ 主な情報。6セルのグリッド。 */
-.pv-fx{background:var(--gr-bg);border-color:#d7e2d9}
-.pv-fx .pv-bh-ic{border-color:#d7e2d9;color:var(--gr2)}
-.fx-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 16px}
-.fx-cell{display:flex;gap:9px}
-.fx-ic{flex:none;color:var(--gr2);margin-top:1px}
-.fx-cap{font-size:11px;color:var(--ink3)}
-.fx-val{margin-top:2px;font-size:12.5px;font-weight:600;color:#2f342d;line-height:1.55}
+/* ③ 確認の紙。証券と同じフォルダに挟まれた別の紙で、証券には刷られて
+   いない――SeiZen と家族が足したもの。紙質・角丸・わずかな傾きで
+   「あとから重ねた」ことを見せる。                                */
+.pv-slip{position:relative;margin-top:19px;padding:17px 20px 18px;border-radius:3px;
+  background:linear-gradient(180deg,#fdf9ef,#f9f3e4);
+  border:1px solid #e6d9bd;transform:rotate(-.35deg);
+  box-shadow:0 1px 2px #4b422b1f,0 10px 20px -12px #4b422b5c}
+.sl-h{display:flex;align-items:center;gap:9px;margin-bottom:11px;
+  padding-bottom:9px;border-bottom:1px solid #e6d9bd}
+.sl-ic{flex:none;display:block;color:var(--or)}
+.sl-h b{flex:1;min-width:0;font-size:13.5px;font-weight:700;letter-spacing:.04em;color:#3a3227}
+.sl-tally{flex:none;padding:3px 9px;border-radius:3px;font-size:11px;font-weight:800;
+  letter-spacing:.06em;color:var(--gr2);background:var(--gr-bg2);
+  font-variant-numeric:tabular-nums}
+.sl-tally.open{color:var(--or);background:var(--or-bg)}
 
-/* ④ 請求のときの確認。持ち物・段取りのチェックリスト。 */
-.pv-ck{background:#faf7f0;border-color:#ece3d2}
-.pv-ck .pv-bh-ic{border-color:#ece3d2;color:var(--or)}
+/* 印は丸ではなく角の立った枡にする。丸はアプリのバッジに見えるが、
+   枡は書類の確認欄に見える。                                      */
 .ck-list{list-style:none;margin:0;padding:0}
-.ck-list li{display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px dashed #e6e1d3}
+.ck-list li{display:flex;align-items:center;gap:10px;padding:9px 0;
+  border-top:1px solid #ece0c6}
 .ck-list li:first-child{border-top:0}
-.ck-mark{flex:none;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;
-  font-size:11px;font-weight:800}
-.ok .ck-mark{background:var(--gr-bg2);color:var(--gr2)}
-.no .ck-mark{background:var(--or-bg);color:var(--or)}
-.na .ck-mark{background:#efece4;color:#a9a498}
-.ck-item{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:#3a3f38}
-.ck-where{flex:none;max-width:45%;font-size:11.5px;color:var(--ink3);
-  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.no .ck-where{color:var(--or)}
-.ck-foot{margin-top:10px;padding-top:9px;border-top:1px solid #efe7d6;
-  font-size:11.5px;font-weight:700;color:var(--gr2)}
-.ck-foot.open{color:var(--or)}
+/* 状態バッジ。押すと 確認済み→未確認→対象外 と回る。 */
+.ck-badge{flex:none;padding:2px 8px;border-radius:11px;border:1.5px solid;
+  font-size:10px;font-weight:800;letter-spacing:.04em;line-height:1.4;cursor:pointer;
+  white-space:nowrap;transition:filter .12s}
+.ck-badge:hover{filter:brightness(.96)}
+.ck-badge.ok{background:var(--gr2);border-color:var(--gr2);color:#fff}
+.ck-badge.no{background:#fff;border-color:var(--or);color:var(--or)}
+.ck-badge.na{background:#fff;border-color:#cdc6b4;color:#a9a498}
+.ck-item{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:700;color:#3a3227}
+.na .ck-item{color:#9a9384}
+/* 「場所」。読み取りでは右寄せの参考情報。 */
+.ck-where{flex:0 1 auto;min-width:0;max-width:46%;font-size:11.5px;color:#3a322794;text-align:right}
+.ck-where .i-ev{display:inline-block;max-width:100%;overflow:hidden;white-space:nowrap;
+  text-overflow:ellipsis;vertical-align:bottom}
+.ck-del{flex:none;width:22px;height:22px;padding:0;border:1px solid #e0d5bb;border-radius:5px;
+  background:#fff;color:#a2896a;font-size:11px;line-height:1;cursor:pointer}
+.ck-del:hover{color:#b4322e;border-color:#e3b9b7}
 
-/* ⑤ その他の契約情報。参考扱い。地を控えめに、注記を添える。 */
-.pv-ad{background:#f5f3ec;border-color:#e6e0d2}
-.pv-ad .pv-bh-ic{border-color:#e6e0d2;color:var(--ink2)}
-.pv-ad .pv-bh b{color:#54524b}
-.ad-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.ad-cell{border-left:2px solid #e0dac9;padding-left:11px}
-.ad-cap{font-size:10.5px;color:var(--ink3)}
-.ad-val{margin-top:2px;font-size:12.5px;color:#54524b;font-variant-numeric:tabular-nums}
-.ad-note{margin:10px 0 0;font-size:11px;color:var(--ink3);line-height:1.6}
+/* 編集中の行は縦に開く：1段目に状態バッジ＋項目名、2段目に「場所」を
+   横いっぱいの入力欄で。狭いセルに押し込まない。 */
+.ck-list li.ck-editing{display:grid;grid-template-columns:auto 1fr auto;
+  align-items:center;column-gap:10px;row-gap:8px;padding:12px 0}
+.ck-list li.ck-editing .ck-badge{grid-column:1;grid-row:1}
+.ck-list li.ck-editing .ck-item{grid-column:2;grid-row:1}
+.ck-list li.ck-editing .ck-del{grid-column:3;grid-row:1}
+.ck-list li.ck-editing .ck-where{grid-column:1/-1;grid-row:2;max-width:none;text-align:left}
+.ck-list li.ck-editing .ck-where::before{content:"場所　";font-weight:700;color:#8a8272;font-size:10.5px}
+.ck-list li.ck-editing .ck-item .i-ef,
+.ck-list li.ck-editing .ck-where .i-ef{width:100%}
+.ck-add{margin-top:12px;padding:6px 11px;border:1px dashed #d3c7a6;border-radius:7px;
+  background:none;font:inherit;font-size:11px;font-weight:700;color:#8a7a58;cursor:pointer}
+.ck-add:hover{border-color:var(--kc);color:var(--kc-d);background:#fbf6ea}
 
-/* ⑥ 家族への申し送り。手書き風メモ。証券の下端、額装の内へ。 */
-.pv-memo{margin:14px 12px 12px;padding:14px 16px 16px;
-  background:repeating-linear-gradient(180deg,#fffdf7,#fffdf7 27px,#efe7d4 28px);
-  border:1px solid var(--kc-env);border-radius:10px}
-.pv-memo-h{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--kc-d);
-  margin-bottom:6px}
-.pv-memo-ic{flex:none;color:var(--kc-d)}
-.pv-memo-body p{margin:0;font-size:13px;line-height:28px;color:#3a3f38;
-  font-family:var(--font-serif)}
+/* ④ 家族への手紙。もう一枚の挟まれた紙。罫は本文の背だけに敷いて、
+   行送りと罫のピッチを 29px で合わせる。                          */
+.pv-letter{position:relative;margin-top:16px;padding:16px 20px 20px;border-radius:3px;
+  background:#fffdf6;border:1px solid #e3d8bf;transform:rotate(.28deg);
+  box-shadow:0 1px 2px #4b422b1a,0 8px 18px -12px #4b422b52}
+.lt-h{display:flex;align-items:center;gap:8px;margin-bottom:6px;
+  font-size:11.5px;font-weight:700;letter-spacing:.08em;color:var(--kc-d)}
+.lt-ic{flex:none;display:block;color:var(--kc-d)}
+.lt-body{background:repeating-linear-gradient(180deg,transparent 0 28px,#eadfc6 28px 29px)}
+.lt-body p{margin:0;font-family:var(--font-serif);font-size:13.5px;line-height:29px;
+  letter-spacing:.03em;color:#3a3227}
+
+/* ══ その場編集 ═══════════════════════════════════════
+   書いてある場所がそのまま入力欄になる（銀行口座・契約デジタルと
+   同じ手つき）。値は点線の下線でホバー時にだけ「押せる」と分かる。
+   系統色は差さず、証券らしく紙と鉛筆の色でまとめる。            */
+
+/* 読み取り時の値。押せることはホバーの点線だけで示す。 */
+.i-ev{border-bottom:1px dashed transparent;border-radius:2px;cursor:text;
+  transition:border-color .12s,background .12s}
+.i-ev:hover{border-bottom-color:#b8a97e;background:#fbf6ea}
+.i-ev-empty{display:inline-block;padding:1px 9px;border:1px dashed #d3c7a6;
+  border-radius:5px;color:#a99e82;font-size:11px;font-weight:400;letter-spacing:0}
+.i-ev-empty:hover{border-color:#b8a97e;background:#fbf6ea}
+/* 見出し級（証券番号・保険金額）が未入力のときは小さく。 */
+.lf-no b .i-ev-empty,.lf-row b .i-ev-empty{font-size:10.5px}
+
+/* 入力欄。紙に置いた小さな伝票。 */
+.i-ef{width:100%;max-width:100%;padding:5px 8px;border:1px solid var(--kc);
+  border-radius:6px;background:#fff;font-family:inherit;font-size:12.5px;
+  font-weight:500;color:#2f342d;box-shadow:0 0 0 3px color-mix(in srgb,var(--kc) 16%,transparent)}
+.i-ef:focus{outline:none}
+.i-ef-area{min-height:70px;line-height:1.75;resize:vertical}
+.i-ef-sel{padding-right:26px;cursor:pointer;appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--kc-d) 50%),
+    linear-gradient(135deg,var(--kc-d) 50%,transparent 50%);
+  background-position:calc(100% - 13px) 52%,calc(100% - 8px) 52%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+/* 「選択式＋その他」。セレクトの下に、その他を選んだときだけ自由入力欄。 */
+.i-pick{display:inline-flex;flex-direction:column;gap:6px;min-width:180px;vertical-align:top}
+.i-pick .i-ef-sel{width:100%}
+.i-ef-other{width:100%}
+
+/* ラベル面・封筒地の上でも欄がくっきり読めるよう地を白に。 */
+.lf-label .i-ef,.lt-body .i-ef{background-color:#fff}
+.lt-body .i-ef-area{font-family:var(--font-serif);font-size:13.5px;line-height:1.9}
+
+/* 節ごとの編集ボタン。見出しの末尾に置く小さな鉛筆だけ。開くと
+   チェック（レ点）に変わり、系統色で塗って「編集中」を示す。 */
+.i-secedit{margin-left:auto;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;padding:0;border:1px solid transparent;border-radius:5px;background:none;
+  color:#3a322778;cursor:pointer}
+.i-secedit svg{width:13px;height:13px}
+.i-secedit:hover{border-color:var(--kc-env);background:#ffffffa8;color:#3a3227}
+.i-secedit.on{border-color:var(--kc-d);background:var(--kc-d);color:#fff}
+
+.lf-labedit{position:absolute;top:0;right:0;z-index:2}
+
+/* 「この保険で請求できること」｜編集中は、カテゴリの給付候補に
+   チェックを入れて、この契約で効くものを選ぶ。 */
+.ben-lead{margin:0 0 10px;font-size:11px;color:var(--ink3);line-height:1.6}
+.ben-picks{display:grid;gap:8px}
+.ben-pick{display:flex;align-items:center;gap:11px;padding:9px 11px;
+  border:1px solid #ece4d2;border-radius:8px;cursor:pointer;transition:border-color .12s,background .12s}
+.ben-pick:hover{border-color:var(--kc-env)}
+.ben-pick.on{border-color:var(--kc);background:var(--kc-bg2)}
+.ben-pick input{flex:none;width:16px;height:16px;accent-color:var(--kc-d);margin:0}
+.ben-pick-ic{flex:none;display:block;color:var(--kc-d)}
+.ben-pick-tx{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ben-pick-tx b{font-size:12.5px;font-weight:700;color:#3a3227}
+.ben-pick-tx small{font-size:10.5px;color:var(--ink3)}
+.ben-riders-ed{display:flex;align-items:baseline;gap:12px;margin-top:14px;
+  padding-top:13px;border-top:1px solid #ece4d2}
+.ben-riders-ed small{flex:none;font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--ink3)}
+
+.lt-empty{font-size:11.5px;color:var(--ink3);font-family:var(--font-serif)}
 
 /* ── 見出し横の追加ボタン（shared の .addbtn を使う） ── */
 
-/* 中間幅（≤1200px）：作業面が流動化する。主要な2列組みを1列へ。 */
-@media (max-width:1200px){
-  .rack{grid-template-columns:1fr}
-  .ct-grid{grid-template-columns:1fr}
-  .fx-grid,.ad-grid{grid-template-columns:1fr 1fr}
-  .pv-parties{grid-template-columns:1fr 1fr}
+/* 保険を追加するフォーム。会社→商品の順に選ぶ（種類は選ばせない）。 */
+.addform{max-width:1000px;margin:4px 0 18px;padding:16px 18px;
+  border:1px solid #e4dcc7;border-radius:12px;background:#fdfcf7}
+.af-row{display:flex;gap:14px;flex-wrap:wrap}
+.af-row + .af-row{margin-top:12px}
+.af-f{flex:1 1 220px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.af-f > span{font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#6b6350}
+.af-sel,.af-in{width:100%;padding:8px 10px;border:1px solid #d6cdb5;border-radius:8px;
+  background:#fff;font-family:inherit;font-size:13px;color:#2f342d}
+.af-sel:focus,.af-in:focus{outline:none;border-color:#8aa9cc;box-shadow:0 0 0 3px #5f7fa622}
+.af-sel:disabled{background:#f2efe6;color:#a49c88}
+.af-btns{display:flex;gap:9px;margin-top:14px}
+.af-add{padding:8px 16px;border:0;border-radius:8px;background:#4a6890;color:#fff;
+  font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.af-add:hover{background:#3d5a7e}
+.af-add:disabled{background:#c7cdd6;cursor:not-allowed}
+.af-cancel{padding:8px 14px;border:1px solid #d6cdb5;border-radius:8px;background:#fff;
+  font-family:inherit;font-size:12.5px;font-weight:700;color:#6b6350;cursor:pointer}
+.af-cancel:hover{background:#f6f3ea}
+
+/* ══ 見開きが狭くなったとき ══════════════════════════════
+   器（.pv）の実幅で決める。左翼が 270px を引いたあと右翼に 430px を
+   割れなくなる ≒ 720px で、見開きを縦に開く。左翼は sticky を解いて
+   上へ回り、谷折りは横向きの折り目になる。左翼の3群は横に流して、
+   縦の伸びを抑える。                                              */
+@container (max-width:720px){
+  .pv-folder{display:block}
+  .pv-folder:before{display:none}
+
+  .pv-left{position:relative;top:auto;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:0 26px;
+    align-items:start;padding:24px 20px 30px}
+  .lf-label,.lf-note,.lf-del{grid-column:1/-1}
+  .lf-crest{width:104px;height:104px;right:16px;bottom:auto;top:18px}
+
+  /* 横向きの谷折り。左翼の下端がそのまま折り目になる。 */
+  .pv-left:after{content:"";position:absolute;left:0;right:0;bottom:0;height:24px;
+    transform:translateY(50%);pointer-events:none;
+    background:linear-gradient(180deg,#4b422b00 0%,#4b422b1f 40%,#4b422b33 49%,
+      #ffffff4d 53%,#ffffff1a 66%,#ffffff00 100%)}
+
+  .pv-right{padding:22px 20px 24px}
 }
 
-/* 狭い幅（≤900px）：残る2列も縦に。 */
-@media (max-width:900px){
-  .fx-grid,.ad-grid,.pv-parties{grid-template-columns:1fr}
+/* 器がさらに狭いとき：証券の余白を詰め、確認の行は値を次の行へ送る
+   （45%幅で切り詰めると、肝心の「どこにあるか」が読めなくなる）。 */
+@container (max-width:480px){
+  .pv-cert{padding:20px 17px 21px}
+  .pv-slip,.pv-letter{padding-left:16px;padding-right:16px}
+  .lf-product{font-size:24px}
+  .ck-list li{flex-wrap:wrap}
+  .ck-where{flex:1 0 100%;max-width:none;margin-left:30px;white-space:normal}
 }
