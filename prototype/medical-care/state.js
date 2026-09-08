@@ -420,23 +420,27 @@
       memo: '次回受診：11/12\n血液検査の結果を提出する\n体調の変化があれば家族にも共有',
 
       /* いつもの通院｜主な医療機関。行は { name, depts[], reason,
-         doctor, tel, web, hours, state }。web は公式サイト1本
-         （<a target=_blank rel=noopener> で開ける）。hours は診療時間。 */
+         doctor, tel, web, hours }。web は公式サイト1本
+         （<a target=_blank rel=noopener> で開ける）。hours は診療時間。
+         状態（§11）は持たない――「かかっている先の連絡先」で、書いた
+         時点で家族が辿れる。 */
       clinics: [
         { id: uid('cl'), name: '横浜中央クリニック', depts: ['内科'],
           reason: '高血圧の経過観察', doctor: '山田 一郎 先生',
           tel: '045-123-4567', web: 'https://yokohama-chuo.example.jp',
-          hours: '平日 9:00–12:30 / 14:00–17:30', state: '確認済み' },
+          hours: '平日 9:00–12:30 / 14:00–17:30' },
         { id: uid('cl'), name: 'みなとみらい循環器クリニック', depts: ['循環器内科'],
           reason: '心房細動の治療', doctor: '鈴木 健一 先生',
           tel: '045-987-6543', web: '',
-          hours: '平日 9:00–12:00 / 15:00–18:00　土 9:00–13:00', state: '確認済み' }
+          hours: '平日 9:00–12:00 / 15:00–18:00　土 9:00–13:00' }
       ],
       /* 薬を確認するところ｜入口を並列で持つ。標準の5つ（紙・電子・
          マイナポータル・かかりつけ薬局・その他）は行が常設で消えない。
          かかりつけ薬局は複数あり得るので、2件目以降を足せる。
          行は { kind, where, note, state }。かかりつけ薬局だけは連絡先
-         （name・tel）も自前で持つ。 */
+         （name・tel・web）も自前で持つ。note はかかりつけ薬局では
+         家族の書き込みメモ（困ったときの連絡・往診の有無・担当薬剤師
+         など。「調剤・飲み合わせ確認」は薬局の定義なので書かない）。 */
       medSources: [
         { id: uid('ms'), kind: 'paper', where: '', note: '', state: '該当なし' },
         { id: uid('ms'), kind: 'digital', where: 'スマートフォン内　お薬手帳アプリ',
@@ -444,7 +448,8 @@
         { id: uid('ms'), kind: 'myna', where: 'マイナポータル（アプリ）',
           note: '新しい薬が追加されたら家族にも共有してください。', state: '確認済み' },
         { id: uid('ms'), kind: 'pharmacy', name: 'さくら薬局　横浜店', tel: '045-321-9876',
-          where: '', note: 'いつもこちらで調剤してもらっています。', state: '確認済み' },
+          web: 'https://sakura-ph.example.jp', where: '',
+          note: '', state: '確認済み' },
         { id: uid('ms'), kind: 'other', where: '', note: '', state: '未確認' }
       ],
 
@@ -671,8 +676,11 @@
      状態そのものではない）。                                       */
   function medicalRows() {
     const m = data.medical;
+    /* いつもの通院（clinics）は状態を持たない――書いた時点で家族が
+       辿れる「かかっている先の連絡先」で、§11 の状態を問う対象では
+       ない。数え上げからも外す。 */
     return []
-      .concat(m.clinics || [], m.medSources || [], supplyRows());
+      .concat(m.medSources || [], supplyRows());
   }
   /* 医療で必要になるものと所在｜全カテゴリの実物行を1本に。 */
   function supplyRows() {
@@ -789,7 +797,7 @@
 
   function addClinic() {
     const row = { id: uid('cl'), name: '', depts: [], reason: '', doctor: '',
-      tel: '', web: '', hours: '', state: '未確認' };
+      tel: '', web: '', hours: '' };
     data.medical.clinics.push(row);
     return row;
   }
