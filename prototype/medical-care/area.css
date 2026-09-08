@@ -156,12 +156,23 @@ button.st:hover{filter:brightness(.97)}
 /* ── 見開き ─────────────────────────────────────────
    手帳は開くと2面ある。左右で役割が違う：
      左（.bk-page-l）… 本人そのもの。変わらない事実。器なし。
-     右（.bk-page-r）… 場面。いつ・何が起きたときに何を見るか。
-   中央がノド（谷）。左面は右辺が、右面は左辺が谷に落ちる。      */
+     右（.bk-page-r）… 書き留めたことと場面。メモ＋2節。
+   中央がノド（谷）。左面は右辺が、右面は左辺が谷に落ちる。
+
+   面の頭は左右で揃える。段1＝左:識別欄（.sf-head）／右:メモ（.rmemo）。
+   段2＝左:医療状態（.sf-rest）／右:場面2節（.bk-rest）。開いたとき、
+   上段に「左＝本人が誰か／右＝書き留めたこと」の帯が1本通る。
+
+   揃え方は subgrid。左右の面（.bk-page）は段1〜2にまたがる1枚の紙の
+   まま（背景・ノドの影・角丸は分割しない）で、行だけを .bk-spread から
+   継ぐ。段1の高さは「左の識別欄と右のメモの、背の高いほう」に自動で
+   決まる――px は置かない（CLAUDE.md：寸法を勘で置かない）。
+   左面は .sf が1枚挟まるので、そこにも subgrid を通す。          */
 /* 畳むかどうかは器（.bk）の実幅で決める。.bk-spread 自身を container に
    すると、自分の幅を自分で問い合わせることになり畳めない。         */
 .bk{container-type:inline-size}
 .bk-spread{display:grid;grid-template-columns:minmax(0,10fr) minmax(0,9fr);
+  grid-template-rows:auto 1fr;
   background:var(--paper);
   border-radius:1px 4px 4px 1px;
   box-shadow:
@@ -170,10 +181,15 @@ button.st:hover{filter:brightness(.97)}
     0 1px 0 #ffffff2e,
     2px 3px 7px -2px #00000030}
 
-/* 見開きの紙。紙に10pxの角丸はない。地には紙の繊維を薄く敷く。 */
+/* 見開きの紙。紙に10pxの角丸はない。地には紙の繊維を薄く敷く。
+   紙は2段にまたがり、中の段組みだけを親から継ぐ。 */
 .bk-page{position:relative;min-width:0;
+  display:grid;grid-row:1/3;grid-template-rows:subgrid;
+  align-content:start;
   padding:18px 22px 22px;
   background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px)}
+/* 左面は .sf が1枚挟まるので、そこにも段を通す。 */
+.bk-page-l .sf{display:grid;grid-row:1/3;grid-template-rows:subgrid}
 /* 左面。右辺がノドへ落ちるので、そちら側に影を寄せる。 */
 .bk-page-l{border-radius:1px 0 0 1px;
   background-image:
@@ -188,13 +204,18 @@ button.st:hover{filter:brightness(.97)}
 
 /* 器が狭いときは見開きを畳む（1面の手帳になる）。 */
 @container (max-width:660px){
-  .bk-spread{grid-template-columns:minmax(0,1fr)}
+  /* 左右が上下に並ぶので、頭を揃える帯は成立しない。段組みを解いて
+     素直に流す（subgrid のままだと、上下に並んだ2面が互いの段の
+     高さを引き継いでしまう）。 */
+  .bk-spread{grid-template-columns:minmax(0,1fr);grid-template-rows:none}
+  .bk-page,.bk-page-l .sf{display:block;grid-row:auto}
   .bk-page-l{border-radius:1px 4px 0 0;
     background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px);
     border-bottom:1px solid #ded6c2;padding-bottom:20px}
-  /* 畳んだときは左右が上下に並ぶので、面の下端を埋める罫は要らない
-     （下に続きがある＝途中で切れて見えない）。 */
-  .sf-rules{display:none}
+  /* 畳んだときは左右が上下に並ぶので、メモも中身の分だけの高さに
+     して、空の罫が伸びないようにする。 */
+  .rmemo{margin-bottom:22px}
+  .rmemo-body{flex:none;min-height:0}
   .bk-page-r{border-radius:0 0 4px 4px;padding-left:22px;box-shadow:none;
     background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px)}
 }
@@ -210,17 +231,26 @@ button.st:hover{filter:brightness(.97)}
 
      一等 .sf-head … 識別欄。太い罫で締め、氏名だけ大きな見出しで持つ
      二等 .sf-sec  … 現在の医療状態。罫の走る記入欄
-     三等 .sf-sub  … メモ。細い罫の備考欄
+
+   三等（備考＝メモ）は右面の頭へ移した（.rmemo）。自由記述は
+   「変わらない事実」ではないので、この面の格の並びに乗らない。
 
    節見出しは配下の小見出しより必ず強くする。以前は節が 10.5px の
    添え字、その中の小見出しが 11.5px の太字で親子が逆転しており、
    5つの小見出しがトップレベルに並んで見えていた。               */
 
-/* 印刷インク。罫も欄の記号も、同じ一色から引く（刷ってある面）。 */
-.sf{--rule:#d9d0b8;--rule2:#e6dfcc;--stamp:#a99c78}
+/* 印刷インク。罫も欄の記号も、同じ一色から引く（刷ってある面）。
+   これは紙に刷ってある色なので、面（.bk-page）が持つ――左面だけの
+   ものにすると、右面の記入欄（.rmemo）が同じ罫を引けない。       */
+.bk-page{--rule:#d9d0b8;--rule2:#e6dfcc;--stamp:#a99c78}
 
 /* ── 一等｜識別欄 ─────────────────────────────────── */
-.sf-head{padding-bottom:15px;border-bottom:2.5px solid #bfb492}
+/* 段1（見開きの頭の帯）は右のメモと高さを揃えるため、中身より
+   伸びることがある（メモが長いとき）。伸びた分を下の余白だけに
+   逃がすと、中身が上に詰まって見える――縦方向に中央へ置き、
+   余白は上下で分け合う。 */
+.sf-head{display:flex;flex-direction:column;justify-content:center;
+  padding-bottom:15px;border-bottom:2.5px solid #bfb492}
 /* 顔写真＋氏名・生年月日の並び。写真は手帳に貼った証明写真の一枚
    （厚紙のように角は 2px、外に薄い落ち影）。狭ければ写真の下へ回す。 */
 .sf-idcard{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
@@ -284,8 +314,13 @@ button.st:hover{filter:brightness(.97)}
    グラデーション2枚を重ねる書き方は位置がずれて二重に見えたり
    罫の外へはみ出したりしたので、単純な1枚絵に変えた）。
    幅は .sf-fld-v 側だけで決め、select は width:100% で内側に
-   収める（両方に幅を指定すると二重になってはみ出す）。         */
-.sf-fld-blood .sf-fld-v{width:56px;box-sizing:border-box}
+   収める（両方に幅を指定すると二重になってはみ出す）。
+
+   この固定幅は矢印付き select が要る編集中だけのもの。閲覧時は
+   span（文字だけ）なので、他の欄と同じく中身の幅に罫を合わせる
+   ――そうしないと「A型」の2文字に対して罫だけが不自然に長く
+   伸びる。 */
+.sf-fld-blood .sf-fld-v:has(select){width:56px;box-sizing:border-box}
 .sf-fld-v select.i-ef{appearance:none;-webkit-appearance:none;
   width:100%;box-sizing:border-box;padding-right:14px;
   background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0 5 6 10 0Z" fill="%23a99c78"/></svg>');
@@ -308,11 +343,8 @@ button.st:hover{filter:brightness(.97)}
    headChip() が出す）。色は緑（--gr）で揃え、医療の茶系インクとは
    独立させる――右面と同じ部品である以上、色も右面のものを使う。 */
 
-/* ── 三等｜備考欄（メモ）─────────────────────────────
-   一段小さく、罫も細い。二等より静かでよい。                    */
-.sf-sub{margin-top:22px}
-.sf-sglb{display:flex;align-items:center;gap:6px;margin-bottom:9px;
-  font-size:10.5px;font-weight:700;color:var(--ink3);letter-spacing:.06em}
+/* 三等（備考＝メモ）は右面の頭へ移した（.rmemo）。左面は一等・二等の
+   2つの格で組む。 */
 
 /* ── 二等の欄の形｜チェック式の記入欄 ─────────────────
    項目が並ぶ面なので、骨はチェックの列にする。□ は刷ってある枠で、
@@ -674,26 +706,16 @@ button.st:hover{filter:brightness(.97)}
 .cm-ic svg{width:15px;height:15px}
 .cm-tx{min-width:0;font-size:12.5px;font-weight:600;line-height:1.5}
 
-/* ── 三等の欄の形 ─────────────────────────────────────
-   いまはメモだけが三等。列数は左面の実幅で決める（viewport では
-   ない）。左面は見開きの 6/17 しかない。                        */
-.sf-sub{container-type:inline-size}
+/* .sf 自身は見開きの段を継ぐ subgrid（「見開き」参照）なので、
+   段2の中身はここ（.sf-rest）が持つ。中身の長さで高さが決まる
+   （余白を罫で埋める作りは撤去――「体に合わないもの」の下に
+   意味のない線が1本残って見えたため）。                        */
+.sf-rest{display:flex;flex-direction:column;min-width:0}
 
-/* 未記入の欄。記入面なので罫は面の下端まで刷ってある。中身の終わりで
-   罫も終わると面が途中で切れて見え、下の空白がただの余白になる。
-   下端まで走らせると、その空白が「まだ書かれていない欄」になる。
-
-   高さは中身では決まらない（右面がどれだけ長いかで決まる）ので、
-   面いっぱいに伸びる1本として置き、余った分をこれが受ける。     */
-.sf{display:flex;flex-direction:column;min-height:100%}
-.sf-rules{flex:1;min-height:52px;margin-top:16px;
-  background-image:repeating-linear-gradient(
-    #0000 0 25px,var(--rule2) 25px 26px);
-  /* 下へ向かって消える。罫が最後まで同じ濃さだと、面の下半分が
-     「罫だけの面」になり、未記入の欄ではなくノートの余りに見える。
-     数本だけ残して抜くと、記入欄がまだ続いていることは伝わる。 */
-  -webkit-mask-image:linear-gradient(#000,#0000 190px);
-  mask-image:linear-gradient(#000,#0000 190px)}
+/* 段2｜場面2節。段1（メモ）の締めの罫からの間合いは、左面の二等
+   （.sf-sec の margin-top）と揃える――帯の下から左右が同じ間で
+   始まらないと、揃えた頭が台無しになる。 */
+.bk-rest{margin-top:26px;min-width:0}
 
 /* ── 右エリア｜場面 ──────────────────────────────────
    単位は .scene 1種類だけ。いまは2節：
@@ -886,22 +908,35 @@ button.st:hover{filter:brightness(.97)}
 .pill{display:inline-block;padding:1px 10px;border-radius:10px;
   background:var(--gr-bg);color:#2f6647;font-size:11px;font-weight:700}
 
-/* メモ。三等の欄（記入面の末尾にある自由記入欄）。付箋のように面から
-   浮かせない――器を持たない他の欄の中で1つだけ物になり、格の並び
-   （一等→二等→三等）から外れて見える。地も影も傾きも持たず、
-   罫だけが刷ってある欄として置く。                                 */
-.bk-slips{display:block}
-/* メモは三等の欄なので、囲みの箱にする。1つで幅いっぱいを取り、
-   中は記入罫。 */
-.slip-memo{padding:9px 12px 10px;border:1px solid var(--rule2);
-  border-radius:2px;background:#fdfcf6;font-size:12px}
-.slip-memo .slip-h{display:flex;align-items:center;gap:5px;margin-bottom:5px;
-  font-size:9.5px;font-weight:600;color:var(--ink3);letter-spacing:.06em}
-.slip-memo ul{margin:0;padding:0;list-style:none}
-.slip-memo li{padding:0 1px;font-size:11.5px;line-height:23px;
-  border-bottom:1px solid var(--rule2);color:var(--ink2)}
-.slip-memo li:last-child{border-bottom:0}
-.slip-memo .i-ef-area{line-height:23px}
+/* ── メモ｜右面の頭の記入面 ───────────────────────────
+   左面の識別欄（.sf-head）と頭・尻を揃える段1の欄（段組みは
+   「見開き」の subgrid が持つ）。
+
+   付箋のように浮かせない・囲みの箱にもしない――器を与えると、
+   面の上で1つだけ物になる。地も影も傾きも持たず、罫だけが刷って
+   ある欄として置く。見出しは左面の節（.sf-glb）と同じ格：白チップ
+   ＋緑グリフ＋タイトル、下を罫で締める。                        */
+/* 段1の締め。左の識別欄（.sf-head）と同じ太い罫で閉じる――同じ高さで
+   同じ罫が左右に入って、はじめて1本の帯として読める。 */
+.rmemo{display:flex;flex-direction:column;min-width:0;
+  padding-bottom:15px;border-bottom:2.5px solid #bfb492}
+.rmemo-h{display:flex;align-items:center;gap:8px;margin-bottom:13px;
+  padding-bottom:6px;border-bottom:1px solid var(--rule);
+  font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:.02em}
+.rmemo-sub{margin-left:6px;font-weight:500;letter-spacing:.03em;
+  color:var(--ink3);font-size:9.5px}
+/* 記入面。罫は左面の未記入欄（.sf-rules）と同じ間隔（26px）で刷り、
+   書いた行はその罫の上に乗る。中身が足りない分は空の罫が受ける
+   ＝「まだ書かれていない欄」（正本 §11）。 */
+.rmemo-body{flex:1;min-height:78px;
+  background-image:repeating-linear-gradient(
+    #0000 0 25px,var(--rule2) 25px 26px)}
+.rmemo-line{display:block;margin:0;padding:0 1px;
+  font-size:12px;line-height:26px;color:var(--ink2)}
+.rmemo-line.i-ev-empty{color:#c4bda9}
+/* 編集中の textarea も同じ罫の上に置く（欄が別物に化けない）。 */
+.rmemo-body .i-ef-area{line-height:26px;min-height:104px;
+  background:#0000;border-color:var(--rule)}
 
 /* ══════════════════════════════════════════════════════════════
    介護｜ベッド
@@ -1176,11 +1211,9 @@ button.st:hover{filter:brightness(.97)}
   .bk-title h4{font-size:20px}
   .bk-id{min-width:0;width:100%}
   .bk-page{padding:2px 13px 14px}
-  /* 左面。識別欄は氏名を詰め、未記入の罫は畳む（1面の手帳では
-     見開きの下端という概念が無く、罫だけが伸びても意味が無い）。 */
+  /* 左面。識別欄は氏名を詰める。 */
   .sf-nm h4{font-size:23px}
   .sf-idrow{gap:14px}
-  .sf-rules{display:none}
   .bs{padding:14px 0}
 
   .bed-head{padding:16px 14px 24px;border-radius:13px 13px 0 0}

@@ -122,6 +122,19 @@
     'stroke-linejoin="round"/>' +
     '<path d="M9 3.5h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
     '<path d="M7.3 12.8h9.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>';
+
+  /* メモ｜書きかけの紙と鉛筆。紙に面取りを敷き、罫を2本、右上から
+     鉛筆が下りてくる（headChip 用、各 path が stroke/fill を自前で
+     持つ）。「書き留める」ことそのものの絵で、内容を限定しない。 */
+  const MEMO_IC =
+    '<path d="M4.5 3.5h9.2l5.8 5.8v10.7a1 1 0 0 1-1 1h-14a1 1 0 0 1-1-1v-15.5a1 1 0 0 1 1-1Z" ' +
+      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.6" ' +
+      'stroke-linejoin="round"/>' +
+    '<path d="M13.5 3.6v5.7h5.7" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+      'stroke-linejoin="round"/>' +
+    '<path d="M7 13h7M7 16.5h4.5" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+      'stroke-linecap="round"/>';
+
   /* 薬を確認するところ｜入口の種類ごとの記号。 */
   const MEDSRC_IC = {
     paper:  '<path d="M6.5 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-11Z"/><path d="M6.5 3v18"/>' +
@@ -338,12 +351,14 @@
   /* 左面＝本人そのもの。場面によらず変わらない事実だけを置く。
      器は敷かないが、罫だけで流すと13個の等価なスロットに見える
      （＝羅列）。手帳の記入面には欄の「格」があり、それが階層に
-     なっている――一等は太い罫と記入枠、二等は罫の走る記入欄、
-     三等は細い罫の備考欄。左面もその3つの格で組む。
+     なっている――一等は太い罫と記入枠、二等は罫の走る記入欄。
+     左面はその2つの格で組む。
 
        一等 .sf-head  … 識別欄（氏名・生年月日・年齢・血液型）
-       二等 .sf-sec   … 現在の医療状態
-       三等 .sf-sub   … メモ                                        */
+       二等 .sf-sec   … 現在の医療状態／体に合わないもの
+
+     三等（備考＝メモ）は右面の頭へ移した。自由記述は「変わらない
+     事実」ではないので、この面の格の並びに乗らない。             */
 
   /* 一等｜識別欄。手帳の表紙裏にある記入欄。救急で最初に読まれるので、
      面の頭として太い罫で締める。生年月日・年齢・血液型はどれも同格の
@@ -1154,16 +1169,21 @@
   }
 
   /* 左エリア。本人そのもの。本文には器を敷かず、手帳の記入面の
-     「欄の格」で階層を作る（一等＝識別欄／二等＝医療状態／三等＝備考）。
+     「欄の格」で階層を作る（一等＝識別欄／二等＝医療状態）。
      節見出しの記号だけは右面の場面カードと同じ白チップ（headChip）
      に揃える――見出しの格は左右で同じでなければならない。
 
      節見出しは配下の小見出しより強くする。以前は節が 10.5px の
      添え字で、その中の小見出しが 11.5px の太字――親より子が強く、
-     5つの小見出しがトップレベルに並んで見えていた（＝羅列の骨）。 */
+     5つの小見出しがトップレベルに並んで見えていた（＝羅列の骨）。
+
+     2段の骨：識別欄（.sf-head）が段1、それ以外が段2（.sf-rest）。
+     見開きの段組み（.bk-spread の subgrid）に乗せて、右面のメモと
+     頭・尻を揃えるため（area.css「見開き」参照）。               */
   function leftFace() {
     return '<div class="sf">' +
       personBlock() +
+      '<div class="sf-rest">' +
       '<div class="sf-sec">' +
         '<span class="sf-glb">' + headChip(PULSE_IC) + '現在の医療状態' +
           editBtn('current') + '</span>' +
@@ -1177,11 +1197,7 @@
         '</span>' +
         vitalsBlock() +
       '</div>' +
-      memoBlock() +
-      /* 未記入の欄。記入面なので罫は面の下端まで刷ってある――中身の
-         終わりで罫も終わると、面が途中で切れて見える。空いた罫は
-         「まだ書かれていない欄」として読める（正本 §11）。        */
-      '<div class="sf-rules" aria-hidden="true"></div>' +
+      '</div>' + /* .sf-rest */
       '</div>';
   }
 
@@ -1489,7 +1505,7 @@
     const m = S.data.medical;
     const memoLines = String(m.memo || '').split('\n').filter(Boolean);
     return '<div class="rmemo">' +
-      '<div class="rmemo-h">メモ' +
+      '<div class="rmemo-h">' + headChip(MEMO_IC) + 'メモ' +
         '<span class="rmemo-sub">気づいたこと・伝えておきたいこと</span>' +
         editBtn('memo') + '</div>' +
       '<div class="rmemo-body">' +
@@ -1521,12 +1537,26 @@
         '</div>' +
 
         /* 見開き。手帳は開くと2面ある。左右で役割を変える：
-             左 … 本人そのもの。個人情報・現在の医療状態・メモ。器を
-                  持たせず、罫と文字の大小だけで置く。救急でまず読む
-                  もの（病名・アレルギー・副作用歴）は「現在の医療状態」
-                  が持つ。別に「伝えること」の節を設けると、同じ内容の
-                  写しになる（派生ビューは置かない）。
-             右 … 場面。いつもの通院・薬を確認するところ。
+             左 … 本人そのもの。個人情報・現在の医療状態。器を持たせず、
+                  罫と文字の大小だけで置く。救急でまず読むもの（病名・
+                  アレルギー・副作用歴）は「現在の医療状態」が持つ。
+                  別に「伝えること」の節を設けると、同じ内容の写しに
+                  なる（派生ビューは置かない）。
+             右 … 書き留めたことと、場面。メモ・いつもの通院・薬を
+                  確認するとき。
+
+           面の頭は左右で揃える。手帳を開いたとき、上段に
+           「左＝本人が誰か／右＝その人について書き留めたこと」の帯が
+           1本通り、その下から左は医療状態、右は場面2節へ続く。
+           またがる1つの欄にはしない――綴じ目（ノド）に枠は引けない
+           ので、左右それぞれが自分の面に頭を持ち、高さだけを揃える。
+           段組みは area.css の subgrid が持つ（.sf-head と .rmemo が
+           段1、.sf-rest と .bk-rest が段2）。
+
+           メモを左面へ置かないのは、左面が「場面によらず変わらない
+           事実」の面だから。自由記述は事実の記入欄ではないので、
+           格の並び（一等→二等）の末尾にぶら下げると、格の違うものが
+           一番下に付く形になる。
 
            どちらの面も、載せるのは「必要になったとき家族が思い出せ
            ない・調べられないこと」に限る（正本 §13-1）。日々の様子
@@ -1539,13 +1569,17 @@
         '<div class="bk-spread">' +
           '<div class="bk-page bk-page-l">' + leftFace() + '</div>' +
           '<div class="bk-page bk-page-r">' +
-            /* いつもの通院。日常の側。かかりつけ薬局は「薬を確認する
-               ところ」に一本化したので、ここには持たない。 */
-            scene('visit', 'いつもの通院', 'かかっている先の連絡先です。',
-              clinicsBlock(), 'sc-visit') +
-            /* 薬を確認するところ。複数の入口への案内。 */
-            scene('medsrc', '薬を確認するとき', '最新の薬の情報への入口です。',
-              medSourcesBlock(), 'sc-medsrc') +
+            /* 段1。左の識別欄と頭・尻が揃う。 */
+            memoBlock() +
+            '<div class="bk-rest">' +
+              /* いつもの通院。日常の側。かかりつけ薬局は「薬を確認する
+                 ところ」に一本化したので、ここには持たない。 */
+              scene('visit', 'いつもの通院', 'かかっている先の連絡先です。',
+                clinicsBlock(), 'sc-visit') +
+              /* 薬を確認するところ。複数の入口への案内。 */
+              scene('medsrc', '薬を確認するとき', '最新の薬の情報への入口です。',
+                medSourcesBlock(), 'sc-medsrc') +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -2145,7 +2179,7 @@
   function scrollSectionIntoView(key) {
     const anchor = document.querySelector('.i-secedit[data-editsec="' + key + '"]');
     if (!anchor) return;
-    const head = anchor.closest('.sf-glb, .sf-sglb, .subsec-lb, .cm-h, .sec-h') || anchor;
+    const head = anchor.closest('.sf-glb, .rmemo-h, .subsec-lb, .cm-h, .sec-h') || anchor;
     const y = head.getBoundingClientRect().top + window.pageYOffset - 84;
     window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
   }
