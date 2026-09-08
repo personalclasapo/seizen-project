@@ -301,9 +301,12 @@ button.st:hover{filter:brightness(.97)}
    面の本体。節の見出しは配下のラベルよりはっきり強く、上の余白は
    厚く取って、識別欄との間に段差を作る。                        */
 .sf-sec{margin-top:26px}
-.sf-glb{display:flex;align-items:center;gap:6px;margin-bottom:13px;
+.sf-glb{display:flex;align-items:center;gap:8px;margin-bottom:13px;
   padding-bottom:6px;border-bottom:1px solid var(--rule);
   font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:.02em}
+/* 見出しの記号は右面の場面カードと同じ白チップ（.scene-ic、
+   headChip() が出す）。色は緑（--gr）で揃え、医療の茶系インクとは
+   独立させる――右面と同じ部品である以上、色も右面のものを使う。 */
 
 /* ── 三等｜備考欄（メモ）─────────────────────────────
    一段小さく、罫も細い。二等より静かでよい。                    */
@@ -348,9 +351,9 @@ button.st:hover{filter:brightness(.97)}
    と同じ手帳の欄にする。区別は「囲み」ではなく「原因 → 反応 を
    全行そろえた1つの表」で作る。 */
 .sf-sec-vitals{margin-top:20px}
-/* 節見出し｜他の節（.sf-glb）と同じ格。記号を頭に、用途を淡く添える。
-   鉛筆は .i-secedit の margin-left:auto で右端へ。 */
-.sf-glb-vitals svg{color:var(--stamp);flex:none}
+/* 節見出し｜他の節（.sf-glb）と同じ格。記号は .scene-ic（headChip）が
+   共通で持つ。ここは用途の一言（sub）だけ淡く添える。鉛筆は
+   .i-secedit の margin-left:auto で右端へ。 */
 .sf-glb-sub{margin-left:6px;font-weight:500;letter-spacing:.03em;
   color:var(--ink3);font-size:9.5px}
 

@@ -85,9 +85,13 @@
     '<circle cx="36" cy="28" r="13" fill="#c8bfa6"/>' +
     '<path d="M13 66c0-13 10-22 23-22s23 9 23 22Z" fill="#c8bfa6"/>' +
     '</svg>';
-  /* 節見出しの記号。番号のかわりに、その節が何の話かを記号で言う。 */
+  /* 節見出しの記号。番号のかわりに、その節が何の話かを記号で言う。
+     介護側（careSection）は svgIc() 経由のむき出しの線画のまま。
+     医療の左面（sf-glb）は右面の場面カードと同じ白チップ＋緑線の
+     部品（headChip）に包むので、中身も揃える――輪郭を fill-opacity
+     の面で1枚敷き、その上を線が通る2層構成にする（SCENE_IC.visit
+     と同じ密度）。ここだけ各 path が stroke/fill を自前で持つ。 */
   const WARN_IC  = '<path d="M12 3.5 2 20.5h20L12 3.5Z"/><path d="M12 10v4.6M12 17.6v.1"/>';
-  const PULSE_IC = '<path d="M3 12.5h3.6l2-5.2 3 10 2.4-6.4 1.6 1.6H21"/>';
   const TREAT_IC = '<path d="M4.5 15.5 15.5 4.5l4 4-11 11H4.5Z"/><path d="M12.5 7.5l4 4"/>' +
                    '<path d="M3 21h8"/>';
   const PILL_IC  = '<rect x="3" y="9.5" width="18" height="9" rx="4.5" ' +
@@ -97,14 +101,27 @@
   /* 要介護度＝制度上の区分。段階を表す階段の記号。 */
   const LEVEL_IC = '<path d="M3.5 19h5v-4h5v-4h5.5"/><path d="M19 11v8H3.5"/>';
 
+  /* 「現在の医療状態」｜バイタルモニターの画面と波形。画面の角丸を
+     面取りで敷き、中を脈波の折れ線が通る（headChip 用、各 path が
+     stroke/fill を自分で持つ）。 */
+  const PULSE_IC =
+    '<rect x="2.5" y="4.5" width="19" height="15" rx="2.4" ' +
+      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.6"/>' +
+    '<path d="M5 12.5h2.6l1.6-4 2.4 8 2-6.4 1.3 2.4H19" ' +
+      'fill="none" stroke="currentColor" stroke-width="1.7" ' +
+      'stroke-linecap="round" stroke-linejoin="round"/>';
+
   /* 「体に合わないもの」（アレルギー・副作用歴）の欄のしるし。
      警告標識（三角＋！・丸に×）はこの面には強すぎるので使わない。
-     手つきは他の欄の見出し記号と同じ静かな線画――薬包と、それを
-     はねる小さな線。 */
+     薬包（フラスコ）に面取りを敷き、はねる一滴を添える（headChip
+     用、各 path が stroke/fill を自分で持つ）。 */
   const VITALS_IC =
-    '<path d="M9 3.5h6M10 3.5v3.2L5.5 15c-1 1.9-.2 4 1.7 4.6.5.2 1 .3 1.6.3h6.4' +
-    'c.6 0 1.1-.1 1.6-.3 1.9-.6 2.7-2.7 1.7-4.6L14 6.7V3.5"/>' +
-    '<path d="M7 12.5h10"/><path d="M8.5 8.5 15.5 15.5"/>';
+    '<path d="M10 3.5v3.2L5.5 15c-1 1.9-.2 4 1.7 4.6.5.2 1 .3 1.6.3h6.4' +
+    'c.6 0 1.1-.1 1.6-.3 1.9-.6 2.7-2.7 1.7-4.6L14 6.7V3.5Z" ' +
+    'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.6" ' +
+    'stroke-linejoin="round"/>' +
+    '<path d="M9 3.5h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
+    '<path d="M7.3 12.8h9.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>';
   /* 薬を確認するところ｜入口の種類ごとの記号。 */
   const MEDSRC_IC = {
     paper:  '<path d="M6.5 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-11Z"/><path d="M6.5 3v18"/>' +
@@ -299,12 +316,15 @@
       '<path d="M16.4 15.2 20 18.8a2.5 2.5 0 0 1-3.6 3.6L12.8 18.8Z" ' +
       'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>'
   };
-  function sceneHeadIcon(key) {
-    const d = SCENE_IC[key];
+  /* 白地チップ＋緑の線グリフの見出し記号（正本モック：右面3節と同じ
+     手つき）。左面の節見出しにも同じ部品を使う――「これは何の絵か」を
+     一言で言える密度を、見出し全体で共通にする（CLAUDE.md）。 */
+  function headChip(d) {
     if (!d) return '';
     return '<span class="scene-ic"><svg viewBox="0 0 24 24" aria-hidden="true" ' +
       'focusable="false">' + d + '</svg></span>';
   }
+  function sceneHeadIcon(key) { return headChip(SCENE_IC[key]); }
   function scene(key, title, lead, body, cls) {
     return '<section class="scene ' + (cls || '') + '">' +
       '<div class="scene-h">' +
@@ -1133,8 +1153,10 @@
       '</div>';
   }
 
-  /* 左エリア。本人そのもの。器は敷かず、手帳の記入面の「欄の格」で
-     階層を作る（一等＝識別欄／二等＝医療状態／三等＝備考）。
+  /* 左エリア。本人そのもの。本文には器を敷かず、手帳の記入面の
+     「欄の格」で階層を作る（一等＝識別欄／二等＝医療状態／三等＝備考）。
+     節見出しの記号だけは右面の場面カードと同じ白チップ（headChip）
+     に揃える――見出しの格は左右で同じでなければならない。
 
      節見出しは配下の小見出しより強くする。以前は節が 10.5px の
      添え字で、その中の小見出しが 11.5px の太字――親より子が強く、
@@ -1143,12 +1165,13 @@
     return '<div class="sf">' +
       personBlock() +
       '<div class="sf-sec">' +
-        '<span class="sf-glb">現在の医療状態' + editBtn('current') + '</span>' +
+        '<span class="sf-glb">' + headChip(PULSE_IC) + '現在の医療状態' +
+          editBtn('current') + '</span>' +
         currentStateBlock() +
       '</div>' +
       '<div class="sf-sec sf-sec-vitals">' +
         '<span class="sf-glb sf-glb-vitals">' +
-          svgIc(VITALS_IC, 13) + '体に合わないもの' +
+          headChip(VITALS_IC) + '体に合わないもの' +
           '<span class="sf-glb-sub">受診時に必ず伝える</span>' +
           editBtn('vitals') +
         '</span>' +
@@ -1452,21 +1475,31 @@
       (on ? '<button type="button" class="rowadd" data-add="pharm">＋ かかりつけ薬局を足す</button>' : '');
   }
 
-  /* メモ。三等の欄（備考）。手帳の記入面の末尾にある自由記入欄で、
-     構造化するほどではない医療情報を書く。付箋のように面から浮かせ
-     ない――浮かせると、器を持たない他の欄の中で1つだけ物になり、
-     格の並び（一等→二等→三等）から外れて見える。                 */
+  /* メモ。右面の頭に置く記入面。左面の識別欄（.sf-head）と高さを
+     揃え、見開きの頭に「左＝本人／右＝書き留めたこと」の帯を1本通す。
+
+     左面へは置かない。左面は「場面によらず変わらない事実」の面で、
+     自由記述は事実の記入欄ではない――格の並び（一等→二等）の末尾に
+     ぶら下げると、格の違うものが一番下に付く形になる。
+
+     器は持たせない（囲みの箱にすると、面の上で1つだけ物になる）。
+     地も影も持たず、罫だけが刷ってある欄として置く。空いた罫は
+     「まだ書かれていない欄」として読める（正本 §11）。            */
   function memoBlock() {
     const m = S.data.medical;
     const memoLines = String(m.memo || '').split('\n').filter(Boolean);
-    return '<div class="sf-sub bk-slips">' +
-      '<div class="slip slip-memo">' +
-        '<div class="slip-h">メモ' + editBtn('memo') + '</div>' +
+    return '<div class="rmemo">' +
+      '<div class="rmemo-h">メモ' +
+        '<span class="rmemo-sub">気づいたこと・伝えておきたいこと</span>' +
+        editBtn('memo') + '</div>' +
+      '<div class="rmemo-body">' +
         (isOpen('medical.memo')
           ? ev('medical.memo', m.memo, 'area', 'メモ（1行1件）')
           : (memoLines.length
-              ? '<ul>' + memoLines.map(l => '<li>' + esc(l) + '</li>').join('') + '</ul>'
-              : '<span class="i-ev i-ev-empty" data-edit="medical.memo" data-kind="area">メモ</span>')) +
+              ? memoLines.map(l =>
+                  '<p class="rmemo-line">' + esc(l) + '</p>').join('')
+              : '<span class="i-ev i-ev-empty rmemo-line" data-edit="medical.memo" ' +
+                'data-kind="area">例：夜間の痛みが続いている。主治医には未相談。</span>')) +
       '</div>' +
       '</div>';
   }
