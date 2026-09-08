@@ -1185,13 +1185,15 @@
       personBlock() +
       '<div class="sf-rest">' +
       '<div class="sf-sec">' +
-        '<span class="sf-glb">' + headChip(PULSE_IC) + '現在の医療状態' +
+        '<span class="sf-glb">' + headChip(PULSE_IC) +
+          '<span class="sf-glb-tx">現在の医療状態</span>' +
           editBtn('current') + '</span>' +
         currentStateBlock() +
       '</div>' +
       '<div class="sf-sec sf-sec-vitals">' +
         '<span class="sf-glb sf-glb-vitals">' +
-          headChip(VITALS_IC) + '体に合わないもの' +
+          headChip(VITALS_IC) +
+          '<span class="sf-glb-tx">体に合わないもの</span>' +
           '<span class="sf-glb-sub">受診時に必ず伝える</span>' +
           editBtn('vitals') +
         '</span>' +
@@ -1312,7 +1314,10 @@
         '</div>' +
         '</div>';
     }).join('');
-    return '<div class="cggrid">' +
+    /* 件数を data-count で渡す。1件のときは器が広くても2列にせず、
+       カード幅を止めて中央へ寄せる（area.css .cggrid）。 */
+    const n = (m.clinics || []).length;
+    return '<div class="cggrid" data-count="' + n + '">' +
       (cards || '<p class="i-ev-empty">まだ登録がありません。</p>') + '</div>' +
       (on ? '<button type="button" class="rowadd" data-add="clinic">＋ 医療機関を足す</button>' : '');
   }
@@ -1486,8 +1491,11 @@
         '</div>';
     }).join('');
 
+    /* かかりつけ薬局の件数。通院カードと同じく、1件なら器が広くても
+       引き伸ばさず幅を止めて中央へ（area.css .ms-bands）。 */
+    const pharmN = list.filter(r => r.kind === 'pharmacy').length;
     return '<div class="ms-tiles">' + tiles + '</div>' +
-      '<div class="ms-bands">' + bands + '</div>' +
+      '<div class="ms-bands" data-count="' + pharmN + '">' + bands + '</div>' +
       (on ? '<button type="button" class="rowadd" data-add="pharm">＋ かかりつけ薬局を足す</button>' : '');
   }
 
@@ -1505,7 +1513,8 @@
     const m = S.data.medical;
     const memoLines = String(m.memo || '').split('\n').filter(Boolean);
     return '<div class="rmemo">' +
-      '<div class="rmemo-h">' + headChip(MEMO_IC) + 'メモ' +
+      '<div class="rmemo-h">' + headChip(MEMO_IC) +
+        '<span class="sf-glb-tx">メモ</span>' +
         '<span class="rmemo-sub">気づいたこと・伝えておきたいこと</span>' +
         editBtn('memo') + '</div>' +
       '<div class="rmemo-body">' +

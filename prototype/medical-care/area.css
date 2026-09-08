@@ -202,22 +202,36 @@ button.st:hover{filter:brightness(.97)}
     repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px);
   box-shadow:inset 1px 0 0 #d9d0b866}
 
-/* 器が狭いときは見開きを畳む（1面の手帳になる）。 */
+/* 器が狭いときは見開きを畳む（1面の手帳になる）。
+   ───────────────────────────────────────────────
+   2ページの見開きが上下に積まれる。このとき：
+
+   ・「左面の頭＝識別欄／右面の頭＝メモ」の帯は、左右が縦に並ぶと
+     成立しない（subgrid の段組みも解く）。
+   ・メモ（.rmemo）は本来「右面の頭」だが、縦積みでは通院・薬の
+     あと、手帳ぜんたいの末尾へ回す（flex + order）。自由記述は
+     「本人の変わらない事実」でも「場面」でもない三等の欄なので、
+     識別欄の続きに置くと医療状態の羅列に紛れる。末尾の独立した
+     欄として、上を面の境目の罫で締める。
+   ・メモの左端に残る右面のノド（谷影・折り目線・26px の余白）は
+     この面から外す――メモはもう「右面の中身」ではない。       */
 @container (max-width:660px){
-  /* 左右が上下に並ぶので、頭を揃える帯は成立しない。段組みを解いて
-     素直に流す（subgrid のままだと、上下に並んだ2面が互いの段の
-     高さを引き継いでしまう）。 */
   .bk-spread{grid-template-columns:minmax(0,1fr);grid-template-rows:none}
-  .bk-page,.bk-page-l .sf{display:block;grid-row:auto}
+  .bk-page-l,.bk-page-l .sf{display:block;grid-row:auto}
   .bk-page-l{border-radius:1px 4px 0 0;
     background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px);
     border-bottom:1px solid #ded6c2;padding-bottom:20px}
-  /* 畳んだときは左右が上下に並ぶので、メモも中身の分だけの高さに
-     して、空の罫が伸びないようにする。 */
-  .rmemo{margin-bottom:22px}
-  .rmemo-body{flex:none;min-height:0}
-  .bk-page-r{border-radius:0 0 4px 4px;padding-left:22px;box-shadow:none;
+  /* 右面は縦並びの器。メモを末尾へ送るため flex にする。 */
+  .bk-page-r{display:flex;flex-direction:column;grid-row:auto;
+    border-radius:0 0 4px 4px;padding-left:22px;box-shadow:none;
     background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px)}
+  .bk-rest{order:1;margin-top:0}
+  /* メモは末尾。前の節（薬）との間を面の境目の罫で締め、
+     「別の欄が始まる」ことを示す。段1の締め（下の太罫）は
+     もう「帯の相方」ではないので外す。 */
+  .rmemo{order:2;margin-top:24px;padding-top:20px;padding-bottom:0;
+    border-top:1px solid #ded6c2;border-bottom:0}
+  .rmemo-body{flex:none;min-height:0}
 }
 
 /* ── 左エリア｜本人そのもの ───────────────────────────
@@ -339,6 +353,12 @@ button.st:hover{filter:brightness(.97)}
 .sf-glb{display:flex;align-items:center;gap:8px;margin-bottom:13px;
   padding-bottom:6px;border-bottom:1px solid var(--rule);
   font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:.02em}
+/* 見出し行は狭幅で折り返す。タイトル（.sf-glb-tx）は文字単位で割れ
+   ないよう1語として扱い、一言（.sf-glb-sub）が入らなければ次の行へ
+   落とす。地の文（bare text）だと flex で1字ずつ折れるので、
+   render.js 側でタイトルを span に包んでいる。 */
+.sf-glb{flex-wrap:wrap;row-gap:2px}
+.sf-glb-tx{white-space:nowrap}
 /* 見出しの記号は右面の場面カードと同じ白チップ（.scene-ic、
    headChip() が出す）。色は緑（--gr）で揃え、医療の茶系インクとは
    独立させる――右面と同じ部品である以上、色も右面のものを使う。 */
@@ -763,10 +783,20 @@ button.st:hover{filter:brightness(.97)}
    cardGuideHead）が持つ。ここ（CSS）は「カードの置かれ方」：グリッド・
    白い面・印字の余白・段組み・状態の差分（正本の線）。契約・デジタル
    の券面（.paycard）と同じで、頭＝色地の帯／体＝白い紙。
-   器の実幅で列数を決める（viewport ではない）。 */
+   器の実幅で列数を決める（viewport ではない）。
+   ・医療機関が2件以上あり、器に幅があれば2列。
+   ・1件だけ／器が狭くて1列になるとき → カードを引き伸ばさず、
+     全体表示のカード幅（450px）で止めて中央へ寄せる。1列の
+     ときにカードが器いっぱいに広がると、右端に建物の絵が浮いた
+     広い余白ができて「診療案内カード」に見えない。件数は
+     render.js が data-count で渡す。 */
 .scene:has(.cggrid),.bs:has(.cggrid){container-type:inline-size}
-.cggrid{display:grid;grid-template-columns:1fr;gap:13px}
-@container (min-width:430px){.cggrid{grid-template-columns:1fr 1fr}}
+.cggrid{display:grid;gap:13px;
+  grid-template-columns:minmax(0,450px);justify-content:center}
+@container (min-width:430px){
+  .cggrid:not([data-count="1"]){
+    grid-template-columns:1fr 1fr;justify-content:stretch}
+}
 
 /* カード1枚。頭と体を縦に積み、外周に紙の影を1枚。角丸は頭の SVG が
    上を、この要素の overflow:hidden が下を担う。 */
@@ -875,10 +905,18 @@ button.st:hover{filter:brightness(.97)}
 
 /* かかりつけ薬局の帯。上にアイコン＋ラベル、下に薬局名、その下は
    通院の診療案内カード（.cg-kv）と同じ「ラベル＋値」の縦グリッドで
-   電話／Web／メモ を揃える。状態バッジは付けない（§11 の対象外）。 */
-.ms-bands{margin-top:12px;display:flex;flex-direction:column;gap:9px}
+   電話／Web／メモ を揃える。状態バッジは付けない（§11 の対象外）。
+   帯は「病院カードに合わせる」（正本モックの対）――1件のときは
+   通院カードと同じく幅を止めて中央へ寄せる（引き伸ばさない）。
+   件数は render.js が data-count で渡す。 */
+.ms-bands{margin-top:12px;display:flex;flex-direction:column;gap:9px;
+  align-items:center}
 .msb{position:relative;overflow:hidden;padding:11px 13px;border-radius:9px;
-  background:#fbfaf5;border:1px solid #e6dfc9}
+  background:#fbfaf5;border:1px solid #e6dfc9;
+  width:100%;max-width:450px}
+/* 2件以上は縦に積んで全幅で読む（帯どうしを揃える）。 */
+.ms-bands:not([data-count="1"]){align-items:stretch}
+.ms-bands:not([data-count="1"]) .msb{max-width:none}
 /* 乳鉢と杵の淡いシルエット（病院カードの建物と対）。右端・印字の後ろ。
    医療の1色・彩度は不透明度で落とす。 */
 .msb-mortar{position:absolute;right:6px;bottom:-16px;width:100px;height:auto;
@@ -923,6 +961,8 @@ button.st:hover{filter:brightness(.97)}
 .rmemo-h{display:flex;align-items:center;gap:8px;margin-bottom:13px;
   padding-bottom:6px;border-bottom:1px solid var(--rule);
   font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:.02em}
+/* 左面の .sf-glb と同じく、狭幅で見出しを折り返す。 */
+.rmemo-h{flex-wrap:wrap;row-gap:2px}
 .rmemo-sub{margin-left:6px;font-weight:500;letter-spacing:.03em;
   color:var(--ink3);font-size:9.5px}
 /* 記入面。罫は左面の未記入欄（.sf-rules）と同じ間隔（26px）で刷り、
@@ -1198,19 +1238,28 @@ button.st:hover{filter:brightness(.97)}
    container query で器の実幅から決めているので、ここでは触らない。 */
 
 @media (max-width:1200px){
-  .bk{padding:16px 16px 18px}
-  .bk-page{padding:4px 16px 18px}
+  .bk{padding:16px 16px 18px 52px}
+  /* 上 padding は詰めない――表紙の帯（.bk-cover）と見開きの中身の
+     あいだの余白がここ。横だけ縮める。 */
+  .bk-page{padding:16px 16px 18px}
   .bed-head{padding:20px 20px 28px}
   .bed-body{padding:18px 16px 20px}
 }
 
 @media (max-width:900px){
   .zone + .zone{margin-top:40px}
-  .bk{padding:12px 12px 14px}
+  /* 背（.bk-spine）は左端に絶対配置で立つので、その幅ぶんは器の
+     padding-left で必ず空ける。ここを詰めすぎると背が左面の1行目に
+     覆いかぶさり、文字の頭が欠ける（狭幅で起きていた崩れの正体）。
+     狭い画面では背を細くし、空ける量もその幅に合わせる。 */
+  .bk{padding:12px 12px 14px 30px}
+  .bk-spine{width:24px}
+  .bk-stitch{left:6px;width:8px}
+  .bk-ribbon{right:18px}
   .bk-cover{padding:4px 4px 14px}
   .bk-title h4{font-size:20px}
   .bk-id{min-width:0;width:100%}
-  .bk-page{padding:2px 13px 14px}
+  .bk-page{padding:14px 13px 14px}
   /* 左面。識別欄は氏名を詰める。 */
   .sf-nm h4{font-size:23px}
   .sf-idrow{gap:14px}
