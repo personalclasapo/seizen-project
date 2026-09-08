@@ -561,6 +561,21 @@ button.st:hover{filter:brightness(.97)}
 .chip.on{background:var(--gr-bg);border-color:#a9c9b1;color:#2f6647;font-weight:650}
 /* 反応・起きたこと（アレルギー・副作用歴の複数選択）は畳まず平置き。 */
 .cef-line-col .chipz{padding:0}
+/* 候補チップにない反応を書き足す欄。チップ群の下に、間を空けて
+   別の欄として置く（チップと地続きだと「選ぶもの」と読めてしまう）。
+   小見出しを1本立て、地は紙よりはっきり起こして「ここは書く欄」だと
+   分かるようにする。 */
+.cef-react-free-wrap{margin-top:11px;padding-top:10px;
+  border-top:1px dashed var(--rule);
+  display:flex;flex-direction:column;gap:5px}
+.cef-react-free-lb{font-size:10px;font-weight:600;color:var(--ink3);
+  letter-spacing:.04em}
+.cef-react-free-lb em{font-style:normal;font-weight:400;color:#b4ab92;
+  margin-left:6px}
+.cef-react-free{font-size:12px;padding:7px 9px;
+  border:1px solid #c7bfa4;border-radius:6px;background:#fbf6e7}
+.cef-react-free::placeholder{color:#a89f85}
+.cef-react-free:focus{outline:none;border-color:var(--gr);background:#fff}
 
 /* アレルギー・副作用歴の1行は、複数のフィールドを持つ小さなカード。
    overflow:hidden で、中の入力が角丸の外へはみ出さないようにする。 */

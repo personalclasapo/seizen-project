@@ -216,17 +216,20 @@
 
   /* アレルギー｜「起きた反応」をまず選び、原因の物質名は思い出せる
      範囲で書く（任意）。「原因の種類」（薬／食べ物／…）の分類は持た
-     ない――物質名から分かるし、閲覧側でも使っていなかった。 */
+     ない――物質名から分かるし、閲覧側でも使っていなかった。
+     候補に無い反応はチップの下の自由入力欄で書き足す（診療科 depts と
+     同じ手つき）。だから「その他」チップは持たない。「詳細不明」は
+     "選んで確認したが内容は分からない"の意味があるので残す。 */
   const ALLERGY_REACTIONS = ['発疹・じんましん', 'かゆみ', '腫れ', '呼吸苦',
-    '血圧低下・意識障害', 'アナフィラキシー', 'その他', '詳細不明'];
+    '血圧低下・意識障害', 'アナフィラキシー', '詳細不明'];
 
   /* 強い副作用歴｜「起きたこと」をまず選び、思い当たる薬・治療は任意。
      固定の薬剤候補は持たない。「今後避けるよう言われたか」の欄は
      廃止した（この節はすべて"避けるもの"なので行ごとに持つ意味が
-     薄い）。 */
+     薄い）。候補外はアレルギーと同じく自由入力欄で書き足す。 */
   const ADVERSE_EVENTS = ['強い吐き気・嘔吐', '強い胃腸症状', 'めまい・ふらつき',
     '意識障害', '強い眠気', '出血', '肝機能障害', '腎機能障害',
-    '血球減少', 'その他', '詳細不明'];
+    '血球減少', '詳細不明'];
 
   /* 血液型。ABO式の4型＋不明。自由記述にすると「A」「A型」「ａ」など
      表記が揺れるので、救急で誤読が無いよう選択式にする。          */
@@ -752,6 +755,29 @@
     return true;
   }
 
+  /* 起きた反応・起きたこと（reactions / events）は、チップで選んだ値と
+     候補外の自由入力が同じ配列に混ざって入る。閲覧側は配列を素で
+     繋ぐだけなので、区別を持たせずに1本の配列で扱う。
+       reactionFreeText … 配列から既知チップを除いた「自由入力ぶん」を
+                          読点区切りのテキストにして編集欄へ返す。
+       applyReactionFree … 編集後のテキストを配列へ書き戻す。既知チップの
+                          選択は保ったまま、自由入力ぶんだけ差し替える。 */
+  function reactionFreeText(list, known) {
+    const set = new Set(known || []);
+    return (list || []).filter(x => x && !set.has(x)).join('、');
+  }
+  function applyReactionFree(row, field, known, text) {
+    if (!row) return false;
+    const set = new Set(known || []);
+    const kept = (Array.isArray(row[field]) ? row[field] : []).filter(x => set.has(x));
+    const free = textToTags(text);
+    const next = kept.concat(free);
+    const cur = Array.isArray(row[field]) ? row[field] : [];
+    if (cur.join(' ') === next.join(' ')) return false;
+    row[field] = next;
+    return true;
+  }
+
   /* 箇条書き（家族が知っておきたいこと）。1行1件。 */
   function linesToText(list) { return (list || []).join('\n'); }
   function applyLines(path, text) {
@@ -885,6 +911,7 @@
     /* 編集 */
     getByPath, setByPath, applyValue,
     tagsToText, textToTags, applyTags, linesToText, applyLines,
+    reactionFreeText, applyReactionFree,
     toggleInArray,
     /* 足す・消す */
     addClinic, addPharmacySource,

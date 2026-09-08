@@ -991,6 +991,22 @@
       '">' + esc(x) + '</button>').join('') + '</div>';
   }
 
+  /* 候補チップにない反応を書き足す欄。チップ群のすぐ下に置く（診療科
+     depts と同じ手つき：読点区切りの1行で複数書ける）。ここに書いた
+     値もチップで選んだ値も、同じ reactions / events 配列へ混ざって
+     入る――閲覧側は配列を素で繋ぐだけなので区別を持たせない。
+     data-path は applyOne が正規表現で拾って applyReactionFree へ回す。
+     チップと地続きに見えると「選ぶもの」と誤解されるので、小見出しを
+     1本立てて別の欄として切る。 */
+  function reactionFreeField(path, value, placeholder) {
+    return '<div class="cef-react-free-wrap">' +
+      '<span class="cef-react-free-lb">上の候補にないものは、ここに書く' +
+        '<em>読点で区切って複数可</em></span>' +
+      '<input class="i-ef cef-react-free" data-ef="1" data-path="' + path + '"' +
+        ' placeholder="' + esc(placeholder) + '" value="' + esc(value || '') + '">' +
+      '</div>';
+  }
+
   /* アレルギーの「あり」フォーム。1行＝1カード。
        起きた反応（チップ）→ 原因になったもの（任意・自由記述）
      「原因の種類」セレクト（薬／食べ物／…）は廃止――物質名から
@@ -1009,6 +1025,9 @@
           '<span class="cef-lb">起きた反応</span>' +
           reactionChips('medical.allergies.items.' + i + '|reactions',
             S.ALLERGY_REACTIONS, r.reactions) +
+          reactionFreeField('medical.allergies.items.' + i + '.reactionsFree',
+            S.reactionFreeText(r.reactions, S.ALLERGY_REACTIONS),
+            '候補にない反応（例：喉の腫れ、下痢）') +
         '</div>' +
         '<div class="cef-line cef-line-col">' +
           '<span class="cef-lb">原因になったもの<em>分かれば。そばなど食べ物も</em></span>' +
@@ -1042,6 +1061,9 @@
           '<span class="cef-lb">起きたこと</span>' +
           reactionChips('medical.adverse.items.' + i + '|events',
             S.ADVERSE_EVENTS, r.events) +
+          reactionFreeField('medical.adverse.items.' + i + '.eventsFree',
+            S.reactionFreeText(r.events, S.ADVERSE_EVENTS),
+            '候補にない症状（例：発熱、味覚障害）') +
         '</div>' +
         '<div class="cef-line cef-line-col">' +
           '<span class="cef-lb">思い当たる薬・治療<em>分かれば。覚えていなければ空欄で</em></span>' +
@@ -2146,6 +2168,16 @@
     if (TAG_PATHS.indexOf(path) > -1) return S.applyTags(path, value);
     if (LINE_PATHS.indexOf(path) > -1) return S.applyLines(path, value);
     if (/^medical\.clinics\.\d+\.depts$/.test(path)) return S.applyTags(path, value);
+    /* 起きた反応・起きたことの「候補にない」自由入力欄。チップの選択は
+       保ったまま、自由入力ぶんだけを reactions / events 配列へ差し替える。 */
+    let rf = /^medical\.allergies\.items\.(\d+)\.reactionsFree$/.exec(path);
+    if (rf) return S.applyReactionFree(
+      S.getByPath('medical.allergies.items.' + rf[1]), 'reactions',
+      S.ALLERGY_REACTIONS, value);
+    rf = /^medical\.adverse\.items\.(\d+)\.eventsFree$/.exec(path);
+    if (rf) return S.applyReactionFree(
+      S.getByPath('medical.adverse.items.' + rf[1]), 'events',
+      S.ADVERSE_EVENTS, value);
     /* サービス名は型（kind）が連動する。 */
     const m = /^care\.services\.(\d+)\.name$/.exec(path);
     if (m) {
