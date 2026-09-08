@@ -43,11 +43,9 @@
     person:   ['medical.person.'],
     current:  ['medical.conditions', 'medical.treatments', 'medical.devices'],
     vitals:   ['medical.allergies', 'medical.adverse'],
-    daily:    ['medical.daily.'],
     memo:     ['medical.memo'],
     visit:    ['medical.clinics'],
     medsrc:   ['medical.medSources'],
-    supplies: ['medical.supplies'],
     level:   ['care.level', 'care.place'],
     manager: ['care.manager.'],
     service: ['care.services'],
@@ -107,14 +105,6 @@
     '<path d="M9 3.5h6M10 3.5v3.2L5.5 15c-1 1.9-.2 4 1.7 4.6.5.2 1 .3 1.6.3h6.4' +
     'c.6 0 1.1-.1 1.6-.3 1.9-.6 2.7-2.7 1.7-4.6L14 6.7V3.5"/>' +
     '<path d="M7 12.5h10"/><path d="M8.5 8.5 15.5 15.5"/>';
-  /* 普段の状態｜会話・認知・移動・食事。 */
-  const TALK_IC = '<path d="M4 5.5h16v10H9.5L5 19v-3.5H4Z"/>';
-  const COG_IC  = '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.2 2"/>';
-  const WALK_IC = '<circle cx="14" cy="4.5" r="1.9"/>' +
-    '<path d="M10.5 21 12 14.5l-3-2 1-4.5 4-1 2.5 3.5H20"/>' +
-    '<path d="M11 12.5 7 14l-2.5 5"/>';
-  const MEAL_IC = '<path d="M6 3v7a2.4 2.4 0 0 0 4.8 0V3M8.4 3v18M18 3c-1.8 1-2.8 3-2.8 6.5 0 2 1 3 2 3.3V21"/>';
-
   /* 薬を確認するところ｜入口の種類ごとの記号。 */
   const MEDSRC_IC = {
     paper:  '<path d="M6.5 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-11Z"/><path d="M6.5 3v18"/>' +
@@ -307,13 +297,7 @@
       '<path d="M8.2 11.8 12 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
       '<path d="M14.8 19.4 19.4 14.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
       '<path d="M16.4 15.2 20 18.8a2.5 2.5 0 0 1-3.6 3.6L12.8 18.8Z" ' +
-      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
-    /* 医療で必要になるものと所在｜カードと書類。 */
-    supplies: '<rect x="3.5" y="6.5" width="17" height="13" rx="1.8" ' +
-      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.7"/>' +
-      '<path d="M8 6.5V5a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 16 5v1.5" ' +
-      'fill="none" stroke="currentColor" stroke-width="1.7"/>' +
-      '<path d="M7 11h10M7 14.5h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
+      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>'
   };
   function sceneHeadIcon(key) {
     const d = SCENE_IC[key];
@@ -339,7 +323,7 @@
 
        一等 .sf-head  … 識別欄（氏名・生年月日・年齢・血液型）
        二等 .sf-sec   … 現在の医療状態
-       三等 .sf-sub   … 普段の状態・メモ                            */
+       三等 .sf-sub   … メモ                                        */
 
   /* 一等｜識別欄。手帳の表紙裏にある記入欄。救急で最初に読まれるので、
      面の頭として太い罫で締める。生年月日・年齢・血液型はどれも同格の
@@ -1141,27 +1125,6 @@
       '</div>';
   }
 
-  /* 三等の欄｜囲みの備考欄。
-
-     文章を書く欄なので、行罫ではなく囲みの箱にする。二等（チェックの
-     列）と形が違うから格が違って見える――どちらも「ラベル＋罫線」だと
-     大きさを変えても同じ欄に見え、羅列が残る。
-     4つの箱が並ぶので、記号は箱の見出しとして働く。               */
-  function dailyBlock() {
-    const d = S.data.medical.daily || {};
-    const box = (icon, label, path, val, ph) =>
-      '<div class="dbox">' +
-        '<span class="dbox-h">' + svgIc(icon, 13) + esc(label) + '</span>' +
-        '<span class="dbox-tx">' + ev(path, val, 'line', ph) + '</span>' +
-      '</div>';
-    return '<div class="daily">' +
-      box(TALK_IC, '会話', 'medical.daily.talk', d.talk, '会話の様子') +
-      box(COG_IC, '認知', 'medical.daily.cognition', d.cognition, '日常の判断力') +
-      box(WALK_IC, '移動', 'medical.daily.mobility', d.mobility, '歩行・移動の様子') +
-      box(MEAL_IC, '食事', 'medical.daily.meal', d.meal, '食事の様子') +
-      '</div>';
-  }
-
   /* 左エリア。本人そのもの。器は敷かず、手帳の記入面の「欄の格」で
      階層を作る（一等＝識別欄／二等＝医療状態／三等＝備考）。
 
@@ -1182,10 +1145,6 @@
           editBtn('vitals') +
         '</span>' +
         vitalsBlock() +
-      '</div>' +
-      '<div class="sf-sub">' +
-        '<span class="sf-sglb">普段の状態' + editBtn('daily') + '</span>' +
-        dailyBlock() +
       '</div>' +
       memoBlock() +
       /* 未記入の欄。記入面なので罫は面の下端まで刷ってある――中身の
@@ -1485,53 +1444,6 @@
       (on ? '<button type="button" class="rowadd" data-add="pharm">＋ かかりつけ薬局を足す</button>' : '');
   }
 
-  /* 医療で必要になるものと所在。
-       見出し … 制度側で決まっているカテゴリ（診察券・お薬手帳・
-                受給者証…）。固定で、消せない。
-       実物   … その下にぶら下がる1枚ずつ。名前（どのカードか）と
-                「どこにあるか」を書く。足す・消すは実物だけ。
-
-     ＊造形（カードケース／引き出し）は今回は外して、暫定で素の
-       階層リストにしている。棚（カテゴリ）に物（実物）が入って
-       いる構造は変えないので、造形はあとで被せ直せる。            */
-  function suppliesBlock() {
-    const s = S.data.medical.supplies || {};
-    /* 節の鍵は scene('supplies', …) 側と揃える。ここがずれると
-       鉛筆を押しても中身が編集に入らない。 */
-    const on = secOn('supplies');
-
-    const cats = S.SUPPLY_CATS.map(cat => {
-      const list = s[cat.key] || [];
-      const rows = list.map((r, i) => {
-        const p = 'medical.supplies.' + cat.key + '.' + i + '.';
-        return '<li class="sup-item">' +
-          '<span class="sup-name">' +
-            ev(p + 'name', r.name, 'line', 'どのカード・手帳か') + '</span>' +
-          '<span class="sup-where">' +
-            ev(p + 'where', r.where, 'line', 'どこにあるか') + '</span>' +
-          stBadge('medical.supplies.' + cat.key + '.' + i) +
-          (on ? delBtn(r.id) : '') +
-          '</li>';
-      }).join('');
-      return '<div class="sup-cat">' +
-        '<div class="sup-cat-h">' +
-          '<span class="sup-cat-nm">' + esc(cat.label) + '</span>' +
-          (cat.hint ? '<em class="sup-cat-hint">' + esc(cat.hint) + '</em>' : '') +
-        '</div>' +
-        (rows
-          ? '<ul class="sup-items">' + rows + '</ul>'
-          : '<p class="sup-empty i-ev-empty" data-editsec="supplies">' +
-            'まだ書かれていません</p>') +
-        (on
-          ? '<button type="button" class="rowadd sup-add" data-add="supply|' +
-            cat.key + '">＋ 足す</button>'
-          : '') +
-        '</div>';
-    }).join('');
-
-    return '<div class="sup">' + cats + '</div>';
-  }
-
   /* メモ。三等の欄（備考）。手帳の記入面の末尾にある自由記入欄で、
      構造化するほどではない医療情報を書く。付箋のように面から浮かせ
      ない――浮かせると、器を持たない他の欄の中で1つだけ物になり、
@@ -1568,13 +1480,21 @@
         '</div>' +
 
         /* 見開き。手帳は開くと2面ある。左右で役割を変える：
-             左 … 本人そのもの。個人情報・現在の医療状態・普段の状態・
-                  メモ。器を持たせず、罫と文字の大小だけで置く。
-                  救急でまず読むもの（病名・アレルギー・副作用歴）は
-                  「現在の医療状態」が持つ。別に「伝えること」の節を
-                  設けると、同じ内容の写しになる（派生ビューは置かない）。
-             右 … 場面。いつもの通院・薬を確認するところ・必要なものと
-                  所在。                                          */
+             左 … 本人そのもの。個人情報・現在の医療状態・メモ。器を
+                  持たせず、罫と文字の大小だけで置く。救急でまず読む
+                  もの（病名・アレルギー・副作用歴）は「現在の医療状態」
+                  が持つ。別に「伝えること」の節を設けると、同じ内容の
+                  写しになる（派生ビューは置かない）。
+             右 … 場面。いつもの通院・薬を確認するところ。
+
+           どちらの面も、載せるのは「必要になったとき家族が思い出せ
+           ない・調べられないこと」に限る（正本 §13-1）。日々の様子
+           （普段の状態）と、付随物を集めた棚（必要になるものと所在）
+           は、この基準から外れるので持たない。前者は家族が知っている
+           うえ継続更新しなければ古い記述が「確認済み」の顔で残り、
+           後者は診察券＝通院先・機器の手帳＝その機器と、既に親のいる
+           情報を二度書かせていた（§8）。所在そのものは各対象の側で
+           持つ。                                                */
         '<div class="bk-spread">' +
           '<div class="bk-page bk-page-l">' + leftFace() + '</div>' +
           '<div class="bk-page bk-page-r">' +
@@ -1585,9 +1505,6 @@
             /* 薬を確認するところ。複数の入口への案内。 */
             scene('medsrc', '薬を確認するとき', '最新の薬の情報への入口です。',
               medSourcesBlock(), 'sc-medsrc') +
-            /* 医療で必要になるものと所在。探し物の場面。 */
-            scene('supplies', '医療で必要になるものと所在', 'カードと書類の在りかです。',
-              suppliesBlock(), 'sc-supplies') +
           '</div>' +
         '</div>' +
       '</div>';
@@ -2379,14 +2296,6 @@
           const row = S.addPharmacySource();
           editing = { path: 'medical.medSources.' +
             (S.data.medical.medSources.length - 1) + '.name', kind: 'line' };
-          scrollToEditingAfterRender = true;
-        }
-        else if (what.indexOf('supply|') === 0) {
-          const catKey = what.split('|')[1];
-          S.addSupply(catKey);
-          const idx = (S.data.medical.supplies[catKey] || []).length - 1;
-          editing = { path: 'medical.supplies.' + catKey + '.' + idx + '.name',
-            kind: 'line' };
           scrollToEditingAfterRender = true;
         }
         else if (what === 'condition' || what === 'treatment' || what === 'device') {

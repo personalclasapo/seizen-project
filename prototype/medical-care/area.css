@@ -95,7 +95,6 @@ button.st:hover{filter:brightness(.97)}
      .bk-cover  表紙。本人の識別情報（氏名・生年月日・年齢・血液型）。
                 救急で最初に読まれるので、いちばん上に大きく置く。
      .bk-page   見開きの紙。記録はこの上に並ぶ。
-     .sup       医療で必要になるものと所在。カテゴリ（棚）＋実物（物）。
    ══════════════════════════════════════════════════════════════ */
 
 /* 手帳。左端に背（綴じ）があるので、その幅ぶん中身を右へ寄せる。
@@ -211,7 +210,7 @@ button.st:hover{filter:brightness(.97)}
 
      一等 .sf-head … 識別欄。太い罫で締め、氏名だけ大きな見出しで持つ
      二等 .sf-sec  … 現在の医療状態。罫の走る記入欄
-     三等 .sf-sub  … 普段の状態・メモ。細い罫の備考欄
+     三等 .sf-sub  … メモ。細い罫の備考欄
 
    節見出しは配下の小見出しより必ず強くする。以前は節が 10.5px の
    添え字、その中の小見出しが 11.5px の太字で親子が逆転しており、
@@ -306,7 +305,7 @@ button.st:hover{filter:brightness(.97)}
   padding-bottom:6px;border-bottom:1px solid var(--rule);
   font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:.02em}
 
-/* ── 三等｜備考欄（普段の状態・メモ）─────────────────
+/* ── 三等｜備考欄（メモ）─────────────────────────────
    一段小さく、罫も細い。二等より静かでよい。                    */
 .sf-sub{margin-top:22px}
 .sf-sglb{display:flex;align-items:center;gap:6px;margin-bottom:9px;
@@ -672,27 +671,10 @@ button.st:hover{filter:brightness(.97)}
 .cm-ic svg{width:15px;height:15px}
 .cm-tx{min-width:0;font-size:12.5px;font-weight:600;line-height:1.5}
 
-/* ── 三等の欄の形｜囲みの備考欄 ───────────────────────
-   文章を書く欄なので、行罫ではなく囲みの箱にする。二等（チェックの
-   列）と形が違うから格が違って見える――どちらも「ラベル＋罫線」だと、
-   大きさを変えても同じ欄に見えて羅列が残る。
-   箱は2列に組む。縦一列だと、形は違っても並びの拍子が二等と同じに
-   なってしまう。                                                */
-/* 列数は左面の実幅で決める（viewport ではない）。左面は見開きの
-   6/17 しかないので、狭ければ1列に落ちる。 */
+/* ── 三等の欄の形 ─────────────────────────────────────
+   いまはメモだけが三等。列数は左面の実幅で決める（viewport では
+   ない）。左面は見開きの 6/17 しかない。                        */
 .sf-sub{container-type:inline-size}
-.daily{display:grid;grid-template-columns:1fr;gap:8px}
-@container (min-width:240px){.daily{grid-template-columns:1fr 1fr}}
-/* 編集中は1列に戻す。2列だと入力欄が半幅になり、書いている文章の
-   後ろが見えない（読むための組みと、書くための組みは別）。 */
-.daily:has(.i-ef){grid-template-columns:1fr}
-.dbox{padding:8px 10px 9px;border:1px solid var(--rule2);border-radius:2px;
-  background:#fdfcf6}
-.dbox-h{display:flex;align-items:center;gap:5px;margin-bottom:4px;
-  font-size:9.5px;font-weight:600;color:var(--ink3);letter-spacing:.06em}
-.dbox-h svg{color:var(--stamp);flex:none}
-.dbox-tx{display:block;font-size:11.5px;line-height:1.65;color:var(--ink2)}
-.dbox-tx .i-ev-empty{color:#c4bda9}
 
 /* 未記入の欄。記入面なので罫は面の下端まで刷ってある。中身の終わりで
    罫も終わると面が途中で切れて見え、下の空白がただの余白になる。
@@ -711,16 +693,14 @@ button.st:hover{filter:brightness(.97)}
   mask-image:linear-gradient(#000,#0000 190px)}
 
 /* ── 右エリア｜場面 ──────────────────────────────────
-   単位は .scene 1種類だけ。ただし3つを同じ重みで並べない――同じ
-   拍子が続くことが羅列の正体なので、場面ごとに骨から変える：
+   単位は .scene 1種類だけ。いまは2節：
 
-     通院（.sc-visit）         … 中。見出しは本文の続きの大きさ。
-     薬の入口（.sc-medsrc）    … 中。
-     必要なもの（.sc-supplies）… 小。見出しをラベルまで落とし、地に溶かす。
+     通院（.sc-visit）      … 中。見出しは本文の続きの大きさ。
+     薬の入口（.sc-medsrc） … 中。
 
-   正本モック（医療.png）では右面3節の見出しはすべて「塗りアイコン
-   （角丸の緑）＋タイトル＋一言」で揃えてある。拍子は見出しではなく
-   本文の造形で割る。                                              */
+   見出しは「白地の角丸チップ＋緑の線グリフ＋タイトル＋一言」で
+   揃える。拍子は見出しではなく本文の造形で割る――通院はカード
+   ホルダー、薬は実物タイル＋帯。                                  */
 .scene + .scene{margin-top:26px}
 .scene-h{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
   margin-bottom:11px}
@@ -737,13 +717,6 @@ button.st:hover{filter:brightness(.97)}
 
 /* 通院・薬の入口。中くらい。地は持たず、上に細い罫だけ。 */
 .sc-visit .scene-h h5,.sc-medsrc .scene-h h5{font-size:14px}
-
-/* 医療で必要になるものと所在。探し物のときだけ開く節だが、モックは
-   3節の見出しを揃えているので、ここも塗りアイコン＋タイトルのまま。
-   一言だけ少し落とす。 */
-.sc-supplies{padding-top:4px}
-.sc-supplies .scene-h{gap:8px;margin-bottom:9px}
-.sc-supplies .scene-h small{font-size:10.5px}
 
 /* 旧・節の骨。介護側（.cs）が使う。 */
 .bs{padding:16px 0 18px;border-bottom:1px solid #ece6d6}
@@ -910,51 +883,13 @@ button.st:hover{filter:brightness(.97)}
 .pill{display:inline-block;padding:1px 10px;border-radius:10px;
   background:var(--gr-bg);color:#2f6647;font-size:11px;font-weight:700}
 
-/* ⑦ 医療で必要になるものと所在。
-   カテゴリ（見出し）＝棚、その下の実物＝棚に入っている物。カテゴリは
-   固定で消せない。実物は「どのカード・手帳か」と「どこにあるか」を
-   持つ1行。
-
-   ＊造形（カードケース／引き出し）は今回は外して、暫定で素の階層
-     リストにしている。棚に物が入っている構造は変えないので、造形は
-     あとで被せ直せる。                                            */
-.sc-supplies{container-type:inline-size}
-.sup{display:flex;flex-direction:column;gap:14px}
-
-/* カテゴリの見出し。制度側の括りなので、静かに・詰めて置く。 */
-.sup-cat-h{display:flex;align-items:baseline;gap:8px;
-  padding-bottom:5px;margin-bottom:6px;
-  border-bottom:1px solid #e3ddcb}
-.sup-cat-nm{font-size:12px;font-weight:700;color:var(--ink2);
-  letter-spacing:.02em}
-.sup-cat-hint{font-style:normal;font-size:10.5px;color:var(--ink3)}
-
-/* 実物の行。カテゴリの下に一段下げて並べる（棚に入っている物）。 */
-.sup-items{list-style:none;margin:0;padding:0 0 0 12px;
-  border-left:2px solid #ece5d2;
-  display:flex;flex-direction:column;gap:3px}
-.sup-item{display:flex;align-items:baseline;gap:6px 10px;flex-wrap:wrap;
-  padding:5px 0}
-.sup-item + .sup-item{border-top:1px solid #efe9da}
-.sup-name{flex:none;min-width:120px;font-size:12.5px;font-weight:650}
-.sup-where{flex:1;min-width:120px;font-size:11.5px;color:var(--ink2);
-  line-height:1.55;word-break:break-word}
-
-/* 実物がまだ無いカテゴリ。空欄と「無い」を混ぜない（§11）――
-   「まだ書かれていません」を一段下げて置く。 */
-.sup-empty{margin:0 0 0 12px;padding:4px 0;
-  border-left:2px solid #ece5d2;padding-left:12px;
-  font-size:11.5px}
-
-.sup-add{margin-left:12px;margin-top:5px}
-
 /* メモ。三等の欄（記入面の末尾にある自由記入欄）。付箋のように面から
    浮かせない――器を持たない他の欄の中で1つだけ物になり、格の並び
    （一等→二等→三等）から外れて見える。地も影も傾きも持たず、
    罫だけが刷ってある欄として置く。                                 */
 .bk-slips{display:block}
-/* メモも三等なので、普段の状態と同じ囲みの箱にする（格が同じものは
-   同じ形）。ただし1つで幅いっぱいを取り、中は記入罫。 */
+/* メモは三等の欄なので、囲みの箱にする。1つで幅いっぱいを取り、
+   中は記入罫。 */
 .slip-memo{padding:9px 12px 10px;border:1px solid var(--rule2);
   border-radius:2px;background:#fdfcf6;font-size:12px}
 .slip-memo .slip-h{display:flex;align-items:center;gap:5px;margin-bottom:5px;
@@ -1243,9 +1178,6 @@ button.st:hover{filter:brightness(.97)}
   .sf-nm h4{font-size:23px}
   .sf-idrow{gap:14px}
   .sf-rules{display:none}
-  /* 備考の箱は狭い幅では1列。2列のままだと1つが細くなりすぎ、
-     箱の中で文章が縦に折り返して読めなくなる。 */
-  .daily{grid-template-columns:1fr}
   .bs{padding:14px 0}
 
   .bed-head{padding:16px 14px 24px;border-radius:13px 13px 0 0}
@@ -1280,5 +1212,4 @@ button.st:hover{filter:brightness(.97)}
   .cm-sticky,.know-sticky{width:auto;max-width:250px;margin:2px auto 0}
   .kv th{width:110px}
   .cs .kv th{width:120px}
-  .sup-name{min-width:0}
 }
