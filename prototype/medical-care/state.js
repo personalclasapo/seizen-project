@@ -252,10 +252,9 @@
     paper:    { label: '紙のお薬手帳' },
     digital:  { label: '電子お薬手帳' },
     myna:     { label: 'マイナポータル' },
-    pharmacy: { label: 'かかりつけ薬局', multi: true },
-    other:    { label: 'その他' }
+    pharmacy: { label: 'かかりつけ薬局', multi: true }
   };
-  const MEDSRC_ORDER = ['paper', 'digital', 'myna', 'pharmacy', 'other'];
+  const MEDSRC_ORDER = ['paper', 'digital', 'myna', 'pharmacy'];
   const MEDSRC_FIXED = MEDSRC_ORDER;   /* 標準行が常設される入口 */
 
   /* 医療で必要になるものと所在｜カテゴリの型。カテゴリは制度側で
@@ -434,23 +433,25 @@
           tel: '045-987-6543', web: '',
           hours: '平日 9:00–12:00 / 15:00–18:00　土 9:00–13:00' }
       ],
-      /* 薬を確認するところ｜入口を並列で持つ。標準の5つ（紙・電子・
-         マイナポータル・かかりつけ薬局・その他）は行が常設で消えない。
+      /* 薬を確認するところ｜入口を並列で持つ。標準の4つ（紙・電子・
+         マイナポータル・かかりつけ薬局）は行が常設で消えない。
          かかりつけ薬局は複数あり得るので、2件目以降を足せる。
-         行は { kind, where, note, state }。かかりつけ薬局だけは連絡先
-         （name・tel・web）も自前で持つ。note はかかりつけ薬局では
-         家族の書き込みメモ（困ったときの連絡・往診の有無・担当薬剤師
-         など。「調剤・飲み合わせ確認」は薬局の定義なので書かない）。 */
+         行は { kind, where, note }。標準3つ（paper・digital・myna）
+         は state（§11 の状態）を持つ。かかりつけ薬局だけは
+         連絡先（name・tel・web）を自前で持ち、state は持たない――
+         書いた時点で家族が辿れる「連絡先」で、辿れるかを問う対象では
+         ない（通院の診療案内カードと揃える）。note はかかりつけ薬局
+         では家族の書き込みメモ（困ったときの連絡・往診の有無・担当
+         薬剤師など。「調剤・飲み合わせ確認」は薬局の定義なので
+         書かない）。 */
       medSources: [
         { id: uid('ms'), kind: 'paper', where: '', note: '', state: '該当なし' },
-        { id: uid('ms'), kind: 'digital', where: 'スマートフォン内　お薬手帳アプリ',
+        { id: uid('ms'), kind: 'digital', where: 'アプリ名（おくすり手帳Link）',
           note: '', state: '確認済み' },
-        { id: uid('ms'), kind: 'myna', where: 'マイナポータル（アプリ）',
+        { id: uid('ms'), kind: 'myna', where: 'ログインは本人のスマホから',
           note: '新しい薬が追加されたら家族にも共有してください。', state: '確認済み' },
         { id: uid('ms'), kind: 'pharmacy', name: 'さくら薬局　横浜店', tel: '045-321-9876',
-          web: 'https://sakura-ph.example.jp', where: '',
-          note: '', state: '確認済み' },
-        { id: uid('ms'), kind: 'other', where: '', note: '', state: '未確認' }
+          web: 'https://sakura-ph.example.jp', where: '', note: '' }
       ],
 
       /* 医療で必要になるものと所在｜カテゴリ（固定）ごとに、実物を
@@ -676,11 +677,12 @@
      状態そのものではない）。                                       */
   function medicalRows() {
     const m = data.medical;
-    /* いつもの通院（clinics）は状態を持たない――書いた時点で家族が
-       辿れる「かかっている先の連絡先」で、§11 の状態を問う対象では
-       ない。数え上げからも外す。 */
-    return []
-      .concat(m.medSources || [], supplyRows());
+    /* いつもの通院（clinics）とかかりつけ薬局（medSources の
+       kind:'pharmacy'）は状態を持たない――書いた時点で家族が辿れる
+       「かかっている先の連絡先」で、§11 の状態を問う対象ではない。
+       数え上げからも外す。 */
+    const medSrc = (m.medSources || []).filter(r => r.kind !== 'pharmacy');
+    return [].concat(medSrc, supplyRows());
   }
   /* 医療で必要になるものと所在｜全カテゴリの実物行を1本に。 */
   function supplyRows() {

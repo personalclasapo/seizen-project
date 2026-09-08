@@ -65,16 +65,6 @@
   const XMARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
     'stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
   const TEL = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2Z"/></svg>';
-  /* メモのしるし。付箋（右上の折り返し）＋数本の罫。家族の書き込みが
-     地の文と混ざらないよう「メモ」ラベルの頭に添える。 */
-  const MEMO_IC = '<svg class="memo-ic" viewBox="0 0 16 16" aria-hidden="true" ' +
-    'focusable="false"><path d="M2.5 2.5h7l4 4v7h-11Z" fill="none" ' +
-    'stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' +
-    '<path d="M9.5 2.5v4h4" fill="none" stroke="currentColor" stroke-width="1.3" ' +
-    'stroke-linejoin="round"/>' +
-    '<path d="M4.5 8.5h5M4.5 10.8h3.5" stroke="currentColor" stroke-width="1.3" ' +
-    'stroke-linecap="round"/></svg>';
-
   const svgIc = (d, w) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
     'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="' +
     (w || 18) + '" height="' + (w || 18) + '">' + d + '</svg>';
@@ -134,8 +124,7 @@
             '<circle cx="8.8" cy="11" r="2"/>' +
             '<path d="M5.6 15.6c0-1.8 1.4-2.8 3.2-2.8s3.2 1 3.2 2.8"/>' +
             '<path d="M14.5 10.5h4M14.5 13.5h4"/>',
-    pharmacy: '<path d="M8.5 4.5h7M12 4.5v3"/><path d="M6.5 9.5h11L16 20H8L6.5 9.5Z"/>',
-    other:  '<circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/>'
+    pharmacy: '<path d="M8.5 4.5h7M12 4.5v3"/><path d="M6.5 9.5h11L16 20H8L6.5 9.5Z"/>'
   };
 
   /* ── 編集プリミティブ ───────────────────────────────
@@ -298,29 +287,33 @@
      何を見るかで割る。項目の種類で割ると分類の羅列になる。
 
      場面ごとに重みが違うが、正本モック（医療.png）では右面3節の
-     見出しはすべて「塗りアイコン（角丸の緑）＋タイトル＋一言」で
+     見出しはすべて「白地の角丸チップ＋緑の線グリフ＋タイトル＋一言」で
      揃えてある。拍子は見出しではなく本文の造形（カードホルダー／
-     実物タイル／カードホルダー）で割る。ここは骨だけ。            */
+     実物タイル／カードホルダー）で割る。ここは骨だけ。
+
+     グリフは緑の線（currentColor）で描く。チップの地は白（.scene-ic）
+     なので、白ヌキではなく線画で対象を見せる。薄い面取りだけ
+     fill-opacity で入れる。                                        */
   const SCENE_IC = {
     /* いつもの通院｜建物（かかりつけの先）。 */
-    visit: '<path d="M5 21V6.5L12 3l7 3.5V21" fill="#fff" fill-opacity=".16"/>' +
+    visit: '<path d="M5 21V6.5L12 3l7 3.5V21" fill="currentColor" fill-opacity=".12"/>' +
       '<path d="M4 21h16M5 21V6.5L12 3l7 3.5V21M9.5 21v-4h5v4" ' +
-      'fill="none" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>' +
+      'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>' +
       '<path d="M8.3 8.7h1.6M14.1 8.7h1.6M8.3 12h1.6M14.1 12h1.6" ' +
-      'stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>',
+      'stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
     /* 薬を確認するとき｜カプセル。 */
     medsrc: '<path d="M8.2 4.6 4.6 8.2a5.1 5.1 0 0 0 7.2 7.2l3.6-3.6a5.1 5.1 0 0 0-7.2-7.2Z" ' +
-      'fill="#fff" fill-opacity=".16" stroke="#fff" stroke-width="1.7"/>' +
-      '<path d="M8.2 11.8 12 8" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>' +
-      '<path d="M14.8 19.4 19.4 14.8" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>' +
+      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.7"/>' +
+      '<path d="M8.2 11.8 12 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
+      '<path d="M14.8 19.4 19.4 14.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
       '<path d="M16.4 15.2 20 18.8a2.5 2.5 0 0 1-3.6 3.6L12.8 18.8Z" ' +
-      'fill="#fff" fill-opacity=".16" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>',
+      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
     /* 医療で必要になるものと所在｜カードと書類。 */
     supplies: '<rect x="3.5" y="6.5" width="17" height="13" rx="1.8" ' +
-      'fill="#fff" fill-opacity=".16" stroke="#fff" stroke-width="1.7"/>' +
+      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.7"/>' +
       '<path d="M8 6.5V5a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 16 5v1.5" ' +
-      'fill="none" stroke="#fff" stroke-width="1.7"/>' +
-      '<path d="M7 11h10M7 14.5h6" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>'
+      'fill="none" stroke="currentColor" stroke-width="1.7"/>' +
+      '<path d="M7 11h10M7 14.5h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
   };
   function sceneHeadIcon(key) {
     const d = SCENE_IC[key];
@@ -1326,17 +1319,19 @@
   /* 薬を確認するとき。正本モック（医療.png）に合わせて、上段は実物
      タイル3つ（紙のお薬手帳／お薬手帳アプリ／マイナポータル）、下段は
      かかりつけ薬局の帯。標準行は常設で消せない（§11：確認していない
-     ＝未確認であって、欄は消えない）。「その他」はタイルに出さず、
-     編集中だけ帯の下に1行出す。かかりつけ薬局は複数あり得るので、
+     ＝未確認であって、欄は消えない）。かかりつけ薬局は複数あり得るので、
      2件目以降を足せる。連絡先も自前で持つ。
 
      タイルの実物イラストは SVG（角丸矩形に色を敷くだけにしない――
      CLAUDE.md）。紙の手帳＝綴じた冊子、アプリ＝スマホの画面、
      マイナポータル＝PC のモニタ。 */
   const MEDSRC_TILE = {
-    paper:   { name: 'お薬手帳',       sub: '紙の手帳' },
-    digital: { name: 'お薬手帳アプリ', sub: 'スマートフォン' },
-    myna:    { name: 'マイナポータル', sub: 'オンライン' }
+    paper:   { name: 'お薬手帳',       sub: '紙の手帳',
+      wherePh: '例：保管場所（本人の鞄）' },
+    digital: { name: 'お薬手帳アプリ', sub: 'スマートフォン',
+      wherePh: '例：アプリ名（○○）' },
+    myna:    { name: 'マイナポータル', sub: 'オンライン',
+      wherePh: '例：ログインは本人のスマホから' }
   };
   /* 実物の絵。viewBox 0 0 64 48、淡い塗り＋医療の緑の線。 */
   const MEDSRC_ART = {
@@ -1423,15 +1418,13 @@
       const r = list[i];
       const t = MEDSRC_TILE[kind];
       const p = 'medical.medSources.' + i + '.';
-      /* 「どこで見られるか」「補足」は正本モックのタイルには出ていない
-         （タイルは実物の絵＋名前＋確認済みバッジまで）。編集中だけ
-         下に開く。 */
-      const noteRow = on
+      /* どこで見られるか（where）はタイルに常設する。未入力のときは
+         入口ごとの「例：…」を薄字で残す（呼び水――畳むと用途が
+         読めない）。補足（note）は書いたときだけ出す。 */
+      const whereRow = '<span class="mst-where">' +
+        ev(p + 'where', r.where, 'line', t.wherePh) + '</span>';
+      const noteRow = (r.note || on)
         ? '<span class="mst-note">' + ev(p + 'note', r.note, 'line', '補足') + '</span>'
-        : '';
-      const whereRow = on
-        ? '<span class="mst-where">' + ev(p + 'where', r.where, 'line', 'どこで見られるか') +
-          '</span>'
         : '';
       return '<div class="mst">' +
         '<span class="mst-art"><svg viewBox="0 0 64 48" aria-hidden="true" ' +
@@ -1447,17 +1440,16 @@
     const bands = list.map((r, i) => {
       if (r.kind !== 'pharmacy') return '';
       const p = 'medical.medSources.' + i + '.';
-      /* 一言＝家族の書き込みメモ。「調剤・飲み合わせ確認」は薬局の
-         定義そのもので書く意味がない。家族が実際に書くこと（困った
-         ときの連絡・往診の有無・担当薬剤師など）を書く欄。プレース
-         ホルダを「例：…」にして、ここがメモだと分かるようにする。
-         付箋のしるし（MEMO_IC）は残し、「メモ」の文字ラベルは置かない。 */
-      const noteRow = (r.note || on)
-        ? '<div class="msb-memo">' + MEMO_IC +
-            '<span class="msb-memo-tx">' + ev(p + 'note', r.note, 'line',
-              '例：薬のことで困ったら、まずここに電話。往診にも来てくれる。') + '</span>' +
-          '</div>'
-        : '';
+      /* 薬局名の下は、通院の診療案内カード（.cg-kv）と同じ「ラベル＋値」
+         の縦グリッドで、電話／Web／メモ を揃える。
+         メモ＝家族の書き込み欄（困ったときの連絡・往診の有無・担当薬剤師
+         など。「調剤・飲み合わせ確認」は薬局の定義なので書かない）。
+         プレースホルダを「例：…」にして、未入力でも用途が伝わるように
+         する（表示時は薄字で例が残る――行ごと畳むと呼び水も消える）。 */
+      const memoRow = '<dt>メモ</dt><dd class="msb-memo-tx">' +
+        ev(p + 'note', r.note, 'line',
+          '例：薬のことで困ったら、まずここに電話。往診にも来てくれる。') +
+        '</dd>';
       /* Web は公式サイト1本（通院カードの clinics.web と同じ扱い）。
          編集中はただの欄、表示時は <a target=_blank rel=noopener>。 */
       const web = r.web
@@ -1466,45 +1458,30 @@
             : '<a href="' + esc(r.web) + '" target="_blank" rel="noopener" ' +
               'class="cg-link">' + esc(webLabel(r.web)) + ' ↗</a>')
         : (on ? ev(p + 'web', r.web, 'line', 'https://…') : '');
+      /* 状態バッジは付けない。かかりつけ薬局は「かかっている先の
+         連絡先」で、書いた時点で家族が辿れている――§11 の状態を
+         問う対象ではない（通院の診療案内カードと揃える）。 */
       return '<div class="msb">' +
         CARD_MORTAR +
         '<div class="msb-h">' +
           '<span class="msb-ic">' + svgIc(MEDSRC_IC.pharmacy, 16) + '</span>' +
           '<span class="msb-lb">かかりつけ薬局</span>' +
-          stBadge('medical.medSources.' + i) +
           (on && S.canRemoveMedSource(r.id) ? delBtn(r.id) : '') +
         '</div>' +
-        '<div class="msb-body">' +
-          '<span class="msb-name">' + ev(p + 'name', r.name, 'line', '薬局の名前') + '</span>' +
-          '<span class="msb-tel">' + TEL + ev(p + 'tel', r.tel, 'line', '電話番号') + '</span>' +
-        '</div>' +
-        (web ? '<p class="msb-web">Web ' + web + '</p>' : '') +
-        noteRow +
+        '<div class="msb-name">' + ev(p + 'name', r.name, 'line', '薬局の名前') + '</div>' +
+        '<dl class="cg-kv msb-kv">' +
+          '<dt>電話</dt><dd class="cg-tel">' + TEL +
+            ev(p + 'tel', r.tel, 'line', '電話番号') + '</dd>' +
+          (web || on
+            ? '<dt>Web</dt><dd>' + (web || '<span class="i-ev-empty">なし</span>') + '</dd>'
+            : '') +
+          memoRow +
+        '</dl>' +
         '</div>';
     }).join('');
 
-    /* その他｜タイルにも帯にも出さない。編集中だけ1行。 */
-    let otherRow = '';
-    const oi = list.findIndex(r => r.kind === 'other');
-    if (on && oi > -1) {
-      const p = 'medical.medSources.' + oi + '.';
-      otherRow = '<div class="msb msb-other">' +
-        '<div class="msb-h">' +
-          '<span class="msb-lb">その他の入口</span>' +
-          stBadge('medical.medSources.' + oi) +
-        '</div>' +
-        '<div class="msb-body">' +
-          '<span class="msb-name">' +
-            ev(p + 'where', list[oi].where, 'line', 'どこで見られるか') + '</span>' +
-        '</div>' +
-        (list[oi].note || on
-          ? '<p class="msb-note">' + ev(p + 'note', list[oi].note, 'line', '補足') + '</p>'
-          : '') +
-        '</div>';
-    }
-
     return '<div class="ms-tiles">' + tiles + '</div>' +
-      '<div class="ms-bands">' + bands + otherRow + '</div>' +
+      '<div class="ms-bands">' + bands + '</div>' +
       (on ? '<button type="button" class="rowadd" data-add="pharm">＋ かかりつけ薬局を足す</button>' : '');
   }
 

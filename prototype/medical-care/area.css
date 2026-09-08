@@ -727,11 +727,13 @@ button.st:hover{filter:brightness(.97)}
 .scene-h h5{margin:0;font-size:14px;font-weight:700;letter-spacing:-.01em}
 .scene-h small{flex:1;min-width:120px;font-size:11px;color:var(--ink3)}
 
-/* 塗りアイコン。角丸の緑地に白ヌキのグリフ（左面の脈波・介護の
-   ベッドと同じ密度で、物のしるしを1つ）。SVG 側で塗り／線を持つ。 */
+/* 見出しアイコン。白地の角丸チップに、緑の線グリフ（契約・デジタルの
+   .pill-ic と同じ手つき――白い面に細い緑枠、中は線画）。塗りつぶしの
+   緑地にはしない。SVG 側は currentColor で描く。 */
 .scene-ic{flex:none;display:grid;place-items:center;width:26px;height:26px;
-  border-radius:8px;background:var(--gr);box-shadow:0 1px 2px #1e5a3d3d}
-.scene-ic svg{width:17px;height:17px;display:block}
+  border-radius:8px;background:#fff;border:1px solid #cbdfd1;color:var(--gr);
+  box-shadow:0 1px 2px #1e5a3d1f}
+.scene-ic svg{width:16px;height:16px;display:block}
 
 /* 通院・薬の入口。中くらい。地は持たず、上に細い罫だけ。 */
 .sc-visit .scene-h h5,.sc-medsrc .scene-h h5{font-size:14px}
@@ -792,11 +794,13 @@ button.st:hover{filter:brightness(.97)}
 .cg-dept .i-ef{color:#fff;background:#00000026;border-color:#ffffff59;
   overflow:visible;text-overflow:clip}
 .cg-dept .i-ef::placeholder{color:#ffffff9c}
-/* 帯に載る状態バッジ・削除は白ヌキ寄りに。 */
+/* 帯に載る状態バッジ・削除は白ヌキ寄りに。地は緑帯に溶かす（白地の
+   四角が帯に乗って見えないよう、.st と同じ半透明の地・枠にする）。 */
 .cg-head .st{position:relative;background:#ffffff26;color:#fff;border-color:#ffffff3d}
 .cg-head .st-ok{background:#ffffff33}
-.cg-head .rowdel{position:relative;color:#ffffffcc}
-.cg-head .rowdel:hover{color:#fff;background:#ffffff26}
+.cg-head .rowdel{position:relative;background:#ffffff26;color:#ffffffcc;
+  border-color:#ffffff3d}
+.cg-head .rowdel:hover{color:#fff;background:#ffffff3d;border-color:#ffffff5c}
 .cg-head .rowdel-ask{position:relative;color:#fff}
 /* 十字。帯の右端。固定サイズのグリフ。 */
 .cg-cross{position:relative;flex:none;width:14px;height:14px}
@@ -866,43 +870,36 @@ button.st:hover{filter:brightness(.97)}
 .mst-badge.mst-na{background:#f1efe7;color:var(--ink3);border-color:#e0dccd}
 .mst-where{margin-top:5px;font-size:10.5px;color:var(--ink2);line-height:1.5;
   word-break:break-word}
+/* 未入力のとき｜入口ごとの「例：…」を薄字で残す（入力済みに見えない
+   よう、地の文より一段落とす）。 */
+.mst-where .i-ev-empty{color:#a9b7a6;font-style:italic}
 .mst-note{margin-top:2px;font-size:10px;color:var(--ink3);line-height:1.5}
 
-/* かかりつけ薬局の帯。左にアイコン＋ラベル、右端に「›」。
-   下に薬局名＋TEL、さらに下に一言。 */
+/* かかりつけ薬局の帯。上にアイコン＋ラベル、下に薬局名、その下は
+   通院の診療案内カード（.cg-kv）と同じ「ラベル＋値」の縦グリッドで
+   電話／Web／メモ を揃える。状態バッジは付けない（§11 の対象外）。 */
 .ms-bands{margin-top:12px;display:flex;flex-direction:column;gap:9px}
 .msb{position:relative;overflow:hidden;padding:11px 13px;border-radius:9px;
   background:#fbfaf5;border:1px solid #e6dfc9}
 /* 乳鉢と杵の淡いシルエット（病院カードの建物と対）。右端・印字の後ろ。
    医療の1色・彩度は不透明度で落とす。 */
-.msb-mortar{position:absolute;right:12px;bottom:-10px;width:62px;height:auto;
-  color:var(--gr2);opacity:.11;pointer-events:none}
+.msb-mortar{position:absolute;right:6px;bottom:-16px;width:100px;height:auto;
+  color:var(--gr2);opacity:.13;pointer-events:none}
 .msb-h{position:relative;display:flex;align-items:center;gap:7px}
 .msb-ic{flex:none;display:grid;place-items:center;width:22px;height:22px;
   color:var(--gr)}
 .msb-lb{font-size:11px;font-weight:700;color:var(--ink2);letter-spacing:.02em}
-.msb-h .st{margin-left:auto}
-.msb-h .rowdel{margin-left:6px}
-.msb-body{position:relative;display:flex;align-items:baseline;flex-wrap:wrap;
-  gap:4px 12px;margin-top:6px}
-.msb-web,.msb-memo{position:relative}
-.msb-name{font-size:14px;font-weight:700;color:var(--ink);line-height:1.4}
-.msb-tel{display:inline-flex;align-items:center;gap:5px;font-size:12px;
-  font-weight:700;color:var(--gr2)}
-.msb-tel svg{width:12px;height:12px;flex:none}
-/* Web｜公式サイト。薬局名・TEL の下に小さく。 */
-.msb-web{margin:4px 0 0;font-size:11px;color:var(--ink3)}
-.msb-web .cg-link{font-size:11px}
-/* 一言＝家族の書き込みメモ（困ったときの連絡・往診の有無・担当薬剤師
-   など）。「調剤・飲み合わせ確認」は薬局の定義なので書かない。地の文と
-   混ざらないよう、付箋のしるし＋左罫で本文から離す（「メモ」の文字
-   ラベルは置かない――プレースホルダの「例：…」で用途は伝わる）。 */
-.msb-memo{display:flex;align-items:flex-start;gap:7px;
-  margin:8px 0 0;padding:6px 0 0 9px;border-left:2px solid #e0d8c2}
-.msb-memo .memo-ic{flex:none;width:13px;height:13px;margin-top:2px;color:#b7ac8e}
-.msb-memo-tx{flex:1;min-width:0;font-size:11.5px;color:var(--ink2);line-height:1.6}
+.msb-h .rowdel{margin-left:auto}
+.msb-name{position:relative;margin-top:6px;font-size:14px;font-weight:700;
+  color:var(--ink);line-height:1.4}
+/* 薬局名の下｜通院カードの .cg-kv をそのまま流用（ラベル＋値の縦
+   グリッド）。乳鉢の絵に潜らないよう position だけ足す。 */
+.msb-kv{position:relative}
+/* メモ＝家族の書き込み欄（困ったときの連絡・往診の有無・担当薬剤師
+   など）。「調剤・飲み合わせ確認」は薬局の定義なので書かない。値は
+   1行で、未入力のときはプレースホルダ「例：…」が薄字で出る。 */
+.msb-memo-tx{color:var(--ink2);line-height:1.6}
 .msb-memo-tx .i-ev-empty{color:var(--ink3);font-style:italic}
-.msb-other{background:#f7f5ee;border-style:dashed}
 
 .kv{width:100%;border-collapse:collapse;font-size:12.5px}
 .kv th,.kv td{padding:8px 12px;border-bottom:1px solid #ece6d6;text-align:left;
