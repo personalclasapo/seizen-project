@@ -257,21 +257,10 @@
   const MEDSRC_ORDER = ['paper', 'digital', 'myna', 'pharmacy'];
   const MEDSRC_FIXED = MEDSRC_ORDER;   /* 標準行が常設される入口 */
 
-  /* 医療で必要になるものと所在｜カテゴリの型。カテゴリは制度側で
-     決まっている括り（診察券・お薬手帳・受給者証…）なので固定で持つ
-     ――消せるのはその下の実物だけ。実物は { name, where } で、1枚
-     ずつ「どこにあるか」を書く（正本 §4-2：見出し＝棚、実物＝そこに
-     入っている物）。 */
-  const SUPPLY_CATS = [
-    { key: 'license',   label: '診察券',              hint: 'クリニックごと' },
-    { key: 'mynumber',  label: 'マイナンバーカード等', hint: '本人確認' },
-    { key: 'medbook',   label: 'お薬手帳',            hint: '紙・アプリ' },
-    { key: 'handbooks', label: '各種医療手帳',         hint: '身体障害者手帳など' },
-    { key: 'devcard',   label: '医療機器のカード・手帳', hint: 'ペースメーカー手帳など' },
-    { key: 'benefit',   label: '受給者証等',           hint: '医療費助成' }
-  ];
-  const SUPPLY_CAT_KEYS = SUPPLY_CATS.map(c => c.key);
-  const supplyCat = key => SUPPLY_CATS.find(c => c.key === key) || SUPPLY_CATS[0];
+  /* 「医療で必要になるものと所在」（診察券・お薬手帳・各種医療手帳等を
+     固定カテゴリで束ねる棚）は撤去した（正本 §13-1）。カード・手帳の
+     類は付随する対象（通院先・機器）の側で持つ――医療機器・体内機器の
+     `related` 欄など。詳細は `prototype/assets/医療.README.md`。 */
 
   /* ══ 介護 ═══════════════════════════════════════════════ */
 
@@ -368,26 +357,32 @@
         ]
       },
       /* 継続している治療・処置｜毎日の内服はここに置かない。行は
-         { text, region, purpose, note }。purpose＝何のためか、
-         note＝頻度・条件（1日2回、夜間のみ、など）。 */
+         { text, region, note, contact, related, memo }。
+         note＝継続のしかた（頻度・タイミング）、contact＝対応先
+         （継続や確認の連絡先）、related＝手帳・カード等の関連物、
+         memo＝それ以外の補足。どれも該当する場合だけ書く。 */
       treatments: {
         presence: 'あり',
         items: [
           { id: uid('tr'), text: 'インスリン自己注射', region: '',
-            purpose: '血糖値をコントロールするため', note: '1日2回（朝・夜）' },
+            note: '1日2回（朝・夜）' },
           { id: uid('tr'), text: '在宅酸素', region: 'lung',
-            purpose: '呼吸を助けるため', note: '夜間に使用' }
+            note: '夜間に使用' }
         ]
       },
-      /* 医療機器・体内機器｜行は { text, group:'body'|'daily', region,
-         purpose, note }。region は空なら候補表から部位を当てる。 */
+      /* 医療機器・体内機器｜行は { text, region, note, related, memo }。
+         region は空なら候補表から部位を当てる。note＝使用状況（常時／
+         夜間のみ等）、related＝手帳・カード等の関連物（存在する場合
+         だけ）、memo＝それ以外の補足。体内にあるか日常的に使うかは
+         候補（DEVICE_CHOICES）の系統として案内するだけで、行には
+         持たない――どちらの塗り分けも実際は devices/treatments という
+         項目の違いだけで決まり、この行データを読む先が無かった。 */
       devices: {
         presence: 'あり',
         items: [
-          { id: uid('dv'), text: 'ペースメーカー', group: 'body', region: '',
-            purpose: '心臓のリズムを整えるため', note: '' },
-          { id: uid('dv'), text: '人工関節', group: 'body', region: 'leg',
-            purpose: '歩行機能を補助するため', note: '右膝' }
+          { id: uid('dv'), text: 'ペースメーカー', region: '',
+            note: '常時作動', related: 'ペースメーカー手帳＝自宅の書類箱（医療）' },
+          { id: uid('dv'), text: '人工関節', region: 'leg' }
         ]
       },
       /* アレルギー｜行は { cause, reactions[] }。反応をまず選び、原因
@@ -452,29 +447,7 @@
           note: '新しい薬が追加されたら家族にも共有してください。', state: '確認済み' },
         { id: uid('ms'), kind: 'pharmacy', name: 'さくら薬局　横浜店', tel: '045-321-9876',
           web: 'https://sakura-ph.example.jp', where: '', note: '' }
-      ],
-
-      /* 医療で必要になるものと所在｜カテゴリ（固定）ごとに、実物を
-         ぶら下げる。カテゴリは消せない――消せるのは実物の行だけ。
-         実物は { id, name, where, state }。name＝どのカードか（診察券
-         なら医療機関名）、where＝どこにあるか。 */
-      supplies: {
-        license: [
-          { id: uid('sp'), name: '横浜中央クリニック', where: '本人の財布', state: '確認済み' },
-          { id: uid('sp'), name: 'みなとみらい循環器クリニック', where: '本人の財布', state: '確認済み' }
-        ],
-        mynumber: [
-          { id: uid('sp'), name: 'マイナンバーカード', where: '本人の財布', state: '未確認' }
-        ],
-        medbook: [
-          { id: uid('sp'), name: 'お薬手帳アプリ', where: 'スマートフォン', state: '確認済み' }
-        ],
-        handbooks: [],
-        devcard: [
-          { id: uid('sp'), name: 'ペースメーカー手帳', where: '自宅の書類箱（医療）', state: '確認済み' }
-        ],
-        benefit: []
-      }
+      ]
     },
 
     /* 介護 ------------------------------------------------------ */
@@ -682,12 +655,7 @@
        「かかっている先の連絡先」で、§11 の状態を問う対象ではない。
        数え上げからも外す。 */
     const medSrc = (m.medSources || []).filter(r => r.kind !== 'pharmacy');
-    return [].concat(medSrc, supplyRows());
-  }
-  /* 医療で必要になるものと所在｜全カテゴリの実物行を1本に。 */
-  function supplyRows() {
-    const s = data.medical.supplies || {};
-    return SUPPLY_CAT_KEYS.reduce((all, k) => all.concat(s[k] || []), []);
+    return [].concat(medSrc);
   }
   function careRows() {
     const c = data.care;
@@ -745,7 +713,6 @@
            findIn((m.allergies || {}).items, id) ||
            findIn((m.adverse || {}).items, id) ||
            findIn(m.medSources, id) ||
-           findIn(supplyRows(), id) ||
            findIn(c.services, id) || findIn(c.papers, id) ||
            (c.manager && c.manager.id === id ? c.manager : null);
   }
@@ -810,14 +777,6 @@
     data.medical.medSources.push(row);
     return row;
   }
-  /* 医療で必要になるものと所在｜カテゴリに実物を1件足す。 */
-  function addSupply(catKey) {
-    const s = data.medical.supplies || (data.medical.supplies = {});
-    const list = s[catKey] || (s[catKey] = []);
-    const row = { id: uid('sp'), name: '', where: '', state: '未確認' };
-    list.push(row);
-    return row;
-  }
   /* 現在の医療状態｜5項目に1行足す。項目ごとに行の形が違う。
      presence は触らない（「あり」にするのは setPresence の仕事）。 */
   function addCurrentRow(kind) {
@@ -827,9 +786,9 @@
     if (kind === 'condition')
       row = { id: uid('cd'), text: '', note: '' };
     else if (kind === 'treatment')
-      row = { id: uid('tr'), text: '', region: '', purpose: '', note: '' };
+      row = { id: uid('tr'), text: '', region: '', note: '', contact: '', related: '', memo: '' };
     else if (kind === 'device')
-      row = { id: uid('dv'), text: '', group: 'body', region: '', purpose: '', note: '' };
+      row = { id: uid('dv'), text: '', region: '', note: '', related: '', memo: '' };
     else if (kind === 'allergy')
       row = { id: uid('al'), cause: '', reactions: [] };
     else if (kind === 'adverse')
@@ -895,7 +854,6 @@
       return;
     }
     [m.clinics, c.services, c.papers].forEach(list => removeFrom(list, id));
-    SUPPLY_CAT_KEYS.forEach(k => removeFrom((m.supplies || {})[k], id));
     ['conditions', 'treatments', 'devices', 'allergies', 'adverse'].forEach(k => {
       const g = m[k];
       if (g && Array.isArray(g.items)) removeFrom(g.items, id);
@@ -911,7 +869,6 @@
     BODY_REGIONS, BODY_REGION_KEYS, REGION_OF_CHOICE,
     ALLERGY_REACTIONS, ADVERSE_EVENTS,
     MEDSRC_KINDS, MEDSRC_ORDER, MEDSRC_FIXED,
-    SUPPLY_CATS, SUPPLY_CAT_KEYS, supplyCat,
     CARE_LEVELS, PLACES, SERVICE_KINDS, SERVICE_TYPES, DAYS,
     /* 事実 */
     data, save,
@@ -922,7 +879,7 @@
     serviceType, kindOfService,
     currentGroup, grpOf, setPresence, currentRowLabel,
     conditionLabel, conditionNote, allergyLabel, adverseLabel,
-    medicalTally, careTally, openCount, supplyRows,
+    medicalTally, careTally, openCount,
     weekGrid, hasSchedule, toggleDay,
     findIn, findAny,
     /* 編集 */
@@ -930,7 +887,7 @@
     tagsToText, textToTags, applyTags, linesToText, applyLines,
     toggleInArray,
     /* 足す・消す */
-    addClinic, addPharmacySource, addSupply,
+    addClinic, addPharmacySource,
     addCurrent, addCurrentRow, addAllergy, addAdverse, addService,
     setServiceName, setServiceKind, removeFrom, removeAny, canRemoveMedSource
   };

@@ -603,7 +603,7 @@
       '" cx="' + x + '" cy="' + y + '" r="4.6"/>';
   }
 
-  /* ラベルカード1枚（foreignObject の中の HTML）。品名を主に、目的・
+  /* ラベルカード1枚（foreignObject の中の HTML）。品名を主に、続け方・
      補足を下に。部位が分かれば品名の後ろに括弧で添える（部位名だけを
      見出しにはしない――リーダー線が体の該当部を指せば十分）。 */
   /* note が体の部位そのもの（「右膝」など）を言っているかどうか。
@@ -615,8 +615,8 @@
     const noteIsPlace = r.note && NOTE_IS_PLACE.test(r.note);
     const suffix = noteIsPlace ? '（' + r.note + '）' : '';
     const sub = [];
-    if (r.purpose) sub.push('<span class="bmc-purpose">' + esc(r.purpose) + '</span>');
     if (r.note && !noteIsPlace) sub.push('<span class="bmc-note">' + esc(r.note) + '</span>');
+    if (r.memo) sub.push('<span class="bmc-purpose">' + esc(r.memo) + '</span>');
     return '<div class="bmap-card ' + (it.filled ? 'is-dev' : 'is-tr') + '">' +
       '<span class="bmc-name">' + esc(r.text) + esc(suffix) + '</span>' +
       (sub.length ? '<span class="bmc-sub">' + sub.join('') + '</span>' : '') +
@@ -655,8 +655,8 @@
       const isPlace = r.note && NOTE_IS_PLACE.test(r.note);
       const name = r.text + (isPlace ? '（' + r.note + '）' : '');
       let h = linesOf(name, 11) * 15;                    /* 品名 */
-      if (r.purpose) h += linesOf(r.purpose, 9.5) * 13 + 2;  /* 何のため */
-      if (r.note && !isPlace) h += linesOf(r.note, 9.5) * 13 + 1;  /* 頻度・条件 */
+      if (r.note && !isPlace) h += linesOf(r.note, 9.5) * 13 + 2;  /* 続け方・使用状況 */
+      if (r.memo) h += linesOf(r.memo, 9.5) * 13 + 1;  /* メモ */
       return h + 16;                                     /* 上下余白＋枠 */
     };
 
@@ -807,8 +807,7 @@
 
   /* 候補ピッカー。チップを平置きにすると20個超が画面を埋めるので、
      「＋ 候補から選ぶ」で開くパネルにし、中は系統ごとに畳む。
-     選ぶと本文の行に足す／外す（data-chip="kind|値"、機器は
-     "device:body" / "device:daily" で群も渡す）。                   */
+     選ぶと本文の行に足す／外す（data-chip="kind|値"）。               */
   function candidatePicker(kind, groups, chosenSet) {
     if (picker !== kind) {
       return '<button type="button" class="pick-open" data-pick="' + kind + '">' +
@@ -819,12 +818,10 @@
       const open = pickerGroups.has(key);
       const n = list.filter(c => chosenSet.has(c)).length;
       const chips = open
-        ? '<div class="chipz">' + list.map(c => {
-            const grp = kind === 'device'
-              ? (S.DEVICE_CHOICES.body.indexOf(c) > -1 ? ':body' : ':daily') : '';
-            return '<button type="button" class="chip' + (chosenSet.has(c) ? ' on' : '') +
-              '" data-chip="' + kind + grp + '|' + esc(c) + '">' + esc(c) + '</button>';
-          }).join('') + '</div>'
+        ? '<div class="chipz">' + list.map(c =>
+            '<button type="button" class="chip' + (chosenSet.has(c) ? ' on' : '') +
+            '" data-chip="' + kind + '|' + esc(c) + '">' + esc(c) + '</button>'
+          ).join('') + '</div>'
         : '';
       return '<div class="pick-grp' + (open ? ' open' : '') + '">' +
         '<button type="button" class="pick-gh" data-pickgrp="' + esc(key) + '">' +
@@ -844,7 +841,7 @@
        ・追加する操作（候補から選ぶ／自由に書く）を先頭に置く
          ――一覧の下に埋めると「どうやって足すのか」が読めない。
        ・足した項目は1件ずつカードにし、病名（見出し）とその補足
-         （一言／何のため…）が同じカードに入っていると分かる形にする。 */
+         （一言／続け方…）が同じカードに入っていると分かる形にする。 */
   function pickListForm(kind) {
     const g = S.grpOf(kind);
     const items = g.items || [];
@@ -881,11 +878,6 @@
 
     const cards = items.map((r, i) => {
       const p = 'medical.' + store + '.items.' + i + '.';
-      const grpSel = kind === 'device'
-        ? fld('種類', '', evSelect(p + 'group',
-            S.DEVICE_GROUPS[r.group] || S.DEVICE_GROUPS.body,
-            [S.DEVICE_GROUPS.body, S.DEVICE_GROUPS.daily]))
-        : '';
       const noteFld = kind === 'condition'
         ? chipField('いまの扱い', '任意', p + 'note', r.note || '',
             S.CONDITION_NOTE_CHOICES, '自由に書く')
@@ -893,18 +885,34 @@
       let ptFlds = '';
       if (withRegion) {
         const autoKey = S.regionOfRow(r);
-        ptFlds =
-          fld('何のため', '', ev(p + 'purpose', r.purpose, 'line',
-            '例：血糖値をコントロールするため')) +
-          fld('頻度・条件', '任意', ev(p + 'note', r.note, 'line',
-            '例：1日2回（朝・夜）／夜間のみ／右膝')) +
-          fld('体の部位', '', evRegionSelect(p + 'region', r.region) +
-            (!r.region
-              ? '<small class="cef-region-auto">' +
-                (autoKey === 'unknown'
-                  ? '自動で当てられません'
-                  : '自動：' + esc(S.bodyRegion(autoKey).label)) + '</small>'
-              : ''));
+        const regionFld = fld('体の部位', '', evRegionSelect(p + 'region', r.region) +
+          (!r.region
+            ? '<small class="cef-region-auto">' +
+              (autoKey === 'unknown'
+                ? '自動で当てられません'
+                : '自動：' + esc(S.bodyRegion(autoKey).label)) + '</small>'
+            : ''));
+        const relatedFld = fld('関連するもの', '存在する場合だけ',
+          ev(p + 'related', r.related, 'line',
+            '例：ペースメーカー手帳＝寝室の引き出し'));
+        const memoFld = fld('メモ', '', ev(p + 'memo', r.memo, 'line',
+          'ここまでで表せない補足'));
+        /* treatment と device は同じ骨（名前・続け方・関連・部位・メモ）
+           だが、ラベルは性質に合わせて出し分ける（正本 §13：形は
+           共有しても、機械的に同じ言葉を流用しない）。
+             treatment … 頻度・場所を持って続く行為（インスリン注射等）
+                         なので「継続のしかた」「対応先」が実質を持つ
+             device    … 入れたら常時ある／使う物なので「対応先」は
+                         機能せず（かかりつけ経由になる）持たない       */
+        ptFlds = kind === 'treatment'
+          ? fld('継続のしかた', '必要な治療・処置だけ', ev(p + 'note', r.note, 'line',
+              '例：1日2回（朝・夜）／夜間のみ')) +
+            fld('対応先', '必要な場合だけ', ev(p + 'contact', r.contact, 'line',
+              '例：訪問看護ステーション○○')) +
+            relatedFld + regionFld + memoFld
+          : fld('使用状況', '機器ごとに必要なら', ev(p + 'note', r.note, 'line',
+              '例：常時作動／夜間の睡眠中のみ')) +
+            relatedFld + regionFld + memoFld;
       }
       return '<li class="cef-item">' +
         '<div class="cef-item-h">' +
@@ -913,8 +921,8 @@
           '</span>' +
           delBtn(r.id) +
         '</div>' +
-        (grpSel || noteFld || ptFlds
-          ? '<div class="cef-item-b">' + grpSel + noteFld + ptFlds + '</div>'
+        (noteFld || ptFlds
+          ? '<div class="cef-item-b">' + noteFld + ptFlds + '</div>'
           : '') +
         '</li>';
     }).join('');
@@ -2065,11 +2073,6 @@
       const sv = S.data.care.services[+m[1]];
       return S.setServiceName(sv, String(value).trim());
     }
-    /* 医療機器の群セレクトは日本語ラベルで選ばれる。body/daily へ戻す。 */
-    if (/^medical\.devices\.items\.\d+\.group$/.test(path)) {
-      const key = value === S.DEVICE_GROUPS.daily ? 'daily' : 'body';
-      return S.applyValue(path, key);
-    }
     return S.applyValue(path, value);
   }
 
@@ -2240,12 +2243,14 @@
       }
 
       /* 現在の医療状態｜候補チップの入り切り（病気・治療・機器）。
-         data-chip="kind|値"、機器は kind が "device:body" / "device:daily"。 */
+         data-chip="kind|値"。足したときは、名前はチップの値で埋まって
+         いるので、次に書く補足欄（いまの扱い／続け方・使用状況）へ
+         すぐ入れる。「＋ 自由に書く」で名前欄へ送るのと対になる導線
+         （正本 §2：埋める場所が読めない状態を作らない）。            */
       const cz = e.target.closest('[data-chip]');
       if (cz) {
         flushInputs();
-        const [kraw, value] = cz.dataset.chip.split('|');
-        const [kind, grp] = kraw.split(':');
+        const [kind, value] = cz.dataset.chip.split('|');
         const g = S.grpOf(kind);
         g.items = g.items || [];
         const at = g.items.findIndex(r => r.text === value);
@@ -2253,7 +2258,9 @@
         else {
           const row = S.addCurrentRow(kind);
           row.text = value;
-          if (kind === 'device' && grp) row.group = grp;
+          const idx = g.items.length - 1;
+          editing = { path: 'medical.' + kind + 's.items.' + idx + '.note', kind: 'line' };
+          scrollToEditingAfterRender = true;
         }
         S.save();
         render();
