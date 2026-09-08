@@ -667,10 +667,13 @@
       .concat((dvItems || []).map(r => ({ row: r, filled: true })))
       .concat((trItems || []).map(r => ({ row: r, filled: false })));
 
-    /* 図は viewBox 0 0 380 250。素材（151×321）は縦を 236 に収まる
-       よう縮めて中央へ置く。左右に 122 幅のカード欄。 */
-    const VB_W = 380, VB_H = 250;
-    const BODY_H = 236;
+    /* 図は viewBox 0 0 380 280。素材（151×321）は縦を 264 に収まる
+       よう縮めて中央へ置く。左右に 122 幅のカード欄。左面が右面の
+       連絡先より短く、下に余白が空きがちなので、図そのものを一回り
+       大きく取って上下の間合いも広げてある（勘で詰めるのではなく、
+       縦寸を一段だけ上げた）。 */
+    const VB_W = 380, VB_H = 280;
+    const BODY_H = 264;
     const BS = BODY_H / BODY_VB.h;               /* 素材の縮尺 */
     const OX = VB_W / 2 - (BODY_VB.w * BS) / 2;  /* 素材の左端 x */
     const OY = (VB_H - BODY_H) / 2;              /* 素材の上端 y */

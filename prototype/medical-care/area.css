@@ -604,7 +604,7 @@ button.st:hover{filter:brightness(.97)}
    変えたいま、その役目はマップが果たす。上段とマップは縦に置くだけ。 */
 .sf-sec{container-type:inline-size}
 .cmap{display:flex;flex-direction:column;align-items:stretch;
-  gap:0;padding:4px 0 2px}
+  gap:0;padding:6px 0 6px}
 .cmap-clb{display:flex;align-items:center;gap:5px;margin-bottom:7px;
   font-size:10px;font-weight:600;color:var(--ink3);letter-spacing:.07em}
 .cmap-clb svg{color:var(--stamp);flex:none}
@@ -643,7 +643,7 @@ button.st:hover{filter:brightness(.97)}
 .cmap-none:hover{color:var(--gr2)}
 
 /* 病名の束と、下のマップの間。 */
-.cmap-top{padding-bottom:10px}
+.cmap-top{padding-bottom:16px}
 
 /* ── 体の処置マップ ───────────────────────────────────
    医療機器・続けている処置を、人体シルエットに刺したピンで見せる
@@ -654,7 +654,7 @@ button.st:hover{filter:brightness(.97)}
    図は viewBox 0 0 340 250。シルエットは中央、右半分を反転コピー。 */
 .cmap-mapwrap{display:flex;justify-content:center}
 .bmap{cursor:pointer;width:100%}
-.bmap-svg{display:block;width:100%;max-width:470px;height:auto;margin:0 auto}
+.bmap-svg{display:block;width:100%;max-width:512px;height:auto;margin:0 auto}
 /* シルエット｜assets/body-front.svg（パブリックドメイン素材）。
    素材は黒塗りなので、ここで色を上書きする（inline style を持つ
    パスもあるので !important で押さえる）。 */
