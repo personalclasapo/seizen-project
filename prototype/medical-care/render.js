@@ -1,14 +1,14 @@
 /* SeiZen プロトタイプ｜医療・介護の描画
    ------------------------------------------------------------------
    画面は state.js の事実を描いた結果。医療ゾーン（手帳）と介護ゾーン
-   （ベッド）を両方描く。
+   （連絡ボード）を両方描く。
 
    書いてある場所がそのまま入力欄になる（銀行口座・保険・契約デジタル
    と同じ手つき）。欄をひとつ押せばその場で書き換えられ、節見出しの
    鉛筆を押せばその節をまとめて開く。状態バッジは押すと次の状態へ
    回る（確認済み→未確認→確認中→該当なし）。
 
-   造形は医療＝手帳、介護＝ベッド（正本 §4-2）。通帳・証券フォルダ
+   造形は医療＝手帳、介護＝連絡ボード（2026-09-08 ユーザー承認）。通帳・証券フォルダ
    とは別の骨格でよい。ここで作った形を他領域へ機械的に持ち出さない
    （正本 §13）。                                                    */
 (function (S) {
@@ -46,10 +46,9 @@
     memo:     ['medical.memo'],
     visit:    ['medical.clinics'],
     medsrc:   ['medical.medSources'],
-    level:   ['care.level', 'care.place'],
+    level:   ['care.level'],
     manager: ['care.manager.'],
     service: ['care.services'],
-    know:    ['care.notes'],
     cpapers: ['care.papers']
   };
   function inSection(key, path) {
@@ -66,18 +65,47 @@
   const svgIc = (d, w) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
     'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="' +
     (w || 18) + '" height="' + (w || 18) + '">' + d + '</svg>';
+  /* 塗り面のグリフ（サービス表の行頭）。currentColor を fill に使う。 */
+  const fillIc = (d, w) => '<svg viewBox="0 0 24 24" fill="currentColor" width="' +
+    (w || 18) + '" height="' + (w || 18) + '">' + d + '</svg>';
 
-  /* 型ごとの記号。放射図のカードと週の帯に出る。 */
+  /* サービス表の行頭アイコン。ここは白チップの線グリフ（節見出し）
+     とは役割が別――「4種類のサービスがある」を色で見分けさせる塗り
+     面のしるし（正本モック `介護イメージ.png` どおり）。currentColor
+     を塗りに使い、系統色（.c-home など）で色が変わる。               */
   const SV_IC = {
-    home:    '<path d="M4 11 12 4.5 20 11"/><path d="M6 9.6V19h12V9.6"/><path d="M10.2 19v-4.4h3.6V19"/>',
-    out:     '<rect x="3" y="6.5" width="14" height="9" rx="1.6"/><path d="M17 9.5h2.5L21 12v3.5h-4"/>' +
-             '<circle cx="7" cy="17" r="1.7"/><circle cx="17.5" cy="17" r="1.7"/>',
-    equip:   '<circle cx="12" cy="12" r="7"/><path d="M12 7.5v9M7.5 12h9"/>',
-    support: '<circle cx="8.6" cy="9" r="2.5"/><circle cx="15.6" cy="9" r="2.5"/>' +
-             '<path d="M3.5 18.5c0-2.6 2.3-4.4 5.1-4.4M20.5 18.5c0-2.6-2.3-4.4-5.1-4.4"/>'
+    home: '<path d="M12 3.2 3.4 10.4a1 1 0 0 0-.4.8V20a1 1 0 0 0 1 1h5v-5.5a3 3 0 0 1 6 0V21h5a1 1 0 0 0 1-1v-8.8a1 1 0 0 0-.4-.8Z"/>',
+    out:  '<path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h8A1.5 1.5 0 0 1 15 6.5V8h2.6a1.5 1.5 0 0 1 1.3.8l1.5 2.7a1.5 1.5 0 0 1 .2.7v3.3a1 1 0 0 1-1 1h-1a2.4 2.4 0 0 0-4.8 0H10a2.4 2.4 0 0 0-4.8 0h-1a1 1 0 0 1-1-1v-8Z" />' +
+          '<path d="M6 8.4h3.2v2.4H6Zm5 0h3v2.4h-3Zm4.7 0h1.5l1.2 2.4h-2.7Z" fill="#fff"/>' +
+          '<circle cx="7.6" cy="17.4" r="1.5"/><circle cx="15.4" cy="17.4" r="1.5"/>',
+    /* 配食＝皿＋カトラリー。フォークとナイフは Openclipart の CC0 素材
+       （`assets/care-cutlery.svg` / `care-cutlery.README.md`）から。
+       元 viewBox 276.285×286.559 を 24 系へ収める。皿だけ円で描き、
+       その左右に置く――自前のベジェで歯の間隔を詰め始めない。      */
+    meal: '<circle cx="12" cy="12" r="6.6" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.9"/>' +
+          '<circle cx="12" cy="12" r="3.4" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.2" stroke-opacity=".55"/>' +
+          '<g transform="translate(1.15 2.2) scale(0.0655)">' +
+            '<path d="m45.476 281.86c0.009 2.584-2.099 4.699-4.684 4.699h-20.513c-2.585 0-4.668-2.115-4.629-4.699l2.56-168.01c0.039-2.584 2.186-4.7 4.771-4.7h17.189c2.585 0 4.708 2.116 4.717 4.7l0.589 168.01z"/>' +
+            '<path d="m57.017 0c-2.109 0-3.834 1.726-3.834 3.833v51.469c0 2.109-1.496 3.833-3.326 3.833-1.829 0-3.326-1.724-3.326-3.833v-51.469c0-2.107-1.725-3.833-3.833-3.833h-3.964c-2.109 0-3.834 1.726-3.834 3.833v51.469c0 2.109-1.495 3.833-3.323 3.833s-3.323-1.724-3.323-3.833v-51.469c-0.001-2.107-1.726-3.833-3.834-3.833h-3.968c-2.108 0-3.833 1.726-3.833 3.833v51.469c0 2.109-1.496 3.833-3.324 3.833s-3.324-1.724-3.324-3.833v-51.469c0-2.107-1.725-3.833-3.834-3.833h-2.304c-2.108 0-3.833 1.726-3.833 3.833v113.89c0 2.109 1.725 3.833 3.833 3.833h55.484c2.108 0 3.833-1.725 3.833-3.833v-113.89c0.001-2.104-1.724-3.83-3.833-3.83h-2.3z"/>' +
+          '</g>' +
+          '<g transform="translate(4.72 2.2) scale(0.0655)">' +
+            '<path d="m276.28 174.43c0.101 2.072-1.384 4.426-3.297 5.23l-32.008 13.447c-1.912 0.805-3.478-0.236-3.478-2.311v-89.376-7.543-89.375c0-2.074 1.122-3.771 2.494-3.771s3.614 0 4.985 0 2.963 1.63 3.541 3.624 17.97 62.084 21.294 85.082c3.57 24.563 6.49 84.993 6.49 84.993z"/>' +
+            '<path d="m272.31 282.88c0.048 2.021-1.566 3.674-3.588 3.674h-22.56c-2.021 0-3.663-1.652-3.649-3.674l0.687-101.07c0.015-2.021 1.68-3.674 3.7-3.674h19.24c2.021 0 3.715 1.652 3.763 3.674l2.41 101.07z"/>' +
+          '</g>',
+    /* 生活支援＝バケツ。参考画像はほうきだが、18px に耐える CC0 の
+       ほうきが無く、自前のベジェは人体ループになる（RESEARCH.md）。
+       台形＋口の楕円＋半円の取っ手で「家事の道具」として通る。     */
+    life: '<path d="M4.8 8.4h14.4l-1.5 11.1a2 2 0 0 1-2 1.7H8.3a2 2 0 0 1-2-1.7Z"/>' +
+          '<ellipse cx="12" cy="8.4" rx="7.2" ry="1.9" fill="none" ' +
+            'stroke="currentColor" stroke-width="1.7"/>' +
+          '<path d="M7.4 8a4.6 4.6 0 0 1 9.2 0" fill="none" ' +
+            'stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    equip: '<path d="M8 3.4a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4Z"/>' +
+           '<path d="M6.6 8.7A2 2 0 0 0 5 10.6l-.5 3.1a6 6 0 1 0 6.9 8.3l-2-1a3.9 3.9 0 1 1-3.6-5.5l.3-1.8 3.5 2.3a2 2 0 0 0 1.1.3H16v-2h-4.6L7.9 9.6a2 2 0 0 0-1.3-.9Z"/>' +
+           '<path d="M17 20.5 15 15h-2.2l2.3 6.2a1 1 0 0 0 .9.65H20v-2h-2.5Z"/>'
   };
-  const PERSON_IC = '<circle cx="12" cy="7.6" r="3.5"/>' +
-    '<path d="M4.8 20.5c0-4 3.2-7 7.2-7s7.2 3 7.2 7"/>';
   /* 顔写真のプレースホルダー。写真が未登録のあいだ、枠の中に置く
      本人のしるし（正本 §11：空欄と該当なしを同じにしない――ここは
      「まだ貼っていない」欄なので、空白ではなく人の形を残す）。 */
@@ -85,21 +113,62 @@
     '<circle cx="36" cy="28" r="13" fill="#c8bfa6"/>' +
     '<path d="M13 66c0-13 10-22 23-22s23 9 23 22Z" fill="#c8bfa6"/>' +
     '</svg>';
-  /* 節見出しの記号。番号のかわりに、その節が何の話かを記号で言う。
-     介護側（careSection）は svgIc() 経由のむき出しの線画のまま。
-     医療の左面（sf-glb）は右面の場面カードと同じ白チップ＋緑線の
-     部品（headChip）に包むので、中身も揃える――輪郭を fill-opacity
-     の面で1枚敷き、その上を線が通る2層構成にする（SCENE_IC.visit
-     と同じ密度）。ここだけ各 path が stroke/fill を自前で持つ。 */
-  const WARN_IC  = '<path d="M12 3.5 2 20.5h20L12 3.5Z"/><path d="M12 10v4.6M12 17.6v.1"/>';
-  const TREAT_IC = '<path d="M4.5 15.5 15.5 4.5l4 4-11 11H4.5Z"/><path d="M12.5 7.5l4 4"/>' +
-                   '<path d="M3 21h8"/>';
-  const PILL_IC  = '<rect x="3" y="9.5" width="18" height="9" rx="4.5" ' +
-                   'transform="rotate(-40 12 14)"/><path d="M9 8.5 15 15"/>';
-  const DOC_IC   = '<path d="M6.5 3h8l4 4v14h-12Z"/><path d="M14.5 3v4h4"/>' +
-                   '<path d="M9 12h6M9 15.5h4"/>';
-  /* 要介護度＝制度上の区分。段階を表す階段の記号。 */
-  const LEVEL_IC = '<path d="M3.5 19h5v-4h5v-4h5.5"/><path d="M19 11v8H3.5"/>';
+  /* 節見出しの記号。医療の左面・右面と同じく、白チップ＋緑線の部品
+     （headChip）に包む。中身も揃える――輪郭を fill-opacity の面で
+     1枚敷き、その上を線が通る2層構成（SCENE_IC.visit と同じ密度）。
+     各 path が stroke/fill を自前で持つ。介護の4節ぶん。            */
+
+  /* 介護認定｜チェックの入った書類。制度が認めたことのしるし。 */
+  const CARE_LEVEL_IC =
+    '<path d="M6 3.2h8.5L19 7.6v13.2H6Z" fill="currentColor" fill-opacity=".12" ' +
+      'stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<path d="M14 3.4v4.4h4.6" fill="none" stroke="currentColor" stroke-width="1.5" ' +
+      'stroke-linejoin="round"/>' +
+    '<path d="M8.5 13.6l2.2 2.2 4-4.4" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>';
+
+  /* 担当者・相談先｜二人。介護の相談の窓口。 */
+  const CARE_PERSON_IC =
+    '<circle cx="9" cy="8.4" r="3" fill="currentColor" fill-opacity=".12" ' +
+      'stroke="currentColor" stroke-width="1.5"/>' +
+    '<circle cx="16" cy="9" r="2.4" fill="currentColor" fill-opacity=".12" ' +
+      'stroke="currentColor" stroke-width="1.4"/>' +
+    '<path d="M3.6 19.4c0-3 2.4-5.2 5.4-5.2s5.4 2.2 5.4 5.2" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
+    '<path d="M15 14.3c2.6.1 4.6 2.1 4.6 4.8" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>';
+
+  /* 利用している支援｜寄り添うかたち（ハート）。参考画像の見出し記号。 */
+  const CARE_HEART_IC =
+    '<path d="M12 20.3 4.6 13a4.7 4.7 0 0 1 6.6-6.7l.8.8.8-.8A4.7 4.7 0 0 1 19.4 13Z" ' +
+      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.6" ' +
+      'stroke-linejoin="round"/>';
+
+  /* 書類やもの｜綴じた書類。所在をまとめる場所。 */
+  const CARE_DOC_IC =
+    '<rect x="4.5" y="4" width="12" height="16" rx="1.6" ' +
+      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.6"/>' +
+    '<path d="M8 4v16" fill="none" stroke="currentColor" stroke-width="1.4"/>' +
+    '<path d="M10.5 8.5h4M10.5 12h4" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.5" stroke-linecap="round"/>' +
+    '<path d="M17 7.5l2.4.7-3 10.3-2.4-.7" fill="currentColor" fill-opacity=".12" ' +
+      'stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>';
+
+  /* 小さなしるし。メモの付箋アイコン（文字ラベルは置かない）と、
+     所在のピン。どちらも本文の中に添える。 */
+  const MEMO_MARK = '<svg class="mk mk-memo" viewBox="0 0 16 16" aria-hidden="true">' +
+    '<path d="M3 2.2h7l3.5 3.5V13a.8.8 0 0 1-.8.8H3A.8.8 0 0 1 2.2 13V3A.8.8 0 0 1 3 2.2Z" ' +
+      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.1" ' +
+      'stroke-linejoin="round"/>' +
+    '<path d="M9.6 2.3v3.6h3.6" fill="none" stroke="currentColor" stroke-width="1.1" ' +
+      'stroke-linejoin="round"/>' +
+    '<path d="M4.6 8.4h5M4.6 10.6h3.2" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.1" stroke-linecap="round"/></svg>';
+  const PIN_MARK = '<svg class="mk mk-pin" viewBox="0 0 16 16" aria-hidden="true">' +
+    '<path d="M8 1.6a4.6 4.6 0 0 0-4.6 4.6c0 3.2 4.6 8.2 4.6 8.2s4.6-5 4.6-8.2A4.6 4.6 0 0 0 8 1.6Z" ' +
+      'fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-width="1.1" ' +
+      'stroke-linejoin="round"/>' +
+    '<circle cx="8" cy="6.2" r="1.7" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>';
 
   /* 「現在の医療状態」｜バイタルモニターの画面と波形。画面の角丸を
      面取りで敷き、中を脈波の折れ線が通る（headChip 用、各 path が
@@ -255,52 +324,37 @@
 
   /* ══ 医療｜手帳 ═══════════════════════════════════════ */
 
-  /* ── 手帳の造り ─────────────────────────────────────
-     手帳を「緑の角丸矩形」で済ませない（CLAUDE.md）。綴じのある本
-     として組む。
-
-       1) 背（スパイン）… 左端の一段濃い帯と、そこに走る綴じ目
-       2) 綴じ糸        … 背に等間隔で並ぶステッチ
-       3) 型押しの罫    … 表紙の内側を回る細い箔の線
-       4) しおり        … 上から垂れる細いリボン
-
-     背は縦に伸びてよい（本が厚くなるだけ）ので幅なりに伸ばし、
-     しおりの結び目のように形が決まっているものは原寸で置く。      */
+  /* 参考画像「外観.png」の薄いカバーと紙の重なりを抽出。
+     外周は全幅の約2%、紙の小口は約0.4%。内容の高さに追従する
+     装飾層。文字や操作部品は伸縮させず、通常のHTMLで重ねる。 */
   function bookBinding() {
-    return '<svg class="bk-spine" viewBox="0 0 46 400" preserveAspectRatio="none" ' +
-      'aria-hidden="true" focusable="false">' +
-      '<defs>' +
-        '<linearGradient id="bkSp" x1="0" y1="0" x2="1" y2="0">' +
-          '<stop offset="0" stop-color="#1c3f2e"/>' +
-          '<stop offset=".45" stop-color="#2c5a42"/>' +
-          '<stop offset=".82" stop-color="#1b3d2c"/>' +
-          '<stop offset="1" stop-color="#2f6046"/>' +
-        '</linearGradient>' +
-      '</defs>' +
-      /* 背の地。 */
-      '<rect width="46" height="400" fill="url(#bkSp)"/>' +
-      /* 綴じの溝。背と表紙の境。 */
-      '<path d="M38 0v400" stroke="#14301F" stroke-width="3" stroke-opacity=".8"/>' +
-      '<path d="M41.5 0v400" stroke="#4a7d5e" stroke-width="1.5" stroke-opacity=".5"/>' +
-      '</svg>' +
-      /* 綴じ糸。等間隔のステッチ。糸1目の長さは本の高さで変わらない
-         ので、伸ばさずに <pattern> で縦へ繰り返す。 */
-      '<svg class="bk-stitch" aria-hidden="true">' +
-        '<defs>' +
-          '<pattern id="bkStitch" x="0" y="0" width="10" height="24" ' +
-            'patternUnits="userSpaceOnUse">' +
-            '<path d="M5 5v13" stroke="#8fae97" stroke-opacity=".5" ' +
-              'stroke-width="2.4" stroke-linecap="round"/>' +
-          '</pattern>' +
-        '</defs>' +
-        '<rect width="100%" height="100%" fill="url(#bkStitch)"/>' +
-      '</svg>' +
-      /* しおり。上から垂れ、先が V に切られている。 */
-      '<svg class="bk-ribbon" viewBox="0 0 22 96" aria-hidden="true">' +
-        '<path d="M0 0h22v96l-11-11-11 11Z" fill="#c58c55"/>' +
-        '<path d="M0 0h22v10H0Z" fill="#a97243" fill-opacity=".55"/>' +
-        '<path d="M14 0h8v96l-4-4Z" fill="#000" fill-opacity=".12"/>' +
-      '</svg>';
+    return `<svg class="bk-binding" viewBox="0 0 1000 1000"
+      preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="bkJacket" x1="0" y1="0" x2="1" y2="1">
+          <stop stop-color="#dbe9df" stop-opacity=".8"/>
+          <stop offset=".5" stop-color="#a9c5b4" stop-opacity=".72"/>
+          <stop offset="1" stop-color="#cbded0" stop-opacity=".9"/>
+        </linearGradient>
+        <linearGradient id="bkLeaf" x1="0" y1="0" x2="0" y2="1">
+          <stop stop-color="#fffef9"/><stop offset="1" stop-color="#f5f3e9"/>
+        </linearGradient>
+      </defs>
+      <rect x="2" y="2" width="996" height="996" rx="22"
+        fill="url(#bkJacket)" stroke="#9cb5a6" vector-effect="non-scaling-stroke"/>
+      <rect x="7" y="6" width="986" height="987" rx="18"
+        fill="none" stroke="#ffffff" stroke-opacity=".8" vector-effect="non-scaling-stroke"/>
+      <rect x="15" y="14" width="970" height="972" rx="9"
+        fill="#93b5a0" fill-opacity=".56"/>
+      <path d="M24 26 Q270 16 526 27 Q760 16 976 26 L976 977
+        Q760 986 526 977 Q260 986 24 978 Z" fill="#dedfd0" stroke="#b7bdaa"
+        vector-effect="non-scaling-stroke"/>
+      <path d="M21 22 Q270 14 526 24 Q760 14 979 22 L979 973
+        Q760 982 526 973 Q260 982 21 974 Z" fill="url(#bkLeaf)" stroke="#d0d1bf"
+        vector-effect="non-scaling-stroke"/>
+      <path d="M25 970 Q275 977 526 969 Q770 977 975 969"
+        fill="none" stroke="#fffef9" vector-effect="non-scaling-stroke"/>
+    </svg>`;
   }
 
   /* 場面。右面の単位はこれ1種類だけ。「いつ・何が起きたとき」に
@@ -1560,16 +1614,7 @@
     medEl.innerHTML =
       '<div class="bk">' +
         bookBinding() +
-        /* 表紙。本人の識別情報は左エリア（leftFace）が持つので、
-           ここは表紙の題だけ。同じ事実を表紙と左面の2箇所に出すと、
-           どちらが正かが読み手に決められない。 */
-        '<div class="bk-cover">' +
-          '<div class="bk-title">' +
-            '<h4>医療の記録</h4>' +
-            '<p>この記録があれば、はじめての場所でも安心して診てもらえます。</p>' +
-          '</div>' +
-        '</div>' +
-
+        '<div class="bk-paper">' +
         /* 見開き。手帳は開くと2面ある。左右で役割を変える：
              左 … 本人そのもの。個人情報・現在の医療状態。器を持たせず、
                   罫と文字の大小だけで置く。救急でまず読むもの（病名・
@@ -1616,344 +1661,249 @@
             '</div>' +
           '</div>' +
         '</div>' +
+        '</div>' +
       '</div>';
   }
 
-  /* ══ 介護｜ベッド ═══════════════════════════════════════ */
+  /* ══ 介護｜連絡ボード ═════════════════════════════════
+     造形の正本は `prototype/assets/介護イメージ.png`。木の額縁に、
+     真鍮ネジで留めた乳白のプレートが貼ってあるボード。iPhone フレーム
+     と同じ密度で、額・面取り・ダボ・プレート・ネジを層として重ねる
+     （CLAUDE.md）。div＋border-radius＋グラデで代用しない。         */
 
-  /* ── ベッドの絵 ─────────────────────────────────────
-     介護ベッドを描く。角丸の矩形に色を敷いただけでは「茶色い板」に
-     しかならないので、物として組む（CLAUDE.md）。
+  /* ボードの器。額縁は「木の枠」という1つの物なので、輪郭・木目・
+     合口・面取り・背板・ダボを **1枚の SVG** の層として重ねる
+     （CLAUDE.md の iPhone フレームと同じ組み方）。div＋border-radius＋
+     グラデでは、額の見附に厚みが出ず、板が手前に浮いて見える。
 
-       1) 支柱（左右）と笠木、その間に縦の桟 … ヘッドボードの骨格
-       2) マットレス と 掛け布団の折り返し   … 枕が載る面
-       3) 柵（サイドレール）                 … 介護ベッドの記号
-       4) リモコン（ボタン＋コード）         … 介護が必要な生活の記号
+     寸法は正本 `介護イメージ.png` の実測から引く
+     （`assets/care-board-motifs.RESEARCH.md`）：
+       ・見附＝ボード幅の 2.9%（実測 36/1223）
+       ・面取り＝見附のおよそ 1/4.5（実測 8px）
+     木目の明暗は実測 Δ78（R=153〜231）。従来の Δ3 の縞では平板だった。
 
-     枕は HTML 側（.bed-pillow）が持つ。文字が載るので、絵の中では
-     なく上に重ねる。ここで描くのはその「下地」まで。
+     引き伸ばしに耐えるよう、額は `preserveAspectRatio="none"` の
+     引き伸ばす層（木地・背板）と、比率を保つ層（ダボ・合口）に
+     分ける――ダボを一緒に引き伸ばすと楕円に化ける。               */
 
-     幅は preserveAspectRatio="none" で伸ばさず、slice で中央を保つ。
-     縦は固定寸なので、幅が変わっても桟や柵の太さが歪まない。       */
-  /* 支柱1本。旋盤で削ったくびれを持つ柱＋玉飾り。左右で使い回す。
-     平たいカプセルにしないため、輪郭を径の変化で作る：
-       玉 → 首 → 肩（テーパー）→ 胴 → くびれ → 台座
-     ハイライトは1本の縦帯（円柱の照り）と、玉の小さな点。         */
-  function bedPost() {
-    return '<defs>' +
-      /* 円柱の陰影。左に回り込みの暗部、やや左寄りに芯のハイライト、
-         右に落ち込み。段を多く取るほど丸く見える。 */
-      '<linearGradient id="bdPost2" x1="0" y1="0" x2="1" y2="0">' +
-        '<stop offset="0" stop-color="#7d5c37"/>' +
-        '<stop offset=".1" stop-color="#a17c4f"/>' +
-        '<stop offset=".3" stop-color="#d9bd97"/>' +
-        '<stop offset=".42" stop-color="#efdcc0"/>' +
-        '<stop offset=".56" stop-color="#c9a878"/>' +
-        '<stop offset=".8" stop-color="#9a7549"/>' +
-        '<stop offset="1" stop-color="#785634"/>' +
-      '</linearGradient>' +
-      '<filter id="bdPostSh" x="-40%" y="-10%" width="180%" height="130%">' +
-        '<feGaussianBlur stdDeviation="4"/>' +
-      '</filter>' +
-      '<radialGradient id="bdKnob" cx=".36" cy=".3" r=".78">' +
-        '<stop offset="0" stop-color="#f2e0c6"/>' +
-        '<stop offset=".5" stop-color="#d3b088"/>' +
-        '<stop offset="1" stop-color="#9a7648"/>' +
-      '</radialGradient>' +
-      '</defs>' +
-      /* 柱が背板へ落とす影。柱を板より手前に出す。 */
-      '<path d="M26 44c-3 8-4 16-4 24v104c0 10 1 16 4 22h18c3-6 4-12 4-22V68c0-8-1-16-4-24Z" ' +
-        'fill="#6b4f2c" fill-opacity=".4" filter="url(#bdPostSh)"/>' +
-      /* 胴。径が上下で変わる輪郭。左右対称の1本のパスで削り出す。 */
-      '<path d="M22 44c-3 8-4 16-4 24v104c0 10 1 16 4 22h16c3-6 4-12 4-22V68c0-8-1-16-4-24Z" ' +
-        'fill="url(#bdPost2)"/>' +
-      /* くびれ（下寄り）。径がすぼまる部分に陰を落として溝に見せる。 */
-      '<path d="M18 150c4 3 20 3 24 0v10c-4 3-20 3-24 0Z" fill="#8a6740" fill-opacity=".55"/>' +
-      /* 肩の輪。玉の下の首飾り。 */
-      '<ellipse cx="30" cy="44" rx="15" ry="5" fill="#c9a677"/>' +
-      '<ellipse cx="30" cy="40" rx="12" ry="4" fill="#dcc09a"/>' +
-      /* 玉飾り。球に見せるには、明部→暗部の境（ターミネータ）と、
-         下からの照り返し、そして首への落ち影が要る。 */
-      '<circle cx="30" cy="22" r="18" fill="url(#bdKnob)"/>' +
-      /* 下の照り返し。球の底が完全に黒く沈まないようにする。 */
-      '<path d="M14 28a18 18 0 0 0 32 0 18 18 0 0 1-32 0Z" fill="#e8cba4" fill-opacity=".5"/>' +
-      /* 首への落ち影。 */
-      '<ellipse cx="30" cy="39" rx="13" ry="4" fill="#7d5c37" fill-opacity=".4" ' +
-        'filter="url(#bdPostSh)"/>' +
-      '<circle cx="23.5" cy="15" r="5.5" fill="#fdf6e8" fill-opacity=".8"/>' +
-      '<circle cx="21.5" cy="13" r="2.2" fill="#fffdf7"/>' +
-      /* 円柱の照り。縦に細く1本。 */
-      '<path d="M25 52v140" stroke="#f4e3c8" stroke-opacity=".4" stroke-width="4" ' +
-        'stroke-linecap="round"/>' +
-      /* 台座（マットレスに隠れる手前まで）。 */
-      '<path d="M17 192h26v12H17Z" fill="#a5804f"/>';
+  /* 柾目。幅と濃度の違う縦筋を不等間隔に置く。等間隔の縞は布に見える
+     ので、素数寄りの間隔でずらして「木」にする。座標は乱数ではなく
+     固定（再描画でちらつかせない）。                                */
+  const WOOD_GRAIN = (() => {
+    const seeds = [
+      [1.5, 1.0, .10], [4.2, 0.6, .06], [7.0, 1.6, .13], [9.3, 0.5, .05],
+      [12.8, 1.1, .09], [15.1, 0.7, .07], [18.6, 1.9, .12], [21.4, 0.6, .05],
+      [24.9, 1.3, .10], [27.2, 0.8, .06], [30.7, 1.7, .13], [33.5, 0.5, .05],
+      [36.9, 1.2, .09], [39.8, 0.9, .07], [43.1, 1.5, .11], [46.0, 0.6, .05],
+      [49.4, 1.8, .12], [52.3, 0.7, .06], [55.8, 1.1, .09], [58.6, 1.4, .10],
+      [62.0, 0.6, .05], [64.9, 1.6, .12], [68.2, 0.9, .07], [71.5, 1.2, .09],
+      [74.8, 1.9, .13], [77.6, 0.5, .05], [81.0, 1.3, .10], [84.2, 0.8, .06],
+      [87.7, 1.5, .11], [90.5, 0.7, .06], [93.9, 1.7, .12], [96.8, 1.0, .08]
+    ];
+    return seeds.map(([x, w, o]) =>
+      '<rect x="' + x + '" y="0" width="' + w + '" height="100" ' +
+      'fill="#6b4426" fill-opacity="' + o + '"/>').join('');
+  })();
+
+  /* 額の1辺（桟）。木地＋柾目＋両縁の面取り。木目は材の長手に走るので、
+     縦桟と横桟で向きが変わる――`vertical` で筋の向きを入れ替える。   */
+  function woodRail(x, y, w, h, vertical) {
+    const g = vertical
+      /* 縦桟：筋は上下に走る。100×100 の筋を桟の幅へ潰して敷く。 */
+      ? '<g transform="translate(' + x + ' ' + y + ') scale(' +
+        (w / 100) + ' ' + (h / 100) + ')">' + WOOD_GRAIN + '</g>'
+      /* 横桟：筋は左右に走る。90°回して同じ筋を使う。 */
+      : '<g transform="translate(' + (x + w) + ' ' + y + ') rotate(90) scale(' +
+        (h / 100) + ' ' + (w / 100) + ')">' + WOOD_GRAIN + '</g>';
+    return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h +
+        '" fill="url(#cbfWood)"/>' + g;
   }
 
-  function bedScene() {
-    return '<svg class="bed-svg" viewBox="0 0 900 300" preserveAspectRatio="none" ' +
-      'aria-hidden="true" focusable="false">' +
-      '<defs>' +
-        /* 柔らかい影。部品同士の隙間に落として前後を出す。 */
-        '<filter id="bdSoft" x="-20%" y="-20%" width="140%" height="150%">' +
-          '<feGaussianBlur stdDeviation="6"/>' +
-        '</filter>' +
-        '<filter id="bdSoft2" x="-30%" y="-30%" width="160%" height="170%">' +
-          '<feGaussianBlur stdDeviation="3"/>' +
-        '</filter>' +
-        /* 木目。乱流を横に引き伸ばして board の縞にする。 */
-        '<filter id="bdGrain" x="0" y="0" width="100%" height="100%">' +
-          '<feTurbulence type="fractalNoise" baseFrequency="0.9 0.012" ' +
-            'numOctaves="3" seed="7" result="n"/>' +
-          '<feColorMatrix in="n" type="saturate" values="0"/>' +
-        '</filter>' +
-        /* 木の面。上が明るく下が沈む。 */
-        '<linearGradient id="bdWood" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#d6b78f"/>' +
-          '<stop offset=".18" stop-color="#c9a479"/>' +
-          '<stop offset=".62" stop-color="#b78f61"/>' +
-          '<stop offset="1" stop-color="#9d7a4c"/>' +
-        '</linearGradient>' +
-        '<linearGradient id="bdPost" x1="0" y1="0" x2="1" y2="0">' +
-          '<stop offset="0" stop-color="#a8825a"/>' +
-          '<stop offset=".35" stop-color="#d3b48f"/>' +
-          '<stop offset="1" stop-color="#9c764d"/>' +
-        '</linearGradient>' +
-        /* 寝具。ほぼ白いが、影で面を出す。 */
-        '<linearGradient id="bdSheet" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#fdfbf6"/>' +
-          '<stop offset=".62" stop-color="#f3efe4"/>' +
-          '<stop offset="1" stop-color="#e2ddcd"/>' +
-        '</linearGradient>' +
-        '<linearGradient id="bdQuilt" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#e7eeec"/>' +
-          '<stop offset=".5" stop-color="#d3dedd"/>' +
-          '<stop offset="1" stop-color="#bcc9c9"/>' +
-        '</linearGradient>' +
-        /* 桟の溝。彫り込みは「暗い線＋その右の明るい線」の対で出す。 */
-        '<linearGradient id="bdGroove" x1="0" y1="0" x2="1" y2="0">' +
-          '<stop offset="0" stop-color="#8a6a42" stop-opacity=".55"/>' +
-          '<stop offset=".55" stop-color="#8a6a42" stop-opacity=".18"/>' +
-          '<stop offset="1" stop-color="#f0dcc0" stop-opacity=".5"/>' +
-        '</linearGradient>' +
-      '</defs>' +
+  function careBoardFrame() {
+    /* 実測由来（RESEARCH.md）。見附＝2.9%、面取り＝見附の約1/4.5。
+       viewBox は 0..100 の正方で持ち、CSS 側で額の実寸へ引き伸ばす。 */
+    const R = 2.9, B = R / 4.5;
+    /* ダボ（木の留め具）。桟の中央、四隅に。真円を保つため別レイヤー。 */
+    const peg = (cls) => '<span class="cbf-peg ' + cls + '">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+        '<circle cx="12" cy="12" r="10.5" fill="#c69a63"/>' +
+        '<circle cx="12" cy="12" r="10.5" fill="none" stroke="#7d5a35" ' +
+          'stroke-opacity=".5"/>' +
+        '<circle cx="9.2" cy="9.2" r="3.6" fill="#f0dab4" fill-opacity=".7"/>' +
+        '<circle cx="12" cy="12" r="10.5" fill="none" stroke="#000" ' +
+          'stroke-opacity=".10" stroke-width="1.6"/>' +
+      '</svg></span>';
 
-      /* 壁。ヘッドボードの背後。下端にかけて僅かに沈ませる。 */
-      '<rect width="900" height="300" fill="#efe7da"/>' +
-      '<rect y="150" width="900" height="60" fill="#e3d9c8" fill-opacity=".5"/>' +
-
-      /* ── ヘッドボード（横に伸びてよい部分）──
-         背板・笠木・桟・寝具は幅なりに伸びる。伸びても意味が壊れない
-         （板は横長になるだけ）。 */
-      /* 板が壁に落とす影。ぼかして、板を壁から浮かせる。 */
-      '<rect x="30" y="42" width="846" height="146" rx="8" fill="#7a5c34" ' +
-        'fill-opacity=".34" filter="url(#bdSoft)"/>' +
-      /* 背板。 */
-      '<rect x="20" y="26" width="860" height="150" rx="8" fill="url(#bdWood)"/>' +
-      /* 木目。板の上に薄く重ねる。 */
-      '<rect x="20" y="26" width="860" height="150" rx="8" filter="url(#bdGrain)" ' +
-        'opacity=".16" style="mix-blend-mode:multiply"/>' +
-      /* 上辺の受け光と下辺の沈み。通帳の表紙と同じ「縁ごとの光」。 */
-      '<path d="M28 28h844" stroke="#f4e0c2" stroke-opacity=".75" stroke-width="2.5"/>' +
-      '<path d="M28 174h844" stroke="#7d5f36" stroke-opacity=".55" stroke-width="3"/>' +
-      /* 落とし込みの内枠。彫り込みなので、上辺に濃い影・下辺に受け光。 */
-      '<rect x="44" y="46" width="812" height="112" rx="4" fill="#8a6a42" fill-opacity=".3" ' +
-        'filter="url(#bdSoft2)"/>' +
-      '<rect x="46" y="48" width="808" height="108" rx="3" fill="url(#bdWood)"/>' +
-      '<rect x="46" y="48" width="808" height="108" rx="3" filter="url(#bdGrain)" ' +
-        'opacity=".14" style="mix-blend-mode:multiply"/>' +
-      '<path d="M46 49.5h808" stroke="#6f5330" stroke-opacity=".5" stroke-width="3"/>' +
-      '<path d="M46 155h808" stroke="#f6e5c9" stroke-opacity=".5" stroke-width="2.5"/>' +
-      /* 縦の桟。溝は幅を持った帯（暗→明）で彫りに見せる。 */
-      '<g>' +
-        Array.from({ length: 12 }, (_, i) =>
-          '<rect x="' + (78 + i * 64) + '" y="52" width="5" height="100" ' +
-          'fill="url(#bdGroove)"/>').join('') +
-      '</g>' +
-      /* 笠木（上桟）。板の上に載る一本。手前に張り出すので、板へ影を落とす。
-         断面は丸いので、上に受け光・中ほどに芯・下に沈みの3段。 */
-      '<rect x="20" y="46" width="860" height="14" fill="#7a5c34" fill-opacity=".38" ' +
-        'filter="url(#bdSoft2)"/>' +
-      '<rect x="8" y="14" width="884" height="30" rx="9" fill="url(#bdWood)"/>' +
-      '<rect x="8" y="14" width="884" height="30" rx="9" filter="url(#bdGrain)" ' +
-        'opacity=".13" style="mix-blend-mode:multiply"/>' +
-      '<path d="M14 17h872" stroke="#f7e6cc" stroke-opacity=".85" stroke-width="3"/>' +
-      '<path d="M12 41.5h876" stroke="#6f5330" stroke-opacity=".6" stroke-width="3"/>' +
-
-      /* ── 寝具 ──
-         マットレス（厚みの側面つき）→ 敷きシーツ → 掛け布団の折り返し。
-         面の境に必ず段差を置いて、layer を見せる。 */
-      /* マットレスの上面（厚みの小口）。 */
-      '<rect x="0" y="176" width="900" height="26" fill="#f7f4ea"/>' +
-      '<path d="M0 201h900" stroke="#cec6b0" stroke-width="2"/>' +
-      /* ヘッドボードがマットレスへ落とす影。ぼかして接地させる。 */
-      '<rect x="0" y="172" width="900" height="16" fill="#8d7f63" fill-opacity=".42" ' +
-        'filter="url(#bdSoft)"/>' +
-      /* 敷きシーツ。 */
-      '<rect x="0" y="200" width="900" height="46" fill="url(#bdSheet)"/>' +
-      /* シーツの浅いしわ。間隔も丈も揃えない。 */
-      '<g fill="none" stroke="#cfc7b2" stroke-opacity=".65" stroke-width="1.6" stroke-linecap="round">' +
-        '<path d="M64 214c26 7 44 4 62-3"/>' +
-        '<path d="M286 210c18 9 39 7 52 1"/>' +
-        '<path d="M470 216c30 6 46 2 58-4"/>' +
-        '<path d="M690 212c22 8 41 5 56-2"/>' +
-      '</g>' +
-      /* 掛け布団の折り返し。記録（シーツ面）はこの下に続くので、絵の
-         側は「めくった縁」までを描き、下端で切る。 */
-      '<path d="M0 252c120-9 210 7 316 2 96-4 158-11 262-6 118 6 206-4 322-8v60H0Z" ' +
-        'fill="url(#bdQuilt)"/>' +
-      '<path d="M0 252c120-9 210 7 316 2 96-4 158-11 262-6 118 6 206-4 322-8v14' +
-        'c-116 4-204 14-322 8-104-5-166 2-262 6-106 5-196-11-316-2Z" ' +
-        'fill="#eef3f2" fill-opacity=".8"/>' +
-      /* 布団のひだ。長さも間隔も不揃いにする。 */
-      '<g fill="none" stroke="#a8b7b7" stroke-opacity=".5" stroke-width="1.8" stroke-linecap="round">' +
-        '<path d="M96 280c14 11 30 14 44 8"/>' +
-        '<path d="M243 286c9 8 21 11 31 7"/>' +
-        '<path d="M395 278c17 13 36 15 51 7"/>' +
-        '<path d="M596 284c12 9 26 12 38 7"/>' +
-      '</g>' +
-      '</svg>' +
-
-      /* ── 伸ばしてはいけない物 ──────────────────────
-         支柱の球飾りとリモコンは、伸ばすと楕円・平たい板になって
-         「何の絵か」が壊れる。幅に追従させず、左右の端と決まった
-         位置に原寸で置く（iPhone のステータスバーと同じ考え方）。 */
-      '<svg class="bed-post bed-post-l" viewBox="0 0 60 210" aria-hidden="true">' +
-        bedPost() + '</svg>' +
-      '<svg class="bed-post bed-post-r" viewBox="0 0 60 210" aria-hidden="true">' +
-        bedPost() + '</svg>' +
-      '<svg class="bed-remote-svg" viewBox="0 0 64 196" aria-hidden="true">' +
+    return '<div class="care-board-frame" aria-hidden="true">' +
+      '<svg class="cbf-svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
         '<defs>' +
-          '<linearGradient id="bdRem" x1="0" y1="0" x2="1" y2="0">' +
-            '<stop offset="0" stop-color="#d8d4c8"/>' +
-            '<stop offset=".3" stop-color="#f7f5ee"/>' +
-            '<stop offset="1" stop-color="#cbc7ba"/>' +
+          /* 木地の地色。実測 #d9ac81 / #ce945f を明暗に振る。 */
+          '<linearGradient id="cbfWood" x1="0" y1="0" x2="0.7" y2="1">' +
+            '<stop offset="0" stop-color="#e3b98d"/>' +
+            '<stop offset=".45" stop-color="#ce945f"/>' +
+            '<stop offset="1" stop-color="#dbab7a"/>' +
+          '</linearGradient>' +
+          /* 背板。桟より暗い下地。プレートのすき間で実測した #a06b3c
+             （額の木地 #ce945f より一段沈む＝板が奥にある）。 */
+          '<linearGradient id="cbfBoard" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0" stop-color="#9a6537"/>' +
+            '<stop offset=".5" stop-color="#a06b3c"/>' +
+            '<stop offset="1" stop-color="#986338"/>' +
+          '</linearGradient>' +
+          /* 額が背板へ落とす内影。 */
+          '<linearGradient id="cbfDropT" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0" stop-color="#3d2712" stop-opacity=".38"/>' +
+            '<stop offset="1" stop-color="#3d2712" stop-opacity="0"/>' +
+          '</linearGradient>' +
+          '<linearGradient id="cbfDropL" x1="0" y1="0" x2="1" y2="0">' +
+            '<stop offset="0" stop-color="#3d2712" stop-opacity=".26"/>' +
+            '<stop offset="1" stop-color="#3d2712" stop-opacity="0"/>' +
           '</linearGradient>' +
         '</defs>' +
-        /* コード。たわみを持たせて2度カーブさせる。 */
-        '<path d="M40 0c1 22-16 26-19 44-2 14 3 22 3 32" fill="none" stroke="#a8a294" ' +
-          'stroke-width="3.4" stroke-linecap="round"/>' +
-        /* 本体が板へ落とす影。掛かっていることを影で示す。 */
-        '<rect x="10" y="80" width="42" height="98" rx="12" fill="#6b5f45" fill-opacity=".3"/>' +
-        /* 本体 */
-        '<rect x="5" y="76" width="42" height="98" rx="12" fill="url(#bdRem)" ' +
-          'stroke="#a39d8d" stroke-width="2"/>' +
-        /* 上端の吊り金具。 */
-        '<rect x="19" y="70" width="14" height="9" rx="4" fill="#b3ada0"/>' +
-        /* 画面の窓。少し凹ませる。 */
-        '<rect x="12" y="85" width="28" height="18" rx="4" fill="#7f9384"/>' +
-        '<rect x="12" y="85" width="28" height="6" rx="3" fill="#000" fill-opacity=".14"/>' +
-        /* ボタン。上下（昇降）は大きく、その他は小さく。 */
-        '<g>' +
-          '<rect x="13" y="111" width="26" height="12" rx="6" fill="#c3bcac"/>' +
-          '<path d="M22 119l4-4 4 4" fill="none" stroke="#7d7767" stroke-width="2" ' +
-            'stroke-linecap="round" stroke-linejoin="round"/>' +
-          '<rect x="13" y="128" width="26" height="12" rx="6" fill="#c3bcac"/>' +
-          '<path d="M22 133l4 4 4-4" fill="none" stroke="#7d7767" stroke-width="2" ' +
-            'stroke-linecap="round" stroke-linejoin="round"/>' +
-          '<rect x="13" y="147" width="11" height="9" rx="4.5" fill="#cdc7b8"/>' +
-          '<rect x="28" y="147" width="11" height="9" rx="4.5" fill="#cdc7b8"/>' +
-          '<rect x="13" y="160" width="11" height="9" rx="4.5" fill="#cdc7b8"/>' +
-          '<rect x="28" y="160" width="11" height="9" rx="4.5" fill="#cdc7b8"/>' +
+
+        /* ① 背板（いちばん奥）。 */
+        '<rect x="0" y="0" width="100" height="100" fill="url(#cbfBoard)"/>' +
+        /* 額が落とす影。上と左を濃く（光は左上から）。 */
+        '<rect x="' + R + '" y="' + R + '" width="' + (100 - 2 * R) +
+          '" height="4.5" fill="url(#cbfDropT)"/>' +
+        '<rect x="' + R + '" y="' + R + '" width="3.2" height="' + (100 - 2 * R) +
+          '" fill="url(#cbfDropL)"/>' +
+
+        /* ② 額の4辺。長手方向に木目が走る。 */
+        woodRail(0, 0, 100, R, false) +               /* 上桟（横） */
+        woodRail(0, 100 - R, 100, R, false) +         /* 下桟（横） */
+        woodRail(0, 0, R, 100, true) +                /* 左桟（縦） */
+        woodRail(100 - R, 0, R, 100, true) +          /* 右桟（縦） */
+
+        /* ③ 隅の合口（45°）。木の枠が留め接ぎで組まれている線。 */
+        '<g stroke="#6f5030" stroke-opacity=".42" stroke-width="1" ' +
+          'vector-effect="non-scaling-stroke" fill="none">' +
+          '<path d="M0 0 ' + R + ' ' + R + '"/>' +
+          '<path d="M100 0 ' + (100 - R) + ' ' + R + '"/>' +
+          '<path d="M100 100 ' + (100 - R) + ' ' + (100 - R) + '"/>' +
+          '<path d="M0 100 ' + R + ' ' + (100 - R) + '"/>' +
         '</g>' +
-      '</svg>';
+
+        /* ④ 面取り。額の内外の稜線に、光の当たる側と陰る側。 */
+        '<g vector-effect="non-scaling-stroke" fill="none">' +
+          /* 外周のハイライト */
+          '<rect x=".5" y=".5" width="99" height="99" stroke="#f7e3c4" ' +
+            'stroke-opacity=".75" stroke-width="1"/>' +
+          /* 面取り＝額の口が背板へ向かって落ちる稜線。
+             ハイライト（口の手前・上側）→ 陰（口の奥）の順に2本、
+             どちらも1px 相当。太い帯にすると額が二重に見える。   */
+          '<rect x="' + (R - B) + '" y="' + (R - B) + '" width="' +
+            (100 - 2 * (R - B)) + '" height="' + (100 - 2 * (R - B)) +
+            '" stroke="#f3dcb8" stroke-opacity=".45" stroke-width="1"/>' +
+          /* 内周（額の口）の陰＝板が奥にある厚み */
+          '<rect x="' + R + '" y="' + R + '" width="' + (100 - 2 * R) +
+            '" height="' + (100 - 2 * R) + '" stroke="#5e3c22" ' +
+            'stroke-opacity=".75" stroke-width="1"/>' +
+        '</g>' +
+      '</svg>' +
+      peg('cbf-peg-tl') + peg('cbf-peg-tr') +
+      peg('cbf-peg-bl') + peg('cbf-peg-br') +
+      '</div>';
   }
 
-  /* 介護の節。医療と同じく番号は振らない（順に埋めるものではない）。 */
-  function careSection(key, icon, title, lead, body) {
-    return '<div class="cs">' +
-      '<div class="cs-h"><span class="cs-ic">' + svgIc(icon, 16) + '</span>' +
-      '<h5>' + esc(title) + '</h5>' +
-      (lead ? '<small>' + esc(lead) + '</small>' : '') +
-      editBtn(key) + '</div>' +
-      '<div class="cs-body">' + body + '</div></div>';
+  /* 乳白プレートを背板へ留める真鍮ネジ。円＋マイナスの切り込み。
+     切り込みの向きは左右で対にする（実物のネジは向きが揃わない）。 */
+  function careScrews(wide) {
+    const s = (cls, rot) => '<span class="cp-screw ' + cls + '">' +
+      '<svg viewBox="0 0 16 16" aria-hidden="true">' +
+        '<circle cx="8" cy="8" r="7" fill="#c99a5e"/>' +
+        '<circle cx="8" cy="8" r="7" fill="none" stroke="#7d5a33" ' +
+          'stroke-opacity=".7"/>' +
+        '<circle cx="6.2" cy="6.2" r="2.6" fill="#f2ddb6" fill-opacity=".8"/>' +
+        '<path d="M3.6 8h8.8" stroke="#6d5233" stroke-opacity=".85" ' +
+          'stroke-width="1.5" stroke-linecap="round" ' +
+          'transform="rotate(' + rot + ' 8 8)"/>' +
+      '</svg></span>';
+    return '<span class="cp-screws">' +
+      s('cp-sc-tl', 28) + s('cp-sc-tr', -34) +
+      (wide ? s('cp-sc-bl', -22) + s('cp-sc-br', 40) : '') +
+      '</span>';
   }
 
-  /* ① 現在の介護状態 */
+  /* 節（プレート1枚）。医療と同じく番号は振らない。見出しは白チップ＋
+     緑線グリフ（headChip、契約デジタル／医療右面と同じ手つき）。
+     一言（lead）は付けない――README のとおり素っ気なくする。        */
+  function carePlate(key, glyph, title, body, opt) {
+    const o = opt || {};
+    return '<section class="cp' + (o.cls ? ' ' + o.cls : '') + '">' +
+      careScrews(!!o.wide) +
+      '<div class="cp-h">' + headChip(glyph) +
+        '<h5>' + esc(title) + '</h5>' +
+        editBtn(key) + '</div>' +
+      '<div class="cp-body">' + body + '</div></section>';
+  }
+
+  /* ① 介護認定。要介護度は制度上の区分（正本 §9）。認定の有無だけを
+     状態として持つ。参考画像の「大きな要介護度＋認定あり」の札。 */
   function levelBlock() {
     const c = S.data.care;
     const certified = S.isCertified(c.level);
-    const badge = isOpen('care.level')
-      ? evSelect('care.level', c.level, S.CARE_LEVELS)
-      : '<span class="lv-badge' + (certified ? '' : ' off') + '">' +
-        esc(c.level || '未確認') + '</span>';
-    return '<div class="lv"><span class="lv-lb">要介護度</span>' + badge + '</div>' +
-      '<div class="lv-place">' +
-        '<span class="lv-place-ic">' + svgIc('<path d="M4 11 12 4.5 20 11"/><path d="M6 9.6V19h12V9.6"/>', 17) + '</span>' +
-        '<span class="lv-lb">現在の生活場所</span>' +
-        '<b>' + (isOpen('care.place')
-          ? evSelect('care.place', c.place, S.PLACES)
-          : esc(c.place || '未確認')) + '</b>' +
-        '<span class="lv-note">' + ev('care.placeNote', c.placeNote, 'line', '住まいの様子') + '</span>' +
+    if (isOpen('care.level')) {
+      return '<div class="cl-edit">' +
+        '<span class="cp-kv-lb">要介護度</span>' +
+        evSelect('care.level', c.level, S.CARE_LEVELS) + '</div>';
+    }
+    return '<div class="cl-card' + (certified ? '' : ' cl-card-off') + '" ' +
+      'data-edit="care.level" data-kind="select">' +
+      '<span class="cl-lv">' + esc(c.level || '未確認') + '</span>' +
+      '<span class="cl-sub">' +
+        (certified ? '認定あり' : (c.level === '申請中' ? '申請中' : '認定なし')) +
+      '</span>' +
       '</div>';
   }
 
-  /* ② 担当ケアマネジャー。連絡先ではなく「介護の入口」。 */
+  /* ② 担当ケアマネジャー。連絡先ではなく「介護の入口」。参考画像の
+     「ラベル＋値」を縦に並べた札。 */
   function managerBlock() {
     const mg = S.data.care.manager || {};
+    const row = (lb, path, val, ph) =>
+      '<div class="cm-row"><span class="cm-lb">' + esc(lb) + '</span>' +
+      '<span class="cm-vl">' + ev(path, val, 'line', ph) + '</span></div>';
     return '<div class="cm">' +
-      '<span class="cm-av">' + svgIc(PERSON_IC, 26) + '</span>' +
-      '<span class="cm-tx">' +
-        '<span class="cm-name">' + ev('care.manager.name', mg.name, 'line', 'ケアマネジャーの名前') +
-          '<small>さん</small></span>' +
-        '<span class="cm-office">' + ev('care.manager.office', mg.office, 'line', '事業所名') + '</span>' +
-        '<span class="cm-tel">' + TEL + ev('care.manager.tel', mg.tel, 'line', '電話番号') + '</span>' +
-      '</span>' +
-      '<span class="cm-note">' + ev('care.manager.note', mg.note, 'line', '補足') + '<br>' +
-        stBadge('care.manager') + '</span>' +
-      '<span class="cm-sticky">困ったときは、<br>まずケアマネさんに<br>連絡してください。</span>' +
+      row('ケアマネジャー', 'care.manager.name', mg.name, '名前') +
+      row('事業所名', 'care.manager.office', mg.office, '事業所名') +
+      '<div class="cm-row"><span class="cm-lb">電話番号</span>' +
+        '<span class="cm-vl cm-tel">' + TEL +
+          ev('care.manager.tel', mg.tel, 'line', '電話番号') + '</span></div>' +
+      '<div class="cm-foot">' +
+        '<span class="cm-memo">' + MEMO_MARK +
+          ev('care.manager.note', mg.note, 'line', '例：体調のことは、まずこの方に相談。') +
+        '</span>' +
+        stBadge('care.manager') +
+      '</div>' +
       '</div>';
   }
 
-  /* ③ 利用中の介護サービス｜放射図＋週の帯 */
-  function serviceCard(sv, i, side) {
+  /* ③ 利用している介護・生活支援｜表（種類／事業所／利用状況／連絡先）。
+     行頭アイコンは塗り面で、種類ごとに色を変える（正本モックどおり）。 */
+  function serviceRow(sv, i) {
     const kind = S.serviceKind(sv.kind);
     const on = secOn('service');
     const p = 'care.services.' + i + '.';
-    /* 矢印は中心へ向かう。左列は右向き、右列は左向き（CSSが反転）。 */
-    const arrow = '<span class="sv-arrow">' +
-      '<svg viewBox="0 0 20 12" fill="none" stroke="currentColor" stroke-width="1.8" ' +
-      'stroke-linecap="round" stroke-linejoin="round">' +
-      '<path d="M1 6h16"/><path d="m13 2 4 4-4 4"/></svg></span>';
-
-    const days = on
-      ? '<span class="dayedit">' + S.DAYS.map((d, di) =>
-          '<button type="button" class="' + ((sv.days || []).indexOf(di) > -1 ? 'on' : '') +
-          '" data-day="' + i + ':' + di + '">' + d + '</button>').join('') + '</span>'
-      : '';
-
-    return '<div class="sv ' + kind.tone + '">' +
-      '<div class="sv-h">' +
-        '<span class="sv-ic">' + svgIc(SV_IC[sv.kind] || SV_IC.support, 16) + '</span>' +
-        '<span class="sv-name">' + ev(p + 'name', sv.name, 'line', 'サービス名') + '</span>' +
+    const kindCell = on
+      ? '<span class="sv-name">' + ev(p + 'name', sv.name, 'line', 'サービスの種類') + '</span>' +
+        '<span class="sv-sub">' + ev(p + 'sub', sv.sub, 'line', '補足（例：ホームヘルプ）') + '</span>' +
+        evServiceKind(p + 'kind', sv.kind)
+      : '<span class="sv-name">' + ev(p + 'name', sv.name, 'line', 'サービスの種類') + '</span>' +
+        (sv.sub ? '<span class="sv-sub">' + esc(sv.sub) + '</span>' : '');
+    return '<div class="svr ' + kind.tone + '">' +
+      '<div class="svr-c svr-kind">' +
+        '<span class="svr-ic">' + fillIc(SV_IC[sv.kind] || SV_IC.life, 18) + '</span>' +
+        '<span class="svr-kind-tx">' + kindCell + '</span>' +
       '</div>' +
-      '<div class="sv-provider">' + ev(p + 'provider', sv.provider, 'line', '事業所名') + '</div>' +
-      '<div class="sv-tel">' + TEL + ev(p + 'tel', sv.tel, 'line', '電話番号') + '</div>' +
-      '<div class="sv-freq">' + ev(p + 'freq', sv.freq, 'line', '頻度・曜日') + '</div>' +
-      '<div class="sv-detail">' + ev(p + 'detail', sv.detail, 'line', '内容') + '</div>' +
-      days +
-      '<div class="sv-foot">' + stBadge('care.services.' + i) +
-        (on ? delBtn(sv.id) : '') + '</div>' +
-      arrow +
-      '</div>';
-  }
-
-  function weekBlock() {
-    if (!S.hasSchedule()) return '';
-    const grid = S.weekGrid().map((d, i) => {
-      const chips = d.services.map(sv => {
-        const kind = S.serviceKind(sv.kind);
-        return '<span class="wd-chip ' + kind.tone + '">' +
-          esc(sv.name || kind.label) + '</span>';
-      }).join('');
-      return '<div class="wd wd-' + (i + 1) + '">' +
-        '<span class="wd-lb">' + esc(d.label) + '</span>' +
-        (chips || '<span class="wd-none">—</span>') + '</div>';
-    }).join('');
-    return '<div class="week">' +
-      '<div class="week-h">' +
-        svgIc('<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>', 14) +
-        '一週間の予定<small>　常時のもの（福祉用具など）は上の図に出ています</small></div>' +
-      '<div class="week-grid">' + grid + '</div>' +
+      '<div class="svr-c svr-prov" data-th="事業所">' +
+        ev(p + 'provider', sv.provider, 'line', '事業所名') + '</div>' +
+      '<div class="svr-c svr-use" data-th="利用状況">' +
+        ev(p + 'use', sv.use, 'line', '曜日・時間帯など') + '</div>' +
+      '<div class="svr-c svr-tel" data-th="連絡先">' +
+        TEL + ev(p + 'tel', sv.tel, 'line', '電話番号') +
+        (on ? '<span class="svr-del">' + delBtn(sv.id) + '</span>' : '') +
+      '</div>' +
       '</div>';
   }
 
@@ -1964,86 +1914,118 @@
       return '<p class="i-ev-empty">まだ登録がありません。</p>' +
         (on ? '<button type="button" class="rowadd" data-add="service">＋ サービスを足す</button>' : '');
     }
-    /* 中心を挟んで左右に振り分ける。奇数なら左が1つ多い。 */
-    const half = Math.ceil(list.length / 2);
-    const left  = list.slice(0, half);
-    const right = list.slice(half);
-
-    return '<div class="radial">' +
-      '<div class="radial-l">' +
-        left.map((sv, k) => serviceCard(sv, k, 'l')).join('') + '</div>' +
-      '<div class="radial-c">' +
-        '<span class="person">' + svgIc(PERSON_IC, 44) + '</span>' +
-        '<span class="person-lb">本人</span>' +
+    return '<div class="svtbl">' +
+      '<div class="svr svr-head" aria-hidden="true">' +
+        '<span class="svr-c">サービスの種類</span>' +
+        '<span class="svr-c">事業所</span>' +
+        '<span class="svr-c">利用状況</span>' +
+        '<span class="svr-c">連絡先</span>' +
       '</div>' +
-      '<div class="radial-r">' +
-        right.map((sv, k) => serviceCard(sv, half + k, 'r')).join('') + '</div>' +
+      list.map((sv, k) => serviceRow(sv, k)).join('') +
       '</div>' +
-      weekBlock() +
       (on ? '<button type="button" class="rowadd" data-add="service">＋ サービスを足す</button>' : '');
   }
 
-  /* ④ 家族が知っておきたいこと */
-  function knowBlock() {
-    const c = S.data.care;
-    const body = isOpen('care.notes')
-      ? ev('care.notes', S.linesToText(c.notes), 'area', '1行に1件')
-      : ((c.notes || []).length
-          ? '<ul class="knowlist">' + c.notes.map(n =>
-              '<li>' + esc(n) + '</li>').join('') + '</ul>'
-          : '<span class="i-ev i-ev-empty" data-edit="care.notes" data-kind="area">' +
-            '急に対応することになったとき、知っておくと安心なこと</span>');
-    return '<div class="know-wrap">' +
-      '<div style="flex:1;min-width:240px">' + body + '</div>' +
-      '<span class="know-sticky">普段と様子が違うときは、無理せずケアマネさんに相談しましょう。</span>' +
-      '</div>';
+  /* サービスの型セレクト（編集時のみ）。行頭アイコンの色・記号を決める。 */
+  function evServiceKind(path, value) {
+    const keys = Object.keys(S.SERVICE_KINDS);
+    return '<select class="i-ef i-ef-sel svr-kindsel" data-ef="1" data-path="' + path + '">' +
+      keys.map(k => '<option value="' + k + '"' + (k === value ? ' selected' : '') + '>' +
+        esc(S.SERVICE_KINDS[k].label) + '</option>').join('') +
+      '</select>';
   }
 
-  /* ⑤ 介護関係書類 */
+  /* 荷札そのもの。輪郭を CSS の角丸矩形で代用しない（CLAUDE.md）――
+     荷札は「左端が斜めに切り落とされ、穴にハトメが入った紙片」で、
+     その切り欠きとハトメが無いとただのカードに見える。
+     紙片は縦に伸びるので、輪郭だけ `preserveAspectRatio="none"` で
+     引き伸ばし、ハトメは真円を保つ別レイヤーに置く。               */
+  /* 札の輪郭は3つの層に分ける――引き伸ばしても斜めの切り欠きが
+     鈍らないように、左の「頭」（切り欠き＋ハトメ）は縦横比を保つ
+     固定幅の SVG、右の「胴」は伸びる矩形。1枚の SVG を
+     `preserveAspectRatio="none"` で伸ばすと、45°の斜めが寝て
+     矢印に見える（実際にそうなった）。                            */
+  /* 札は1本の閉じたパスで描く。分割して重ねると、頭の輪郭の端が
+     胴の途中で切れて「札の中を斜め線が走る」（実際にそうなった）。
+     幅は札ごとに変わるので、`viewBox` の幅を実寸から作り直す――
+     引き伸ばさないので、切り欠きの 45°もハトメの真円も保たれる。 */
+  function ctagShape(w, h) {
+    /* 切り欠きの奥行き。実物の荷札は「短く鈍い導入」で、深く取ると
+       矢印に見える。札の高さのおよそ 1/4.5 に収める。 */
+    const N = Math.round(h / 4.5);
+    const r = 7;               /* 右の角丸 */
+    return '<span class="ctag-shape" aria-hidden="true">' +
+      '<svg class="ctag-svg" viewBox="0 0 ' + w + ' ' + h + '" ' +
+        'preserveAspectRatio="none">' +
+        '<defs>' +
+          '<linearGradient id="ctagPaper" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0" stop-color="#f7eee2"/>' +
+            '<stop offset="1" stop-color="#eaddc9"/>' +
+          '</linearGradient>' +
+        '</defs>' +
+        '<path d="M' + N + ' 1 H' + (w - r - 1) + ' a' + r + ' ' + r +
+          ' 0 0 1 ' + r + ' ' + r + ' V' + (h - r - 1) + ' a' + r + ' ' + r +
+          ' 0 0 1 -' + r + ' ' + r + ' H' + N + ' L3 ' + (h / 2 + 5) +
+          ' a7 7 0 0 1 0-10 Z" ' +
+          'fill="url(#ctagPaper)" stroke="#cdb894" stroke-width="1.3" ' +
+          'vector-effect="non-scaling-stroke"/>' +
+        /* 紙に開いた穴＋真鍮のハトメ。真円を保つ位置に置く。 */
+        '<g transform="translate(' + (N - 8) + ' ' + (h / 2) + ')">' +
+          '<circle r="6.4" fill="none" stroke="#a8905f" stroke-width="2.2"/>' +
+          '<circle r="6.4" fill="none" stroke="#7d6636" stroke-opacity=".45" ' +
+            'stroke-width=".8"/>' +
+          '<circle r="4.3" fill="#cbb896"/>' +
+          '<path d="M-3.6-2.8a4.3 4.3 0 0 1 6.2-1.4" fill="none" ' +
+            'stroke="#f3e8d2" stroke-opacity=".8" stroke-width="1.1" ' +
+            'stroke-linecap="round"/>' +
+        '</g>' +
+      '</svg>' +
+    '</span>';
+  }
+  /* 札の実寸。CSS の flex-basis と高さに合わせる（幅は伸びるが、
+     viewBox も同じ比で作るので斜めは寝ない）。 */
+  const CTAG_SHAPE = ctagShape(220, 80);
+
+  /* ④ 介護関係の書類やもの｜荷札（タグ）の横並び。その家にある、
+     比較的安定した書類・ものの所在だけを持つ（§13-1）。中身は持たない。 */
   function carePapersBlock() {
     const c = S.data.care;
     const on = secOn('cpapers');
-    const rows = (c.papers || []).map((r, i) => {
+    const tags = (c.papers || []).map((r, i) => {
       const p = 'care.papers.' + i + '.';
-      return '<tr><th>' + ev(p + 'item', r.item, 'line', '書類の種類') + '</th>' +
-        '<td>' + ev(p + 'where', r.where, 'line', '保管場所') + '　' +
-        stBadge('care.papers.' + i) +
-        (on ? ' ' + delBtn(r.id) : '') + '</td></tr>';
+      return '<div class="ctag">' +
+        CTAG_SHAPE +
+        '<div class="ctag-body">' +
+          '<div class="ctag-item">' + ev(p + 'item', r.item, 'line', '書類・ものの名前') +
+            (on ? delBtn(r.id) : '') + '</div>' +
+          '<div class="ctag-where">' + PIN_MARK +
+            ev(p + 'where', r.where, 'line', '置き場所') + '</div>' +
+          '<div class="ctag-foot">' + stBadge('care.papers.' + i) + '</div>' +
+        '</div>' +
+      '</div>';
     }).join('');
-    return '<table class="kv"><tbody>' + rows + '</tbody></table>' +
-      '<p class="sec-lead" style="margin:9px 0 0">原本の場所は「書類・資料」にまとめています。</p>' +
-      (on ? '<button type="button" class="rowadd" data-add="cpaper">＋ 足す</button>' : '');
+    return '<div class="ctags">' + tags +
+      (on ? '<button type="button" class="ctag-add rowadd" data-add="cpaper">＋ 足す</button>' : '') +
+      '</div>' +
+      '<p class="sec-lead" style="margin:10px 0 0">原本の場所は「書類・資料」にまとめています。</p>';
   }
 
   function renderCare() {
     if (!careEl) return;
     careEl.innerHTML =
-      '<div class="bed">' +
-        '<div class="bed-head">' +
-          bedScene() +
-          '<div class="bed-pillows">' +
-            '<div class="bed-pillow bed-pillow-main">' +
-              '<span class="bed-pillow-ic">' +
-                svgIc('<path d="M4 11 12 4.5 20 11"/><path d="M6 9.6V19h12V9.6"/>' +
-                      '<path d="M10.2 19v-4.4h3.6V19"/>', 26) + '</span>' +
-              '<div><h4>介護</h4><p>支えてもらう。つながる。安心して暮らす。</p></div>' +
-            '</div>' +
-            '<div class="bed-pillow bed-pillow-say">' +
-              '<p>なじみの場所で、これからも<br>自分らしく過ごせるように。<br>みんなで支えています。</p>' +
-            '</div>' +
+      '<div class="care-board">' +
+        careBoardFrame() +
+        '<div class="care-board-inner">' +
+          '<div class="cp-row">' +
+            carePlate('level', CARE_LEVEL_IC, '介護認定', levelBlock(),
+              { cls: 'cp-level' }) +
+            carePlate('manager', CARE_PERSON_IC, '担当者・相談先', managerBlock(),
+              { cls: 'cp-manager' }) +
           '</div>' +
-        '</div>' +
-        '<div class="bed-body">' +
-          careSection('level', LEVEL_IC, '現在の介護状態',
-            '現在の認定状況や生活場所です。', levelBlock()) +
-          careSection('manager', PERSON_IC, '担当ケアマネジャー（介護の中心・入口）',
-            '介護に関する相談や調整の窓口です。', managerBlock()) +
-          careSection('service', SV_IC.support, '利用中の介護サービス',
-            '現在利用している支援の体制です。', servicesBlock()) +
-          careSection('know', WARN_IC, '家族が知っておきたいこと',
-            '急に対応することになったときに、知っておくと安心なことです。', knowBlock()) +
-          careSection('cpapers', DOC_IC, '介護関係書類',
-            '介護保険やケアプランなどの書類の保管場所です。', carePapersBlock()) +
+          carePlate('service', CARE_HEART_IC, '利用している介護・生活支援',
+            servicesBlock(), { wide: true, cls: 'cp-service' }) +
+          carePlate('cpapers', CARE_DOC_IC, '介護関係の書類やもの',
+            carePapersBlock(), { wide: true, cls: 'cp-papers' }) +
         '</div>' +
       '</div>';
   }
@@ -2160,13 +2142,8 @@
 
   /* ── 編集の確定 ─────────────────────────────────────
      開いている入力欄の値を state へ書き戻す。配列で持っている項目
-     （診療科・箇条書き）は専用の適用関数を通す。                   */
-  const TAG_PATHS  = [];
-  const LINE_PATHS = ['care.notes'];
-
+     （診療科）は専用の適用関数を通す。                             */
   function applyOne(path, value) {
-    if (TAG_PATHS.indexOf(path) > -1) return S.applyTags(path, value);
-    if (LINE_PATHS.indexOf(path) > -1) return S.applyLines(path, value);
     if (/^medical\.clinics\.\d+\.depts$/.test(path)) return S.applyTags(path, value);
     /* 起きた反応・起きたことの「候補にない」自由入力欄。チップの選択は
        保ったまま、自由入力ぶんだけを reactions / events 配列へ差し替える。 */
@@ -2223,7 +2200,7 @@
   function scrollSectionIntoView(key) {
     const anchor = document.querySelector('.i-secedit[data-editsec="' + key + '"]');
     if (!anchor) return;
-    const head = anchor.closest('.sf-glb, .rmemo-h, .subsec-lb, .cm-h, .sec-h') || anchor;
+    const head = anchor.closest('.sf-glb, .rmemo-h, .subsec-lb, .cp-h, .sec-h') || anchor;
     const y = head.getBoundingClientRect().top + window.pageYOffset - 84;
     window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
   }
@@ -2448,16 +2425,6 @@
         S.save();
         render();
         show('1件削除しました');
-        return;
-      }
-
-      /* 曜日の入り切り。 */
-      const day = e.target.closest('[data-day]');
-      if (day) {
-        const parts = day.dataset.day.split(':');
-        S.toggleDay(S.data.care.services[+parts[0]], +parts[1]);
-        S.save();
-        render();
         return;
       }
 

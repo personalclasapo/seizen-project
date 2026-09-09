@@ -5,8 +5,7 @@
      医療 … 手帳。表紙に本人の識別情報、見開きに記録、透明ポケット
             にカード類。「おくすり手帳」は⑥の一項目にすぎないので
             成果物の名前にはしない。形だけを借りる。
-     介護 … ベッド。ヘッドボード・枕・リモコンを採り、ヘッドボードが
-            下の記録カードを載せる地になる。介護の象徴なので落とさない。
+     介護 … 連絡ボード。薄い枠に記録紙を留め、連絡先・支援・予定を載せる。
 
    再現度はまず薄く（輪郭線＋単色面＋控えめな影）。既存3領域（通帳
    ・索引・証券フォルダ）と同じ密度に置き、触ってから濃くする。
@@ -91,41 +90,21 @@ button.st:hover{filter:brightness(.97)}
 /* ══════════════════════════════════════════════════════════════
    医療｜手帳
    ------------------------------------------------------------------
-     .bk        手帳ぜんたい。表紙の色帯 → 見開き → ポケット。
-     .bk-cover  表紙。本人の識別情報（氏名・生年月日・年齢・血液型）。
-                救急で最初に読まれるので、いちばん上に大きく置く。
+     .bk        薄いカバーで保護した冊子。SVGで外周と紙の重なりを描く。
+     .bk-paper  見開き本文の連続する紙面。
      .bk-page   見開きの紙。記録はこの上に並ぶ。
    ══════════════════════════════════════════════════════════════ */
 
-/* 手帳。左端に背（綴じ）があるので、その幅ぶん中身を右へ寄せる。
-   物の形（背・綴じ糸・しおり）は SVG、配置だけが CSS（CLAUDE.md）。 */
-.bk{position:relative;border-radius:14px;overflow:hidden;
-  background:linear-gradient(168deg,#2f5c46,#244836);
-  border:1px solid #234534;
-  box-shadow:0 16px 34px -18px rgba(30,60,44,.5),inset 0 1px 0 #ffffff22;
-  padding:20px 20px 22px 60px}
-/* 背。左端いっぱいに立てる。縦は伸びてよい（本が厚くなるだけ）。 */
-.bk-spine{position:absolute;left:0;top:0;width:46px;height:100%;display:block}
-/* 綴じ糸。背の上に縦へ敷く。糸の間隔は伸びてよい（本の高さに応じて
-   ステッチの間が空くだけ）ので、SVG 側で preserveAspectRatio="none"。 */
-.bk-stitch{position:absolute;left:12px;top:26px;width:10px;height:calc(100% - 52px)}
-/* しおり。表紙の上端から垂れ、氏名カードの手前に出る。器が
-   overflow:hidden なので、外へはみ出さず内側で終わる長さにする。 */
-/* viewBox（22×96）と同じ比で置く。高さを詰めると先の V が
-   切り落とされて、ただの帯になる。 */
-.bk-ribbon{position:absolute;z-index:2;top:0;right:26px;width:22px;height:96px;
-  filter:drop-shadow(0 3px 5px rgba(20,40,28,.4))}
-
-/* 表紙。緑の地に、革の型押しのような細い罫だけ。 */
-.bk-cover{position:relative;display:flex;align-items:flex-end;gap:18px;
-  flex-wrap:wrap;padding:6px 10px 18px;color:#f4f1e4}
-.bk-cover:before{content:"";position:absolute;inset:-2px 2px 10px;
-  border:1px solid #e2d29c33;border-radius:9px;pointer-events:none}
-.bk-title{flex:1;min-width:200px}
-.bk-title h4{margin:0;font-family:var(--font-serif);font-size:23px;font-weight:600;
-  letter-spacing:.06em}
-.bk-title p{margin:5px 0 0;font-size:11px;color:#cdd8cd;letter-spacing:.04em}
-
+/* 薄い半透明カバーと紙の小口はSVG。CSSは余白と紙面の陰影を担当。 */
+.bk{position:relative;isolation:isolate;padding:2.6% 2.6% 3.2%;
+  filter:drop-shadow(0 8px 9px #334d3820)}
+.bk-binding{position:absolute;inset:0;width:100%;height:100%;z-index:-1;
+  pointer-events:none}
+.bk-paper{position:relative;
+  background:linear-gradient(90deg,
+    #fcfbf6 0%,#fdfcf8 45%,#f7f6ee 50.5%,#e5e3d7 52.4%,
+    #d2d4c5 52.63%,#eeeee4 53.2%,#fdfcf8 57%,#fcfbf6 100%);
+  box-shadow:0 1px 2px #4d594326}
 /* 氏名カード。表紙に挿してある一枚。救急で読まれる identifiers。
    厚紙の一枚なので角は 2px まで。挿してあるから水平ではなく、
    わずかに傾いて浮く。上辺に受け光、下辺に紙の小口、外に落ち影。 */
@@ -172,35 +151,14 @@ button.st:hover{filter:brightness(.97)}
    すると、自分の幅を自分で問い合わせることになり畳めない。         */
 .bk{container-type:inline-size}
 .bk-spread{display:grid;grid-template-columns:minmax(0,10fr) minmax(0,9fr);
-  grid-template-rows:auto 1fr;
-  background:var(--paper);
-  border-radius:1px 4px 4px 1px;
-  box-shadow:
-    inset 0 0 0 1px #00000012,
-    inset 0 2px 5px -2px #0000002b,
-    0 1px 0 #ffffff2e,
-    2px 3px 7px -2px #00000030}
+  grid-template-rows:auto 1fr}
 
-/* 見開きの紙。紙に10pxの角丸はない。地には紙の繊維を薄く敷く。
-   紙は2段にまたがり、中の段組みだけを親から継ぐ。 */
+/* 紙は外装から連続する一枚。左右の欄だけをsubgridで揃える。 */
 .bk-page{position:relative;min-width:0;
   display:grid;grid-row:1/3;grid-template-rows:subgrid;
-  align-content:start;
-  padding:18px 22px 22px;
-  background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px)}
-/* 左面は .sf が1枚挟まるので、そこにも段を通す。 */
+  align-content:start;padding:22px 28px 30px}
 .bk-page-l .sf{display:grid;grid-row:1/3;grid-template-rows:subgrid}
-/* 左面。右辺がノドへ落ちるので、そちら側に影を寄せる。 */
-.bk-page-l{border-radius:1px 0 0 1px;
-  background-image:
-    linear-gradient(270deg,#c9bfa54d 0,#c9bfa517 11px,#0000 26px),
-    repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px)}
-/* 右面。左辺がノド。綴じの折り目を1本入れる。 */
-.bk-page-r{border-radius:0 4px 4px 0;padding-left:26px;
-  background-image:
-    linear-gradient(90deg,#c9bfa54d 0,#c9bfa517 11px,#0000 26px),
-    repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px);
-  box-shadow:inset 1px 0 0 #d9d0b866}
+.bk-page-r{padding-left:30px}
 
 /* 器が狭いときは見開きを畳む（1面の手帳になる）。
    ───────────────────────────────────────────────
@@ -216,15 +174,16 @@ button.st:hover{filter:brightness(.97)}
    ・メモの左端に残る右面のノド（谷影・折り目線・26px の余白）は
      この面から外す――メモはもう「右面の中身」ではない。       */
 @container (max-width:660px){
+  .bk-paper{background:linear-gradient(90deg,#faf9f2,#fdfcf8 8%,#fdfcf8 94%,#f7f6ee)}
   .bk-spread{grid-template-columns:minmax(0,1fr);grid-template-rows:none}
   .bk-page-l,.bk-page-l .sf{display:block;grid-row:auto}
   .bk-page-l{border-radius:1px 4px 0 0;
-    background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px);
+    background-image:none;
     border-bottom:1px solid #ded6c2;padding-bottom:20px}
   /* 右面は縦並びの器。メモを末尾へ送るため flex にする。 */
   .bk-page-r{display:flex;flex-direction:column;grid-row:auto;
     border-radius:0 0 4px 4px;padding-left:22px;box-shadow:none;
-    background-image:repeating-linear-gradient(92deg,#00000005 0 1px,#0000 1px 3px)}
+    background-image:none}
   .bk-rest{order:1;margin-top:0}
   /* メモは末尾。前の節（薬）との間を面の境目の罫で締め、
      「別の欄が始まる」ことを示す。段1の締め（下の太罫）は
@@ -256,7 +215,7 @@ button.st:hover{filter:brightness(.97)}
 /* 印刷インク。罫も欄の記号も、同じ一色から引く（刷ってある面）。
    これは紙に刷ってある色なので、面（.bk-page）が持つ――左面だけの
    ものにすると、右面の記入欄（.rmemo）が同じ罫を引けない。       */
-.bk-page{--rule:#d9d0b8;--rule2:#e6dfcc;--stamp:#a99c78}
+.bk-page{--rule:#d7dcd0;--rule2:#e2e5db;--stamp:#99a18d}
 
 /* ── 一等｜識別欄 ─────────────────────────────────── */
 /* 段1（見開きの頭の帯）は右のメモと高さを揃えるため、中身より
@@ -264,7 +223,7 @@ button.st:hover{filter:brightness(.97)}
    逃がすと、中身が上に詰まって見える――縦方向に中央へ置き、
    余白は上下で分け合う。 */
 .sf-head{display:flex;flex-direction:column;justify-content:center;
-  padding-bottom:15px;border-bottom:2.5px solid #bfb492}
+  padding-bottom:15px;border-bottom:1px solid #bac8ba}
 /* 顔写真＋氏名・生年月日の並び。写真は手帳に貼った証明写真の一枚
    （厚紙のように角は 2px、外に薄い落ち影）。狭ければ写真の下へ回す。 */
 .sf-idcard{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
@@ -972,7 +931,7 @@ button.st:hover{filter:brightness(.97)}
 /* 段1の締め。左の識別欄（.sf-head）と同じ太い罫で閉じる――同じ高さで
    同じ罫が左右に入って、はじめて1本の帯として読める。 */
 .rmemo{display:flex;flex-direction:column;min-width:0;
-  padding-bottom:15px;border-bottom:2.5px solid #bfb492}
+  padding-bottom:15px;border-bottom:1px solid #bac8ba}
 .rmemo-h{display:flex;align-items:center;gap:8px;margin-bottom:13px;
   padding-bottom:6px;border-bottom:1px solid var(--rule);
   font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:.02em}
@@ -994,285 +953,176 @@ button.st:hover{filter:brightness(.97)}
   background:#0000;border-color:var(--rule)}
 
 /* ══════════════════════════════════════════════════════════════
-   介護｜ベッド
+   介護｜連絡ボード
    ------------------------------------------------------------------
-     .bed         ベッドぜんたい。
-     .bed-svg     ベッドの絵。支柱・笠木・桟・マットレス・掛け布団・
-                  柵・リモコン（コード付き）を SVG で描く。
-     .bed-head    絵を敷く器。枕はこの上に重なる。
-     .bed-pillow  枕。左＝領域名、右＝この整理で成立させる状態。
-     .bed-body    ヘッドボードの下に敷かれる記録カードの束。
-
-   物の形は SVG、物の配置は CSS（CLAUDE.md）。角丸の矩形で
-   ベッドの代用をしない。
+   造形の正本は prototype/assets/介護イメージ.png。木の額縁に、真鍮
+   ネジで留めた乳白のプレートが貼ってあるボード。額・背板・ダボは
+   .care-board-frame の SVG が、プレートの立体は各 .cp が受け持つ。
+   見出しは白チップ＋緑線グリフ（headChip）。一言・キャッチは置かない。
    ══════════════════════════════════════════════════════════════ */
+/* 見附＝ボード幅の 2.9%（正本の実測。care-board-motifs.RESEARCH.md）。
+   額は物として厚みがあるので、内側の余白は見附ぶんきっちり空ける。 */
+.care-board{position:relative;isolation:isolate;
+  --rail:clamp(18px,2.9%,34px);
+  /* 額の内側の余白は実測 38/1223＝3.1%（見附とほぼ同じ）。
+     ここを広く取ると背板が見えすぎて、プレートが板の上で泳ぐ。 */
+  padding:calc(var(--rail) + clamp(14px,3.1%,36px));
+  filter:drop-shadow(0 12px 20px #3d271230)}
+.care-board-inner{position:relative;display:flex;flex-direction:column;
+  gap:clamp(16px,2.6%,26px)}
 
-/* ベッド全体で1つの物。通帳が「表紙＋貼り込んだ記録票」で1冊なのと
-   同じで、ヘッドボード＋寝具＋その上の記録で1台にする。記録は寝具の
-   上に直に載る――背景の上に浮かせない（ここが安っぽさの元だった）。
-   木の枠が四辺を囲み、内側に沈んだ影を落とす。                     */
-.bed{position:relative;border-radius:14px 14px 10px 10px;
-  padding:0 12px 12px;
-  background:linear-gradient(158deg,#b8946a,#a17c52 46%,#8a6740);
-  box-shadow:
-    inset 0 2px 0 #ffffff59,
-    inset 2px 0 0 #ffffff2e,
-    inset 0 -3px 0 #6d5029,
-    inset -2px 0 0 #74562d,
-    0 0 0 1px #3a2f1c2b,
-    0 2px 4px -1px #4b422b3d,
-    0 8px 16px -4px #4b422b33,
-    0 24px 36px -14px #4b422b52}
+/* ── 木の額縁 ─────────────────────────────────────────
+   輪郭・木目・合口・面取り・背板は render.js の1枚の SVG が持つ。
+   ここは「置かれ方」だけ（CLAUDE.md：SVG は物の形、CSS は物の配置）。
+   ダボだけは真円を保つため SVG の外に出し、桟の中央へ置く。      */
+.care-board-frame{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.cbf-svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* ダボ（桟の中央、四隅）。真円。 */
+.cbf-peg{position:absolute;width:clamp(9px,1.35%,14px);aspect-ratio:1;
+  filter:drop-shadow(0 1px 1.5px #2c1c0a55)}
+.cbf-peg svg{width:100%;height:100%;display:block}
+.cbf-peg-tl{left:calc(var(--rail)/2);top:calc(var(--rail)/2);transform:translate(-50%,-50%)}
+.cbf-peg-tr{right:calc(var(--rail)/2);top:calc(var(--rail)/2);transform:translate(50%,-50%)}
+.cbf-peg-bl{left:calc(var(--rail)/2);bottom:calc(var(--rail)/2);transform:translate(-50%,50%)}
+.cbf-peg-br{right:calc(var(--rail)/2);bottom:calc(var(--rail)/2);transform:translate(50%,50%)}
 
-/* ヘッドボード。絵（.bed-svg）が物の形を持ち、CSS は器と配置だけ。 */
-.bed-head{position:relative;padding:104px 150px 40px 56px;
-  margin:0 -12px;border-radius:14px 14px 0 0;overflow:hidden}
-/* 伸びてよい部分（板・寝具）は器いっぱいに引き伸ばす。 */
-.bed-svg{position:absolute;inset:0;width:100%;height:100%;display:block}
-/* 伸ばしてはいけない物は原寸で、左右の端と決まった位置に置く。
-   幅が変わっても球飾りは真円、リモコンは同じ形のまま。 */
-.bed-post{position:absolute;top:0;width:60px;height:210px}
-.bed-post-l{left:14px}
-.bed-post-r{right:14px}
-.bed-remote-svg{position:absolute;top:8px;right:96px;width:60px;height:190px}
+/* プレート（乳白〜生成りの樹脂板）。実測 #f0e7de――純白ではない。
+   背板（#b5814e）の上に乗るので、落ち影と面のハイライトで浮かせる。 */
+.cp{position:relative;display:flex;flex-direction:column;
+  padding:clamp(14px,2%,20px) clamp(15px,2.2%,22px);
+  background:linear-gradient(168deg,#f7f1e9 0%,#f0e7de 55%,#eae0d3 100%);
+  border:1px solid #dccfba;border-radius:7px;
+  box-shadow:0 1px 2px #3d271226,0 7px 16px #3d271230,
+    inset 0 1px 0 #fffaf2,inset 0 -1px 0 #d6c8b0}
+.cp-row{display:flex;gap:clamp(16px,2.6%,26px);align-items:stretch}
+.cp-row .cp{flex:1;min-width:0}
+.cp-level{flex:0 1 38%}
+.cp-manager{flex:1 1 58%}
 
-.bed-pillows{position:relative;z-index:1;display:flex;gap:16px;flex-wrap:wrap;
-  align-items:stretch}
+/* 真鍮ネジ。乳白プレートを背板へ留める。円と切り込みは SVG が持つ
+   （render.js の careScrews）。小プレートは上2隅、横長は4隅。 */
+.cp-screws{position:absolute;inset:9px;pointer-events:none}
+.cp-screw{position:absolute;width:11px;height:11px;
+  filter:drop-shadow(0 1px 1.5px #3d271240)}
+.cp-screw svg{width:100%;height:100%;display:block}
+.cp-sc-tl{left:0;top:0}
+.cp-sc-tr{right:0;top:0}
+.cp-sc-bl{left:0;bottom:0}
+.cp-sc-br{right:0;bottom:0}
 
-/* 枕。布として見せる。通帳の表紙（shared/passbook.css）と同じで、
-   形を足すのではなく縁ごとに光を置く：上と左に受け光、下と右に沈み、
-   内側に大きな陰り、外に3段の落ち影。角丸は四隅すべて別の値にして、
-   縫い代のある袋物の不揃いさを出す。                               */
-.bed-pillow{flex:1;min-width:210px;padding:19px 23px;
-  border-radius:26px 20px 28px 22px;
-  background:
-    radial-gradient(120% 90% at 26% 18%,#fffefa 0%,#fbf8ee 42%,#f1ece0 100%);
-  box-shadow:
-    inset 0 2px 2px #ffffffe6,
-    inset 2px 0 2px #ffffffb0,
-    inset 0 -3px 4px #cfc5ad66,
-    inset -3px 0 4px #d6ccb566,
-    inset 0 -22px 26px -20px #b3a68840,
-    0 0 0 1px #d9d0b93d,
-    0 2px 4px -1px #6b5a3826,
-    0 7px 14px -4px #6b5a3826,
-    0 18px 28px -12px #6b5a3840}
-.bed-pillow-main{flex:1 1 300px;display:flex;align-items:center;gap:14px;
-  transform:rotate(-.5deg)}
-.bed-pillow-ic{display:grid;place-items:center;width:44px;height:44px;flex:none;
-  border-radius:11px;background:var(--gr-bg);color:var(--gr);
-  border:1px solid #cbdfd1}
-.bed-pillow-ic svg{width:26px;height:26px}
-.bed-pillow h4{margin:0;font-family:var(--font-serif);font-size:26px;font-weight:600;
-  letter-spacing:.08em}
-.bed-pillow-main p{margin:3px 0 0;font-size:11.5px;color:var(--ink3)}
-.bed-pillow-say{display:flex;align-items:center;transform:rotate(.6deg)}
-.bed-pillow-say p{margin:0;font-size:12.5px;line-height:2;color:var(--ink2)}
+.cp-h{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.cp-h h5{margin:0;font-size:14px;font-weight:700;letter-spacing:-.01em;
+  color:var(--ink)}
+.cp-h .i-secedit{margin-left:auto}
+.cp-body{font-size:12.5px;line-height:1.8;color:var(--ink)}
 
-/* 記録はシーツ面そのもの。木の枠に貼り込まれた一枚として、通帳の
-   .pb-body と同じく内側へ沈める（縁に内影、下に白の照り返し）。 */
-.bed-body{position:relative;padding:18px 18px 20px;
-  border-radius:4px;
-  background:linear-gradient(#fdfcf7,#f6f3e9);
-  box-shadow:
-    inset 0 0 0 1px #00000012,
-    inset 0 3px 7px -3px #00000038,
-    0 1px 0 #ffffff30,
-    2px 3px 7px -2px #00000038}
+/* 見出しの白チップ（.scene-ic）は医療右面と共通の定義をそのまま使う。 */
+.cp-kv-lb{font-size:11px;color:var(--ink3);font-weight:600}
 
-/* 介護の節。医療の .bs と似た骨だが、地が白いカードとして浮く。 */
-.cs{background:#fff;border:1px solid #e6e0d0;border-radius:11px;
-  padding:15px 18px 16px;margin-bottom:14px;
-  box-shadow:0 2px 8px rgba(60,50,30,.06)}
-.cs:last-child{margin-bottom:0}
-.cs-h{display:flex;align-items:center;gap:10px;margin-bottom:11px}
-.cs-ic{display:grid;place-items:center;width:26px;height:26px;flex:none;
-  border-radius:8px;background:#f5efe4;border:1px solid #e0d5c0;color:#8a6a42}
-.cs-h h5{margin:0;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
-.cs-h small{font-size:11px;color:var(--ink3);font-weight:400}
-.cs-body{font-size:12.5px;line-height:1.85}
+/* ① 介護認定。要介護度＋認定の有無の札（参考画像の淡緑ブロック）。
+   プレートは担当者側と背丈が揃うので、札を本文いっぱいに伸ばす。 */
+.cp-level .cp-body{flex:1;display:flex}
+.cl-card{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;min-height:120px;
+  padding:16px 14px;border-radius:8px;text-align:center;cursor:pointer;
+  background:var(--gr-bg);border:1px solid #c8dfce}
+.cl-card-off{background:#f1efe9;border-color:#ddd8c9}
+.cl-lv{font-size:20px;font-weight:800;color:var(--gr-d);letter-spacing:.03em}
+.cl-card-off .cl-lv{color:var(--ink2)}
+.cl-sub{font-size:11.5px;color:var(--gr2);font-weight:600;
+  padding-top:5px;border-top:1px solid #c6ddcd;width:70%}
+.cl-card-off .cl-sub{color:var(--ink3);border-top-color:#dcd6c6}
+.cl-edit{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:6px 0}
 
-/* ① 現在の介護状態。要介護度は制度上の区分なので目立たせる。 */
-.lv{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:9px}
-.lv-badge{padding:5px 15px;border-radius:8px;background:var(--or-bg);
-  border:1px solid var(--or-ln);color:#8a5209;font-size:14px;font-weight:700;
-  letter-spacing:.04em}
-.lv-badge.off{background:#f0efea;border-color:#ddd9cd;color:var(--gy)}
-.lv-lb{font-size:11.5px;color:var(--ink3)}
-.lv-place{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
-  padding:10px 13px;border-radius:9px;background:#f7f5ee;border:1px solid #e7e1d0}
-.lv-place-ic{display:grid;place-items:center;width:24px;height:24px;flex:none;
-  color:var(--gr)}
-.lv-place-ic svg{width:17px;height:17px}
-.lv-place b{font-weight:700;flex:none}
-/* 補足だけが余りを取る。ラベルと値は札のように左へ固まる。 */
-.lv-place .lv-lb{flex:none}
-.lv-place .lv-note{flex:1 1 200px;min-width:150px;padding-left:11px;
-  border-left:1px solid #e0d9c6;color:var(--ink2);font-size:11.5px;line-height:1.75}
+/* ② 担当者・相談先。ラベル＋値の札。 */
+.cm{display:grid;gap:7px}
+.cm-row{display:flex;gap:12px;align-items:baseline}
+.cm-lb{flex:none;width:104px;font-size:11.5px;color:var(--ink3);font-weight:600}
+.cm-vl{flex:1;min-width:0;font-size:13px;font-weight:600}
+.cm-tel{display:inline-flex;align-items:center;gap:6px;
+  color:var(--gr);font-weight:700}
+.cm-tel svg{width:15px;height:15px;flex:none}
+.cm-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-top:6px;padding-top:9px;border-top:1px solid #e7e3d4}
+.cm-memo{flex:1;min-width:180px;display:flex;align-items:flex-start;gap:6px;
+  font-size:11.5px;color:var(--ink3);line-height:1.75}
+.mk{width:14px;height:14px;flex:none;margin-top:2px;color:var(--gr2)}
+.mk-pin{color:#b58a55}
 
-/* ② ケアマネジャー。連絡先ではなく「介護の入口」なので、
-   一段大きく、単独で置く。 */
-.cm{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
-  padding:14px 16px;border-radius:10px;
-  background:linear-gradient(#f6faf6,#eef5ef);border:1px solid #cfe0d3}
-.cm-av{display:grid;place-items:center;width:44px;height:44px;flex:none;
-  border-radius:50%;background:#fff;border:1px solid #cbdfd1;color:var(--gr)}
-.cm-av svg{width:26px;height:26px}
-.cm-tx{flex:1;min-width:180px}
-/* 名前・事業所・電話は縦に積む。狭い幅で事業所名が名前の行へ流れ込み、
-   電話番号のあいだに割り込むのを防ぐ。 */
-.cm-name,.cm-office{display:block}
-.cm-tel{margin-top:4px}
-.cm-name{font-size:15px;font-weight:700}
-.cm-name small{font-size:11.5px;font-weight:400;color:var(--ink2);margin-left:4px}
-.cm-office{font-size:12px;color:var(--ink2);margin-top:1px}
-.cm-tel{display:inline-flex;align-items:center;gap:6px;margin-top:5px;
-  color:var(--gr);font-size:13.5px;font-weight:700}
-.cm-tel svg{width:15px;height:15px}
-.cm-note{flex:1;min-width:160px;font-size:11.5px;color:var(--ink3);line-height:1.8}
-/* 付箋。「困ったときは、まずケアマネさんに」。ケアマネが入口である
-   ことは本文と同じ重さでは伝わらないので、貼り紙として置く。 */
-.cm-sticky{flex:none;width:180px;padding:12px 14px;border-radius:2px;
-  background:#fdf3c9;border:1px solid #ecdc9e;color:#6a5a20;
-  font-size:11.5px;line-height:1.85;font-weight:600;
-  transform:rotate(-1.2deg);box-shadow:0 3px 10px rgba(60,50,20,.16)}
+/* ③ 利用している介護・生活支援｜表。行頭アイコンは塗り面で色分け。 */
+/* 型ごとの系統色。state.js の SERVICE_KINDS と対。行を見分けるための色。 */
+.c-home {--sc:#b5646d;--sc-bg:#fbecee}
+.c-out  {--sc:#4f7ba6;--sc-bg:#e9f0f7}
+.c-meal {--sc:#4f8a68;--sc-bg:#e8f2ec}
+.c-life {--sc:#7a6aa8;--sc-bg:#efecf8}
+.c-equip{--sc:#b3823c;--sc-bg:#f6eddd}
 
-/* ③ 利用中の介護サービス｜放射図＋週の帯 ─────────────────
-   中心＝本人は固定、周囲は件数に応じて可変。2件でも6件でも成立する。
-   矢印は中心へ向かう（＝複数の事業者が本人ひとりを支えている）。   */
+.svtbl{container-type:inline-size;display:flex;flex-direction:column}
+.svr{display:grid;grid-template-columns:minmax(150px,1.3fr) 1fr 1fr minmax(120px,.9fr);
+  gap:10px 16px;align-items:center;padding:11px 4px;
+  border-top:1px solid #e9e5d6}
+.svr-head{font-size:10.5px;font-weight:700;color:var(--ink3);
+  letter-spacing:.02em;padding-top:0;padding-bottom:7px;border-top:0}
+.svr:first-of-type{border-top:0}
+.svr-c{min-width:0}
+.svr-kind{display:flex;align-items:flex-start;gap:9px}
+.svr-ic{flex:none;display:grid;place-items:center;width:30px;height:30px;
+  border-radius:8px;background:var(--sc-bg);color:var(--sc)}
+.svr-kind-tx{min-width:0;display:flex;flex-direction:column;gap:1px}
+.svr-name{font-size:13px;font-weight:700;color:var(--ink)}
+.svr-sub{font-size:10.5px;color:var(--ink3)}
+.svr-prov{font-size:12px;font-weight:600}
+.svr-use{font-size:11.5px;color:var(--ink2);line-height:1.55}
+.svr-tel{display:flex;align-items:center;gap:6px;
+  color:var(--gr);font-size:12.5px;font-weight:700}
+.svr-tel svg{width:15px;height:15px;flex:none;color:var(--gr2)}
+.svr-del{margin-left:auto}
+.svr-kindsel{margin-top:3px;font-size:11px}
 
-/* 型ごとの系統色。state.js の SERVICE_KINDS と対。 */
-.c-home   {--sc:#b5646d;--sc-bg:#fbecee;--sc-ln:#e3b6bc}
-.c-out    {--sc:#4f7ba6;--sc-bg:#e9f0f7;--sc-ln:#b3cbe1}
-.c-equip  {--sc:#4f8a68;--sc-bg:#e8f2ec;--sc-ln:#b2d3bf}
-.c-support{--sc:#7a6aa8;--sc-bg:#efecf8;--sc-ln:#c5bce0}
-
-/* 放射図。中心の本人を軸に、サービスを左右2列で囲む。列数は器の
-   実幅で決める（viewport ではない）。狭ければ1列になり、そのときは
-   中心が先頭に来る。件数が奇数でも崩れない。                       */
-.radial{display:grid;gap:14px 20px;align-items:stretch;
-  grid-template-columns:1fr;margin-bottom:6px}
-.cs:has(.radial){container-type:inline-size}
-@container (min-width:620px){
-  /* 左列・中心・右列。中心は縦に貫き、左右にサービスが並ぶ。 */
-  .radial{grid-template-columns:1fr auto 1fr;
-    grid-template-areas:"l c r"}
-  .radial-l{grid-area:l}
-  .radial-c{grid-area:c}
-  .radial-r{grid-area:r}
-}
-.radial-l,.radial-r{display:flex;flex-direction:column;gap:12px;justify-content:center}
-
-/* 中心＝本人。 */
-.radial-c{display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:8px;min-width:120px;padding:6px 4px}
-.person{display:grid;place-items:center;width:78px;height:78px;
-  border-radius:50%;background:linear-gradient(#f4efe3,#e7e0cd);
-  border:1px solid #d5cdb6;color:#7d6a4b;
-  box-shadow:inset 0 2px 5px #ffffffcc,0 4px 12px rgba(60,50,30,.14)}
-.person svg{width:44px;height:44px}
-.person-lb{padding:3px 14px;border-radius:11px;background:var(--gr);color:#fff;
-  font-size:11.5px;font-weight:700;letter-spacing:.06em}
-
-/* サービスカード。型の色を縁と見出しに差す。地は白。 */
-.sv{position:relative;padding:11px 13px;border-radius:10px;
-  background:#fff;border:1px solid var(--sc-ln);
-  box-shadow:0 2px 7px rgba(60,50,30,.07)}
-.sv-h{display:flex;align-items:center;gap:8px;margin-bottom:5px}
-.sv-ic{display:grid;place-items:center;width:26px;height:26px;flex:none;
-  border-radius:7px;background:var(--sc-bg);color:var(--sc)}
-.sv-ic svg{width:16px;height:16px}
-.sv-name{font-size:13px;font-weight:700;color:var(--sc)}
-.sv-provider{font-size:12px;font-weight:600;margin-bottom:2px}
-.sv-tel{display:inline-flex;align-items:center;gap:5px;
-  color:var(--gr2);font-size:12px;font-weight:650}
-.sv-tel svg{width:12px;height:12px}
-.sv-freq{font-size:11.5px;color:var(--ink2);margin-top:2px}
-.sv-detail{font-size:11.5px;color:var(--ink3);margin-top:1px}
-.sv-foot{display:flex;align-items:center;gap:8px;margin-top:6px}
-
-/* 矢印。サービスから中心へ向かう。左列は右向き、右列は左向き。
-   飾りではなく「支えている向き」を出すものなので、色は型から引く。 */
-.sv-arrow{position:absolute;top:50%;width:20px;height:12px;
-  margin-top:-6px;color:var(--sc);opacity:.65;pointer-events:none;display:none}
-.sv-arrow svg{width:100%;height:100%}
-@container (min-width:620px){
-  .sv-arrow{display:block}
-  .radial-l .sv-arrow{right:-21px}
-  .radial-r .sv-arrow{left:-21px;transform:scaleX(-1)}
+/* 器が狭いと表の4列は潰れる。行をカード状に積む（見出し行は隠す）。 */
+@container (max-width:560px){
+  .svr-head{display:none}
+  .svr{grid-template-columns:1fr;gap:5px 0;padding:12px 2px}
+  .svr-prov::before,.svr-use::before,.svr-tel::before{
+    content:attr(data-th);display:inline-block;width:66px;
+    font-size:10.5px;color:var(--ink3);font-weight:600}
+  .svr-tel{gap:4px}
 }
 
-/* 週の帯。「誰が支えているか」（放射図）に対して「いつ来るか」。
-   常時のもの（曜日を持たない）は帯に出さない。                     */
-.week{margin-top:14px;padding:12px 14px;border-radius:10px;
-  background:#f7f5ee;border:1px solid #e7e1d0}
-.week-h{display:flex;align-items:center;gap:7px;margin-bottom:9px;
-  font-size:11.5px;font-weight:700;color:var(--ink2)}
-.week-h svg{width:14px;height:14px;color:var(--ink3)}
-.week-h small{font-weight:400;color:var(--ink3)}
-.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-.wd{min-height:62px;padding:6px 5px;border-radius:8px;
-  background:#fff;border:1px solid #e6e0d0}
-.wd-lb{display:block;text-align:center;font-size:11px;font-weight:700;
-  color:var(--ink2);margin-bottom:5px}
-/* 土日は色を落として、平日の並びが読みやすいようにする。 */
-.wd-6 .wd-lb{color:#4d7ba4}
-.wd-7 .wd-lb{color:#b1615f}
-.wd-chip{display:block;padding:3px 5px;margin-bottom:3px;border-radius:5px;
-  background:var(--sc-bg);color:var(--sc);border:1px solid var(--sc-ln);
-  font-size:10px;font-weight:700;line-height:1.4;text-align:center;
-  overflow:hidden;text-overflow:ellipsis}
-.wd-chip:last-child{margin-bottom:0}
-.wd-none{display:block;text-align:center;color:#c8c3b4;font-size:11px;margin-top:8px}
-
-/* 曜日の入り切り（編集時）。 */
-.dayedit{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
-.dayedit button{width:27px;height:27px;border-radius:7px;
-  border:1px solid var(--line2);background:#fff;color:var(--ink2);
-  font-size:11px;font-weight:700}
-.dayedit button.on{background:var(--sc-bg);border-color:var(--sc-ln);color:var(--sc)}
-
-/* ④ 家族が知っておきたいこと。 */
-.knowlist{margin:0;padding:0;list-style:none}
-.knowlist li{position:relative;padding:5px 0 5px 18px;line-height:1.85}
-.knowlist li:before{content:"";position:absolute;left:3px;top:12px;
-  width:6px;height:6px;border-radius:50%;background:#b58a55}
-.know-wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
-.know-wrap .knowlist{flex:1;min-width:240px}
-/* 付箋。「普段と様子が違うときは、無理せずケアマネさんに」。 */
-.know-sticky{flex:none;width:190px;padding:13px 15px;border-radius:2px;
-  background:#fde9ea;border:1px solid #f0c6c8;color:#7d4b4d;
-  font-size:11.5px;line-height:1.9;font-weight:600;
-  transform:rotate(1deg);box-shadow:0 3px 10px rgba(60,40,40,.14)}
-
-/* ⑤ 介護関係書類。 */
-.cs .kv th{background:#f7f5ee;width:170px}
+/* ④ 介護関係の書類やもの｜荷札（タグ）の横並び。
+   札の輪郭（斜めの切り欠き）とハトメは SVG（render.js の CTAG_SHAPE）。
+   ここは札の置かれ方と、文字を紙の上へ乗せる余白だけ。           */
+.ctags{display:flex;flex-wrap:wrap;gap:14px}
+/* 札は紙片なので、伸び縮みしても縦横比を大きく崩さない。
+   viewBox（220×80＝2.75:1）に近いところで止める。 */
+.ctag{position:relative;flex:1 1 220px;min-width:200px;max-width:264px;
+  filter:drop-shadow(0 2px 4px #3d271224)}
+.ctag-shape{position:absolute;inset:0;pointer-events:none}
+/* 札の輪郭（切り欠き・ハトメ・角丸）は1本のパス。viewBox は 220×80 で、
+   札の実寸もこの比に保つ（.ctag の flex-basis と min-height）ので、
+   斜めは寝ず、ハトメも真円のまま。 */
+.ctag-svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* 紙の左端は斜めなので、本文は切り欠きのぶん右へ寄せる。 */
+.ctag-body{position:relative;min-width:0;padding:12px 15px 11px 34px}
+.ctag-item{font-size:12.5px;font-weight:700;color:var(--ink);
+  display:flex;align-items:center;gap:6px}
+.ctag-item .rowdel{margin-left:auto}
+.ctag-where{display:flex;align-items:center;gap:5px;margin-top:5px;
+  font-size:11px;color:var(--ink2)}
+.ctag-foot{margin-top:7px}
+.ctag-add{flex:0 0 auto;align-self:center;margin:0}
 
 /* ══ レスポンシブ ═══════════════════════════════════════════
-   外殻と同じ2つの境目（1200 / 900）に寄せる。放射図と目次の列数は
-   container query で器の実幅から決めているので、ここでは触らない。 */
+   外殻と同じ2つの境目（1200 / 900）に寄せる。表の列は container query
+   で器の実幅から決めているので、ここでは触らない。 */
 
 @media (max-width:1200px){
-  .bk{padding:16px 16px 18px 52px}
-  /* 上 padding は詰めない――表紙の帯（.bk-cover）と見開きの中身の
-     あいだの余白がここ。横だけ縮める。 */
   .bk-page{padding:16px 16px 18px}
-  .bed-head{padding:20px 20px 28px}
-  .bed-body{padding:18px 16px 20px}
 }
 
 @media (max-width:900px){
   .zone + .zone{margin-top:40px}
-  /* 背（.bk-spine）は左端に絶対配置で立つので、その幅ぶんは器の
-     padding-left で必ず空ける。ここを詰めすぎると背が左面の1行目に
-     覆いかぶさり、文字の頭が欠ける（狭幅で起きていた崩れの正体）。
-     狭い画面では背を細くし、空ける量もその幅に合わせる。 */
-  .bk{padding:12px 12px 14px 30px}
-  .bk-spine{width:24px}
-  .bk-stitch{left:6px;width:8px}
-  .bk-ribbon{right:18px}
-  .bk-cover{padding:4px 4px 14px}
-  .bk-title h4{font-size:20px}
   .bk-id{min-width:0;width:100%}
   .bk-page{padding:14px 13px 14px}
   /* 左面。識別欄は氏名を詰める。 */
@@ -1280,36 +1130,13 @@ button.st:hover{filter:brightness(.97)}
   .sf-idrow{gap:14px}
   .bs{padding:14px 0}
 
-  .bed-head{padding:16px 14px 24px;border-radius:13px 13px 0 0}
-  .bed-body{padding:14px 12px 16px;border-radius:0 0 13px 13px}
-  .bed-pillow{min-width:0;padding:14px 16px}
-  .bed-pillow h4{font-size:22px}
-  /* 絵は縦を詰める。枕の下に敷く余白もその分だけ減らす。 */
-  /* 狭い幅では、枕を絵に重ねるのをやめる。横幅が足りないと枕が
-     絵を覆い尽くし、ベッドが「茶色い帯」に戻ってしまう。絵は
-     ヘッダーの帯として上に見せ、文字はその下へ素直に置く。 */
-  /* 絵の高さぶんだけ上を空け、文字の帯はその下に置く。絵（.bed-svg）
-     は器の上部にだけ敷く。 */
-  .bed-head{padding:0}
-  .bed-svg{height:132px;bottom:auto}
-  .bed-pillows{display:block;margin-top:132px;padding:12px 14px 14px;
-    background:linear-gradient(#f7f5ee,#f2efe5);border-top:1px solid #ded6c5}
-  .bed-pillow{min-width:0;margin-bottom:9px;padding:13px 15px;transform:none;
-    border-radius:12px;box-shadow:0 2px 7px rgba(60,45,25,.12)}
-  .bed-pillow:last-child{margin-bottom:0}
-  .bed-post{width:44px;height:150px}
-  .bed-post-l{left:6px}
-  .bed-post-r{right:6px}
-  .bed-remote-svg{top:2px;right:64px;width:40px;height:126px}
-  .cs{padding:13px 13px 14px}
-
-  /* 週の帯は7列だと潰れるので横スクロールにする。 */
-  .week-grid{grid-template-columns:repeat(7,minmax(62px,1fr));
-    overflow-x:auto;padding-bottom:4px}
-
-  /* 付箋は狭い幅でも貼り紙のまま。全幅に伸ばすと本文の帯に見えて、
-     「添えてある一言」という位置づけが消える。 */
-  .cm-sticky,.know-sticky{width:auto;max-width:250px;margin:2px auto 0}
-  .kv th{width:110px}
-  .cs .kv th{width:120px}
+  /* 上段2枚組は縦に積む。 */
+  .cp-row{flex-direction:column}
+  .cp-level,.cp-manager{flex:1 1 auto}
+  .cp{padding:16px 15px}
 }
+
+/* 医療冊子の印刷記号。カードや写真にだけ落ち影を残す。 */
+.bk .scene-ic{box-shadow:none;background:transparent}
+.bk .i-secedit{background:transparent;border-color:#dfe3d8}
+.bk .i-secedit.on{background:var(--gr);border-color:var(--gr);color:#fff}
