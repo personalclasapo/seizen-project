@@ -147,11 +147,20 @@
      使い手がいなくなったので削除した（2026-09-09）。帯の見出しは
      白チップではなく彫り込んだ文字なので、グリフを持たない。      */
 
-  /* 利用している支援｜寄り添うかたち（ハート）。参考画像の見出し記号。 */
-  const CARE_HEART_IC =
-    '<path d="M12 20.3 4.6 13a4.7 4.7 0 0 1 6.6-6.7l.8.8.8-.8A4.7 4.7 0 0 1 19.4 13Z" ' +
-      'fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.6" ' +
-      'stroke-linejoin="round"/>';
+  /* ※ CARE_HEART_IC（寄り添うハート）は「今の支援」プレートの見出しを
+     落とした際（opt.noHead・器は残す）に使い手がなくなったので削除した
+     （2026-09-10）。 */
+
+  /* 暮らしの時間に入る支援｜時計。カレンダー紙面の頭書きに置くチップの
+     グリフ。この節の中身（週のカレンダー）が「時間軸に入る予定」だから
+     時計――モチーフとの連動（2026-09-10）。綴じ帯と同じ茶地に白で抜く
+     ので、白チップ＋緑線の headChip ではなく、塗り面のグリフにする
+     （文字盤の円＋短針・長針）。 */
+  const CARE_CLOCK_IC =
+    '<circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.8"/>' +
+    '<path d="M12 7.2V12l3.4 2" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>';
 
   /* 書類やもの｜綴じた書類。所在をまとめる場所。 */
   const CARE_DOC_IC =
@@ -1928,15 +1937,20 @@
      緑線グリフ（headChip、契約デジタル／医療右面と同じ手つき）。
      一言（lead）は付けない――README のとおり素っ気なくする。
      opt.noEdit … プレートの中に性質の違う複数節を持ち、鉛筆を節ごと
-     （careSubHead）に持たせるとき、プレート本体の鉛筆は省く
-     （「今の支援」＝暮らしの時間に入る支援／継続して使っている支援）。 */
+     （careSubHead）に持たせるとき、プレート本体の鉛筆は省く。
+     opt.noHead … プレート見出し（.cp-h）そのものを出さない。「今の支援」
+     はプレートの器（白い地・ネジ・落ち影）は要るが、中身がカレンダー
+     1枚＋絵札で、その頭書き（.wcal-lead）が見出しを兼ねるので、プレート
+     見出しは二重になる（2026-09-10：文字と ❤️ だけ落とす。器は残す）。 */
   function carePlate(key, glyph, title, body, opt) {
     const o = opt || {};
-    return '<section class="cp' + (o.cls ? ' ' + o.cls : '') + '">' +
+    return '<section class="cp' + (o.cls ? ' ' + o.cls : '') +
+        (o.noHead ? ' cp-nohead' : '') + '">' +
       careScrews(!!o.wide) +
-      '<div class="cp-h">' + headChip(glyph) +
-        '<h5>' + esc(title) + '</h5>' +
-        (o.noEdit ? '' : editBtn(key)) + '</div>' +
+      (o.noHead ? ''
+        : '<div class="cp-h">' + headChip(glyph) +
+            '<h5>' + esc(title) + '</h5>' +
+            (o.noEdit ? '' : editBtn(key)) + '</div>') +
       '<div class="cp-body">' + body + '</div></section>';
   }
 
@@ -2073,45 +2087,22 @@
            曜日を持たない・ずっと家にある。造形は物の絵札
 
      どちらも「今の支援」という1枚のプレートの中の節なので、プレート
-     本体（.cp／ネジ／彫りの格）は1つ。節ごとに小見出し＋鉛筆を持つ
-     （careSubHead）――節見出し（headChip）より一段小さい格。      */
+     本体（.cp／ネジ／彫りの格）は1つ。
 
-  /* 小見出し＋鉛筆。プレート内の節を分けるための部品。
-     ★これまで2回、「独立した物として作る」発想の中で材だけ変えて
-     詰まっていた（インデックスラベル→タブ／木札／彫り込みの3案、
-     いずれもユーザー判断で不採用・2026-09-10）。正本
-     （介護イメージ.png）を見直すと、そもそも**この見出しに相当する
-     ものが存在しない**――プレート見出し（❤️）の直後は表の列見出しに
-     直結し、間に挟まる第三の物は無い。「新しい物を発明する」前提を
-     疑い、今ある物（プレート地・カレンダー紙・余白）だけで2節の違いを
-     示す方向に切り替えた。
+     ★上節「暮らしの時間に入る支援」の見出しは、プレート地の上に浮かせず
+     **カレンダー台紙の紙面の中**へ、その1ページ目の頭書きとして取り込む
+     （2026-09-10 認識合わせ）。リング＋綴じ帯 → 紙面の頭書き（時計チップ
+     ＋見出し＋補足文）→ 列見出し → 各行、の順。見出しはカレンダーが持つ
+     （weekCalendarLead）ので、ここでは careSubHead を呼ばない。
+     過去に「プレート地に直接置く／綴じ帯に文言を入れる／文字を出さない」
+     の3案を ?subhead= で見比べたが（plain/band/bare）、いずれも見出しが
+     カレンダーの部品に見えるか浮くかで、全部捨てた。
 
-     3案を並べて見比べる（?subhead= で切り替え）：
-       'plain' … 部品を作らない。太字＋間隔だけ（プレート地に直接）
-       'band'  … カレンダー紙が持つ帯（曜日の乗る濃色の帯）自体に
-                  文言を組み込む。別部品を足さない
-       'bare'  … 文字もラベルも無し。節の違いは形（カレンダー／絵札）
-                  と間隔だけに任せる（README「素っ気なくする」の徹底）
-     'band' は帯自体を持つカレンダー側（weekCalendar）で組む。       */
-  const CARE_SUBHEAD_VARIANT = (function () {
-    try {
-      const q = new URLSearchParams(location.search).get('subhead');
-      if (q === 'plain' || q === 'band' || q === 'bare') return q;
-    } catch (e) { /* file:// などで URL が読めなくても既定へ倒す */ }
-    return 'plain';
-  })();
+     下節「継続して使っている支援」（絵札）は今回保留。従来どおり
+     careSubHead（csh-plain：太字＋間隔）を使う。                    */
+
+  /* 小見出し＋鉛筆。いまは equipment 節だけが使う。 */
   function careSubHead(key, title) {
-    const v = CARE_SUBHEAD_VARIANT;
-    if (v === 'bare') {
-      /* 見出しの文字を出さず、鉛筆だけ右上に残す（編集の入口は要る）。 */
-      return '<div class="cp-sub-h csh-bare">' + editBtn(key) + '</div>';
-    }
-    if (v === 'band') {
-      /* カレンダー側が帯に文言を持つので、ここでは鉛筆だけ出す
-         （equipment 節にはカレンダーが無いので、こちらは 'plain' と
-         同じ太字＋間隔に自然と揃う）。 */
-      if (key === 'service') return '';
-    }
     return '<div class="cp-sub-h csh-plain">' +
       '<h6>' + esc(title) + '</h6>' +
       editBtn(key) +
@@ -2239,13 +2230,21 @@
     const rows = list.map(sv => ({
       sv: sv, kind: S.serviceKind(sv.kind), days: daysOf(sv)
     }));
-    /* 紙の上端の帯（綴じ側）。★'band' 案（?subhead=band）だけ、帯は
-       ただの綴じ側ではなく節見出しの文言を持つ――独立した見出しの
-       部品を作らず、紙が元から持っている帯を使う（2026-09-10）。   */
-    const bandTitle = CARE_SUBHEAD_VARIANT === 'band'
-      ? '<span class="wcal-band-tt">暮らしの時間に入る支援</span>' + editBtn('service')
-      : '';
-    const band = '<div class="wcal-band">' + weekCalendarHeadPlate() + bandTitle + '</div>';
+    /* 紙の上端の帯（綴じ側）。リングが貫く濃色の帯で、中身は持たない。 */
+    const band = '<div class="wcal-band">' + weekCalendarHeadPlate() + '</div>';
+    /* 紙面の頭書き。節「暮らしの時間に入る支援」の見出しを、カレンダー
+       台紙の1ページ目の頭書きとして紙の面に置く（2026-09-10）。
+       時計チップ＋見出し＋補足文＋鉛筆。列見出しはこの下に来る。 */
+    const lead = '<div class="wcal-lead">' +
+      '<span class="wcal-lead-ic" aria-hidden="true">' +
+        svgIc(CARE_CLOCK_IC, 22) + '</span>' +
+      '<span class="wcal-lead-tx">' +
+        '<span class="wcal-lead-tt">暮らしの時間に入る支援</span>' +
+        '<span class="wcal-lead-nt">人が来る・出かける・サービスを受けるなど、' +
+          '予定が決まっている支援です。</span>' +
+      '</span>' +
+      editBtn('service') +
+      '</div>';
     /* 列見出し。★全列に見出しを付ける――1枚の表になったので、
        曜日だけが見出しを持つのは筋が通らない。 */
     const head = '<div class="wcal-head">' +
@@ -2360,6 +2359,7 @@
       weekCalendarFrame() +
       band +
       '<div class="wcal-inner">' +
+        lead +
         head +
         '<div class="wcal-rows">' + grid + body + '</div>' +
       '</div>' +
@@ -2545,10 +2545,12 @@
     const services = S.data.care.services || [];
     const editingService = secOn('service');
     return '<div class="cp-sub">' +
-      careSubHead('service', '暮らしの時間に入る支援') +
+      /* ★上節の見出しはカレンダー台紙の紙面が持つ（weekCalendarLead）。
+         空欄のときだけ、器が無いので従来の小見出しを出す。 */
       (services.length
         ? weekCalendar(services)
-        : '<p class="i-ev-empty">まだ登録がありません。</p>') +
+        : careSubHead('service', '暮らしの時間に入る支援') +
+          '<p class="i-ev-empty">まだ登録がありません。</p>') +
       /* ★編集用の表を下に出さない（2026-09-09 指摘）。表示と編集で場所が
          変わるうえ、同じ項目が2箇所に出て「どちらが本物か」が分からな
          かった。カレンダーの行そのものが入力欄になる（weekCalendar の
@@ -2660,8 +2662,14 @@
         careBoardFrame() +
         '<div class="care-board-inner">' +
           careTopSlat() +
-          carePlate(null, CARE_HEART_IC, '今の支援',
-            careSupportBlock(), { wide: true, cls: 'cp-service', noEdit: true }) +
+          /* ★「今の支援」プレートは器（白い地・ネジ・落ち影）は残し、
+             見出し（「今の支援」＋❤️）だけ落とす（2026-09-10 opt.noHead）。
+             中身のカレンダー頭書き（.wcal-lead）が見出しを兼ねるので、
+             プレート見出しは二重になる。❤️（CARE_HEART_IC）は削除。
+             「継続して使っている支援」「介護関係の書類やもの」の造形は
+             まだ手を付けていない（次）。 */
+          carePlate(null, null, '', careSupportBlock(),
+            { wide: true, cls: 'cp-service', noHead: true }) +
           carePlate('cpapers', CARE_DOC_IC, '介護関係の書類やもの',
             carePapersBlock(), { wide: true, cls: 'cp-papers' }) +
         '</div>' +

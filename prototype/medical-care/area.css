@@ -1150,44 +1150,57 @@ button.st:hover{filter:brightness(.97)}
 
 /* ── 今の支援｜プレート内の2節 ─────────────────────────
    「暮らしの時間に入る支援」（卸しカレンダー）と「継続して使っている
-   支援」（物の絵札）。1枚のプレートの中に2節を持つので、節見出しは
-   headChip の白チップより軽い、テキストだけの小見出しにする。      */
+   支援」（物の絵札）。1枚のプレートの中に2節を持つ。
+   ★プレート見出し（「今の支援」＋❤️）は落とした（2026-09-10・.cp-nohead）
+   ――上節の見出し（.wcal-lead）が兼ねるので二重になるため。器（.cp の
+   白い地・ネジ・落ち影）は残す。
+   ★下節「継続して使っている支援」の造形はまだ手を付けていない。次の
+   セッションで作り直す。
+   ★上節の見出しはカレンダー台紙の紙面が持つ（.wcal-lead）。.csh-plain
+   は下節と、上節が空欄のときだけ使う。 */
+/* 見出しを持たないプレート。カレンダーのリングは紙の上端より
+   --wcal-top（26px）上へ出るので、その逃げがそのままプレートの上
+   padding に積まれると、リング上端がプレート上端から 50px 近く下がる。
+   .cp の上 padding を削り、.wcal の margin-top も詰めて、リングが
+   プレート上端の近くに来るようにする。 */
+.cp-nohead{padding-top:clamp(8px,1%,12px)}
+.cp-nohead .cp-body{margin-top:0}
+.cp-nohead .cp-body .wcal{margin-top:var(--wcal-top)}
 .cp-sub + .cp-sub{margin-top:26px;padding-top:0;border-top:0}
-/* ── 節の小見出し ─────────────────────────────────────
-   ★「独立した物として作る」発想で3案（インデックスラベル→タブ／
-   木札／彫り込み）を作ったが、いずれもユーザー判断で不採用
-   （2026-09-10）。正本（介護イメージ.png）にはこの見出しに相当する
-   ものが無い――プレート見出し（❤️）の直後は表の列見出しに直結する。
-   「新しい物を発明する」前提を疑い、今ある物（プレート地／カレンダー
-   紙の帯／余白）だけで2節の違いを示す3案に切り替えた
-   （?subhead=plain / band / bare）。                              */
 
-/* plain案｜部品を作らない。太字＋間隔だけ、プレート地に直接。 */
+/* 節の小見出し（equipment 節／上節が空欄のとき）。部品を作らず
+   太字＋間隔だけ。過去に「プレート地に直接／綴じ帯に文言／文字を
+   出さない」の3案を ?subhead= で見比べたが、いずれも見出しが
+   カレンダーの部品に見えるか浮くかで全部捨てた（2026-09-10）。 */
 .csh-plain{display:flex;align-items:center;margin-bottom:11px}
 .csh-plain h6{margin:0;font-size:12px;font-weight:700;color:var(--ink2);
   letter-spacing:.02em}
 .csh-plain .i-secedit{margin-left:auto;width:24px;height:24px}
 .csh-plain .i-secedit svg{width:13px;height:13px}
 
-/* bare案｜文字もラベルも無し。鉛筆だけ右上に残す（編集の入口）。
-   節の違いは形（カレンダー／絵札）と間隔だけに任せる。 */
-.csh-bare{display:flex;justify-content:flex-end;margin-bottom:8px;
-  min-height:24px}
-.csh-bare .i-secedit{width:24px;height:24px}
-.csh-bare .i-secedit svg{width:13px;height:13px}
-
-.cp-sub-note{margin:14px 0 8px;font-size:11px;color:var(--ink3)}
-
-/* band案｜カレンダー紙の帯（曜日が乗る濃色の帯）自体に見出しの文言を
-   持たせる。独立した部品を作らない――紙が元から持っている場所を使う。 */
-.wcal-band-tt{position:absolute;left:14px;top:0;height:18px;
-  display:flex;align-items:center;font-size:11px;font-weight:700;
-  color:#f3ead4;letter-spacing:.03em;z-index:2;text-shadow:0 1px 1px #3d271255}
-.wcal-band-tt + .i-secedit{position:absolute;right:10px;top:0;height:18px;
-  width:18px;background:none;border:0;box-shadow:none;color:#f3ead4cc;
-  z-index:2}
-.wcal-band-tt + .i-secedit svg{width:11px;height:11px}
-.wcal-band-tt + .i-secedit:hover{color:#fff}
+/* ── カレンダー紙面の頭書き（上節の見出し）─────────────
+   節「暮らしの時間に入る支援」の見出しを、カレンダー台紙の1ページ目の
+   頭書きとして紙の面に置く（2026-09-10 認識合わせ）。プレート地に
+   浮かせず、リング＋綴じ帯の下・列見出しの上に、紙に刷られた見出しと
+   して座らせる。時計チップは綴じ帯と同じ茶系（この節の中身＝時間軸に
+   入る予定、だから時計）。 */
+/* ★「今の支援」プレートの見出しは落としたので（.cp-nohead）、この
+   頭書きがこのプレートで最初に読む見出しになる。 */
+.wcal-lead{position:relative;z-index:1;
+  display:flex;align-items:flex-start;gap:10px;
+  padding:12px 0 11px;border-bottom:1.5px solid #ddd0ae}
+.wcal-lead-ic{flex:0 0 auto;width:30px;height:30px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,#7d6a45,#6a5936);color:#fdfaf3;
+  box-shadow:0 1px 2px #3d271233}
+.wcal-lead-ic svg{width:19px;height:19px}
+.wcal-lead-tx{min-width:0;display:flex;flex-direction:column;gap:2px;
+  padding-top:1px}
+.wcal-lead-tt{font-size:14px;font-weight:700;color:var(--ink1);
+  letter-spacing:.01em;line-height:1.3}
+.wcal-lead-nt{font-size:11px;color:var(--ink3);line-height:1.5}
+.wcal-lead .i-secedit{flex:0 0 auto;margin-left:auto;width:24px;height:24px}
+.wcal-lead .i-secedit svg{width:13px;height:13px}
 
 /* ── 週のカレンダー（1週分の紙）───────────────────────
    造形の正本は参考画像の卓上リングカレンダー（2026-09-09 ユーザー提示）。
@@ -1239,7 +1252,7 @@ button.st:hover{filter:brightness(.97)}
 /* 列見出し。★1枚の表になったので**全列に**見出しを付ける
    （曜日だけが見出しを持つのは筋が通らない）。 */
 .wcal-head{position:relative;z-index:1;align-items:end;
-  padding-bottom:5px;border-bottom:1.5px solid #ddd0ae}
+  padding-top:10px;padding-bottom:5px;border-bottom:1.5px solid #ddd0ae}
 .wc-h{font-size:10.5px;font-weight:700;color:var(--ink3);
   letter-spacing:.02em;padding-bottom:1px}
 .wcal-d{text-align:center;font-size:10.5px;font-weight:700;
