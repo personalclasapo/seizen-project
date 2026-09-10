@@ -1025,7 +1025,9 @@ button.st:hover{filter:brightness(.97)}
 /* 介護度と相談先は、どちらもラベルを値の上に置く縦組み。値だけを
    拾い読みできるようにする（1行に並べると一続きの文字列に見える）。 */
 .cws-item{display:flex;flex-direction:column;gap:2px;min-width:0}
-.cws-level{flex:none}
+/* 介護認定は内容幅ぶんしか無い（「要介護2」）。札の左縁と溝の両方に
+   詰まるので、左右にパディングを持たせて空気を作る。 */
+.cws-level{flex:none;padding:0 clamp(12px,1.8%,18px)}
 .cws-mgr{flex:1;min-width:0}
 
 /* 二者の境目＝彫り込んだ溝。CSS の区切り線（1本のヘアライン）に
@@ -1065,18 +1067,29 @@ button.st:hover{filter:brightness(.97)}
 /* ★4行を縦に積むと札が伸び、隣の介護認定より背が高くなって「一段軽い
    格」でなくなる（2026-09-09 のレンダリングで発覚）。広いときは
    事業所＋担当／電話＋Web の2列に折る――札の高さを2行に抑える。   */
+/* 2グループを横に並べる外の器。グループ間の間隔は column-gap ひとつ
+   ――値カラムを 1fr で伸ばして間を作ると間延びする（2026-09-10 指摘）。
+   グループは内容幅で閉じ、余りは器の右に残す（札を端まで埋めない）。 */
 .cws-mgr-tb{display:grid;
-  grid-template-columns:repeat(2,auto minmax(0,1fr));
-  gap:3px 10px;align-items:baseline;min-width:0}
+  grid-template-columns:auto auto;
+  column-gap:clamp(30px,4.2%,44px);
+  align-items:start;min-width:0;justify-content:start}
+/* グループ＝自前のラベル列＋値列。★グループごとに独立した grid なので、
+   ラベル列は「事業所／担当」の最大幅、「電話／Web」の最大幅でそれぞれ
+   揃い、値の頭が縦に揃う（display:flex では字数差で頭がずれる
+   ＝2026-09-10 指摘）。 */
+.cws-mgr-grp{display:grid;grid-template-columns:auto auto;
+  column-gap:8px;row-gap:5px;align-items:baseline;min-width:0}
 @container (max-width:760px){
-  .cws-mgr-tb{grid-template-columns:auto minmax(0,1fr)}
+  .cws-mgr-tb{grid-template-columns:auto;row-gap:5px}
 }
 .cws-mgr-row{display:contents}
 /* ラベルは値より一段沈める（読む対象は値のほう）。 */
 .cws-mgr-lb{font-size:10.5px;font-weight:700;color:#7d5730;
-  letter-spacing:.04em;white-space:nowrap;justify-self:start}
+  letter-spacing:.04em;white-space:nowrap}
+/* 長い事業所名は折り返す＝連絡先セルと同じ扱い。 */
 .cws-mgr-v{min-width:0;font-size:13px;color:#33200c;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  white-space:normal;overflow-wrap:anywhere;line-height:1.4}
 .cws-mgr-office{font-size:14px;font-weight:700}
 .cws-tel{display:inline-flex;align-items:center;gap:5px;
   font-size:14px;font-weight:700}
@@ -1237,11 +1250,11 @@ button.st:hover{filter:brightness(.97)}
    ないので、そもそも列を持たせるのが誤りだった。行の右外に出す。   */
 .wcal-head,.wcal-row,.wcal-grid{display:grid;
   grid-template-columns:
-    minmax(0,1.3fr)           /* 支援 */
-    minmax(140px,.9fr)        /* 連絡先 */
-    minmax(154px,238px)       /* 曜日7列 */
-    minmax(76px,116px);       /* 時間帯（削除の列を廃止したぶん広げた） */
-  gap:0 12px}
+    minmax(0,1fr)             /* 支援：残り幅は全部こちら。説明文を折り返さない */
+    minmax(132px,168px)       /* 連絡先：事業所リンク＋電話1行で足りる幅で頭打ち */
+    minmax(150px,224px)       /* 曜日7列 */
+    minmax(72px,96px);        /* 時間帯：短い文。2行に折り返してよいので上限を絞り、支援へ回す */
+  gap:0 10px}
 
 /* 紙の上端の帯（綴じ側）。★曜日は帯の中に入れない――帯の装飾の一部に
    見えてしまう。帯は紙の一部で、中身を持たない。 */
@@ -1255,6 +1268,10 @@ button.st:hover{filter:brightness(.97)}
   padding-top:10px;padding-bottom:5px;border-bottom:1.5px solid #ddd0ae}
 .wc-h{font-size:10.5px;font-weight:700;color:var(--ink3);
   letter-spacing:.02em;padding-bottom:1px}
+/* 見出しラベルは各列の中央に置く（中身は左寄せのまま――中身まで
+   中央にすると行頭のアイコンや事業所名の開始位置がガタつく）。
+   曜日7列はもともと中央なので、これで全列の見出しが揃う。 */
+.wc-h-sv,.wc-h-ct,.wc-h-tm{text-align:center}
 .wcal-d{text-align:center;font-size:10.5px;font-weight:700;
   color:var(--ink2);letter-spacing:.02em;padding-bottom:1px}
 .wcal-d-end{color:#a08a5c}
@@ -1263,14 +1280,22 @@ button.st:hover{filter:brightness(.97)}
    ★カレンダーがカレンダーに見えるのは「縦と横に軸があって、その交点に
    印が置かれている」から。7本の列は**全行を貫く1枚**として行の裏に敷く
    （行ごとに独立した7マスでは交点にならない）。                    */
-.wcal-rows{position:relative}
+/* 見出し＋行をまとめた「表」。縦罫（.wcal-grid）はこの箱の高さ全体に
+   敷く＝見出しの帯にも罫が通る（2026-09-10）。 */
+.wcal-table{position:relative}
+.wcal-rows{position:relative;z-index:1}
 .wcal-grid{position:absolute;inset:0;pointer-events:none;z-index:0}
 .wcal-collines{grid-column:3;align-self:stretch;
   display:grid;grid-template-columns:repeat(7,1fr)}
 .wcal-col{border-left:1px solid #eae0c6}
-.wcal-col:last-child{border-right:1px solid #eae0c6}
-/* 1列目の左は太い罫＝「読む欄」と「曜日の表」の境目。 */
+/* 曜日の表の両端は太い罫＝「曜日の表」と両隣を分ける。左端（連絡先側）と
+   右端（時間帯側）を対にする。 */
 .wcal-col:first-child{border-left:1.5px solid #d8c9a4}
+.wcal-col:last-child{border-right:1.5px solid #d8c9a4}
+/* 支援｜連絡先 の仕切り。曜日列の罫と同じ太さ・色で、全行を貫く1枚と
+   して敷く（連絡先｜曜日 の境は .wcal-col:first-child が既に持つ）。 */
+.wcal-vsep{align-self:stretch;width:0;border-left:1.5px solid #d8c9a4}
+.wcal-vsep-a{grid-column:2;justify-self:start}
 .wcal-col-end{background:#f8f3e3}
 
 /* 行。横の軸は紙の左右いっぱいに渡す（途中で切れると格子にならない）。 */
@@ -1299,10 +1324,12 @@ button.st:hover{filter:brightness(.97)}
 /* ② 連絡先。★横に並べると3つ目（Web）が必ず溢れて折り返す――
    セルの中で縦に組み、溢れる構造そのものを無くす（?contact= で
    組み方の案を切り替えて見比べる）。 */
-.wc-ct{min-width:0;display:flex;flex-direction:column;gap:2px;
-  font-size:11px;line-height:1.45}
+.wc-ct{min-width:0;display:flex;flex-direction:column;gap:5px;
+  font-size:11px;line-height:1.45;padding-left:12px}
+/* 事業所名は「…」で切らず折り返す＝家族が電話先を識別する情報なので、
+   読めなくなるほうが困る（2026-09-10 判断）。 */
 .wc-prov{color:var(--ink2);min-width:0;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  white-space:normal;overflow-wrap:anywhere;line-height:1.4}
 .wc-prov-link{color:var(--gr);font-weight:600;text-decoration:underline;
   text-underline-offset:2px}
 /* 外部リンクのグリフ。★`↗` の文字を本文に混ぜない（指摘：矢印がチープ）。
@@ -1326,8 +1353,9 @@ a:hover > .i-ext{opacity:1}
 .wcal-dot{width:9px;height:9px;border-radius:50%;background:var(--sc);
   box-shadow:0 0 0 2.5px color-mix(in srgb,var(--sc) 15%,transparent)}
 
-/* ④ 時間帯。曜日は days が持つので、ここは時間だけ＝短い。 */
-.wc-tm{min-width:0}
+/* ④ 時間帯。曜日は days が持つので、ここは時間だけ＝短い。
+   右の縦罫（曜日の表の右端）と中身を離す＝連絡先と同じ扱い。 */
+.wc-tm{min-width:0;padding-left:12px}
 .wcal-use{font-size:10.5px;color:var(--ink2);line-height:1.45;
   white-space:normal;overflow-wrap:anywhere;word-break:normal;
   line-break:strict}

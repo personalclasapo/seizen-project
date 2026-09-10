@@ -46,8 +46,10 @@
     memo:     ['medical.memo'],
     visit:    ['medical.clinics'],
     medsrc:   ['medical.medSources'],
-    level:   ['care.level'],
-    manager: ['care.manager.'],
+    /* 木札の帯は1つの編集単位＝介護認定と主な相談先をまとめて開く
+       （鉛筆は帯に1つ。認定だけ別セクションだと、鉛筆を押しても
+       認定が編集できない＝2026-09-10 指摘）。 */
+    manager: ['care.level', 'care.manager'],
     service: ['care.services'],
     equipment: ['care.equipment'],
     cpapers: ['care.papers']
@@ -1990,7 +1992,7 @@
     const certified = S.isCertified(c.level);
     if (isOpen('care.level')) {
       return '<div class="cws-item cws-level cl-edit">' +
-        '<span class="cp-kv-lb">要介護度</span>' +
+        '<span class="cws-lb">介護認定</span>' +
         evSelect('care.level', c.level, S.CARE_LEVELS) + '</div>';
     }
     return '<div class="cws-item cws-level">' +
@@ -2036,28 +2038,36 @@
     const mg = S.data.care.manager || {};
     const on = isOpen('care.manager');
     const web = String(mg.web || '').trim();
+    /* 2グループ：左＝どこの・誰（事業所／担当）、右＝連絡手段（電話／Web）
+       （2026-09-10 ユーザー指示）。各グループが自前のラベル列＋値列を持ち、
+       グループ内で値の頭が縦に揃う。グループ間の間隔は .cws-mgr-tb の
+       column-gap ひとつで決める（ラベル→値の詰まりと混ざらない）。 */
+    const webVal = on
+      ? '<span class="cws-web">' +
+          ev('care.manager.web', mg.web, 'line', 'https://…') + '</span>'
+      : (web
+        ? '<a class="cws-web" href="' + esc(web) + '" target="_blank" ' +
+            'rel="noopener">' + esc(webLabel(web)) + EXT + '</a>'
+        : '');
+    const groupWho = '<div class="cws-mgr-grp">' +
+      mgrRow('事業所', ev('care.manager.office', mg.office, 'line', '事業所名'),
+        'cws-mgr-office') +
+      mgrRow('担当', ev('care.manager.name', mg.name, 'line', '担当者名')) +
+      '</div>';
+    /* 電話の受話器アイコンは閲覧時だけ――番号に寄り添って「これは
+       電話番号」と伝える。編集時は入力欄の頭を事業所・担当と揃えたい
+       ので出さない（2026-09-10 ユーザー指示）。 */
+    const telVal = on
+      ? ev('care.manager.tel', mg.tel, 'line', '電話番号')
+      : '<span class="cws-tel">' + TEL +
+          ev('care.manager.tel', mg.tel, 'line', '電話番号') + '</span>';
+    const groupHow = '<div class="cws-mgr-grp">' +
+      mgrRow('電話', telVal) +
+      (on || web ? mgrRow('Web', webVal) : '') +
+      '</div>';
     return '<div class="cws-item cws-mgr">' +
       '<span class="cws-lb">介護の主な相談先</span>' +
-      '<div class="cws-mgr-tb">' +
-        mgrRow('事業所', ev('care.manager.office', mg.office, 'line', '事業所名'),
-          'cws-mgr-office') +
-        mgrRow('担当', ev('care.manager.name', mg.name, 'line', '担当者名')) +
-        mgrRow('電話',
-          '<span class="cws-tel">' + TEL +
-            ev('care.manager.tel', mg.tel, 'line', '電話番号') + '</span>') +
-        (on
-          ? mgrRow('Web',
-              '<span class="cws-web">' +
-                ev('care.manager.web', mg.web, 'line', 'https://…') + '</span>')
-          : (web ? mgrRow('Web',
-              '<a class="cws-web" href="' + esc(web) + '" target="_blank" ' +
-                'rel="noopener">' + esc(webLabel(web)) + EXT + '</a>') : '')) +
-      '</div>' +
-      (on
-        ? '<span class="cws-memo">' + MEMO_MARK +
-            ev('care.manager.note', mg.note, 'line',
-              '例：体調のことは、まずこの方に相談。') + '</span>'
-        : '') +
+      '<div class="cws-mgr-tb">' + groupWho + groupHow + '</div>' +
       '</div>';
   }
 
@@ -2344,10 +2354,14 @@
     const ringRow = cls => '<span class="wcal-rings ' + cls + '" aria-hidden="true">' +
       Array(9).fill(0).map(() => weekCalendarRing()).join('') +
       '</span>';
-    /* 曜日の縦の軸。★カレンダーがカレンダーに見えるのは「縦と横に軸が
-       あって、その交点に印が置かれている」から。7本の線は**全行を貫く
-       1枚**として、行の裏に敷く。 */
+    /* 縦の軸。★カレンダーがカレンダーに見えるのは「縦と横に軸があって、
+       その交点に印が置かれている」から。線は**見出しから最終行まで貫く
+       1枚**として、表（見出し＋行）の裏に敷く――見出しだけ罫が無いと
+       表として不自然（2026-09-10 指摘）。 */
     const grid = '<span class="wcal-grid" aria-hidden="true">' +
+      /* 列の仕切り。支援｜連絡先｜曜日｜時間帯 の4ブロックを分ける縦罫
+         （曜日7列の内側の細罫は .wcal-collines）。 */
+      '<span class="wcal-vsep wcal-vsep-a"></span>' +
       '<span class="wcal-cells wcal-collines">' +
         WEEKDAY_CHARS.map((d, i) =>
           '<span class="wcal-col' + (i > 4 ? ' wcal-col-end' : '') + '"></span>'
@@ -2360,8 +2374,11 @@
       band +
       '<div class="wcal-inner">' +
         lead +
-        head +
-        '<div class="wcal-rows">' + grid + body + '</div>' +
+        '<div class="wcal-table">' +
+          grid +
+          head +
+          '<div class="wcal-rows">' + body + '</div>' +
+        '</div>' +
       '</div>' +
       ringRow('wcal-rings-front') +
       '</div>';
@@ -2561,7 +2578,7 @@
         : '') +
       '</div>' +
       '<div class="cp-sub">' +
-      careSubHead('equipment', '継続して使っている支援') +
+      careSubHead('equipment', '介護で必要なもの') +
       equipmentBlock() +
       '</div>';
   }
