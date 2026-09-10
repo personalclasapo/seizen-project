@@ -994,10 +994,119 @@ button.st:hover{filter:brightness(.97)}
   border:1px solid #dccfba;border-radius:7px;
   box-shadow:0 1px 2px #3d271226,0 7px 16px #3d271230,
     inset 0 1px 0 #fffaf2,inset 0 -1px 0 #d6c8b0}
-.cp-row{display:flex;gap:clamp(16px,2.6%,26px);align-items:stretch}
-.cp-row .cp{flex:1;min-width:0}
-.cp-level{flex:0 1 38%}
-.cp-manager{flex:1 1 58%}
+/* ── 上部の木札の帯 ───────────────────────────────────
+   介護度と主な相談先。プレートより一段軽い格（README・render.js の
+   careWoodSlat 参照）。木地と柾目は SVG が持ち、ここは置かれ方だけ。 */
+.cws-band{position:relative;isolation:isolate;border-radius:4px;
+  container-type:inline-size;
+  /* 板に伏せて置かれた札。プレート（0 7px 16px）より落ち影を浅く
+     ――浮かず、沈みもしない厚みにする。 */
+  box-shadow:0 1px 2px #3d271233,0 2px 5px #3d271222}
+.cws{position:absolute;inset:0;z-index:-1;border-radius:4px}
+.cws-svg{position:absolute;inset:0;width:100%;height:100%;display:block;
+  border-radius:4px}
+
+/* 彫り込んだ平面。実物の彫り看板と同じで、字の下だけ木を削って平らに
+   する――木目が字を横切らないので、木の札のまま字が読める。
+   ★SVG に入れず CSS の box で持つ理由：札の SVG は
+   preserveAspectRatio="none" で引き伸ばすので、同じ SVG に置くと
+   角丸と削り口の稜線が幅によって寝る（render.js の注記）。
+   地は木地より沈んだ色＋わずかに明るい面（削って新しい木肌）。 */
+.cws-plane{position:absolute;inset:clamp(6px,.9%,9px);border-radius:3px;
+  background:linear-gradient(178deg,#c98f58 0%,#dcae7d 22%,#e4bb8d 100%);
+  /* 削り口＝彫りの内壁。上と左に陰（彫りの奥）、下と右に光（削り口が
+     手前で光を拾う）。inset の影2本で厚みを出す。 */
+  box-shadow:inset 0 2px 3px #6b421f66,inset 0 -1px 0 #f7dcb8aa,
+    inset 1px 0 2px #6b421f44,inset -1px 0 0 #f2d2a888}
+
+.cws-inner{position:relative;display:flex;align-items:center;flex-wrap:wrap;
+  gap:6px clamp(14px,2.4%,26px);
+  padding:clamp(11px,1.7%,15px) clamp(16px,2.2%,22px)}
+/* 介護度と相談先は、どちらもラベルを値の上に置く縦組み。値だけを
+   拾い読みできるようにする（1行に並べると一続きの文字列に見える）。 */
+.cws-item{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cws-level{flex:none}
+.cws-mgr{flex:1;min-width:0}
+
+/* 二者の境目＝彫り込んだ溝。CSS の区切り線（1本のヘアライン）に
+   すると UI の罫に見えるので、**溝の断面**として持たせる：
+   奥（陰）へ落ちて、向こう側の削り口で光が返る3層。幅も 1px では
+   なく、実際に彫った幅（3px）を取る。 */
+.cws-groove{flex:none;align-self:stretch;width:3px;
+  margin:clamp(4px,.6%,7px) 0;border-radius:1.5px;
+  background:linear-gradient(90deg,
+    #6b421f55 0 1px,      /* 手前の削り口の陰 */
+    #5c3a1c88 1px 2px,    /* 溝の底 */
+    #f7dcb8cc 2px 3px);   /* 向こう側の削り口が拾う光 */
+  box-shadow:inset 0 1px 1px #6b421f33}
+
+/* 彫り込んだ平面の上の文字。面が平らで木目が止まっているので、
+   文字自体に強い影は要らない――削り口の光を 1本だけ返す。
+   （字に影を重ねて可読性を作ろうとすると、11〜13px では滲む） */
+.cws-lv,.cws-lb,.cws-mgr-lb,.cws-mgr-v,.cws-mgr-office,.cws-tel,.cws-web,.cws-memo{
+  color:#33200c;text-shadow:0 1px 0 #f7dcb875}
+/* ラベルは小さく、値は大きく。格の差はここで出す。 */
+.cws-lb{display:inline-flex;align-items:center;gap:5px;
+  font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#6d4a24}
+.cws-lv{font-size:19px;font-weight:800;letter-spacing:.01em;line-height:1.15;
+  background:none;border:0;padding:0;cursor:pointer;font-family:inherit;
+  text-align:left}
+.cws-lv-off{color:#7a5c3c;font-weight:700;font-size:16px}
+/* 相談先は「事業所名＋担当者名」「電話＋Web」の2行。行内は横並び。
+   ★事業所名を先に置き、担当者名と対等な太さ・近いサイズで並べる
+   （2026-09-09 レビュー：事業所名だけ11.5pxの添え物になっていて、
+   名前だけが主役に見えていたのを直した。電話をかける先・検索する
+   先は法人の窓口で、担当者名はその中の「誰か」を添える情報）。   */
+/* ラベル列＋値列の表。★横一列に流すと「介護の主な相談先 ○○居宅介護
+   支援事業所 担当：山田 花子 045-… example.or.jp」が切れ目のない一続き
+   の文字列になり、どこからどこまでが何なのか読めなかった
+   （2026-09-09 レビュー）。正本（介護イメージ.png）の相談先も
+   ラベル列を持つ表で、値の頭が縦に揃うから拾い読みできる。       */
+/* ★4行を縦に積むと札が伸び、隣の介護認定より背が高くなって「一段軽い
+   格」でなくなる（2026-09-09 のレンダリングで発覚）。広いときは
+   事業所＋担当／電話＋Web の2列に折る――札の高さを2行に抑える。   */
+.cws-mgr-tb{display:grid;
+  grid-template-columns:repeat(2,auto minmax(0,1fr));
+  gap:3px 10px;align-items:baseline;min-width:0}
+@container (max-width:760px){
+  .cws-mgr-tb{grid-template-columns:auto minmax(0,1fr)}
+}
+.cws-mgr-row{display:contents}
+/* ラベルは値より一段沈める（読む対象は値のほう）。 */
+.cws-mgr-lb{font-size:10.5px;font-weight:700;color:#7d5730;
+  letter-spacing:.04em;white-space:nowrap;justify-self:start}
+.cws-mgr-v{min-width:0;font-size:13px;color:#33200c;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cws-mgr-office{font-size:14px;font-weight:700}
+.cws-tel{display:inline-flex;align-items:center;gap:5px;
+  font-size:14px;font-weight:700}
+.cws-tel svg{width:14px;height:14px;flex:none}
+/* Web は電話と同格（サイズ・太さ）で並べる。従来は 11.5px の
+   「サイト」だけの抽象リンクで、電話より一段弱く・どこのサイトかも
+   読めなかった（レビュー：「WEB URL はどこいった？」）。
+   ドメイン名を出す（webLabel、医療の通院カードと同じ扱い）。      */
+.cws-web{display:inline-flex;align-items:center;font-size:13px;
+  font-weight:700;color:#33200c;text-decoration:underline;
+  text-underline-offset:2px;text-decoration-color:#8a6b42}
+.cws-memo{display:inline-flex;align-items:flex-start;gap:5px;
+  font-size:11.5px;color:#6d4a24;flex:1 1 100%}
+
+/* ⓘ ＝ 区分の説明。いまは title（ホバーで出る）まで。 */
+.cws-info{display:inline-flex;align-items:center;justify-content:center;
+  width:19px;height:19px;flex:none;color:#6b4726;opacity:.7;cursor:help}
+.cws-info:hover{opacity:1}
+.cws-info svg{width:15px;height:15px}
+/* 帯の鉛筆。プレートの白い角丸ボタン（.i-secedit の既定）をそのまま
+   置くと、彫り込みの薄い文字群の中で唯一の白い箱になって最強調の
+   要素に見えていた（レビュー：「なぜ編集マークが一番強調？」）。
+   白背景・枠線を消し、彫り面に馴染む1色のアイコンに落とす。       */
+.cws-inner > .i-secedit{flex:none;margin-left:auto;
+  background:none;border:0;box-shadow:none;color:#6b4726;opacity:.55}
+.cws-inner > .i-secedit:hover{opacity:1;color:#4a2f16}
+.cws-inner > .i-secedit.on{background:var(--gr);border:0;
+  border-radius:7px;color:#fff;opacity:1}
+/* 編集中の入力欄。木地の上では純白の欄が浮くので、生成りに沈める。 */
+.cws-item .i-ef{background:#fdf7ee;border-color:#b8946a}
 
 /* 真鍮ネジ。乳白プレートを背板へ留める。円と切り込みは SVG が持つ
    （render.js の careScrews）。小プレートは上2隅、横長は4隅。 */
@@ -1019,34 +1128,10 @@ button.st:hover{filter:brightness(.97)}
 /* 見出しの白チップ（.scene-ic）は医療右面と共通の定義をそのまま使う。 */
 .cp-kv-lb{font-size:11px;color:var(--ink3);font-weight:600}
 
-/* ① 介護認定。要介護度＋認定の有無の札（参考画像の淡緑ブロック）。
-   プレートは担当者側と背丈が揃うので、札を本文いっぱいに伸ばす。 */
-.cp-level .cp-body{flex:1;display:flex}
-.cl-card{flex:1;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:4px;min-height:120px;
-  padding:16px 14px;border-radius:8px;text-align:center;cursor:pointer;
-  background:var(--gr-bg);border:1px solid #c8dfce}
-.cl-card-off{background:#f1efe9;border-color:#ddd8c9}
-.cl-lv{font-size:20px;font-weight:800;color:var(--gr-d);letter-spacing:.03em}
-.cl-card-off .cl-lv{color:var(--ink2)}
-.cl-sub{font-size:11.5px;color:var(--gr2);font-weight:600;
-  padding-top:5px;border-top:1px solid #c6ddcd;width:70%}
-.cl-card-off .cl-sub{color:var(--ink3);border-top-color:#dcd6c6}
-.cl-edit{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  padding:6px 0}
-
-/* ② 担当者・相談先。ラベル＋値の札。 */
-.cm{display:grid;gap:7px}
-.cm-row{display:flex;gap:12px;align-items:baseline}
-.cm-lb{flex:none;width:104px;font-size:11.5px;color:var(--ink3);font-weight:600}
-.cm-vl{flex:1;min-width:0;font-size:13px;font-weight:600}
-.cm-tel{display:inline-flex;align-items:center;gap:6px;
-  color:var(--gr);font-weight:700}
-.cm-tel svg{width:15px;height:15px;flex:none}
-.cm-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  margin-top:6px;padding-top:9px;border-top:1px solid #e7e3d4}
-.cm-memo{flex:1;min-width:180px;display:flex;align-items:flex-start;gap:6px;
-  font-size:11.5px;color:var(--ink3);line-height:1.75}
+/* 介護認定・担当者の乳白プレート（.cl-card / .cm 系）は、上部の木札の
+   帯（.cws-*）へ作り替えたので削除した（2026-09-09）。
+   ★ .cm-row / .cm-ic / .cm-close / .cm-list は「治療中の病気・状態」の
+     モーダルが同じ接頭辞で使っている別物。消さないこと。 */
 .mk{width:14px;height:14px;flex:none;margin-top:2px;color:var(--gr2)}
 .mk-pin{color:#b58a55}
 
@@ -1058,37 +1143,350 @@ button.st:hover{filter:brightness(.97)}
 .c-life {--sc:#7a6aa8;--sc-bg:#efecf8}
 .c-equip{--sc:#b3823c;--sc-bg:#f6eddd}
 
-.svtbl{container-type:inline-size;display:flex;flex-direction:column}
-.svr{display:grid;grid-template-columns:minmax(150px,1.3fr) 1fr 1fr minmax(120px,.9fr);
-  gap:10px 16px;align-items:center;padding:11px 4px;
-  border-top:1px solid #e9e5d6}
-.svr-head{font-size:10.5px;font-weight:700;color:var(--ink3);
-  letter-spacing:.02em;padding-top:0;padding-bottom:7px;border-top:0}
-.svr:first-of-type{border-top:0}
-.svr-c{min-width:0}
-.svr-kind{display:flex;align-items:flex-start;gap:9px}
-.svr-ic{flex:none;display:grid;place-items:center;width:30px;height:30px;
-  border-radius:8px;background:var(--sc-bg);color:var(--sc)}
-.svr-kind-tx{min-width:0;display:flex;flex-direction:column;gap:1px}
-.svr-name{font-size:13px;font-weight:700;color:var(--ink)}
-.svr-sub{font-size:10.5px;color:var(--ink3)}
-.svr-prov{font-size:12px;font-weight:600}
-.svr-use{font-size:11.5px;color:var(--ink2);line-height:1.55}
-.svr-tel{display:flex;align-items:center;gap:6px;
-  color:var(--gr);font-size:12.5px;font-weight:700}
-.svr-tel svg{width:15px;height:15px;flex:none;color:var(--gr2)}
-.svr-del{margin-left:auto}
+/* ★旧・サービスの表（.svtbl/.svr-*）は撤去した（2026-09-09）。編集用に
+   カレンダーの下へ出していた表で、行そのものが入力欄になったので
+   役目が無くなった。型セレクトだけはカレンダーの行で使う。 */
 .svr-kindsel{margin-top:3px;font-size:11px}
 
-/* 器が狭いと表の4列は潰れる。行をカード状に積む（見出し行は隠す）。 */
-@container (max-width:560px){
-  .svr-head{display:none}
-  .svr{grid-template-columns:1fr;gap:5px 0;padding:12px 2px}
-  .svr-prov::before,.svr-use::before,.svr-tel::before{
-    content:attr(data-th);display:inline-block;width:66px;
-    font-size:10.5px;color:var(--ink3);font-weight:600}
-  .svr-tel{gap:4px}
+/* ── 今の支援｜プレート内の2節 ─────────────────────────
+   「暮らしの時間に入る支援」（卸しカレンダー）と「継続して使っている
+   支援」（物の絵札）。1枚のプレートの中に2節を持つので、節見出しは
+   headChip の白チップより軽い、テキストだけの小見出しにする。      */
+.cp-sub + .cp-sub{margin-top:26px;padding-top:0;border-top:0}
+/* ── 節の小見出し ─────────────────────────────────────
+   ★「独立した物として作る」発想で3案（インデックスラベル→タブ／
+   木札／彫り込み）を作ったが、いずれもユーザー判断で不採用
+   （2026-09-10）。正本（介護イメージ.png）にはこの見出しに相当する
+   ものが無い――プレート見出し（❤️）の直後は表の列見出しに直結する。
+   「新しい物を発明する」前提を疑い、今ある物（プレート地／カレンダー
+   紙の帯／余白）だけで2節の違いを示す3案に切り替えた
+   （?subhead=plain / band / bare）。                              */
+
+/* plain案｜部品を作らない。太字＋間隔だけ、プレート地に直接。 */
+.csh-plain{display:flex;align-items:center;margin-bottom:11px}
+.csh-plain h6{margin:0;font-size:12px;font-weight:700;color:var(--ink2);
+  letter-spacing:.02em}
+.csh-plain .i-secedit{margin-left:auto;width:24px;height:24px}
+.csh-plain .i-secedit svg{width:13px;height:13px}
+
+/* bare案｜文字もラベルも無し。鉛筆だけ右上に残す（編集の入口）。
+   節の違いは形（カレンダー／絵札）と間隔だけに任せる。 */
+.csh-bare{display:flex;justify-content:flex-end;margin-bottom:8px;
+  min-height:24px}
+.csh-bare .i-secedit{width:24px;height:24px}
+.csh-bare .i-secedit svg{width:13px;height:13px}
+
+.cp-sub-note{margin:14px 0 8px;font-size:11px;color:var(--ink3)}
+
+/* band案｜カレンダー紙の帯（曜日が乗る濃色の帯）自体に見出しの文言を
+   持たせる。独立した部品を作らない――紙が元から持っている場所を使う。 */
+.wcal-band-tt{position:absolute;left:14px;top:0;height:18px;
+  display:flex;align-items:center;font-size:11px;font-weight:700;
+  color:#f3ead4;letter-spacing:.03em;z-index:2;text-shadow:0 1px 1px #3d271255}
+.wcal-band-tt + .i-secedit{position:absolute;right:10px;top:0;height:18px;
+  width:18px;background:none;border:0;box-shadow:none;color:#f3ead4cc;
+  z-index:2}
+.wcal-band-tt + .i-secedit svg{width:11px;height:11px}
+.wcal-band-tt + .i-secedit:hover{color:#fff}
+
+/* ── 週のカレンダー（1週分の紙）───────────────────────
+   造形の正本は参考画像の卓上リングカレンダー（2026-09-09 ユーザー提示）。
+   立体の卓上型ではなく、**正面から見た1枚の紙**として組む（B案）。
+   紙・束・見出し帯・綴じ穴・リングは SVG（render.js）。ここは置かれ方。
+
+   ★リングを置くために、紙の上端には帯のぶんの余白（--wcal-top）を
+   空ける。リングは帯の上端をまたいで紙を貫く。                     */
+/* ★落ち影は .wcal に filter で掛けない――filter は包含ブロックを作り、
+   紙の上端より上に出るリングが切り落とされる。影は紙（.wcal-svg）に
+   持たせる。 */
+.wcal{--wcal-top:26px;
+  position:relative;isolation:isolate;
+  margin-top:calc(var(--wcal-top) + 4px);container-type:inline-size}
+.wcal-svg{position:absolute;inset:0;width:100%;height:100%;
+  display:block;z-index:0;border-radius:6px;
+  filter:drop-shadow(0 2px 3px #3d271226) drop-shadow(0 8px 16px #3d27121f)}
+.wcal-inner{position:relative;z-index:1;padding:0 14px 12px}
+
+/* ── 1枚の表 ──────────────────────────────────────────
+   ★2026-09-09：骨格を作り直した。それまでは「左＝文章の塊／右＝7列」
+   で、行の中に設計の違う2領域が同居し、その境目（時間帯・Web）が必ず
+   浮いた。全項目が列を持つ**1枚の表**にして、浮く場所自体を無くす。
+
+   列：支援（絵＋名前＋内容）／連絡先／曜日7列／時間帯
+   ★見出し・行・罫の3つは必ず同じトラックにする（片方だけ変えると
+   列線と点がずれる）。
+
+   ★削除（✕）は列として持たない（2026-09-10 指摘）。5列目に押し込めて
+   いたときは、通常のボタンは 22px の列から 24px のボタンがはみ出し、
+   直したあと「削除しますか？」の確認テキストが今度は時間帯の入力欄に
+   重なった――**列という器に収めようとする限り、中身のどれかが必ず
+   はみ出すか重なる**。✕は「行」に対する操作であって「列の中身」では
+   ないので、そもそも列を持たせるのが誤りだった。行の右外に出す。   */
+.wcal-head,.wcal-row,.wcal-grid{display:grid;
+  grid-template-columns:
+    minmax(0,1.3fr)           /* 支援 */
+    minmax(140px,.9fr)        /* 連絡先 */
+    minmax(154px,238px)       /* 曜日7列 */
+    minmax(76px,116px);       /* 時間帯（削除の列を廃止したぶん広げた） */
+  gap:0 12px}
+
+/* 紙の上端の帯（綴じ側）。★曜日は帯の中に入れない――帯の装飾の一部に
+   見えてしまう。帯は紙の一部で、中身を持たない。 */
+.wcal-band{position:relative;height:18px;z-index:1}
+.wcal-headsvg{position:absolute;inset:0;width:100%;height:100%;
+  display:block;border-radius:6px 6px 0 0}
+
+/* 列見出し。★1枚の表になったので**全列に**見出しを付ける
+   （曜日だけが見出しを持つのは筋が通らない）。 */
+.wcal-head{position:relative;z-index:1;align-items:end;
+  padding-bottom:5px;border-bottom:1.5px solid #ddd0ae}
+.wc-h{font-size:10.5px;font-weight:700;color:var(--ink3);
+  letter-spacing:.02em;padding-bottom:1px}
+.wcal-d{text-align:center;font-size:10.5px;font-weight:700;
+  color:var(--ink2);letter-spacing:.02em;padding-bottom:1px}
+.wcal-d-end{color:#a08a5c}
+
+/* ── 曜日の縦の軸 ────────────────────────────────────
+   ★カレンダーがカレンダーに見えるのは「縦と横に軸があって、その交点に
+   印が置かれている」から。7本の列は**全行を貫く1枚**として行の裏に敷く
+   （行ごとに独立した7マスでは交点にならない）。                    */
+.wcal-rows{position:relative}
+.wcal-grid{position:absolute;inset:0;pointer-events:none;z-index:0}
+.wcal-collines{grid-column:3;align-self:stretch;
+  display:grid;grid-template-columns:repeat(7,1fr)}
+.wcal-col{border-left:1px solid #eae0c6}
+.wcal-col:last-child{border-right:1px solid #eae0c6}
+/* 1列目の左は太い罫＝「読む欄」と「曜日の表」の境目。 */
+.wcal-col:first-child{border-left:1.5px solid #d8c9a4}
+.wcal-col-end{background:#f8f3e3}
+
+/* 行。横の軸は紙の左右いっぱいに渡す（途中で切れると格子にならない）。 */
+.wcal-row{position:relative;z-index:1;align-items:center;padding:9px 0}
+.wcal-row + .wcal-row::before{content:"";position:absolute;
+  left:-14px;right:-14px;top:0;border-top:1px solid #ece3cd}
+
+/* ① 支援＝絵＋名前＋支援内容。 */
+.wc-sv{display:flex;align-items:flex-start;gap:9px;min-width:0}
+/* アイコンの縦の帯。★編集中はここに✕を積む（2026-09-10 判断）。
+   時間帯の隣など「項目の並び」に置くと、その項目と横に並ぶ意味が
+   必ず問われる。アイコンは行の左端で「この行が何の支援か」を示す
+   唯一の固定要素――項目の列とは別のこの帯に、削除も縦に積む。     */
+.wc-sv-rail{flex:none;display:flex;flex-direction:column;
+  align-items:center;gap:6px}
+.wc-sv-rail .rowdel{width:24px;height:24px}
+.wcal-ic{flex:none;width:24px;height:24px;border-radius:7px;margin-top:1px;
+  display:grid;place-items:center;background:var(--sc-bg);color:var(--sc)}
+.wc-sv-tx{min-width:0;display:flex;flex-direction:column;gap:2px}
+.wcal-name{font-size:12.5px;font-weight:700;color:var(--ink);min-width:0}
+/* 支援内容＝その時間に何をしてもらうか。家族が最初に読む一行なので、
+   灰色の添え物にせず地の文の濃さで置く。 */
+.wcal-does{font-size:11.5px;color:var(--ink);line-height:1.5;
+  overflow-wrap:normal;word-break:keep-all;line-break:strict}
+
+/* ② 連絡先。★横に並べると3つ目（Web）が必ず溢れて折り返す――
+   セルの中で縦に組み、溢れる構造そのものを無くす（?contact= で
+   組み方の案を切り替えて見比べる）。 */
+.wc-ct{min-width:0;display:flex;flex-direction:column;gap:2px;
+  font-size:11px;line-height:1.45}
+.wc-prov{color:var(--ink2);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wc-prov-link{color:var(--gr);font-weight:600;text-decoration:underline;
+  text-underline-offset:2px}
+/* 外部リンクのグリフ。★`↗` の文字を本文に混ぜない（指摘：矢印がチープ）。
+   文字より一回り小さく、下線に巻き込まれない位置に置く。 */
+.i-ext{width:10px;height:10px;flex:none;margin-left:4px;
+  vertical-align:-1px;opacity:.75;text-decoration:none}
+a:hover > .i-ext{opacity:1}
+.wc-tel{display:inline-flex;align-items:center;gap:4px;
+  font-weight:600;color:var(--gr);text-decoration:none;white-space:nowrap}
+.wc-tel:hover{text-decoration:underline}
+.wc-tel svg{width:12px;height:12px;flex:none;color:var(--gr2)}
+.wc-web{color:var(--gr);text-decoration:underline;text-underline-offset:2px;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* split 案＝電話とWebだけを横に並べる段。 */
+.wc-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;
+  min-width:0}
+
+/* ③ 曜日のマス。行ごとに枠を持たない（縦の軸は .wcal-grid が持つ）。 */
+.wcal-cells{grid-column:3;display:grid;grid-template-columns:repeat(7,1fr)}
+.wcal-c{display:grid;place-items:center;min-height:26px}
+.wcal-dot{width:9px;height:9px;border-radius:50%;background:var(--sc);
+  box-shadow:0 0 0 2.5px color-mix(in srgb,var(--sc) 15%,transparent)}
+
+/* ④ 時間帯。曜日は days が持つので、ここは時間だけ＝短い。 */
+.wc-tm{min-width:0}
+.wcal-use{font-size:10.5px;color:var(--ink2);line-height:1.45;
+  white-space:normal;overflow-wrap:anywhere;word-break:normal;
+  line-break:strict}
+
+/* ── 編集｜表のセルにそのまま書く ───────────────────────
+   ★別のフォームへ切り替えない（2026-09-09 ユーザー指摘：曜日の表の上で
+   そのまま編集できないとおかしい）。表示と同じ列・同じ場所のセルが、
+   そのまま入力欄になる。曜日は点を押して入切する。                */
+/* ★編集中の縦位置（2026-09-09 指摘）：
+     ・支援と連絡先 … 欄が縦に並ぶので**上端**を揃える。1つ目のラベルの
+       高さが同じなので、入力欄の横も自然に揃う
+     ・曜日と時間帯 … 中身が1つだけなので**上下中央**に置く
+   セルごとに揃え方が違うので、行では stretch にして各セルが決める。 */
+.wcal-row-edit{align-items:stretch}
+.wcal-row-edit .wc-sv,.wcal-row-edit .wc-ct{align-self:start}
+.wcal-row-edit .wcal-cells,.wcal-row-edit .wc-tm{align-self:center}
+/* 「削除しますか？」の確認は**吹き出し（ポップアップ）**で出す
+   （2026-09-10 ユーザー判断）。他の欄を隠したり場所を譲らせたりせず、
+   アイコンの近くに浮かせる――固定の場所に押し込もうとするたびに、
+   量の違う確認テキストがどこかの欄と重なる、を繰り返していた
+   （時間帯の隣→分類欄への重なり）。浮かせれば、下の欄が何であっても
+   関係なくなる。 */
+.wc-sv-rail{position:relative}
+.wc-sv-rail .rowdel-ask{position:absolute;left:28px;top:0;z-index:6;
+  white-space:nowrap;background:#fff8ea;border:1px solid #e4d3ab;
+  border-radius:8px;padding:7px 8px;
+  box-shadow:0 3px 10px #6b421f2e;
+  display:flex;align-items:center;gap:6px;font-size:11.5px}
+/* 吹き出しの尖り（左向き＝アイコンを指す）。 */
+.wc-sv-rail .rowdel-ask::before{content:"";position:absolute;
+  left:-5px;top:10px;width:9px;height:9px;background:#fff8ea;
+  border-left:1px solid #e4d3ab;border-bottom:1px solid #e4d3ab;
+  transform:rotate(45deg)}
+/* セルの中の1欄。★支援と連絡先の欄が横一直線に並ぶよう、**1欄の高さを
+   固定**する（2026-09-09 指摘：入力欄の横がそろってない）。
+   上端を揃えるだけでは足りなかった――ラベルの行数（「分類（行頭の絵と
+   色）」は折り返して2行）と、select と input の既定の高さ差（26px と
+   25px）が積み上がり、3つ目の欄では 56px ずれていた（実測）。
+   ラベル・入力欄それぞれに固定の高さを与えて、段を揃える。       */
+.wc-ef-l{display:grid;grid-template-rows:14px 27px;gap:2px;min-width:0}
+.wc-ef-l + .wc-ef-l{margin-top:6px}
+.wc-ef-lb{font-size:9.5px;font-weight:700;color:#8a6b42;
+  letter-spacing:.03em;line-height:14px;
+  /* 長いラベルでも1行に収める（折り返すと段がずれる）。 */
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ★入力欄に表示用の色を継がせない――表示側の色（グレー）を受けて、
+   入力済みの値が薄く見えていた（2026-09-09 指摘）。 */
+/* ★入力欄と select は既定の高さが違う（実測 25px と 26px）。段を揃える
+   ため、どちらも欄の枠（27px）いっぱいに伸ばして高さを一致させる。 */
+/* ★line-height を欄の中身の高さ（27 − 上下padding6 ＝ 21px）に合わせる。
+   既定の line-height:normal のままだと、全角かなの行が枠の中で下寄りに
+   なり、下端が切れて「例：…」が見えない（2026-09-10 指摘）。 */
+.wcal-row-edit .i-ef{width:100%;height:100%;color:var(--ink);
+  font-size:11.5px;line-height:21px;padding:3px 7px;box-sizing:border-box}
+.wcal-row-edit .i-ef-sel{font-size:11px}
+.wc-sv-ef{min-width:0;flex:1}
+.wc-ct .wc-ef-l:first-child{margin-top:0}
+/* 曜日のボタン。★消灯側が薄い破線1本だけで、押せる場所だと分からな
+   かった（2026-09-10 指摘：「薄すぎて分かりづらい」）。点灯・消灯の
+   どちらも**同じ大きさの円**を実線で持たせ、色の有無だけで状態が
+   切り替わるようにする――「薄い印」ではなく「同じボタンの2つの状態」
+   として見えるようにする。 */
+.wcal-c-btn{border:0;background:none;padding:0;cursor:pointer;
+  font:inherit;border-radius:50%;display:grid;place-items:center;
+  width:100%;height:26px}
+.wcal-c-btn::before{content:"";width:16px;height:16px;border-radius:50%;
+  box-sizing:border-box;transition:background-color .1s,border-color .1s}
+/* 消灯＝はっきりした実線の輪（地の色よりくっきり濃く）。 */
+.wcal-c-btn:not(.on)::before{border:1.6px solid #a8946a;background:#fffdf7}
+/* 点灯＝塗り面（種類の色）。輪と同じ太さの縁を足して、押した反応が
+   輪の続きに見えるようにする。 */
+.wcal-c-btn.on::before{border:1.6px solid transparent;background:var(--sc)}
+.wcal-c-btn:hover:not(.on)::before{border-color:#7d6a45;background:#f5efdd}
+.wcal-c-btn:hover.on::before{filter:brightness(1.08)}
+.wcal-c-btn:focus-visible{outline:2px solid var(--gr);outline-offset:1px}
+/* 点灯の中の小さな印（.wcal-dot）は不要になった――ボタン本体が
+   塗り面を持つので、二重に丸を重ねない。 */
+.wcal-c-btn .wcal-dot{display:none}
+/* 読み上げ専用（曜日名をボタンの名前として持たせる）。 */
+.i-sr{position:absolute;width:1px;height:1px;overflow:hidden;
+  clip-path:inset(50%);white-space:nowrap}
+
+/* ── リング製本 ──────────────────────────────────────
+   ★参考画像の要点：リングは**紙を貫いている**。紙の上に円を置いた
+   だけでは綴じ具に見えない（前回の失敗）。1本を「紙の裏に回る弧」と
+   「紙の表に出る弧」の2層に割り、紙（.wcal-svg / .wcal-headsvg）を
+   挟んで前後に置くことで貫通に見せる。
+   真円が要るので SVG の viewBox は歪ませない（幅・高さを px で固定）。
+
+   紙を挟む3枚の順序（.wcal の中の z-index）：
+     奥の弧 …… 0（紙より先に描く）
+     紙・帯 …… 0〜1（.wcal-svg / .wcal-head）
+     手前の弧 … 3（すべての上）
+   奥の弧と手前の弧は**別々の器**にして、紙をその間に挟む――同じ器に
+   入れると紙の前か後ろかのどちらかにしか置けない。               */
+/* 輪（viewBox 26×30／輪の下端は y=21）の**下 1/3 が帯に潜る**位置。
+   紙の上に「乗って」いるのではなく、潜っていなければ綴じ具に見えない。
+   輪の下端 21px が帯の上端より 7px 下に来るよう置く。 */
+/* ★リングは紙の**幅の中**に収める。left/right を 0 にすると
+   justify-content:space-evenly が紙の左右端まで配るので、両端のリングが
+   紙の角の丸みの外へ出て、プレートの地の上に浮いた（2026-09-09 の
+   スクリーンショットで発覚）。綴じ具は紙の綴じ代の内側に並ぶ。   */
+.wcal-rings{position:absolute;left:5%;right:5%;
+  top:-14px;height:30px;
+  pointer-events:none;
+  display:flex;justify-content:space-between;align-items:flex-start}
+.wcal-ring{position:relative;width:26px;height:30px}
+.wcal-ring svg{position:absolute;left:0;top:0;width:26px;height:30px;
+  display:block}
+/* 奥＝紙より先に描く層。.wcal-rings-back が紙の下に来る。 */
+.wcal-ring-b{z-index:0}
+.wcal-ring-f{z-index:0;filter:drop-shadow(0 1.5px 1.5px #3d271230)}
+/* 奥の弧だけを持つ器＝紙の下。手前の弧だけを持つ器＝紙の上。 */
+.wcal-rings-back{z-index:0}
+.wcal-rings-back .wcal-ring-f{display:none}
+.wcal-rings-front{z-index:3}
+.wcal-rings-front .wcal-ring-b{display:none}
+
+/* 中くらいの器では、時間帯（4列目）を畳んで曜日の下へ入れる。
+   ★4列になったので、3列時代の 430px では遅すぎる（曜日と時間帯が
+   両方潰れる）。時間帯のほうが先に畳めるので、二段階で畳む。 */
+/* 狭い器では、支援と連絡先を縦に積んで2列にする（曜日＋時間帯は残す）。
+   ★曜日の列と時間帯は畳まない――表の主役なので、畳むのは左側から。 */
+@container (max-width:700px){
+  .wcal-head,.wcal-row,.wcal-grid{
+    grid-template-columns:minmax(0,1fr) minmax(148px,224px) minmax(64px,92px)}
+  /* 連絡先は支援セルの下へ入れる（同じ1列目）。 */
+  .wc-h-ct{display:none}
+  .wc-sv{grid-column:1}
+  .wc-ct{grid-column:1;padding-left:33px;margin-top:3px}
+  .wcal-cells{grid-column:2}
+  .wcal-collines{grid-column:2}
+  .wc-tm{grid-column:3}
 }
+/* さらに狭いと7列は入らない。曜日を中身の下へ落とす。
+   ★見出し帯は消さない――リングが貫く先が無くなり、綴じ具が宙に浮く。 */
+@container (max-width:430px){
+  .wcal-head,.wcal-row,.wcal-grid{grid-template-columns:1fr;gap:0}
+  .wcal-head{display:none}
+  .wc-sv,.wc-ct,.wcal-cells,.wc-tm{grid-column:1}
+  .wcal-cells{margin-top:7px}
+  .wcal-collines{grid-column:1}
+  .wc-tm{margin-top:3px;padding-left:33px}
+  .wcal-use::before{content:"時間帯：";color:var(--ink3);font-weight:600}
+  .wcal-c::after{content:attr(data-d);font-size:9px;color:var(--ink3)}
+  .wcal-c{grid-auto-flow:row;gap:1px;align-content:center}
+  .wcal-name{font-size:12px}
+}
+
+/* 継続して使っている支援｜福祉用具の絵札。物の絵（EQUIP_IC）＋
+   名前・事業所・連絡先。色はサービス表と同じ系統色トークンを流用
+   （行を見分ける役割は無いので、絵札はどれも同じ色でよい）。       */
+.eqcards{display:flex;flex-wrap:wrap;gap:12px}
+.eqc{flex:1 1 220px;min-width:190px;display:flex;gap:11px;
+  padding:12px 13px;border-radius:8px;background:#faf6ee;
+  border:1px solid #eae2cc}
+/* 書きかけの札。実データの札と同じ格で並べない（正本 §11）。
+   枠を破線に落とし、地を沈める――「まだ書いていない場所」であって
+   「そういう用具がある」ではない。 */
+.eqc-blank{background:#f6f2e8;border-style:dashed;border-color:#ddd3ba}
+.eqc-blank .eqc-ic{background:#ece5d4;color:#a4967a}
+.eqc-name-blank{color:var(--ink3);font-weight:600}
+.eqc-blank .eqc-prov{font-size:11px;color:var(--ink3)}
+.eqc-ic{flex:none;width:38px;height:38px;border-radius:9px;
+  display:grid;place-items:center;background:var(--sc-bg);color:var(--sc)}
+.eqc-body{min-width:0;display:flex;flex-direction:column;gap:2px}
+.eqc-name{font-size:13px;font-weight:700;color:var(--ink);
+  display:flex;align-items:center;gap:6px}
+.eqc-prov{font-size:11.5px;color:var(--ink2)}
+.eqc-tel{display:inline-flex;align-items:center;gap:5px;
+  font-size:11.5px;font-weight:600;color:var(--gr)}
+.eqc-tel svg{width:13px;height:13px;flex:none;color:var(--gr2)}
 
 /* ④ 介護関係の書類やもの｜荷札（タグ）の横並び。
    札の輪郭（斜めの切り欠き）とハトメは SVG（render.js の CTAG_SHAPE）。
@@ -1130,9 +1528,16 @@ button.st:hover{filter:brightness(.97)}
   .sf-idrow{gap:14px}
   .bs{padding:14px 0}
 
-  /* 上段2枚組は縦に積む。 */
-  .cp-row{flex-direction:column}
-  .cp-level,.cp-manager{flex:1 1 auto}
+  /* 上部の帯は、狭いと介護度と相談先が横に並ばない。縦に積む
+     （札は1枚のまま＝物は割らない）。溝は横向きの彫りに変える。 */
+  /* 相談先と鉛筆を同じ行に収める（鉛筆だけが次行へ落ちると、札の
+     右下に空きができて帯が無駄に高くなる）。 */
+  .cws-mgr{flex:1 1 auto}
+  .cws-inner{align-items:flex-end}
+  .cws-groove{width:auto;height:3px;align-self:auto;flex:1 1 100%;
+    margin:clamp(4px,1.2%,7px) 0;
+    background:linear-gradient(180deg,
+      #6b421f55 0 1px,#5c3a1c88 1px 2px,#f7dcb8cc 2px 3px)}
   .cp{padding:16px 15px}
 }
 

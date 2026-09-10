@@ -14,9 +14,12 @@
    （CHECK_STATES）だけにする。片方の形をもう片方へ持ち出さない
    （正本 §13）。
 
-   挙動確認のあいだ手が消えないよう、localStorage に仮保存する
-   （実データではなく仮データの入れ替わりなので、残しても構わない）。
-   初期の仮データに戻したいときは、コンソールで
+   入力した内容は localStorage に保存する。保存フォーマットには版
+   （SCHEMA）を持たせ、形を変えたコミットでは版を上げて MIGRATIONS に
+   1段足す――こうすると、同じ版の保存分はそのまま読める（編集して
+   再読み込みしても内容が消えない）し、古い版は移行関数で地続きに
+   引き上がる。本番でユーザーのデータが入ったあとも同じ流れで運べる。
+   保存を消して初期の仮データに戻したいときは、コンソールで
    localStorage.removeItem('SeiZenMedicalCare.data') を実行する。   */
 (function (global) {
   'use strict';
@@ -278,52 +281,88 @@
     return String(level || '').indexOf('要') === 0;
   }
 
-  const PLACES = ['自宅', '子の家', 'サービス付き高齢者向け住宅',
-    '介護付き有料老人ホーム', '住宅型有料老人ホーム', 'グループホーム',
-    '特別養護老人ホーム', '介護老人保健施設', '入院中'];
+  /* 要介護度が何を意味するかの一言。制度の区分なので家族には馴染みが
+     薄く、数字だけ見ても軽重が分からない――帯の ⓘ で補う。
+     区分の定義そのものなので、家庭ごとに書き換えるものではない。 */
+  const LEVEL_ABOUT = {
+    '認定を受けていない': '介護保険の申請をしていない状態。市区町村の窓口か地域包括支援センターが相談先。',
+    '申請中': '認定の結果を待っている状態。結果が出るまでの間も、暫定のケアプランでサービスを使えることがある。',
+    '要支援1': '日常生活はほぼ自分でできるが、一部に支えが要る状態。介護予防のサービスが対象。',
+    '要支援2': '要支援1より支えが要るが、改善の見込みがある状態。介護予防のサービスが対象。',
+    '要介護1': '立ち上がりや歩行が不安定で、日常生活の一部に介助が要る状態。',
+    '要介護2': '立ち上がりや歩行が自力では難しく、食事や排せつにも介助が要ることがある状態。',
+    '要介護3': '立ち上がりや歩行が自力ではできず、日常生活全般に介助が要る状態。',
+    '要介護4': '介助なしでは日常生活を送るのが難しく、介護の手間が多くかかる状態。',
+    '要介護5': 'ほぼ寝たきりで、意思の伝達も難しいことがある。生活全般に介助が要る状態。'
+  };
+  function levelAbout(level) {
+    return LEVEL_ABOUT[level] ||
+      '要介護度は市区町村が決める区分で、使えるサービスと限度額がこれで決まる。';
+  }
 
-  /* 介護サービスの型。放射図の四方に置く分類で、色と記号がここから
+  /* 介護サービスの型。サービス表の行頭アイコンの色と記号がここから
      決まる。制度の分類そのままではなく「家族から見て何をしてもらって
-     いるか」で分けている（正本 §3）。
+     いるか」で分けている（正本 §3）。色は行を見分けるためのもの。
 
-       home     人が家に来る（訪問介護・訪問看護・訪問リハビリ）
-       out      本人が出かける（デイサービス・デイケア・ショートステイ）
-       equip    物が家に入る（福祉用具・住宅改修）
-       support  相談・見守りの窓口（地域包括支援センター・民生委員） */
+     ★ここに並ぶのは**時間と曜日を持つ**もの（人が来る／出かける／
+     届く）だけ。福祉用具（家に物がある）は性質が違うので分けた
+     （下の EQUIP_KINDS）――造形も「暮らしの時間に入る支援」の帯と
+     「継続して使っている支援」の絵札で別物になる（2026-09-09）。
+
+       home   人が家に来る（訪問介護・訪問看護・訪問リハビリ）
+       out    本人が出かける（デイサービス・デイケア・ショートステイ）
+       meal   食事が届く（配食）
+       life   暮らしの手伝い（家事・見守り・相談） */
   const SERVICE_KINDS = {
-    home:    { label: '訪問',     tone: 'c-home',
-      about: '人が家に来て支える' },
-    out:     { label: '通い',     tone: 'c-out',
-      about: '本人が出かけて過ごす' },
-    equip:   { label: '福祉用具', tone: 'c-equip',
-      about: '物が家に入って支える' },
-    support: { label: '相談',     tone: 'c-support',
-      about: '困ったときの相談先' }
+    home:  { label: '訪問',     tone: 'c-home'  },
+    out:   { label: '通い',     tone: 'c-out'   },
+    meal:  { label: '食事',     tone: 'c-meal'  },
+    life:  { label: '暮らし',   tone: 'c-life'  }
   };
 
   /* サービスの型ごとの代表的なサービス名。追加のときの候補に使う。
      ここに無いものは自由入力できる。 */
   const SERVICE_TYPES = [
-    { name: '訪問介護（ホームヘルプ）', kind: 'home'    },
-    { name: '訪問看護',                 kind: 'home'    },
-    { name: '訪問リハビリ',             kind: 'home'    },
-    { name: '訪問入浴',                 kind: 'home'    },
-    { name: 'デイサービス（通所介護）', kind: 'out'     },
-    { name: 'デイケア（通所リハビリ）', kind: 'out'     },
-    { name: 'ショートステイ',           kind: 'out'     },
-    { name: '福祉用具貸与',             kind: 'equip'   },
-    { name: '福祉用具購入',             kind: 'equip'   },
-    { name: '住宅改修',                 kind: 'equip'   },
-    { name: '地域包括支援センター',     kind: 'support' },
-    { name: '民生委員',                 kind: 'support' },
-    { name: '配食サービス',             kind: 'support' },
-    { name: '見守りサービス',           kind: 'support' }
+    { name: '訪問介護（ホームヘルプ）', kind: 'home'  },
+    { name: '訪問看護',                 kind: 'home'  },
+    { name: '訪問リハビリ',             kind: 'home'  },
+    { name: '訪問入浴',                 kind: 'home'  },
+    { name: 'デイサービス（通所介護）', kind: 'out'   },
+    { name: 'デイケア（通所リハビリ）', kind: 'out'   },
+    { name: 'ショートステイ',           kind: 'out'   },
+    { name: '配食サービス',             kind: 'meal'  },
+    { name: '生活支援',                 kind: 'life'  },
+    { name: '家事援助',                 kind: 'life'  },
+    { name: '見守りサービス',           kind: 'life'  },
+    { name: '地域包括支援センター',     kind: 'life'  },
+    { name: '民生委員',                 kind: 'life'  }
   ];
   function serviceType(name) { return SERVICE_TYPES.find(s => s.name === name) || null; }
   function kindOfService(name) { const t = serviceType(name); return t ? t.kind : null; }
 
-  /* 曜日。週の帯で使う。並びは月曜始まり。 */
-  const DAYS = ['月', '火', '水', '木', '金', '土', '日'];
+  /* 継続して使っている福祉用具。介護保険では「貸与（レンタル）」
+     「購入（買い切り）」「住宅改修（工事）」が別制度――住宅改修は
+     家にある物ではなく工事済みの記録なので、絵札には含めない
+     （2026-09-09 ユーザー判断）。貸与・購入だけを物として持つ。
+     kind は絵札のグリフを決める（bed／walker／monitor）。 */
+  const EQUIP_KINDS = {
+    bed:     { label: '介護ベッド', unit: '貸与' },
+    walker:  { label: '歩行器',     unit: '貸与' },
+    monitor: { label: '見守り機器', unit: '貸与' },
+    other:   { label: 'その他の用具', unit: '貸与' }
+  };
+  const EQUIP_TYPES = [
+    { name: '介護ベッド',         kind: 'bed'     },
+    { name: '車椅子',             kind: 'other'   },
+    { name: '歩行器',             kind: 'walker'  },
+    { name: '手すり（工事なし）', kind: 'other'   },
+    { name: 'スロープ',           kind: 'other'   },
+    { name: '見守りセンサー',     kind: 'monitor' },
+    { name: '入浴補助用具',       kind: 'other'   },
+    { name: 'ポータブルトイレ',   kind: 'other'   }
+  ];
+  function equipType(name) { return EQUIP_TYPES.find(s => s.name === name) || null; }
+  function kindOfEquip(name) { const t = equipType(name); return t ? t.kind : null; }
 
   let seq = 0;
   const uid = p => p + '-' + (++seq);
@@ -331,7 +370,24 @@
   /* ── 事実 ───────────────────────────────────────────
      画面に出ているのは、ここから描かれる仮データ。               */
 
+  /* 保存フォーマットの版。医療・介護のどちらかで持ち方（キーの構成・
+     配列の要素の形）を変えたら、この番号を1つ上げる。上げ忘れると
+     古い形の保存分を新しい画面がそのまま読んでしまうので、形を触った
+     コミットでは必ず一緒に上げる。
+
+     版が上がったときの流れは hydrate() を参照。要点：
+       ・同じ版なら保存分をそのまま採用する（構造の当て推量はしない
+         ＝「データが戻る」を起こさない）
+       ・版が古いときは MIGRATIONS を順に当てて現在の版へ引き上げる。
+         引き上げられない領域だけ、その領域を仮データに落とす
+       ・本番でユーザーのデータが入ったあとに形を変えるときも、
+         この番号を上げて MIGRATIONS に1段足せば地続きで移行できる */
+  const SCHEMA = 5;
+
   const data = {
+    /* この版で保存する。hydrate() が古い版を読んだら MIGRATIONS で
+       ここまで引き上げてから採用する。 */
+    schema: SCHEMA,
     /* 医療 ------------------------------------------------------ */
     medical: {
       /* 個人情報。救急で最初に読まれる識別情報。photo は data URI
@@ -453,59 +509,201 @@
       ]
     },
 
-    /* 介護 ------------------------------------------------------ */
+    /* 介護 ------------------------------------------------------
+       連絡ボード（`prototype/assets/介護イメージ.png` が造形の正本）。
+       4節：介護認定／担当ケアマネ／利用している支援（表）／
+       書類やもの（荷札）。生活場所・家族が知っておきたいこと・週の
+       予定は落とした（§13-1。README 参照）。 */
     care: {
-      /* ① 現在の介護状態 */
+      /* ① 介護認定。要介護度は制度上の区分で、家庭が決めるものでは
+         ない（正本 §9）。認定の有無だけが状態。 */
       level: '要介護2',
-      place: '自宅',
-      placeNote: '築年数のある戸建て。階段の昇り降りは見守りが必要です。',
-      /* ② 担当ケアマネジャー。介護の中心・入口。 */
+      /* ② 担当ケアマネジャー。連絡先ではなく「介護の入口」。
+         状態は持たない――名前と電話を書いた時点で家族は辿れるので、
+         §11 の「確認できたか」を問う対象ではない（医療の通院カード・
+         かかりつけ薬局からバッジを撤去したのと同じ理由）。 */
       manager: {
-        name: '佐藤 陽子',
-        office: 'みなとケアプランセンター',
-        tel: '045-111-2222',
-        note: 'いつも親身に相談にのってくださっています。',
-        state: '確認済み'
+        name: '山田 花子',
+        office: '○○居宅介護支援事業所',
+        tel: '045-123-4567',
+        web: 'https://example.or.jp/kyotaku/',
+        note: 'いつも親身に相談にのってくださっています。'
       },
-      /* ③ 利用中の介護サービス。放射図と週の帯の両方がここから描かれる。
-         days は DAYS の添字（0=月）。常時（福祉用具など）は空配列。 */
+      /* ③-a 暮らしの時間に入る支援。時間と曜日を持つもの（人が来る／
+         出かける／届く）。「今の支援」の上段＝卸しカレンダーの1週分
+         に描く。曜日は use の自由文から**読み取って**帯に薄く点を
+         打つだけで、管理項目としては持たない（2026-09-09）。 */
+      /* does … その時間に**何をしてもらっているか**（2026-09-09 追加）。
+         種類（訪問介護）と事業所と曜日だけでは、家族が代わりに立ち会う
+         とき「来て何をする人なのか」が分からない――正本 §13-1 の基準
+         （必要時に家族が思い出せない・調べられないことか）に当たる。
+         ケアプランの原本を写すのではなく、一言で分かる粒度で持つ。 */
+      /* ★2026-09-09 の作り直し：
+         ・sub（補足＝「ホームヘルプ」等の制度上の呼び名）を撤去し、
+           does（支援内容）へ一本化。家族が読むのは「何をするか」で
+           あって制度の呼称ではない（ユーザー判断）。
+         ・days を実データとして持つ。曜日は編集中に点を押して入切する
+           ――use の自由文から読み取る方式はやめた（同）。
+         ・use は「時間帯」だけを持つ。曜日は days の側にあるので、
+           二重に持たない（「月・木 午前」→「午前」）。
+         ・web を足す。相談先（manager）が URL を持つのに事業所が
+           持たないのは筋が通らない。 */
       services: [
         { id: uid('sv'), kind: 'home', name: '訪問介護',
-          provider: 'さくらヘルパーステーション', tel: '045-333-4444',
-          freq: '週2回（火・金）', days: [1, 4],
-          detail: '掃除・買い物支援・入浴介助', state: '確認済み' },
+          provider: '○○ケアサービス', tel: '045-111-2222',
+          web: 'https://example.or.jp/homehelp/',
+          does: '入浴の介助・着替え・服薬の見守り',
+          days: ['月', '木'], use: '午前（9:00〜12:00頃）', state: '確認済み' },
         { id: uid('sv'), kind: 'out', name: 'デイサービス',
-          provider: 'みなとデイサービスセンター', tel: '045-555-6666',
-          freq: '週3回（月・水・金）', days: [0, 2, 4],
-          detail: '入浴・機能訓練・レクリエーション', state: '確認済み' },
-        { id: uid('sv'), kind: 'equip', name: '福祉用具',
-          provider: 'はまっ子福祉用具', tel: '045-777-8888',
-          freq: '自宅で使用', days: [],
-          detail: '介護ベッド・手すり', state: '確認済み' },
-        { id: uid('sv'), kind: 'support', name: 'その他の支援',
-          provider: '横浜市 地域包括支援センター', tel: '045-999-0000',
-          freq: '随時', days: [],
-          detail: '介護全般の相談先', state: '確認済み' }
+          provider: '△△デイサービスセンター', tel: '045-333-4444',
+          web: 'https://example.or.jp/day/',
+          does: '送迎つき。入浴・昼食・リハビリ体操',
+          days: ['火', '金'], use: '9:00〜16:00', state: '確認済み' },
+        { id: uid('sv'), kind: 'meal', name: '配食サービス',
+          provider: '□□フードサービス', tel: '045-555-6666', web: '',
+          does: '夕食を玄関まで届ける（塩分ひかえめ）',
+          days: ['月', '火', '水', '木', '金', '土', '日'],
+          use: '夕方', state: '確認済み' },
+        { id: uid('sv'), kind: 'life', name: '生活支援',
+          provider: '○○ライフサポート', tel: '045-777-8888', web: '',
+          does: '掃除・洗濯・買い物の代行',
+          days: ['火'], use: '10:00〜12:00', state: '確認済み' }
       ],
-      /* ④ 家族が知っておきたいこと */
-      notes: [
-        '一人での入浴は難しく、必ず見守りが必要です。',
-        '足元が不安定で転びやすいため、外出時は付き添いをお願いします。',
-        '本人だけでの服薬管理は難しいです。',
-        '体調が急に悪化することがあり、様子がおかしいときは早めにケアマネに連絡してください。'
+      /* ③-b 継続して使っている支援。ずっと家にある福祉用具（貸与・
+         購入）。「今の支援」の下段＝物の絵札に並べる。事業所・連絡先は
+         持つ（貸与元に連絡することがあるため）。住宅改修は工事済みの
+         記録であって家にある物ではないので、ここには含めない
+         （papers 側に「住宅改修の記録」として置ける）。 */
+      equipment: [
+        { id: uid('eq'), kind: 'bed', name: '介護ベッド',
+          provider: 'はまっ子福祉用具', tel: '045-222-3333', state: '確認済み' },
+        { id: uid('eq'), kind: 'walker', name: '歩行器',
+          provider: 'はまっ子福祉用具', tel: '045-222-3333', state: '確認済み' }
       ],
-      /* ⑤ 介護関係書類 */
+      /* ④ 介護関係の書類やもの。その家にある、比較的安定した書類・
+         ものの所在（§13-1）。中身（番号など）は持たない。並びは一例。 */
       papers: [
-        { id: uid('cp'), item: '介護保険関係書類', where: '自宅の書類箱（リビングの棚）', state: '確認済み' },
-        { id: uid('cp'), item: 'ケアプラン', where: '自宅の書類箱（リビングの棚）', state: '確認済み' },
-        { id: uid('cp'), item: 'サービス関係資料', where: '自宅の書類箱（リビングの棚）', state: '確認済み' },
-        { id: uid('cp'), item: '保管場所', where: '自宅 書類の引き出し（介護）', state: '未確認' }
+        { id: uid('cp'), item: '介護保険関係の書類', where: 'リビングの書類棚', state: '確認済み' },
+        { id: uid('cp'), item: 'ケアプラン', where: 'リビングの書類棚', state: '確認済み' },
+        { id: uid('cp'), item: '負担割合証', where: 'リビングの引き出し', state: '確認済み' },
+        { id: uid('cp'), item: '介護保険証', where: 'リビングの書類棚', state: '未確認' }
       ]
     }
   };
 
-  /* 保存済みがあれば仮データを差し替える。id は "xx-<n>" の形なので、
-     続きの採番が既存分とぶつからないよう seq を合わせ直す。 */
+  /* ── 保存フォーマットの移行 ───────────────────────────
+     MIGRATIONS[n] は「版 n の保存分を版 n+1 の形へ書き換える」関数。
+     破壊的に s を書き換えてよい（hydrate() が読んだ直後の生データ）。
+     どうしても引き継げない部分は、その領域のキー（medical / care）を
+     delete する――hydrate() がその領域だけ仮データで埋める。
+
+     ここに載っているのは「本番でユーザーのデータが入ったあとでも
+     地続きで運べる」変更。作り替えの途中でしか存在しなかった中間の形
+     まで面倒を見る必要はない（引き継げなければ delete でよい）。 */
+  const MIGRATIONS = {
+    /* 版1→2：医療の作り替え（現在の医療状態が配列／旧・薬・書類の形）。
+       引き継げないので medical を落とす。 */
+    1: function (s) {
+      const m = s.medical;
+      if (m && (Array.isArray(m.conditions) || Array.isArray(m.pharmacies) ||
+        Array.isArray(m.pocket) || Array.isArray(m.papers) ||
+        (m.supplies && Array.isArray(m.supplies)))) {
+        delete s.medical;
+      }
+    },
+    /* 版2→3：介護を連絡ボードへ作り替え。
+         ・生活場所／知っておきたいこと／週の曜日 → 落とす
+         ・サービスの型 home/out/equip/support → home/out/meal/life
+         ・福祉用具（kind:'equip'）を services から equipment へ
+         ・manager に web を足し、状態バッジ（state）を外す
+       services は型の載せ替えで拾えるが、equip 行の付け替えや旧・型の
+       対応が絡むので、ここでは care を丸ごと落として仮データに戻す
+       （介護に実データが入るのは本番以降。それまでの中間形は救わない）。 */
+    2: function (s) {
+      const c = s.care;
+      if (c && ('place' in c || 'placeNote' in c || Array.isArray(c.notes) ||
+        !Array.isArray(c.equipment) ||
+        (c.manager && (!('web' in c.manager) || 'state' in c.manager)) ||
+        (Array.isArray(c.services) && c.services.some(sv => sv &&
+          (Array.isArray(sv.days) || 'freq' in sv || 'detail' in sv ||
+           sv.kind === 'equip' || sv.kind === 'support'))))) {
+        delete s.care;
+      }
+    },
+    /* 版3→4：支援に「支援内容」（does）を足した。★これは**足しただけ**
+       なので care を落とさない――旧い保存分は does が無いだけで、他の
+       項目（事業所・電話・利用状況）はそのまま使える。空文字で埋めて
+       おけば、未記入の欄として正しく出る（正本 §11：空欄は空欄として
+       持つ。「該当なし」に化けさせない）。
+
+       ★RESEARCH.md §3 の教訓：state.js の形を変えたら hydrate/移行を
+       必ず見直す。前回これを飛ばして、旧セッションの保存分のせいで
+       「直したはずの表示が直っていないように見える」事故を起こした。 */
+    3: function (s) {
+      const c = s.care;
+      if (c && Array.isArray(c.services)) {
+        c.services.forEach(sv => { if (sv && !('does' in sv)) sv.does = ''; });
+      }
+    },
+    /* 版4→5：曜日を実データ（days）にし、sub を撤去、web を足す。
+       ここは「足すだけ」では済まない――旧い use は「月・木 午前
+       （9:00〜12:00頃）」のように**曜日が文字列に混ざっている**。
+       days へ移したあと use から曜日を取り除かないと、点と文字で
+       二重に曜日を持つことになる。
+
+       ★取り除きは保守的に。先頭に固まっている曜日群（「月・木 」
+       「毎日 」「火・金（」）だけを外し、確信が持てない書き方は
+       use をそのまま残す――家族が書いた文字を勝手に消さない
+       （正本 §11 の精神：分からないものを分かったことにしない）。 */
+    4: function (s) {
+      const c = s.care;
+      if (!c || !Array.isArray(c.services)) return;
+      const DAYS = ['月', '火', '水', '木', '金', '土', '日'];
+      c.services.forEach(sv => {
+        if (!sv) return;
+        if (!('web' in sv)) sv.web = '';
+        delete sv.sub;
+        if (!Array.isArray(sv.days)) {
+          const u = String(sv.use || '');
+          /* 曜日の読み取りは旧 weekdaysOf と同じ規則。 */
+          sv.days = /毎日/.test(u) ? DAYS.slice() : DAYS.filter(d => u.indexOf(d) > -1);
+          /* use の先頭に固まっている曜日表記だけを落とす。
+             例：「月・木 午前（…）」→「午前（…）」／「毎日 夕方」→「夕方」
+                 「週1回（火）（10:00〜12:00）」→ 触らない（曜日が
+                 文の途中にあり、外すと文が壊れる） */
+          const head = /^\s*(?:毎日|[月火水木金土日](?:\s*[・,、]\s*[月火水木金土日])*)\s*[　\s]*/;
+          if (sv.days.length && head.test(u)) sv.use = u.replace(head, '').trim();
+        }
+      });
+    }
+  };
+
+  /* 保存分を現在の版まで引き上げる。引き上げられなかった領域は
+     MIGRATIONS が delete しているので、hydrate() がそこを埋める。 */
+  function migrate(saved) {
+    /* 版が無い保存分＝版番号を導入する前のもの。医療は当時すでに
+       現在に近い形だったが、確実を採って版1（要移行）として扱う。 */
+    let v = (typeof saved.schema === 'number' && saved.schema > 0)
+      ? saved.schema : 1;
+    while (v < SCHEMA) {
+      const step = MIGRATIONS[v];
+      if (typeof step === 'function') {
+        try { step(saved); }
+        catch (e) { delete saved.medical; delete saved.care; }
+      }
+      v++;
+    }
+    saved.schema = SCHEMA;
+    return saved;
+  }
+
+  /* 保存済みがあれば仮データを差し替える。
+     ・同じ版なら保存分をそのまま採用する（構造を推測して捨てない
+       ＝編集して再読み込みしても「データが戻る」を起こさない）
+     ・古い版は migrate() で引き上げる。引き上げられなかった領域
+       （medical / care のどちらか）は、その領域だけ仮データのまま
+     id は "xx-<n>" の形なので、続きの採番が既存分とぶつからないよう
+     seq を合わせ直す。 */
   function hydrate() {
     let saved = null;
     try {
@@ -513,30 +711,27 @@
       saved = raw ? JSON.parse(raw) : null;
     } catch (e) { return; }
     if (!saved || typeof saved !== 'object') return;
-    /* 旧フォーマット（現在の医療状態が配列）の保存分は捨てて仮データを
-       使う。プロトタイプの仮保存なので、作り替えのたびに移行コードを
-       積まない――形が変わったら初期の仮データに戻す。 */
-    const stale = saved.medical && (
-      Array.isArray(saved.medical.conditions) ||
-      /* 旧・薬／書類の形（pharmacies 配列、pocket/papers 配列）。作り
-         替えたので、保存分は捨てて仮データに戻す。 */
-      Array.isArray(saved.medical.pharmacies) ||
-      Array.isArray(saved.medical.pocket) ||
-      Array.isArray(saved.medical.papers) ||
-      (saved.medical.supplies && Array.isArray(saved.medical.supplies)));
-    if (stale) { try { localStorage.removeItem(STORE_KEY); } catch (e) {} return; }
-    if (saved.medical) data.medical = saved.medical;
-    if (saved.care)    data.care    = saved.care;
-    /* 保存分の中で一番大きい採番まで seq を進める。 */
-    JSON.stringify(saved).replace(/"[a-z]{2}-(\d+)"/g, (m, n) => {
-      const v = parseInt(n, 10);
-      if (!isNaN(v) && v > seq) seq = v;
-      return m;
-    });
+
+    if (saved.schema !== SCHEMA) saved = migrate(saved);
+
+    if (saved.medical && typeof saved.medical === 'object') {
+      data.medical = saved.medical;
+    }
+    if (saved.care && typeof saved.care === 'object') {
+      data.care = saved.care;
+    }
+    /* 採用した分の中で一番大きい採番まで seq を進める。 */
+    JSON.stringify({ medical: data.medical, care: data.care })
+      .replace(/"[a-z]{2}-(\d+)"/g, (m, n) => {
+        const v = parseInt(n, 10);
+        if (!isNaN(v) && v > seq) seq = v;
+        return m;
+      });
   }
   hydrate();
 
   function save() {
+    data.schema = SCHEMA;
     try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) { /* 無視 */ }
   }
 
@@ -569,7 +764,10 @@
   const checkState = row => CHECK_STATES[row && row.state] || CHECK_STATES['未確認'];
   const currentKind = k => CURRENT_KINDS[k] || CURRENT_KINDS.condition;
   const medSrcKind  = k => MEDSRC_KINDS[k] || MEDSRC_KINDS.other;
-  const serviceKind = k => SERVICE_KINDS[k] || SERVICE_KINDS.support;
+  /* 未知の型（型を作り替える前に保存された行）でも undefined を返さない。
+     フォールバックは life（暮らしの手伝い）＝いちばん広く受ける型。 */
+  const serviceKind = k => SERVICE_KINDS[k] || SERVICE_KINDS.life;
+  const equipKind   = k => EQUIP_KINDS[k] || EQUIP_KINDS.other;
 
   /* ── 現在の医療状態｜5項目の引き出し ─────────────────
      どの項目も { presence, items } の形。presence が 'あり' のときだけ
@@ -660,9 +858,12 @@
     const medSrc = (m.medSources || []).filter(r => r.kind !== 'pharmacy');
     return [].concat(medSrc);
   }
+  /* ケアマネ（manager）は数え上げに入れない。状態を持たない行なので、
+     入れると分母だけ増えて「まだ辿れない」が薄まる（§12：進捗は入力率
+     ではなく、必要な状態がどこまで成立しているかで数える）。 */
   function careRows() {
     const c = data.care;
-    return [].concat([c.manager], c.services || [], c.papers || []);
+    return [].concat(c.services || [], c.equipment || [], c.papers || []);
   }
 
   function tallyOf(rows) {
@@ -679,30 +880,6 @@
   /* 左ナビの件数バッジ。両ゾーンの「まだ辿れない」を合わせて出す。 */
   function openCount() {
     return medicalTally().open + careTally().open;
-  }
-
-  /* 週の帯。曜日ごとに、その日に来る／出かけるサービスを返す。
-     常時のもの（days が空）は帯に出さない――帯は「いつ誰が来るか」
-     を見る場所で、常時のものは放射図の側が持っている。            */
-  function weekGrid() {
-    return DAYS.map((label, i) => ({
-      label: label,
-      index: i,
-      services: (data.care.services || []).filter(s =>
-        Array.isArray(s.days) && s.days.indexOf(i) > -1)
-    }));
-  }
-  /* 曜日を持つサービスが一つでもあるか。無ければ帯そのものを出さない。 */
-  function hasSchedule() {
-    return (data.care.services || []).some(s => Array.isArray(s.days) && s.days.length);
-  }
-
-  function toggleDay(sv, i) {
-    if (!sv) return;
-    const days = sv.days = Array.isArray(sv.days) ? sv.days : [];
-    const at = days.indexOf(i);
-    if (at > -1) days.splice(at, 1); else days.push(i);
-    days.sort((a, b) => a - b);
   }
 
   /* ── 探す ───────────────────────────────────────── */
@@ -722,7 +899,7 @@
 
   /* ── 編集 ───────────────────────────────────────────
      画面から書き換える。値の場所は 'medical.meds.taking' や
-     'care.services.0.freq' のようなドット区切りで data から辿る。   */
+     'care.services.0.use' のようなドット区切りで data から辿る。    */
   function getByPath(path) {
     return String(path).split('.').reduce((o, k) => (o == null ? o : o[k]), data);
   }
@@ -750,7 +927,7 @@
   function applyTags(path, text) {
     const next = textToTags(text);
     const cur = getByPath(path) || [];
-    if (cur.join(' ') === next.join(' ')) return false;
+    if (cur.join(' ') === next.join(' ')) return false;
     setByPath(path, next);
     return true;
   }
@@ -775,16 +952,6 @@
     const cur = Array.isArray(row[field]) ? row[field] : [];
     if (cur.join(' ') === next.join(' ')) return false;
     row[field] = next;
-    return true;
-  }
-
-  /* 箇条書き（家族が知っておきたいこと）。1行1件。 */
-  function linesToText(list) { return (list || []).join('\n'); }
-  function applyLines(path, text) {
-    const next = String(text || '').split('\n').map(s => s.trim()).filter(Boolean);
-    const cur = getByPath(path) || [];
-    if (cur.join(' ') === next.join(' ')) return false;
-    setByPath(path, next);
     return true;
   }
 
@@ -839,10 +1006,24 @@
   function addService(name, kind) {
     const k = kindOfService(name) || kind || 'home';
     const row = { id: uid('sv'), kind: k, name: name || '',
-      provider: '', tel: '', freq: '', days: [], detail: '', state: '未確認' };
+      provider: '', tel: '', web: '', does: '', days: [], use: '',
+      state: '未確認' };
     data.care.services.push(row);
     return row;
   }
+  /* 曜日の入切。★曜日は days が持つ実データになった（2026-09-09）。
+     use の自由文から読み取る方式はやめたので、点を押して直接切り替える。
+     順序は月〜日で保つ（押した順に並ぶと表示がばらつく）。 */
+  const WEEK_ORDER = ['月', '火', '水', '木', '金', '土', '日'];
+  function toggleServiceDay(sv, day) {
+    if (!sv || WEEK_ORDER.indexOf(day) < 0) return false;
+    const days = Array.isArray(sv.days) ? sv.days : (sv.days = []);
+    const at = days.indexOf(day);
+    if (at > -1) days.splice(at, 1); else days.push(day);
+    days.sort((a, b) => WEEK_ORDER.indexOf(a) - WEEK_ORDER.indexOf(b));
+    return true;
+  }
+
   /* サービス名を変えると型も連動する（手で直した型は上書きしない）。 */
   function setServiceName(sv, name) {
     if (!sv || sv.name === name) return false;
@@ -854,6 +1035,23 @@
   function setServiceKind(sv, kind) {
     if (!sv || !SERVICE_KINDS[kind] || sv.kind === kind) return false;
     sv.kind = kind;
+    return true;
+  }
+
+  /* 福祉用具を1件足す。型（kind）は用具名から決まる（addService と同じ
+     考え方）。事業所・連絡先は貸与元に連絡することがあるので持つ。 */
+  function addEquip(name, kind) {
+    const k = kindOfEquip(name) || kind || 'other';
+    const row = { id: uid('eq'), kind: k, name: name || '',
+      provider: '', tel: '', state: '未確認' };
+    data.care.equipment.push(row);
+    return row;
+  }
+  function setEquipName(eq, name) {
+    if (!eq || eq.name === name) return false;
+    eq.name = name;
+    const k = kindOfEquip(name);
+    if (k && k !== eq.kind) eq.kind = k;
     return true;
   }
 
@@ -879,7 +1077,7 @@
       if (canRemoveMedSource(id)) removeFrom(m.medSources, id);
       return;
     }
-    [m.clinics, c.services, c.papers].forEach(list => removeFrom(list, id));
+    [m.clinics, c.services, c.equipment, c.papers].forEach(list => removeFrom(list, id));
     ['conditions', 'treatments', 'devices', 'allergies', 'adverse'].forEach(k => {
       const g = m[k];
       if (g && Array.isArray(g.items)) removeFrom(g.items, id);
@@ -895,27 +1093,29 @@
     BODY_REGIONS, BODY_REGION_KEYS, REGION_OF_CHOICE,
     ALLERGY_REACTIONS, ADVERSE_EVENTS,
     MEDSRC_KINDS, MEDSRC_ORDER, MEDSRC_FIXED,
-    CARE_LEVELS, PLACES, SERVICE_KINDS, SERVICE_TYPES, DAYS,
+    CARE_LEVELS, SERVICE_KINDS, SERVICE_TYPES, EQUIP_KINDS, EQUIP_TYPES,
     /* 事実 */
     data, save,
     /* 引き出し */
     ageFromBirth, formatBirth,
     bodyRegion, regionOfRow,
-    checkState, cycleState, currentKind, medSrcKind, serviceKind, isCertified,
-    serviceType, kindOfService,
+    checkState, cycleState, currentKind, medSrcKind, serviceKind, equipKind,
+    isCertified, levelAbout,
+    serviceType, kindOfService, equipType, kindOfEquip,
     currentGroup, grpOf, setPresence, currentRowLabel,
     conditionLabel, conditionNote, allergyLabel, adverseLabel,
     medicalTally, careTally, openCount,
-    weekGrid, hasSchedule, toggleDay,
     findIn, findAny,
     /* 編集 */
     getByPath, setByPath, applyValue,
-    tagsToText, textToTags, applyTags, linesToText, applyLines,
+    tagsToText, textToTags, applyTags,
     reactionFreeText, applyReactionFree,
     toggleInArray,
     /* 足す・消す */
     addClinic, addPharmacySource,
     addCurrent, addCurrentRow, addAllergy, addAdverse, addService,
-    setServiceName, setServiceKind, removeFrom, removeAny, canRemoveMedSource
+    toggleServiceDay,
+    setServiceName, setServiceKind, addEquip, setEquipName,
+    removeFrom, removeAny, canRemoveMedSource
   };
 })(window);

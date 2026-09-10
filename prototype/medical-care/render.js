@@ -49,6 +49,7 @@
     level:   ['care.level'],
     manager: ['care.manager.'],
     service: ['care.services'],
+    equipment: ['care.equipment'],
     cpapers: ['care.papers']
   };
   function inSection(key, path) {
@@ -62,6 +63,19 @@
   const XMARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
     'stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
   const TEL = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2Z"/></svg>';
+  /* 外部リンク。★`↗` の文字を本文に混ぜない（2026-09-09 指摘：
+     矢印がチープ）。生の矢印文字は本文と同じ字送り・同じウエイトで
+     並ぶので、記号ではなく「文の一部」に見えてしまう。外部リンクの
+     慣用記号は**枠から出ていく矢印**――枠（開いた角）と矢羽根の
+     2要素で描く。他の領域と同じく専用の viewBox を持つグリフにする。 */
+  const EXT = '<svg class="i-ext" viewBox="0 0 24 24" fill="none" ' +
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true">' +
+      /* 枠。右上だけ開いていて、そこから矢印が出ていく。 */
+      '<path d="M18 13.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5.5"/>' +
+      /* 出ていく矢羽根。 */
+      '<path d="M14 3h7v7"/><path d="M21 3 11.5 12.5"/>' +
+    '</svg>';
   const svgIc = (d, w) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
     'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="' +
     (w || 18) + '" height="' + (w || 18) + '">' + d + '</svg>';
@@ -106,6 +120,16 @@
            '<path d="M6.6 8.7A2 2 0 0 0 5 10.6l-.5 3.1a6 6 0 1 0 6.9 8.3l-2-1a3.9 3.9 0 1 1-3.6-5.5l.3-1.8 3.5 2.3a2 2 0 0 0 1.1.3H16v-2h-4.6L7.9 9.6a2 2 0 0 0-1.3-.9Z"/>' +
            '<path d="M17 20.5 15 15h-2.2l2.3 6.2a1 1 0 0 0 .9.65H20v-2h-2.5Z"/>'
   };
+  /* サービス表の「名前」「支援内容」欄の例文。★分類（訪問／通い／食事／
+     暮らし）で中身が変わるので、分類ごとに持つ。長い例文はモバイルの
+     狭い欄（233px 級）で右が見切れ、プレースホルダーは横スクロールでき
+     ないので読めない（2026-09-10 指摘）――「例：」込みで11字以内に収める。 */
+  const SV_PH = {
+    home: { name: '例：訪問介護',       does: '例：入浴や着替えの介助' },
+    out:  { name: '例：デイサービス',   does: '例：日中の預かり・入浴' },
+    meal: { name: '例：配食サービス',   does: '例：昼食を毎日届ける'   },
+    life: { name: '例：見守りサービス', does: '例：週1回の安否確認'   }
+  };
   /* 顔写真のプレースホルダー。写真が未登録のあいだ、枠の中に置く
      本人のしるし（正本 §11：空欄と該当なしを同じにしない――ここは
      「まだ貼っていない」欄なので、空白ではなく人の形を残す）。 */
@@ -118,25 +142,10 @@
      1枚敷き、その上を線が通る2層構成（SCENE_IC.visit と同じ密度）。
      各 path が stroke/fill を自前で持つ。介護の4節ぶん。            */
 
-  /* 介護認定｜チェックの入った書類。制度が認めたことのしるし。 */
-  const CARE_LEVEL_IC =
-    '<path d="M6 3.2h8.5L19 7.6v13.2H6Z" fill="currentColor" fill-opacity=".12" ' +
-      'stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' +
-    '<path d="M14 3.4v4.4h4.6" fill="none" stroke="currentColor" stroke-width="1.5" ' +
-      'stroke-linejoin="round"/>' +
-    '<path d="M8.5 13.6l2.2 2.2 4-4.4" fill="none" stroke="currentColor" ' +
-      'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>';
-
-  /* 担当者・相談先｜二人。介護の相談の窓口。 */
-  const CARE_PERSON_IC =
-    '<circle cx="9" cy="8.4" r="3" fill="currentColor" fill-opacity=".12" ' +
-      'stroke="currentColor" stroke-width="1.5"/>' +
-    '<circle cx="16" cy="9" r="2.4" fill="currentColor" fill-opacity=".12" ' +
-      'stroke="currentColor" stroke-width="1.4"/>' +
-    '<path d="M3.6 19.4c0-3 2.4-5.2 5.4-5.2s5.4 2.2 5.4 5.2" fill="none" ' +
-      'stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
-    '<path d="M15 14.3c2.6.1 4.6 2.1 4.6 4.8" fill="none" ' +
-      'stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>';
+  /* ※ CARE_LEVEL_IC（書類＋チェック）と CARE_PERSON_IC（二人）は、
+     介護認定・担当者をプレートから上部の木札の帯へ移した際に
+     使い手がいなくなったので削除した（2026-09-09）。帯の見出しは
+     白チップではなく彫り込んだ文字なので、グリフを持たない。      */
 
   /* 利用している支援｜寄り添うかたち（ハート）。参考画像の見出し記号。 */
   const CARE_HEART_IC =
@@ -1366,7 +1375,7 @@
         ? (on
             ? ev(p + 'web', c.web, 'line', 'https://…')
             : '<a href="' + esc(c.web) + '" target="_blank" rel="noopener" ' +
-              'class="cg-link">' + esc(webLabel(c.web)) + ' ↗</a>')
+              'class="cg-link">' + esc(webLabel(c.web)) + EXT + '</a>')
         : (on ? ev(p + 'web', c.web, 'line', 'https://…') : '');
       /* 状態バッジは付けない。診療案内カードは「かかっている先の
          連絡先」で、書いた時点で家族が辿れている――§11 の状態
@@ -1546,7 +1555,7 @@
         ? (on
             ? ev(p + 'web', r.web, 'line', 'https://…')
             : '<a href="' + esc(r.web) + '" target="_blank" rel="noopener" ' +
-              'class="cg-link">' + esc(webLabel(r.web)) + ' ↗</a>')
+              'class="cg-link">' + esc(webLabel(r.web)) + EXT + '</a>')
         : (on ? ev(p + 'web', r.web, 'line', 'https://…') : '');
       /* 状態バッジは付けない。かかりつけ薬局は「かかっている先の
          連絡先」で、書いた時点で家族が辿れている――§11 の状態を
@@ -1806,6 +1815,96 @@
       '</div>';
   }
 
+  /* ══ 上部の木札 ═══════════════════════════════════════
+     介護度と主な相談先は、下のプレート（乳白の樹脂板＋真鍮ネジ）より
+     一段軽い格に置く。ただし「軽い」は「装飾なし」ではない――背板に
+     文字が直に乗ることは実物では起きないので、物として札を留める。
+
+     材は**額縁と同じ木**（woodRail / WOOD_GRAIN をそのまま使う）。
+     同じ材から切り出した札なので画風が必ず揃い、幅の伸び縮みにも
+     額縁と同じ理屈で耐える。外部のクリップアート（Openclipart の
+     木札4点）は素朴派の看板で、明るいオークの直線的な柾目という
+     この板の register と合わなかった（RESEARCH.md に採否を記録）。
+
+     プレートとの格の差は3点で出す：
+       ・厚み … プレートは落ち影が大きい。札は板に沈む（彫り込み）
+       ・留め … プレートは真鍮ネジ4本。札はネジ無しで面が接している
+       ・面   … プレートは乳白で下地を隠す。札は木地のまま
+     文字は彫り込み＝内側に影が落ち、下辺に光が返る。               */
+  /* 札の柾目。板は横に伸びるので、筋は**長手＝左右**に走る。
+     筋の太さは vector-effect="non-scaling-stroke" で実 px に固定する
+     ――こうすると札が何px幅になっても筋は 1px 前後のままで、
+     引き伸ばしても色ムラに化けない（額の桟の筋との違いはここ）。
+     y は札の高さに対する割合。木は等間隔に木理を持たないので、
+     間隔・濃さ・太さを不揃いにする。座標は固定（再描画でちらつかせない）。 */
+  const CWS_GRAIN = (() => {
+    /* 濃さは実測 Δ78 に合わせる（care-board-motifs.RESEARCH.md §1）。
+       .05〜.13 で置くと Δ5 にしかならず色帯に見える――額の桟で一度
+       通った失敗。逆に等間隔で濃く並べると、今度は木ではなく
+       ルーバー（羽板）に見える。木理は**寄る所と空く所がある**ので、
+       間隔を 3〜11 の幅で散らし、筋ごとに始点・終点を変えて
+       途中で消えるようにする（x0/x1）。
+       [y, 太さ, 濃さ, 明るい筋か, x0, x1] */
+    const seeds = [
+      [ 6, .8, .30, 0,   0, 78], [ 9, .5, .16, 1,  12, 100],
+      [17, 1.2, .40, 0,   0, 100], [20, .5, .14, 1,  34, 92],
+      [30, .7, .24, 0,   8, 100], [33, .6, .18, 1,   0, 61],
+      [41, 1.4, .46, 0,   0, 100], [45, .6, .20, 1,  20, 100],
+      [55, .9, .30, 0,   0, 88], [58, .5, .14, 1,  46, 100],
+      [67, 1.1, .38, 0,   0, 100], [70, .6, .18, 1,   0, 53],
+      [79, .8, .26, 0,  16, 100], [83, .5, .16, 1,   0, 72],
+      [92, 1.0, .34, 0,   0, 100]
+    ];
+    return '<g fill="none" stroke-linecap="round">' +
+      seeds.map(([y, w, o, light, x0, x1]) =>
+        '<path d="M' + x0 + ' ' + y + 'H' + x1 + '" stroke="' +
+        (light ? '#f6dcba' : '#6b4426') +
+        '" stroke-width="' + w + '" stroke-opacity="' + o + '" ' +
+        'vector-effect="non-scaling-stroke"/>').join('') +
+      '</g>';
+  })();
+
+  function careWoodSlat() {
+    /* 札は横に伸びるので、木地と柾目は preserveAspectRatio="none" で
+       引き伸ばす（額の桟と同じ扱い）。彫り込みの稜線は太さを保つため
+       vector-effect="non-scaling-stroke"。 */
+    return '<span class="cws" aria-hidden="true">' +
+      '<svg class="cws-svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
+        '<defs>' +
+          /* 額の桟より一段明るい木地。同じ材の、削って新しい面。
+             上から下へ光が回る（札は板に伏せて置かれている）。 */
+          '<linearGradient id="cwsWood" x1="0" y1="0" x2="0.15" y2="1">' +
+            '<stop offset="0" stop-color="#e9c49c"/>' +
+            '<stop offset=".55" stop-color="#d7a26c"/>' +
+            '<stop offset="1" stop-color="#c68f5c"/>' +
+          '</linearGradient>' +
+        '</defs>' +
+        '<rect x="0" y="0" width="100" height="100" fill="url(#cwsWood)"/>' +
+        /* 柾目。札は横長なので筋は長手＝左右に走る（額の横桟と同じ）。
+           ★額の WOOD_GRAIN をそのまま流用しない――あれは幅 34px の桟
+           向けの筋幅（0.5〜1.9 / 100）で、900px の札に引き伸ばすと
+           1本が 5〜17px の帯になって「木目」ではなく色ムラに見える。
+           札は札の実寸で筋を持つ（下の CWS_GRAIN）。 */
+        CWS_GRAIN +
+        /* 縁の面取り。上辺に光、下辺に陰――板に伏せて置かれた札。 */
+        '<g vector-effect="non-scaling-stroke" fill="none">' +
+          '<path d="M0 .5H100" stroke="#f6e0bd" stroke-opacity=".7"/>' +
+          '<path d="M0 99.5H100" stroke="#7d5027" stroke-opacity=".45"/>' +
+        '</g>' +
+      '</svg>' +
+      /* 彫り込んだ平面（字を彫る面）。実物の彫り看板と同じで、字の下だけ
+         木を削って平らにする――木目が字を横切らなくなるので、木の札の
+         まま可読性が出る（文字の影で誤魔化さない）。
+
+         ★別レイヤーにする理由：上の SVG は preserveAspectRatio="none"
+         で引き伸ばすので、彫り面の角丸と削り口の稜線を同じ SVG に置くと
+         幅が広いとき角丸が寝て「潰れた楕円」になる。彫り面は CSS の
+         box で置き、稜線は border で持たせる（太さが実 px で固定される）。
+         木目を弱めるのはこの面の内側だけ（.cws-plane の地）。       */
+      '<span class="cws-plane" aria-hidden="true"></span>' +
+      '</span>';
+  }
+
   /* 乳白プレートを背板へ留める真鍮ネジ。円＋マイナスの切り込み。
      切り込みの向きは左右で対にする（実物のネジは向きが揃わない）。 */
   function careScrews(wide) {
@@ -1827,104 +1926,648 @@
 
   /* 節（プレート1枚）。医療と同じく番号は振らない。見出しは白チップ＋
      緑線グリフ（headChip、契約デジタル／医療右面と同じ手つき）。
-     一言（lead）は付けない――README のとおり素っ気なくする。        */
+     一言（lead）は付けない――README のとおり素っ気なくする。
+     opt.noEdit … プレートの中に性質の違う複数節を持ち、鉛筆を節ごと
+     （careSubHead）に持たせるとき、プレート本体の鉛筆は省く
+     （「今の支援」＝暮らしの時間に入る支援／継続して使っている支援）。 */
   function carePlate(key, glyph, title, body, opt) {
     const o = opt || {};
     return '<section class="cp' + (o.cls ? ' ' + o.cls : '') + '">' +
       careScrews(!!o.wide) +
       '<div class="cp-h">' + headChip(glyph) +
         '<h5>' + esc(title) + '</h5>' +
-        editBtn(key) + '</div>' +
+        (o.noEdit ? '' : editBtn(key)) + '</div>' +
       '<div class="cp-body">' + body + '</div></section>';
   }
 
+  /* ══ 上部の帯｜介護度と主な相談先 ═══════════════════
+     どちらも「今どうなっているか」の見出しで、家族が読んで何かする
+     ものではない（介護度は制度上の区分、相談先は書いた時点で辿れる
+     連絡先）。下の「今の支援」が主役なので、格を一段下げて1本の帯に
+     まとめる。左右は同じ木札の上に並ぶので、背丈は必ず揃う。
+
+     ★「薄く」は**格**の話であって**行数**の話ではない（2026-09-09）。
+     1行に押し込んだ結果、介護度も相談先も 11〜13px に潰れ、右側が
+     「介護の主な相談先 山田 花子 ○○居宅介護支援事業所 045-… サイト」
+     という切れ目のない一続きの文字列になって、両方とも読めず二者の
+     区別も付かなくなっていた。札は1枚のまま、中で格を分ける：
+
+       ・介護度 … ラベル（小）＋値（大）。彫り面の左に置く
+       ・相談先 … ラベル（小）＋名前・電話（中）。彫り面の右
+       ・境目   … 彫り込んだ縦の区切り（物として溝を1本入れる）
+
+     どちらもラベルを値の上に置くので、値だけを拾い読みできる。   */
+
+  /* ⓘ ＝ 要介護度の説明への入口。押すとガイドが開く。値そのものでは
+     なく「この区分は何か」を開くので、鉛筆（編集）とは別の記号。   */
+  const INFO_IC =
+    '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+      '<circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.3"/>' +
+      '<circle cx="8" cy="5" r="1" fill="currentColor"/>' +
+      '<path d="M8 7.4v4.2" stroke="currentColor" stroke-width="1.5" ' +
+        'stroke-linecap="round"/>' +
+    '</svg>';
+
   /* ① 介護認定。要介護度は制度上の区分（正本 §9）。認定の有無だけを
-     状態として持つ。参考画像の「大きな要介護度＋認定あり」の札。 */
+     状態として持つ。帯の左に、彫り込んだ文字として置く。 */
   function levelBlock() {
     const c = S.data.care;
     const certified = S.isCertified(c.level);
     if (isOpen('care.level')) {
-      return '<div class="cl-edit">' +
+      return '<div class="cws-item cws-level cl-edit">' +
         '<span class="cp-kv-lb">要介護度</span>' +
         evSelect('care.level', c.level, S.CARE_LEVELS) + '</div>';
     }
-    return '<div class="cl-card' + (certified ? '' : ' cl-card-off') + '" ' +
-      'data-edit="care.level" data-kind="select">' +
-      '<span class="cl-lv">' + esc(c.level || '未確認') + '</span>' +
-      '<span class="cl-sub">' +
-        (certified ? '認定あり' : (c.level === '申請中' ? '申請中' : '認定なし')) +
+    return '<div class="cws-item cws-level">' +
+      '<span class="cws-lb">介護認定' +
+        /* ⓘ は要介護度という区分の説明。いまは title 属性まで――
+           用語解説の器（モーダル／ポップオーバー）は介護にまだ無く、
+           医療の「治療中の病気」モーダルは領域内で完結させたものなので
+           機械的に持ち出さない（正本 §13）。器を作るときに差し替える。 */
+        '<span class="cws-info" title="' + esc(S.levelAbout(c.level)) + '" ' +
+          'role="img" aria-label="' + esc(S.levelAbout(c.level)) + '">' +
+          INFO_IC + '</span>' +
       '</span>' +
+      '<button type="button" class="cws-lv' + (certified ? '' : ' cws-lv-off') + '" ' +
+        'data-edit="care.level" data-kind="select">' +
+        esc(c.level || '未確認') +
+      '</button>' +
       '</div>';
   }
 
-  /* ② 担当ケアマネジャー。連絡先ではなく「介護の入口」。参考画像の
-     「ラベル＋値」を縦に並べた札。 */
+  /* ② 主な相談先（担当ケアマネジャー）。介護の入口なので、事業所名・
+     担当者名・電話・Web を落とさず出す――階層を下げたのはプレートの
+     ネジ・落ち影であって、情報量ではない（2026-09-09 レビュー指摘：
+     「本当に名前が主役？事業所名は？」「WEB URLはどこ？」）。
+     事業所名を先頭に置く。実際に電話をかける先・検索する先は
+     法人としての窓口であり、担当者名はその中の「誰か」を添える
+     情報――主従を逆にしていたのを直した。
+     Web は医療の通院カード／薬局と同じ扱い（webLabel でドメイン名を
+     出す。「サイト」だけの抽象リンクにしない）。
+     状態バッジは持たない（state.js の manager 参照）。 */
+  /* ラベルと値の1行。★横並びの一続きの文字列にしない――正本
+     （介護イメージ.png）の相談先も「ケアマネジャー：山田 花子／
+     事業所名：○○／電話番号：045-…」の**ラベル列＋値列の表**で、
+     だから3つが別々の情報として拾い読みできる。ラベルを固定幅の
+     左列に揃えることで、値の頭が縦に揃う（2026-09-09 の直し）。   */
+  function mgrRow(lb, val, cls) {
+    return '<span class="cws-mgr-row">' +
+      '<span class="cws-mgr-lb">' + esc(lb) + '</span>' +
+      '<span class="cws-mgr-v' + (cls ? ' ' + cls : '') + '">' + val + '</span>' +
+      '</span>';
+  }
+
   function managerBlock() {
     const mg = S.data.care.manager || {};
-    const row = (lb, path, val, ph) =>
-      '<div class="cm-row"><span class="cm-lb">' + esc(lb) + '</span>' +
-      '<span class="cm-vl">' + ev(path, val, 'line', ph) + '</span></div>';
-    return '<div class="cm">' +
-      row('ケアマネジャー', 'care.manager.name', mg.name, '名前') +
-      row('事業所名', 'care.manager.office', mg.office, '事業所名') +
-      '<div class="cm-row"><span class="cm-lb">電話番号</span>' +
-        '<span class="cm-vl cm-tel">' + TEL +
-          ev('care.manager.tel', mg.tel, 'line', '電話番号') + '</span></div>' +
-      '<div class="cm-foot">' +
-        '<span class="cm-memo">' + MEMO_MARK +
-          ev('care.manager.note', mg.note, 'line', '例：体調のことは、まずこの方に相談。') +
-        '</span>' +
-        stBadge('care.manager') +
+    const on = isOpen('care.manager');
+    const web = String(mg.web || '').trim();
+    return '<div class="cws-item cws-mgr">' +
+      '<span class="cws-lb">介護の主な相談先</span>' +
+      '<div class="cws-mgr-tb">' +
+        mgrRow('事業所', ev('care.manager.office', mg.office, 'line', '事業所名'),
+          'cws-mgr-office') +
+        mgrRow('担当', ev('care.manager.name', mg.name, 'line', '担当者名')) +
+        mgrRow('電話',
+          '<span class="cws-tel">' + TEL +
+            ev('care.manager.tel', mg.tel, 'line', '電話番号') + '</span>') +
+        (on
+          ? mgrRow('Web',
+              '<span class="cws-web">' +
+                ev('care.manager.web', mg.web, 'line', 'https://…') + '</span>')
+          : (web ? mgrRow('Web',
+              '<a class="cws-web" href="' + esc(web) + '" target="_blank" ' +
+                'rel="noopener">' + esc(webLabel(web)) + EXT + '</a>') : '')) +
+      '</div>' +
+      (on
+        ? '<span class="cws-memo">' + MEMO_MARK +
+            ev('care.manager.note', mg.note, 'line',
+              '例：体調のことは、まずこの方に相談。') + '</span>'
+        : '') +
+      '</div>';
+  }
+
+  /* 帯そのもの。1枚の木札に彫り込んだ平面を持ち、その上に介護度と
+     相談先を置く。二者の間は彫り込んだ溝（.cws-groove）で仕切る
+     ――区切り線を CSS の border で引くのではなく、木を彫った溝と
+     して持たせる（陰＋削り口の光の2本）。鉛筆は札の外の右端。   */
+  function careTopSlat() {
+    return '<div class="cws-band">' +
+      careWoodSlat() +
+      '<div class="cws-inner">' +
+        levelBlock() +
+        '<span class="cws-groove" aria-hidden="true"></span>' +
+        managerBlock() +
+        editBtn('manager') +
       '</div>' +
       '</div>';
   }
 
-  /* ③ 利用している介護・生活支援｜表（種類／事業所／利用状況／連絡先）。
-     行頭アイコンは塗り面で、種類ごとに色を変える（正本モックどおり）。 */
-  function serviceRow(sv, i) {
-    const kind = S.serviceKind(sv.kind);
+  /* ══ 今の支援 ═════════════════════════════════════════
+     1つのプレートの中に性質の違う2節を持つ（正本 §13-1 の割り付け
+     とは別に、2026-09-09 のレイアウト検討で決めた新しい割り付け）。
+
+       上＝暮らしの時間に入る支援 … 訪問・デイ・配食など、曜日と
+           時間を持つもの。造形は卸しカレンダーの1週分
+       下＝継続して使っている支援 … ベッド・歩行器などの福祉用具。
+           曜日を持たない・ずっと家にある。造形は物の絵札
+
+     どちらも「今の支援」という1枚のプレートの中の節なので、プレート
+     本体（.cp／ネジ／彫りの格）は1つ。節ごとに小見出し＋鉛筆を持つ
+     （careSubHead）――節見出し（headChip）より一段小さい格。      */
+
+  /* 小見出し＋鉛筆。プレート内の節を分けるための部品。
+     ★これまで2回、「独立した物として作る」発想の中で材だけ変えて
+     詰まっていた（インデックスラベル→タブ／木札／彫り込みの3案、
+     いずれもユーザー判断で不採用・2026-09-10）。正本
+     （介護イメージ.png）を見直すと、そもそも**この見出しに相当する
+     ものが存在しない**――プレート見出し（❤️）の直後は表の列見出しに
+     直結し、間に挟まる第三の物は無い。「新しい物を発明する」前提を
+     疑い、今ある物（プレート地・カレンダー紙・余白）だけで2節の違いを
+     示す方向に切り替えた。
+
+     3案を並べて見比べる（?subhead= で切り替え）：
+       'plain' … 部品を作らない。太字＋間隔だけ（プレート地に直接）
+       'band'  … カレンダー紙が持つ帯（曜日の乗る濃色の帯）自体に
+                  文言を組み込む。別部品を足さない
+       'bare'  … 文字もラベルも無し。節の違いは形（カレンダー／絵札）
+                  と間隔だけに任せる（README「素っ気なくする」の徹底）
+     'band' は帯自体を持つカレンダー側（weekCalendar）で組む。       */
+  const CARE_SUBHEAD_VARIANT = (function () {
+    try {
+      const q = new URLSearchParams(location.search).get('subhead');
+      if (q === 'plain' || q === 'band' || q === 'bare') return q;
+    } catch (e) { /* file:// などで URL が読めなくても既定へ倒す */ }
+    return 'plain';
+  })();
+  function careSubHead(key, title) {
+    const v = CARE_SUBHEAD_VARIANT;
+    if (v === 'bare') {
+      /* 見出しの文字を出さず、鉛筆だけ右上に残す（編集の入口は要る）。 */
+      return '<div class="cp-sub-h csh-bare">' + editBtn(key) + '</div>';
+    }
+    if (v === 'band') {
+      /* カレンダー側が帯に文言を持つので、ここでは鉛筆だけ出す
+         （equipment 節にはカレンダーが無いので、こちらは 'plain' と
+         同じ太字＋間隔に自然と揃う）。 */
+      if (key === 'service') return '';
+    }
+    return '<div class="cp-sub-h csh-plain">' +
+      '<h6>' + esc(title) + '</h6>' +
+      editBtn(key) +
+      '</div>';
+  }
+
+  /* 曜日の読み取り。use の自由文（「月・木 午前」「毎日 夕方」等）
+     から、その支援がどの曜日に入るかを**読み取るだけ**――管理項目
+     ではないので data には残さない（2026-09-09 ユーザー明言：
+     「本当に曜日ごとに管理したいというより、デザインとしての描写
+     目的」）。書き方が揺れて拾えない行は空配列を返し、帯には何も
+     打たない（推測で打つと書いた文字と絵が食い違う）。            */
+  /* ★曜日は days が持つ実データ（2026-09-09 ユーザー判断）。use の自由文
+     から読み取る方式（旧 weekdaysOf）は撤去した――編集中に点を押して
+     入切できるようにしたので、読み取りでは辻褄が合わない。         */
+  const WEEKDAY_CHARS = ['月', '火', '水', '木', '金', '土', '日'];
+  function daysOf(sv) {
+    return Array.isArray(sv && sv.days) ? sv.days : [];
+  }
+
+  /* 卸しカレンダーの1週分。造形は「上の紙をめくって留めるリング＋
+     台紙＋ミシン目で切り離す1週分」。
+
+     ★曜日の点は**描写**であって管理項目ではない（2026-09-09 ユーザー
+     明言）。だから点だけを出して中身を編集モードの奥に置くと、この節
+     には読むものが何も無くなる――家族が必要とするのは「訪問介護がどこ
+     で、いつ、何番か」であって、月曜に点があることではない（§13-1）。
+     行そのものが事業所・利用状況・連絡先を持ち、曜日の帯はその行の
+     右に添う。カレンダーは表現であって、シフト表ではない
+     （2026-09-09 ユーザー判断）。
+
+     読み取れた曜日が1つも無い行は点を打たない。空欄と「該当なし」を
+     同じにしない正本 §11 と同じ理屈で、「曜日が無い」と「曜日を書いて
+     いない／読めない」を区別する――利用状況の自由文は行に出るので、
+     点が無くても家族は use の文字を読める。                        */
+  /* ══ 1週分の表 ═══════════════════════════════════════
+     ★2026-09-09：骨格を作り直した（ユーザー判断）。
+
+     それまでは「左＝文章の塊／右＝7列の表」で、行の中に**設計の違う
+     2つの領域が同居**していた。左はカード風に積み、右は表の列として
+     振る舞う――その境目に置いた要素（時間帯・Web）が必ず宙に浮き、
+     置き場所を何度動かしても直らなかった。事業所|電話 のあとに Web が
+     折り返して落ちていたのも、設計ではなく「入りきらなかった結果」。
+
+     **全体を1枚の表にする。** 各項目が列を持ち、編集はその列のセルに
+     直接書く。表示と編集で構造が変わらないので、時間帯が浮く・Web が
+     折り返す、といった事故が起きる場所そのものが無くなる。
+     正本 `介護イメージ.png` も4列の表（種類／事業所／利用状況／連絡先）
+     で、途中でこれを捨てて「行＝カード」に作り変えたのが誤りだった。
+
+     列： 支援（絵＋名前＋内容）／連絡先／曜日7列／時間帯               */
+
+  /* 連絡先セルのレイアウト案。★ここは横並びだと3つ目（Web）が必ず
+     溢れる場所なので、複数パターンを実際に並べて選ぶ（?contact=）。
+       'stack' … 事業所／電話／Web を縦に積む
+       'link'  … 事業所名自体をリンクにし、電話だけ添える（2行）
+       'split' … 事業所名の下に、電話とWebを横に並べる              */
+  const CARE_CONTACT_VARIANT = (function () {
+    try {
+      const q = new URLSearchParams(location.search).get('contact');
+      if (q === 'stack' || q === 'link' || q === 'split') return q;
+    } catch (e) { /* file:// などで URL が読めなくても既定へ倒す */ }
+    /* link ＝ 事業所名自体をリンクにする案で確定（2026-09-09 ユーザー
+       判断）。URL の文字列は家族が読んで判断する情報ではなく、押せれば
+       足りる。1段減るので、Web を持つ行と持たない行で高さが揃う。   */
+    return 'link';
+  })();
+
+  const telHref = t => 'tel:' + String(t).replace(/[^0-9+]/g, '');
+
+  /* 連絡先セル（表示）。案ごとに組み方だけが変わる。 */
+  function contactCell(sv) {
+    const v = CARE_CONTACT_VARIANT;
+    const tel = sv.tel
+      ? '<a class="wc-tel" href="' + esc(telHref(sv.tel)) + '">' + TEL +
+          esc(sv.tel) + '</a>'
+      : '';
+    if (v === 'link') {
+      /* 事業所名そのものをリンクにする。URL の文字列は出さない。 */
+      const name = sv.provider
+        ? (sv.web
+          ? '<a class="wc-prov wc-prov-link" href="' + esc(sv.web) +
+              '" target="_blank" rel="noopener">' + esc(sv.provider) + EXT + '</a>'
+          : '<span class="wc-prov">' + esc(sv.provider) + '</span>')
+        : '';
+      return name + tel;
+    }
+    const name = sv.provider
+      ? '<span class="wc-prov">' + esc(sv.provider) + '</span>' : '';
+    const web = sv.web
+      ? '<a class="wc-web" href="' + esc(sv.web) + '" target="_blank" ' +
+          'rel="noopener">' + esc(webLabel(sv.web)) + EXT + '</a>'
+      : '';
+    if (v === 'split') {
+      /* 事業所名の下に、電話とWebを横に並べる（2段）。 */
+      return name +
+        ((tel || web) ? '<span class="wc-line">' + tel + web + '</span>' : '');
+    }
+    /* stack ＝ 3つを縦に積む。折り返し事故が構造的に起きない。 */
+    return name + tel + web;
+  }
+
+  /* 連絡先セル（編集）。表示と同じ順序で、セルの中に欄を縦に置く。 */
+  function contactCellEdit(sv, p) {
+    return '<span class="wc-ef">' +
+      efLine('事業所', p + 'provider', sv.provider, '例：○○ケアサービス') +
+      efLine('電話', p + 'tel', sv.tel, '例：045-111-2222') +
+      efLine('Web', p + 'web', sv.web, 'https://…') +
+      '</span>';
+  }
+
+  /* セルの中の1欄。★ラベルは必ず持たせる――placeholder は入力すると
+     消えるので、書いたあとに何の欄か分からなくなる（2026-09-09 指摘）。
+     ラベルは小さく上に置き、セルの列幅を食わないようにする。       */
+  function efLine(lb, path, value, ph) {
+    return '<label class="wc-ef-l">' +
+      '<span class="wc-ef-lb">' + esc(lb) + '</span>' +
+      ev(path, value, 'line', ph) +
+      '</label>';
+  }
+
+  function weekCalendar(list) {
+    /* 編集中かどうかは表そのものが持つ（下に別の表を出さない）。 */
     const on = secOn('service');
-    const p = 'care.services.' + i + '.';
-    const kindCell = on
-      ? '<span class="sv-name">' + ev(p + 'name', sv.name, 'line', 'サービスの種類') + '</span>' +
-        '<span class="sv-sub">' + ev(p + 'sub', sv.sub, 'line', '補足（例：ホームヘルプ）') + '</span>' +
-        evServiceKind(p + 'kind', sv.kind)
-      : '<span class="sv-name">' + ev(p + 'name', sv.name, 'line', 'サービスの種類') + '</span>' +
-        (sv.sub ? '<span class="sv-sub">' + esc(sv.sub) + '</span>' : '');
-    return '<div class="svr ' + kind.tone + '">' +
-      '<div class="svr-c svr-kind">' +
-        '<span class="svr-ic">' + fillIc(SV_IC[sv.kind] || SV_IC.life, 18) + '</span>' +
-        '<span class="svr-kind-tx">' + kindCell + '</span>' +
+    const rows = list.map(sv => ({
+      sv: sv, kind: S.serviceKind(sv.kind), days: daysOf(sv)
+    }));
+    /* 紙の上端の帯（綴じ側）。★'band' 案（?subhead=band）だけ、帯は
+       ただの綴じ側ではなく節見出しの文言を持つ――独立した見出しの
+       部品を作らず、紙が元から持っている帯を使う（2026-09-10）。   */
+    const bandTitle = CARE_SUBHEAD_VARIANT === 'band'
+      ? '<span class="wcal-band-tt">暮らしの時間に入る支援</span>' + editBtn('service')
+      : '';
+    const band = '<div class="wcal-band">' + weekCalendarHeadPlate() + bandTitle + '</div>';
+    /* 列見出し。★全列に見出しを付ける――1枚の表になったので、
+       曜日だけが見出しを持つのは筋が通らない。 */
+    const head = '<div class="wcal-head">' +
+      '<span class="wc-h wc-h-sv">支援</span>' +
+      '<span class="wc-h wc-h-ct">連絡先</span>' +
+      '<span class="wcal-cells">' +
+        WEEKDAY_CHARS.map((d, i) =>
+          '<span class="wcal-d' + (i > 4 ? ' wcal-d-end' : '') + '">' +
+            d + '</span>').join('') +
+      '</span>' +
+      '<span class="wc-h wc-h-tm">時間帯</span>' +
+      '</div>';
+    const body = rows.map((r, ri) => {
+      const sv = r.sv;
+      const p = 'care.services.' + ri + '.';
+      /* 曜日のマス。編集中は押して入切できるボタンにする。 */
+      const cells = WEEKDAY_CHARS.map((d, i) => {
+        const hit = r.days.indexOf(d) > -1;
+        /* ★色トークン（--sc）は .c-home 等のクラスが定義する。前は
+           .wcal-dot にこのクラスを直接付けていたので点が色を持てたが、
+           編集用のボタンへ切り替えたとき .wcal-c 側に残したまま
+           ボタン自体には付けておらず、点灯色が出ていなかった
+           （2026-09-10 発覚：塗り円が消えて見えた）。ボタンにも
+           同じトーンを持たせる。 */
+        const cls = 'wcal-c ' + r.kind.tone + (hit ? ' on' : '') +
+          (i > 4 ? ' wcal-c-end' : '');
+        const dot = hit ? '<span class="wcal-dot"></span>' : '';
+        if (!on) return '<span class="' + cls + '" data-d="' + d + '">' + dot + '</span>';
+        return '<button type="button" class="' + cls + ' wcal-c-btn" data-d="' + d + '" ' +
+          'data-day="' + esc(sv.id) + '|' + d + '" ' +
+          'aria-pressed="' + (hit ? 'true' : 'false') + '" ' +
+          'title="' + d + '曜日を入切"><span class="i-sr">' + d + '</span>' +
+          dot + '</button>';
+      }).join('');
+      /* ① 支援＝絵・名前・内容。編集中は同じセルの中が欄になる。
+         ★分類は**先頭**に置く（2026-09-09 指摘）。行頭の絵と色を決める
+         ＝この行が何の支援かを決める設定なので、名前より前に来る。
+
+         ★✕（行削除）はアイコンの**下**に縦に積む（2026-09-10 判断）。
+         時間帯の隣など「項目の並び」の中に置くと、その項目と横に並ぶ
+         意味が必ず問われる（実際、時間帯の隣にした結果を繰り返し
+         指摘された）。アイコンは「この行が何の支援か」を示す唯一の
+         固定要素で、行の左端に項目の並びとは別の縦の帯として立って
+         いる――削除も「行そのもの」への操作なので、項目の列とは別の
+         この帯に、アイコンと縦に積む。どの項目とも並ばないので、
+         「なぜこの項目の隣か」という問いが起きない。                */
+      const svCell = on
+        ? '<div class="wc-sv">' +
+            '<span class="wc-sv-rail">' +
+              '<span class="wcal-ic ' + r.kind.tone + '">' +
+                fillIc(SV_IC[sv.kind] || SV_IC.life, 15) + '</span>' +
+              delBtn(sv.id) +
+            '</span>' +
+            '<span class="wc-sv-ef">' +
+              /* ラベルは「分類」だけにする。★「（行頭の絵と色）」まで
+                 入れると折り返して2行になり、隣の列と段がずれる
+                 （2026-09-09 実測：3つ目の欄で 56px のずれ）。
+                 何が変わるかは、選ぶと左の絵が変わるので分かる。 */
+              '<label class="wc-ef-l wc-ef-kind">' +
+                '<span class="wc-ef-lb">分類</span>' +
+                evServiceKind(p + 'kind', sv.kind) +
+              '</label>' +
+              efLine('名前', p + 'name', sv.name,
+                (SV_PH[sv.kind] || SV_PH.life).name) +
+              efLine('支援内容', p + 'does', sv.does,
+                (SV_PH[sv.kind] || SV_PH.life).does) +
+            '</span>' +
+          '</div>'
+        : '<div class="wc-sv">' +
+            '<span class="wcal-ic ' + r.kind.tone + '">' +
+              fillIc(SV_IC[sv.kind] || SV_IC.life, 15) + '</span>' +
+            '<span class="wc-sv-tx">' +
+              '<span class="wcal-name">' + esc(sv.name || '') + '</span>' +
+              (sv.does ? '<span class="wcal-does">' + esc(sv.does) + '</span>' : '') +
+            '</span>' +
+          '</div>';
+      /* ② 連絡先 ③ 曜日 ④ 時間帯。 */
+      return '<div class="wcal-row' + (on ? ' wcal-row-edit' : '') + '">' +
+        svCell +
+        '<div class="wc-ct">' +
+          (on ? contactCellEdit(sv, p) : contactCell(sv)) +
+        '</div>' +
+        '<span class="wcal-cells">' + cells + '</span>' +
+        '<div class="wc-tm">' +
+          (on
+            ? efLine('時間帯', p + 'use', sv.use, '例：午前（9:00〜12:00頃）')
+            : (sv.use ? '<span class="wcal-use">' + esc(sv.use) + '</span>' : '')) +
+        '</div>' +
+        '</div>';
+    }).join('');
+    /* リング。参考画像は2本だが、あれは横幅の狭い卓上型。ここは横長
+       （780px 級）なので、リング製本らしい間隔で並ぶ本数を置く。
+       ★同じリング列を2枚出す――奥の弧だけの器を紙の**下**へ、手前の
+       弧だけの器を紙の**上**へ。紙がその間に挟まって「貫いている」に
+       なる（1枚では紙の前か後ろかにしか置けない）。CSS が
+       .wcal-rings-back / -front でそれぞれ片側だけを出す。         */
+    const ringRow = cls => '<span class="wcal-rings ' + cls + '" aria-hidden="true">' +
+      Array(9).fill(0).map(() => weekCalendarRing()).join('') +
+      '</span>';
+    /* 曜日の縦の軸。★カレンダーがカレンダーに見えるのは「縦と横に軸が
+       あって、その交点に印が置かれている」から。7本の線は**全行を貫く
+       1枚**として、行の裏に敷く。 */
+    const grid = '<span class="wcal-grid" aria-hidden="true">' +
+      '<span class="wcal-cells wcal-collines">' +
+        WEEKDAY_CHARS.map((d, i) =>
+          '<span class="wcal-col' + (i > 4 ? ' wcal-col-end' : '') + '"></span>'
+        ).join('') +
+      '</span>' +
+      '</span>';
+    return '<div class="wcal' + (on ? ' wcal-edit' : '') + '">' +
+      ringRow('wcal-rings-back') +
+      weekCalendarFrame() +
+      band +
+      '<div class="wcal-inner">' +
+        head +
+        '<div class="wcal-rows">' + grid + body + '</div>' +
       '</div>' +
-      '<div class="svr-c svr-prov" data-th="事業所">' +
-        ev(p + 'provider', sv.provider, 'line', '事業所名') + '</div>' +
-      '<div class="svr-c svr-use" data-th="利用状況">' +
-        ev(p + 'use', sv.use, 'line', '曜日・時間帯など') + '</div>' +
-      '<div class="svr-c svr-tel" data-th="連絡先">' +
-        TEL + ev(p + 'tel', sv.tel, 'line', '電話番号') +
-        (on ? '<span class="svr-del">' + delBtn(sv.id) + '</span>' : '') +
+      ringRow('wcal-rings-front') +
+      '</div>';
+  }
+
+  /* カレンダーの紙。参考画像（卓上リングカレンダー）から取った要素を
+     正面から見た1枚として組む（2026-09-09 ユーザー判断＝B案）。
+
+       ・束ねられた紙 … 右と下に下の紙がのぞく（1枚ではなく束）
+       ・見出し帯     … 上部の濃い色の帯。曜日はこの帯の上に乗る
+       ・綴じ穴       … 紙に開いた穴。リングはここを貫く
+       ・罫のマス     … 予定が乗る場所。罫があるから「マス」になる
+
+     ★前回はここが `rect` 1つに色を塗って下辺に破線を引いただけで、
+     CLAUDE.md が禁じている「角丸の矩形に色を敷いただけ」を SVG の中で
+     やっていた。紙・帯・穴・罫のどれも無いのだから、カレンダーに
+     見えないのは当然だった（2026-09-09 指摘）。
+
+     横に伸びる器なので preserveAspectRatio="none"。**真円・正しい形が
+     要るもの（リング）はこの SVG に入れない**――引き伸ばすと楕円に
+     なる。額のダボ（cbf-peg）と同じ理屈で CSS レイヤーへ出す。
+     穴のほうは紙と一緒に伸びてよい（紙が伸びれば穴も伸びる）。      */
+  function weekCalendarFrame() {
+    return '<svg class="wcal-svg" viewBox="0 0 100 100" preserveAspectRatio="none" ' +
+      'aria-hidden="true">' +
+      /* 下に重なる紙。右と下に少しずつずらして束に見せる。 */
+      '<rect x="1.4" y="2.6" width="98.6" height="97.4" rx="1.6" fill="#e6dcc4"/>' +
+      '<rect x="0.7" y="1.3" width="98.9" height="98.1" rx="1.6" fill="#f0e7d2"/>' +
+      /* いちばん上の紙。 */
+      '<rect x="0" y="0" width="99.2" height="98.8" rx="1.6" fill="#fdfaf3"/>' +
+      '</svg>';
+  }
+
+  /* 見出し帯（曜日が乗る濃い色の帯）と綴じ穴。★帯と穴は「紙のどこに
+     開いているか」が要るので、紙と同じ器の中に置く必要がある。ただし
+     曜日の文字は CSS グリッドで列に揃えるので、SVG が持つのは帯の地と
+     穴だけ――文字は wcal-head が持つ。                              */
+  function weekCalendarHeadPlate() {
+    return '<svg class="wcal-headsvg" viewBox="0 0 100 100" ' +
+      'preserveAspectRatio="none" aria-hidden="true">' +
+      '<defs>' +
+        '<linearGradient id="wcalBand" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="#7d6a45"/>' +
+          '<stop offset="1" stop-color="#6a5936"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+      '<rect x="0" y="0" width="100" height="100" fill="url(#wcalBand)"/>' +
+      '</svg>';
+  }
+
+  /* リング。参考画像のとおり**紙を貫く**――穴の位置で紙の裏に回り、
+     手前側だけが見える。前回は紙の上に円を11個置いただけで、綴じられて
+     いなかった（左端の4個は文字の無い空白の上に浮いていた）。
+
+     1本のリングは「紙の裏に回る部分（奥）」と「手前に出る部分」の
+     2層でできている。紙（.wcal-headsvg）を挟んで前後に置くことで
+     貫通に見せる――奥の弧は帯の上端より上に出る部分だけが見える。   */
+  function weekCalendarRing() {
+    /* viewBox 26×30。輪は縦に長い楕円ではなく**真円に近い輪**で、
+       下端が紙に潜る。参考画像のリングは「紙の手前を回って、穴を
+       通って裏へ抜ける」――だから手前側の弧のほうが太く明るく、
+       奥側は紙の向こうに細く暗く見える。
+
+       ・奥の弧  … 輪の上〜左。紙の裏へ回る側。細く・暗く
+       ・手前の弧 … 輪の右〜下。紙の表を通る側。太く・明るく
+       2つで1つの輪。紙が間に挟まるので「貫いている」になる。      */
+    return '<span class="wcal-ring" aria-hidden="true">' +
+      /* 奥＝向こう側。輪の左半分（上から下へ左回り）。紙に潜って終わる。 */
+      '<svg class="wcal-ring-b" viewBox="0 0 26 30">' +
+        '<path d="M13 5.4 A7.8 7.8 0 0 0 13 21" fill="none" ' +
+          'stroke="#7e838c" stroke-width="2.2" stroke-linecap="round"/>' +
+      '</svg>' +
+      /* 手前＝こちら側。輪の右半分と、紙に開いた**穴**。
+         ★穴が要る（Openclipart のスパイラルノートで判明）。穴が無いと、
+         輪が紙の上に置かれたフックにしか見えない――綴じ具は「紙に開いた
+         穴を通っている」から綴じ具に見える。穴は帯の上に落ちる小さな
+         楕円（紙の面に開いた穴なので、正面から見ると横長）。        */
+      '<svg class="wcal-ring-f" viewBox="0 0 26 30">' +
+        '<ellipse cx="13" cy="20.4" rx="3.4" ry="1.9" fill="#5a4a2c"/>' +
+        '<ellipse cx="13" cy="20.1" rx="3.4" ry="1.9" fill="#4a3d24"/>' +
+        '<path d="M13 5.4 A7.8 7.8 0 0 1 13 21" fill="none" ' +
+          'stroke="#aeb4bd" stroke-width="3" stroke-linecap="round"/>' +
+        /* 金属のハイライト（手前の弧の外側に細く乗る）。 */
+        '<path d="M14.4 6.6 A6.4 6.4 0 0 1 19.2 13.6" fill="none" ' +
+          'stroke="#f2f4f7" stroke-width="1" stroke-linecap="round"/>' +
+      '</svg>' +
+      '</span>';
+  }
+
+  /* 継続して使っている支援｜福祉用具の絵札。ベッド・歩行器・見守り
+     機器を、小さな絵札として横に並べる（正本 §13-1：家にある物の
+     所在ではなく「これが家にある」がそのまま分かる形）。          */
+  const EQUIP_IC = {
+    /* 介護ベッド：真上から見た図。外枠＋マットレス＋頭側/足側の柵。
+       側面図（頭側が斜めに起き上がる表現）は2回描き直しても柵が
+       浮いて見え、台車に見えるループに入ったため、歩行器・見守り
+       機器と同じ「正面/俯瞰の記号」の規格に揃えた（RESEARCH.md）。 */
+    bed: '<rect x="5" y="3" width="14" height="18" rx=".8" fill="none" ' +
+           'stroke="currentColor" stroke-width="1.6"/>' +
+         '<rect x="6.6" y="6" width="10.8" height="12" fill="currentColor" ' +
+           'fill-opacity=".14"/>' +
+         '<path d="M8 3v3M12 3v3M16 3v3" stroke="currentColor" stroke-width="1.1"/>' +
+         '<path d="M8 18v3M12 18v3M16 18v3" stroke="currentColor" stroke-width="1.1"/>',
+    /* 歩行器：正面から見た図。四角い枠＋4本脚。 */
+    walker: '<path d="M5 4h14v4H5Z" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+              'stroke-linejoin="round"/>' +
+            '<path d="M6.4 8 4 21M17.6 8 20 21" stroke="currentColor" stroke-width="1.6" ' +
+              'stroke-linecap="round"/>' +
+            '<path d="M9.4 8 8.4 21M14.6 8 15.6 21" stroke="currentColor" stroke-width="1.6" ' +
+              'stroke-linecap="round"/>' +
+            '<path d="M5 4q0-1.6 1.6-1.6M19 4q0-1.6-1.6-1.6" stroke="currentColor" ' +
+              'stroke-width="1.3" fill="none"/>',
+    /* 見守り機器：壁掛けセンサー＋電波。 */
+    monitor: '<rect x="5" y="9" width="14" height="8.4" rx="1.8" fill="currentColor" ' +
+               'fill-opacity=".14" stroke="currentColor" stroke-width="1.6"/>' +
+             '<circle cx="12" cy="13.2" r="1.9" fill="currentColor"/>' +
+             '<path d="M7 6.5q5-4 10 0" stroke="currentColor" stroke-width="1.5" ' +
+               'stroke-linecap="round" fill="none"/>' +
+             '<path d="M8.6 8.4q3.4-2.6 6.8 0" stroke="currentColor" stroke-width="1.5" ' +
+               'stroke-linecap="round" fill="none"/>',
+    /* その他の用具：車椅子・手すりなど個別形を持たないものの受け皿。
+       箱＋丸（「用具一般」の記号）。ここだけは特定の物の絵ではない。 */
+    other: '<rect x="5" y="6" width="14" height="13" rx="1.6" fill="none" ' +
+             'stroke="currentColor" stroke-width="1.6"/>' +
+           '<circle cx="12" cy="12.5" r="3.2" fill="currentColor" fill-opacity=".18" ' +
+             'stroke="currentColor" stroke-width="1.3"/>'
+  };
+
+  /* ★「足したがまだ書いていない札」を、書き終えた札と同じ格で出さない
+     （正本 §11：空欄と該当なしを同じ扱いにしない）。前は名前が空でも
+     事業所名・電話番号のプレースホルダが実データと同じ位置・同じ枠で
+     並び、3枚目の空札が「そういう用具が家にある」ように見えていた
+     （2026-09-09 のスクリーンショット）。名前が無いうちは**書きかけの
+     札**として、破線の枠と「未記入」の状態で持つ。                 */
+  function equipCard(eq, i) {
+    const on = secOn('equipment');
+    const p = 'care.equipment.' + i + '.';
+    const blank = !String(eq.name || '').trim();
+    /* 表示中（編集していない）の空札は、書きかけであることだけを出す
+       ――空のプレースホルダを3行並べても読むものが無い。 */
+    if (blank && !on) {
+      return '<div class="eqc eqc-blank">' +
+        '<span class="eqc-ic c-equip">' + svgIc(EQUIP_IC.other, 24) + '</span>' +
+        '<div class="eqc-body">' +
+          '<span class="eqc-name eqc-name-blank">未記入の用具</span>' +
+          '<span class="eqc-prov">鉛筆から名前と連絡先を書けます</span>' +
+        '</div>' +
+        '</div>';
+    }
+    return '<div class="eqc' + (blank ? ' eqc-blank' : '') + '">' +
+      /* 色分けはしない（種類は絵で見分ける）。トーンは c-equip 固定
+         ――サービス表の色トークンを転用しつつ、行の識別用途からは
+         切り離す。 */
+      '<span class="eqc-ic c-equip">' + svgIc(EQUIP_IC[eq.kind] || EQUIP_IC.other, 24) + '</span>' +
+      '<div class="eqc-body">' +
+        (on
+          ? '<span class="eqc-name">' + ev(p + 'name', eq.name, 'line', '用具の名前') +
+              delBtn(eq.id) + '</span>'
+          : '<span class="eqc-name">' + esc(eq.name || '') + '</span>') +
+        '<span class="eqc-prov">' + ev(p + 'provider', eq.provider, 'line', '事業所名') + '</span>' +
+        '<span class="eqc-tel">' + TEL + ev(p + 'tel', eq.tel, 'line', '電話番号') + '</span>' +
       '</div>' +
       '</div>';
   }
 
-  function servicesBlock() {
-    const list = S.data.care.services || [];
-    const on = secOn('service');
+  function equipmentBlock() {
+    const list = S.data.care.equipment || [];
+    const on = secOn('equipment');
     if (!list.length) {
       return '<p class="i-ev-empty">まだ登録がありません。</p>' +
-        (on ? '<button type="button" class="rowadd" data-add="service">＋ サービスを足す</button>' : '');
+        (on ? '<button type="button" class="rowadd" data-add="equip">＋ 用具を足す</button>' : '');
     }
-    return '<div class="svtbl">' +
-      '<div class="svr svr-head" aria-hidden="true">' +
-        '<span class="svr-c">サービスの種類</span>' +
-        '<span class="svr-c">事業所</span>' +
-        '<span class="svr-c">利用状況</span>' +
-        '<span class="svr-c">連絡先</span>' +
+    return '<div class="eqcards">' +
+      list.map((eq, i) => equipCard(eq, i)).join('') +
       '</div>' +
-      list.map((sv, k) => serviceRow(sv, k)).join('') +
-      '</div>' +
-      (on ? '<button type="button" class="rowadd" data-add="service">＋ サービスを足す</button>' : '');
+      (on ? '<button type="button" class="rowadd" data-add="equip">＋ 用具を足す</button>' : '');
   }
+
+  /* 「今の支援」プレートの中身。2節を縦に積む。 */
+  function careSupportBlock() {
+    const services = S.data.care.services || [];
+    const editingService = secOn('service');
+    return '<div class="cp-sub">' +
+      careSubHead('service', '暮らしの時間に入る支援') +
+      (services.length
+        ? weekCalendar(services)
+        : '<p class="i-ev-empty">まだ登録がありません。</p>') +
+      /* ★編集用の表を下に出さない（2026-09-09 指摘）。表示と編集で場所が
+         変わるうえ、同じ項目が2箇所に出て「どちらが本物か」が分からな
+         かった。カレンダーの行そのものが入力欄になる（weekCalendar の
+         on）。足すボタンだけは行の外に要る。 */
+      (editingService
+        ? '<button type="button" class="rowadd" data-add="service">' +
+            '＋ 支援を足す</button>'
+        : '') +
+      '</div>' +
+      '<div class="cp-sub">' +
+      careSubHead('equipment', '継続して使っている支援') +
+      equipmentBlock() +
+      '</div>';
+  }
+
+  /* ★旧・サービスの表（serviceRow / servicesBlock）は撤去した
+     （2026-09-09）。編集用にカレンダーの下へ出していたものだが、表示と
+     編集で場所が変わり、同じ項目が2箇所に出ていた。行そのものが入力欄に
+     なった（weekCalendar）ので、この表の役目は無くなった。          */
 
   /* サービスの型セレクト（編集時のみ）。行頭アイコンの色・記号を決める。 */
   function evServiceKind(path, value) {
@@ -2016,14 +2659,9 @@
       '<div class="care-board">' +
         careBoardFrame() +
         '<div class="care-board-inner">' +
-          '<div class="cp-row">' +
-            carePlate('level', CARE_LEVEL_IC, '介護認定', levelBlock(),
-              { cls: 'cp-level' }) +
-            carePlate('manager', CARE_PERSON_IC, '担当者・相談先', managerBlock(),
-              { cls: 'cp-manager' }) +
-          '</div>' +
-          carePlate('service', CARE_HEART_IC, '利用している介護・生活支援',
-            servicesBlock(), { wide: true, cls: 'cp-service' }) +
+          careTopSlat() +
+          carePlate(null, CARE_HEART_IC, '今の支援',
+            careSupportBlock(), { wide: true, cls: 'cp-service', noEdit: true }) +
           carePlate('cpapers', CARE_DOC_IC, '介護関係の書類やもの',
             carePapersBlock(), { wide: true, cls: 'cp-papers' }) +
         '</div>' +
@@ -2155,11 +2793,16 @@
     if (rf) return S.applyReactionFree(
       S.getByPath('medical.adverse.items.' + rf[1]), 'events',
       S.ADVERSE_EVENTS, value);
-    /* サービス名は型（kind）が連動する。 */
+    /* サービス名・福祉用具名は型（kind）が連動する。 */
     const m = /^care\.services\.(\d+)\.name$/.exec(path);
     if (m) {
       const sv = S.data.care.services[+m[1]];
       return S.setServiceName(sv, String(value).trim());
+    }
+    const eqm = /^care\.equipment\.(\d+)\.name$/.exec(path);
+    if (eqm) {
+      const eq = S.data.care.equipment[+eqm[1]];
+      return S.setEquipName(eq, String(value).trim());
     }
     return S.applyValue(path, value);
   }
@@ -2406,10 +3049,25 @@
         else if (what === 'allergy') S.addAllergy();
         else if (what === 'adverse') S.addAdverse();
         else if (what === 'service') S.addService('', 'home');
+        else if (what === 'equip') S.addEquip('', 'other');
         else if (what === 'cpaper')
           S.data.care.papers.push({ id: 'cp-' + Date.now(), item: '', where: '', state: '未確認' });
         S.save();
         render();
+        return;
+      }
+
+      /* 曜日の点を押して入切する（編集中のみ）。★入力欄の値は先に
+         書き戻す――押した拍子に、書きかけの文字が捨てられないように。 */
+      const day = e.target.closest('[data-day]');
+      if (day) {
+        const cut = String(day.dataset.day).split('|');
+        const sv = (S.data.care.services || []).find(x => x && x.id === cut[0]);
+        if (sv && S.toggleServiceDay(sv, cut[1])) {
+          flushInputs();
+          S.save();
+          render();
+        }
         return;
       }
 

@@ -14,7 +14,7 @@
 <!-- data-area がナビの現在地、data-root が prototype/ までの相対パス。
      左のガイドブックは shared/shell.js が下の空の aside へ描く。
 
-     1領域に2つの成果物UI（医療＝手帳／介護＝ベッド）を縦に持つ。
+     1領域に2つの成果物UI（医療＝手帳／介護＝連絡ボード）を縦に持つ。
      骨格が別物なので、共有するのは状態の語彙だけ（正本 §13）。 -->
 <body data-area="medical-care" data-root="../">
 <div class="shell">
@@ -35,10 +35,10 @@
     </section>
 
     <!-- ══ 介護ゾーン ══════════════════════════════════
-         造形はベッド。ヘッドボードが記録カードを載せる地になる。 -->
+         造形は連絡ボード。薄い枠に留めた紙面に介護の記録を載せる。 -->
     <section class="zone zone-care" id="zoneCare">
       <div class="sec-h">
-        <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 18v-8M3 14h18v4M21 18v-6a2 2 0 0 0-2-2h-7v4"/><circle cx="7.5" cy="11" r="1.9"/></svg></span>
+        <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4" width="17" height="16" rx="1.6"/><path d="M6.5 4v16M9 8.5h8.5M9 12h8.5M9 15.5h5"/></svg></span>
         <h3>介護</h3><span class="cnt" id="cntCare"></span>
       </div>
       <p class="sec-lead">支えてもらう。つながる。安心して暮らす。</p>

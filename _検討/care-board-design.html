@@ -1,0 +1,120 @@
+<div id="care-design-v2" aria-label="介護の連絡ボード・デザイン案">
+<style>
+#care-design-v2{--cd-ink:#32322e;--cd-sub:#76766b;--cd-green:#315d45;--cd-link:#3b7855;--cd-line:#d8dfd0;--cd-paper:#fdfcf8;--cd-soft:#eff4ed;--cd-oak:#c8b99b;color-scheme:light;color:var(--cd-ink);font:14px/1.65 "Hiragino Sans","Yu Gothic",sans-serif;max-width:1060px;margin:auto;container-type:inline-size}
+#care-design-v2 *{box-sizing:border-box}
+#care-design-v2 .cd-board{position:relative;isolation:isolate;padding:24px 27px 27px}
+#care-design-v2 .cd-frame{position:absolute;inset:0;width:100%;height:100%;z-index:-1;filter:drop-shadow(0 3px 3px #514d3b1a)}
+#care-design-v2 .cd-paper{position:relative;padding:28px 28px 24px;background:var(--cd-paper);box-shadow:1px 2px 0 #e6e5d8,3px 4px 0 #f5f3e9}
+#care-design-v2 .cd-clip{position:absolute;top:8px;width:21px;height:32px;z-index:2}
+#care-design-v2 .cd-clip-left{left:15%}#care-design-v2 .cd-clip-right{right:15%}
+#care-design-v2 .cd-top{display:flex;align-items:center;justify-content:space-between;gap:24px;padding-bottom:25px;border-bottom:1px solid #bfcdbb}
+#care-design-v2 .cd-title{font:500 28px/1.45 "Hiragino Mincho ProN","Yu Mincho",serif;margin:0;color:#343c31;letter-spacing:.07em}
+#care-design-v2 .cd-overline{font-size:11px;letter-spacing:.12em;color:var(--cd-sub);display:block;margin-bottom:5px}
+#care-design-v2 .cd-situation{display:flex;align-items:center;gap:20px}
+#care-design-v2 .cd-situation dl{margin:0;display:flex;gap:20px}
+#care-design-v2 dt{font-size:11px;color:var(--cd-sub);margin-bottom:3px}
+#care-design-v2 dd{margin:0;font-size:15px;font-weight:500}
+#care-design-v2 h3{font-size:15px;font-weight:500;line-height:1.5;margin:0;letter-spacing:.02em}
+#care-design-v2 .cd-head{display:flex;align-items:center;gap:9px;margin-bottom:18px;min-width:0}
+#care-design-v2 .cd-head h3{flex:1;min-width:0}
+#care-design-v2 .cd-head>.cd-mark{width:29px;height:29px;display:grid;place-items:center;border:1px solid #cbdccd;border-radius:8px;color:var(--cd-green);flex:none}
+#care-design-v2 .cd-mark svg{width:17px;height:17px}
+#care-design-v2 button{font:inherit;cursor:pointer}
+#care-design-v2 .cd-edit{display:grid;place-items:center;width:30px;height:30px;border:1px solid #e4e5d9;border-radius:7px;background:transparent;color:#9a9a8c;flex:none}
+#care-design-v2 .cd-edit svg{width:15px;height:15px}
+#care-design-v2 .cd-edit:hover{color:var(--cd-green);border-color:#aebfac;background:#f2f5ed}
+#care-design-v2 .cd-main{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr);gap:32px;padding:26px 0 25px}
+#care-design-v2 .cd-left,#care-design-v2 .cd-right{min-width:0}
+#care-design-v2 .cd-contact{position:relative;background:#fffefa;border:1px solid #d4d9c7;border-radius:3px;padding:23px 20px 17px;box-shadow:0 3px 5px #40463313}
+#care-design-v2 .cd-contact:before{content:"";position:absolute;top:-5px;left:22px;right:22px;height:7px;background:#dbe5d5;border:1px solid #bfceb6;box-shadow:0 1px 1px #7f8d7320;border-radius:2px}
+#care-design-v2 .cd-person-name{font:500 25px/1.4 "Hiragino Mincho ProN","Yu Mincho",serif;letter-spacing:.08em;overflow-wrap:anywhere;margin:5px 0 10px}
+#care-design-v2 .cd-role{color:var(--cd-green);font-size:12px;letter-spacing:.035em}
+#care-design-v2 .cd-office{font-size:13px;color:var(--cd-sub);overflow-wrap:anywhere}
+#care-design-v2 .cd-call{display:flex;gap:8px;align-items:center;color:var(--cd-link);font-size:18px;font-weight:500;letter-spacing:.025em;border-top:1px solid var(--cd-line);padding-top:13px;margin-top:17px;white-space:nowrap}
+#care-design-v2 .cd-call svg{width:17px;height:17px;flex:none}
+#care-design-v2 .cd-consult-note{margin:13px 0 0;color:var(--cd-sub);font-size:12px}
+#care-design-v2 .cd-papers{margin-top:32px}
+#care-design-v2 .cd-folder{position:relative;min-height:159px;padding:53px 18px 15px;isolation:isolate}
+#care-design-v2 .cd-folder-art{position:absolute;inset:0;width:100%;height:100%;z-index:-1}
+#care-design-v2 .cd-folder-label{font-size:11px;letter-spacing:.08em;color:#807354;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+#care-design-v2 .cd-folder-label svg{width:14px;height:14px}
+#care-design-v2 .cd-location{font-size:15px;font-weight:500;line-height:1.65;overflow-wrap:anywhere}
+#care-design-v2 .cd-folder-note{font-size:11px;color:#8c8068;margin-top:10px}
+#care-design-v2 .cd-support{position:relative;padding-left:27px}
+#care-design-v2 .cd-support:before{content:"";position:absolute;top:28px;bottom:72px;left:7px;width:1px;background:#b9cbb6}
+#care-design-v2 .cd-home{display:flex;align-items:center;gap:11px;position:relative;margin-bottom:18px;padding-bottom:15px;border-bottom:1px solid var(--cd-line)}
+#care-design-v2 .cd-home:before{content:"";position:absolute;left:-24px;top:22px;width:9px;height:9px;border-radius:50%;background:#668364;box-shadow:0 0 0 4px var(--cd-paper)}
+#care-design-v2 .cd-home-picture{color:#8c9d7b}
+#care-design-v2 .cd-home-picture svg{width:39px!important;height:39px!important;stroke-width:1.25}
+#care-design-v2 .cd-home strong{display:block;font-size:15px;font-weight:500}
+#care-design-v2 .cd-home small{display:block;color:var(--cd-sub);font-size:11px;margin-top:2px}
+#care-design-v2 .cd-service{position:relative;display:grid;grid-template-columns:47px minmax(0,1fr);gap:12px;padding:13px 0 18px;margin-bottom:10px;border-bottom:1px solid var(--cd-line)}
+#care-design-v2 .cd-service:last-child{margin-bottom:0;border-bottom:0;padding-bottom:0}
+#care-design-v2 .cd-service:before{content:"";position:absolute;left:-20px;top:35px;width:17px;height:1px;background:#b9cbb6}
+#care-design-v2 .cd-service:after{content:"";position:absolute;left:-22px;top:32px;width:5px;height:5px;transform:rotate(45deg);border-bottom:1px solid #8da78a;border-left:1px solid #8da78a}
+#care-design-v2 .cd-service-art{display:grid;place-items:center;width:47px;height:51px;border-radius:45% 45% 38% 38%;background:#eef2e5;color:#75856a;margin-top:2px}
+#care-design-v2 .cd-service-art svg{width:31px!important;height:31px!important;stroke-width:1.3}
+#care-design-v2 .cd-service:nth-child(2) .cd-service-art{background:#ebf0f3;color:#698391}
+#care-design-v2 .cd-service:nth-child(3) .cd-service-art{background:#f2eee2;color:#938566}
+#care-design-v2 .cd-service-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+#care-design-v2 .cd-service-kind{font-size:12px;color:var(--cd-sub);flex:1}
+#care-design-v2 .cd-service .cd-edit{width:25px;height:25px;border-color:transparent}
+#care-design-v2 .cd-provider{font-size:15px;font-weight:500;line-height:1.55;overflow-wrap:anywhere}
+#care-design-v2 .cd-service-tel{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--cd-link);font-weight:500;margin-top:7px;letter-spacing:.025em}
+#care-design-v2 .cd-service-tel svg{width:13px;height:13px}
+#care-design-v2 .cd-detail{font-size:12px;color:var(--cd-sub);margin-top:7px}
+#care-design-v2 .cd-bottom{border-top:1px solid #bfcdbb;padding-top:22px}
+#care-design-v2 .cd-bottom .cd-head{margin-bottom:11px}
+#care-design-v2 .cd-bottom .cd-head small{font-size:11px;color:var(--cd-sub);font-weight:400;letter-spacing:0;margin-left:8px}
+#care-design-v2 .cd-memo{font-size:14px;line-height:33px;min-height:66px;color:#79786c;background:repeating-linear-gradient(transparent 0,transparent 31px,#e0e3d6 32px,transparent 33px);white-space:pre-wrap;padding:0 3px}
+#care-design-v2 .cd-memo.empty{color:#a19f92}
+#care-design-v2 .cd-form{display:grid;gap:11px;min-width:0}
+#care-design-v2 .cd-form label{font-size:11px;color:var(--cd-sub)}
+#care-design-v2 input,#care-design-v2 textarea{display:block;width:100%;min-width:0;margin-top:4px;padding:7px 8px;background:#fffefa;color:var(--cd-ink);border:1px solid #cbd4c3;border-radius:4px;font:inherit;font-size:16px;line-height:1.6;resize:vertical}
+#care-design-v2 .cd-actions{display:flex;justify-content:center;gap:9px;padding-top:5px}
+#care-design-v2 .cd-actions button{border:1px solid #cbd4c3;border-radius:5px;padding:5px 13px;color:var(--cd-green);background:#fffefa;font-size:12px}
+#care-design-v2 .cd-actions .cd-save{background:var(--cd-green);color:#fff}
+#care-design-v2 [hidden]{display:none!important}
+#care-design-v2[data-lines="off"] .cd-support{padding-left:0}
+#care-design-v2[data-lines="off"] .cd-support:before,#care-design-v2[data-lines="off"] .cd-home:before,#care-design-v2[data-lines="off"] .cd-service:before,#care-design-v2[data-lines="off"] .cd-service:after{display:none}
+@container(max-width:640px){#care-design-v2 .cd-board{padding:21px 17px 19px}#care-design-v2 .cd-paper{padding:23px 19px}#care-design-v2 .cd-main{gap:23px;grid-template-columns:minmax(0,.9fr) minmax(0,1.2fr)}#care-design-v2 .cd-contact{padding:21px 14px 15px}#care-design-v2 .cd-person-name{font-size:22px}#care-design-v2 .cd-call{font-size:15px;gap:5px}#care-design-v2 .cd-service{grid-template-columns:37px minmax(0,1fr);gap:9px}#care-design-v2 .cd-service-art{width:37px;height:44px}#care-design-v2 .cd-service-art svg{width:28px!important;height:28px!important}#care-design-v2 .cd-provider{font-size:14px}#care-design-v2 .cd-title{font-size:24px}#care-design-v2 .cd-situation,#care-design-v2 .cd-situation dl{gap:12px}}
+@container(max-width:490px){#care-design-v2 .cd-top{align-items:flex-start;flex-direction:column;gap:17px;padding-bottom:20px}#care-design-v2 .cd-situation{justify-content:space-between;width:100%}#care-design-v2 .cd-situation dl{gap:32px}#care-design-v2 .cd-main{display:flex;flex-direction:column;gap:28px}#care-design-v2 .cd-left{display:contents}#care-design-v2 .cd-contact-section{order:0}#care-design-v2 .cd-right{order:1}#care-design-v2 .cd-papers{order:2;margin:0}#care-design-v2 .cd-contact{padding:23px 19px 17px}#care-design-v2 .cd-call{font-size:19px}#care-design-v2 .cd-service{grid-template-columns:45px minmax(0,1fr);gap:12px}#care-design-v2 .cd-service-art{width:45px;height:49px}#care-design-v2 .cd-provider{font-size:15px}#care-design-v2 .cd-folder{min-height:153px}#care-design-v2 .cd-bottom .cd-head small{display:block;margin-left:0;margin-top:3px}}
+@media(pointer:coarse){#care-design-v2 .cd-edit,#care-design-v2 .cd-service .cd-edit{min-width:44px;min-height:44px}#care-design-v2 .cd-actions button{min-height:44px}}
+</style>
+<div class="cd-board">
+<svg class="cd-frame" aria-hidden="true"><defs><linearGradient id="cd-frame-color" x2="1" y2="1"><stop stop-color="#d8cfb9"/><stop offset="1" stop-color="#bcae90"/></linearGradient></defs><rect x="1%" y="8" width="98%" height="calc(100% - 16px)" rx="8" fill="#e9e9df" stroke="url(#cd-frame-color)" stroke-width="15"/><rect x="1%" y="8" width="98%" height="calc(100% - 16px)" rx="8" fill="none" stroke="#eee9da" stroke-width="2"/></svg>
+<svg class="cd-clip cd-clip-left" viewBox="0 0 21 32" aria-hidden="true"><rect x="3" y="2" width="16" height="28" rx="2" fill="#b6b8a5" opacity=".4"/><rect x="2" y="1" width="15" height="27" rx="2" fill="#d6d8c9" stroke="#a8af9a"/><path d="M5 4h9v20H5" fill="none" stroke="#f9faf1"/></svg>
+<svg class="cd-clip cd-clip-right" viewBox="0 0 21 32" aria-hidden="true"><rect x="3" y="2" width="16" height="28" rx="2" fill="#b6b8a5" opacity=".4"/><rect x="2" y="1" width="15" height="27" rx="2" fill="#d6d8c9" stroke="#a8af9a"/><path d="M5 4h9v20H5" fill="none" stroke="#f9faf1"/></svg>
+<div class="cd-paper">
+<header class="cd-top"><div><span class="cd-overline">介護の連絡ボード</span><h2 class="cd-title">山田 太郎<span style="font:14px sans-serif;letter-spacing:0;margin-left:6px">さん</span></h2></div><section class="cd-situation" data-part="situation"><div class="cd-content"></div><button class="cd-edit" type="button" data-edit="situation" aria-label="介護状況を編集"><i data-lucide="pencil" aria-hidden="true"></i></button></section></header>
+<div class="cd-main">
+<div class="cd-left">
+<section class="cd-contact-section" data-part="contact"><div class="cd-head"><span class="cd-mark"><i data-lucide="contact-round" aria-hidden="true"></i></span><h3>相談・調整の窓口</h3><button class="cd-edit" type="button" data-edit="contact" aria-label="相談窓口を編集"><i data-lucide="pencil" aria-hidden="true"></i></button></div><div class="cd-contact cd-content"></div></section>
+<section class="cd-papers" data-part="papers"><div class="cd-head"><span class="cd-mark"><i data-lucide="folder-open" aria-hidden="true"></i></span><h3>介護の書類・資料</h3><button class="cd-edit" type="button" data-edit="papers" aria-label="資料の所在を編集"><i data-lucide="pencil" aria-hidden="true"></i></button></div><div class="cd-content"></div></section>
+</div>
+<section class="cd-right"><div class="cd-head"><span class="cd-mark"><i data-lucide="hand-helping" aria-hidden="true"></i></span><h3>暮らしを支えるサービス</h3></div><div class="cd-support"><div class="cd-home"><span class="cd-home-picture"><i data-lucide="house-heart" aria-hidden="true"></i></span><div><strong>自宅での暮らし</strong><small>利用している介護・生活支援</small></div></div><div id="cd-service-list"></div></div></section>
+</div>
+<section class="cd-bottom" data-part="memo"><div class="cd-head"><span class="cd-mark"><i data-lucide="notebook-pen" aria-hidden="true"></i></span><h3>メモ<small>家族へ伝えておきたいこと</small></h3><button class="cd-edit" type="button" data-edit="memo" aria-label="メモを編集"><i data-lucide="pencil" aria-hidden="true"></i></button></div><div class="cd-content"></div></section>
+</div></div>
+<script>
+(()=>{
+const root=document.getElementById('care-design-v2');
+const state={lines:true};
+const data={situation:['要介護2','自宅'],contact:['ケアマネジャー','佐藤 陽子','みなとケアプランセンター','045-111-2222',''],papers:['リビングの棚','「介護」のファイル','ケアプラン・介護保険関係の書類'],memo:[''],s0:['訪問介護','さくらヘルパーステーション','045-333-4444','週2回'],s1:['デイサービス','みなとデイサービスセンター','045-555-6666','週3回'],s2:['福祉用具','はまっ子福祉用具','045-777-8888','介護ベッド・手すりをレンタル']};
+const labels={situation:['介護認定','現在の暮らし方'],contact:['役割','担当者','事業所','電話番号','補足（任意）'],papers:['保管場所','ファイルなどの目印','補足（任意）'],memo:['家族へ伝えておきたいこと'],service:['支援の種類','利用先','電話番号','利用状況・補足（任意）']};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const icon=n=>'<i data-lucide="'+n+'" aria-hidden="true"></i>';
+let editing=null;
+function paperArt(){return '<svg class="cd-folder-art" preserveAspectRatio="none" viewBox="0 0 260 168" aria-hidden="true"><path d="M3 17Q3 12 8 12H85L101 24H252Q257 24 257 29V159H3Z" fill="#e9e4d3" stroke="#cfc7af"/><path d="M20 10H241V143H20Z" fill="#fffef9" stroke="#d8d9cd"/><path d="M34 22H221M34 30H184" stroke="#d9dfd0"/><path d="M7 42H250Q257 42 257 49L251 160Q251 165 245 165H13Q7 165 7 159L2 49Q2 42 7 42Z" fill="#f3eedf" stroke="#d8cfb6"/><path d="M9 47H250" stroke="#fffdf4"/></svg>';}
+function view(key){const d=data[key];if(key==='situation')return '<dl><div><dt>介護認定</dt><dd>'+esc(d[0])+'</dd></div><div><dt>暮らし方</dt><dd>'+esc(d[1])+'</dd></div></dl>';
+if(key==='contact')return '<div class="cd-role">'+esc(d[0])+'</div><div class="cd-person-name">'+esc(d[1])+'</div><div class="cd-office">'+esc(d[2])+'</div><div class="cd-call">'+icon('phone')+esc(d[3])+'</div>'+(d[4]?'<p class="cd-consult-note">'+esc(d[4])+'</p>':'');
+if(key==='papers')return '<div class="cd-folder">'+paperArt()+'<div class="cd-folder-label">'+icon('map-pin')+'保管場所</div><div class="cd-location">'+esc(d[0])+'<br>'+esc(d[1])+'</div><div class="cd-folder-note">'+esc(d[2])+'</div></div>';
+if(key==='memo')return '<div class="cd-memo'+(d[0]?'':' empty')+'">'+esc(d[0]||'必要な補足を書き留める')+'</div>';
+return '<div class="cd-provider">'+esc(d[1])+'</div><div class="cd-service-tel">'+icon('phone')+esc(d[2])+'</div>'+(d[3]?'<div class="cd-detail">'+esc(d[3])+'</div>':'');}
+function form(key){return '<div class="cd-form">'+data[key].map((v,i)=>'<label>'+esc((labels[key]||labels.service)[i])+(key==='memo'?'<textarea data-field="'+i+'" rows="3">'+esc(v)+'</textarea>':'<input data-field="'+i+'" value="'+esc(v)+'">')+'</label>').join('')+'<div class="cd-actions"><button type="button" data-cancel>やめる</button><button type="button" data-save class="cd-save">保存</button></div></div>';}
+function render(){root.dataset.lines=state.lines?'on':'off';root.querySelector('#cd-service-list').innerHTML=['s0','s1','s2'].map((k,i)=>'<article class="cd-service" data-part="'+k+'"><div class="cd-service-art">'+icon(['house','bus-front','bed-double'][i])+'</div><div><div class="cd-service-top"><span class="cd-service-kind">'+esc(data[k][0])+'</span><button type="button" class="cd-edit" data-edit="'+k+'" aria-label="'+esc(data[k][0])+'を編集">'+icon('pencil')+'</button></div><div class="cd-content"></div></div></article>').join('');root.querySelectorAll('[data-part]').forEach(el=>{const k=el.dataset.part;el.querySelector('.cd-content').innerHTML=editing===k?form(k):view(k);el.querySelector('[data-edit]').hidden=editing===k;});root.querySelector('.cd-home strong').textContent=data.situation[1]+'での暮らし';if(typeof lucide!=='undefined')lucide.createIcons();}
+root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-edit')){editing=b.dataset.edit;render();}else if(b.hasAttribute('data-cancel')){editing=null;render();}else if(b.hasAttribute('data-save')){const part=b.closest('[data-part]');data[editing]=Array.from(part.querySelectorAll('[data-field]'),el=>el.value);editing=null;render();}});
+render();if(typeof Tweak!=='undefined'){const t=new Tweak({container:root,onChange:render});t.addToggle(state,'lines',{label:'暮らしと支援を結ぶ線'});}
+})();
+</script>
+</div>

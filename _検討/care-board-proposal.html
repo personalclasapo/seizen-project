@@ -1,0 +1,90 @@
+<div id="seizen-care-proposal" aria-label="介護の連絡ボード案">
+<style>
+#seizen-care-proposal{--cp-paper:light-dark(#fffdf6,#282c27);--cp-ink:light-dark(#303c34,#e6e9dd);--cp-sub:light-dark(#687165,#b4bdac);--cp-green:light-dark(#305b43,#acd0b2);--cp-line:light-dark(#d7ddce,#4a5447);--cp-soft:light-dark(#edf2e7,#333f32);--cp-oak:light-dark(#cbbb9b,#6c6048);--cp-card:light-dark(#fffefb,#30362e);color:var(--cp-ink);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:14px;line-height:1.7;max-width:880px;margin:auto;container-type:inline-size}
+#seizen-care-proposal *{box-sizing:border-box}
+#seizen-care-proposal .cp-caption{display:flex;justify-content:space-between;gap:16px;align-items:center;margin:0 0 12px}
+#seizen-care-proposal .cp-caption b{font-size:20px;font-weight:500}
+#seizen-care-proposal .cp-caption span{font-size:12px;color:var(--cp-sub)}
+#seizen-care-proposal .cp-board{position:relative;padding:25px 23px 23px;isolation:isolate}
+#seizen-care-proposal .cp-frame{position:absolute;inset:0;width:100%;height:100%;z-index:-1;color:var(--cp-oak)}
+#seizen-care-proposal .cp-paper{background:var(--cp-paper);padding:27px 27px 23px;box-shadow:2px 3px 0 var(--cp-line)}
+#seizen-care-proposal .cp-pin{position:absolute;top:10px;width:20px;height:29px;color:var(--cp-sub)}
+#seizen-care-proposal .cp-pin.first{left:14%}#seizen-care-proposal .cp-pin.last{right:14%}
+#seizen-care-proposal h3{font-size:14px;font-weight:500;margin:0;display:flex;align-items:center;gap:8px;color:var(--cp-green)}
+#seizen-care-proposal .cp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+#seizen-care-proposal button{font:inherit;color:var(--cp-green);background:transparent;border:1px solid var(--cp-line);border-radius:5px;padding:5px 9px;cursor:pointer;flex:none}
+#seizen-care-proposal button svg{width:15px;height:15px;display:block}
+#seizen-care-proposal .cp-intro{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.65fr);gap:24px;padding-bottom:26px;border-bottom:1px solid var(--cp-line)}
+#seizen-care-proposal .cp-context{padding-right:20px;border-right:1px solid var(--cp-line)}
+#seizen-care-proposal .cp-kv{display:grid;gap:12px}
+#seizen-care-proposal .cp-label{display:block;font-size:12px;color:var(--cp-sub)}
+#seizen-care-proposal .cp-value{display:block;font-size:16px;font-weight:500;overflow-wrap:anywhere}
+#seizen-care-proposal .cp-contact{align-self:start}
+#seizen-care-proposal .cp-contact .cp-content{padding-left:13px;border-left:3px solid var(--cp-green)}
+#seizen-care-proposal .cp-office{font-size:18px;font-weight:500;margin:3px 0 6px;overflow-wrap:anywhere}
+#seizen-care-proposal .cp-tel{font-size:18px;letter-spacing:.035em;color:var(--cp-green);margin-top:9px;overflow-wrap:anywhere}
+#seizen-care-proposal .cp-middle{padding:25px 0}
+#seizen-care-proposal .cp-services{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#seizen-care-proposal .cp-service{padding:15px 16px;background:var(--cp-card);border:1px solid var(--cp-line);border-radius:3px;min-width:0}
+#seizen-care-proposal .cp-service .cp-kind{font-size:12px;color:var(--cp-sub);display:flex;gap:7px;align-items:center;margin-bottom:7px}
+#seizen-care-proposal .cp-service .cp-office{font-size:15px}
+#seizen-care-proposal .cp-service .cp-tel{font-size:15px;margin-top:4px}
+#seizen-care-proposal .cp-freq{font-size:12px;color:var(--cp-sub);margin-top:8px}
+#seizen-care-proposal .cp-lower{display:grid;grid-template-columns:1.1fr 1fr;gap:26px;padding-top:22px;border-top:1px solid var(--cp-line)}
+#seizen-care-proposal .cp-note{padding-left:22px;border-left:1px solid var(--cp-line)}
+#seizen-care-proposal .cp-note .cp-content{color:var(--cp-sub);white-space:pre-wrap}
+#seizen-care-proposal .cp-empty{padding:12px 0;color:var(--cp-sub)}
+#seizen-care-proposal .cp-person{display:none;align-items:center;justify-content:center;flex-direction:column;gap:7px;color:var(--cp-sub);font-size:12px}
+#seizen-care-proposal .cp-person svg{width:32px;height:32px}
+#seizen-care-proposal[data-layout="radial"] .cp-services{grid-template-columns:minmax(0,1fr) 66px minmax(0,1fr)}
+#seizen-care-proposal[data-layout="radial"] .cp-person{display:flex;grid-column:2;grid-row:1/3}
+#seizen-care-proposal[data-layout="radial"] .cp-service:nth-of-type(2){grid-column:1;grid-row:1}
+#seizen-care-proposal[data-layout="radial"] .cp-service:nth-of-type(3){grid-column:3;grid-row:1}
+#seizen-care-proposal[data-layout="radial"] .cp-service:nth-of-type(4){grid-column:1;grid-row:2}
+#seizen-care-proposal .cp-form{display:grid;gap:10px}
+#seizen-care-proposal .cp-form label{font-size:12px;color:var(--cp-sub)}
+#seizen-care-proposal input,#seizen-care-proposal textarea{width:100%;font:inherit;font-size:16px;padding:7px 9px;color:var(--cp-ink);background:var(--cp-card);border:1px solid var(--cp-line);border-radius:4px;display:block;resize:vertical}
+#seizen-care-proposal .cp-actions{display:flex;justify-content:center;gap:10px;margin-top:9px}
+#seizen-care-proposal .cp-actions .cp-save{color:var(--cp-paper);background:var(--cp-green)}
+#seizen-care-proposal [hidden]{display:none!important}
+@container(max-width:560px){#seizen-care-proposal .cp-board{padding:21px 13px 15px}#seizen-care-proposal .cp-paper{padding:23px 16px 17px}#seizen-care-proposal .cp-intro,#seizen-care-proposal .cp-lower{grid-template-columns:1fr;gap:20px}#seizen-care-proposal .cp-context{border:0;padding:0}#seizen-care-proposal .cp-kv{grid-template-columns:1fr 1fr}#seizen-care-proposal .cp-note{border:0;padding:0}#seizen-care-proposal .cp-services,#seizen-care-proposal[data-layout="radial"] .cp-services{display:flex;flex-direction:column}#seizen-care-proposal[data-layout="radial"] .cp-person{display:none}#seizen-care-proposal .cp-tel{font-size:17px}}
+@media(pointer:coarse){#seizen-care-proposal button{min-width:44px;min-height:44px}}
+</style>
+<div class="cp-caption"><b>介護</b><span>配置検討案 · サンプル情報</span></div>
+<div class="cp-board">
+<svg class="cp-frame" aria-hidden="true"><rect x="1%" y="8" width="98%" height="calc(100% - 16px)" rx="4" fill="var(--cp-soft)" stroke="currentColor" stroke-width="14"/><rect x="1%" y="8" width="98%" height="calc(100% - 16px)" rx="4" fill="none" stroke="var(--cp-line)"/></svg>
+<svg class="cp-pin first" viewBox="0 0 20 29" aria-hidden="true"><rect x="2" y="1" width="16" height="26" rx="2" fill="var(--cp-line)" stroke="currentColor"/><path d="M5 4h10v19H5" fill="none" stroke="var(--cp-paper)"/></svg>
+<svg class="cp-pin last" viewBox="0 0 20 29" aria-hidden="true"><rect x="2" y="1" width="16" height="26" rx="2" fill="var(--cp-line)" stroke="currentColor"/><path d="M5 4h10v19H5" fill="none" stroke="var(--cp-paper)"/></svg>
+<div class="cp-paper">
+<div class="cp-intro">
+<section class="cp-context" data-section="context"><div class="cp-head"><h3>いまの介護状況</h3><button type="button" data-edit="context" aria-label="介護状況を編集"><i data-lucide="pencil" aria-hidden="true"></i></button></div><div class="cp-content"></div></section>
+<section class="cp-contact" data-section="contact"><div class="cp-head"><h3><i data-lucide="contact-round" aria-hidden="true"></i>相談・調整窓口</h3><button type="button" data-edit="contact" aria-label="相談窓口を編集"><i data-lucide="pencil" aria-hidden="true"></i></button></div><div class="cp-content"></div></section>
+</div>
+<section class="cp-middle"><div class="cp-head"><h3><i data-lucide="hand-helping" aria-hidden="true"></i>利用している介護・生活支援</h3></div><div class="cp-services"></div><div class="cp-empty" hidden></div></section>
+<div class="cp-lower">
+<section data-section="papers"><div class="cp-head"><h3><i data-lucide="folder-open" aria-hidden="true"></i>書類・資料の保管場所</h3><button type="button" data-edit="papers" aria-label="資料の保管場所を編集"><i data-lucide="pencil" aria-hidden="true"></i></button></div><div class="cp-content"></div></section>
+<section class="cp-note" data-section="note"><div class="cp-head"><h3>メモ</h3><button type="button" data-edit="note" aria-label="介護のメモを編集"><i data-lucide="pencil" aria-hidden="true"></i></button></div><div class="cp-content"></div></section>
+</div>
+</div></div>
+<script>
+(()=>{
+ const root=document.getElementById('seizen-care-proposal');
+ const options={layout:'grid',family:'using'};
+ const data={context:['要介護2','自宅'],contact:['ケアマネジャー','みなとケアプランセンター','佐藤 陽子','045-111-2222'],papers:['リビングの棚・介護のファイル','ケアプラン、介護保険関係の書類を一緒に保管'],note:[''],s0:['訪問介護','さくらヘルパーステーション','045-333-4444','週2回'],s1:['デイサービス','みなとデイサービスセンター','045-555-6666','週3回'],s2:['福祉用具','はまっ子福祉用具','045-777-8888','介護ベッド・手すりをレンタル']};
+ const labels={context:['介護認定','暮らし方'],contact:['役割','事業所','担当者','電話番号'],papers:['保管場所','補足（任意）'],note:['介護全体について残す補足（任意）'],s0:['支援の種類','利用先','電話番号','利用状況・補足（任意）']};
+ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ let editing=null;
+ function content(key){const d=data[key];if(key==='context')return '<div class="cp-kv">'+['介護認定','暮らし方'].map((l,i)=>'<div><span class="cp-label">'+l+'</span><span class="cp-value">'+esc(options.family==='using'?d[i]:(i===0?'未確認':d[i]))+'</span></div>').join('')+'</div>';
+ if(key==='contact')return options.family==='unknown'?'<span class="cp-label">相談先は未確認</span><div>本人・家族に、相談している相手を確認する</div>':options.family==='none'?'<span class="cp-label">必要になったときの相談先</span><div class="cp-office">地域の相談窓口は未確認</div>':'<span class="cp-label">'+esc(d[0])+'</span><div class="cp-office">'+esc(d[1])+'</div><div>担当　'+esc(d[2])+'</div><div class="cp-tel">'+esc(d[3])+'</div>';
+ if(key==='papers')return '<div>'+esc(d[0])+'</div><div class="cp-freq">'+esc(d[1])+'</div>';
+ if(key==='note')return esc(d[0]||'補足の記録なし');
+ return '<div class="cp-office">'+esc(d[1])+'</div><div class="cp-tel">'+esc(d[2])+'</div>'+(d[3]?'<div class="cp-freq">'+esc(d[3])+'</div>':'');}
+ function form(key){return '<form class="cp-form">'+data[key].map((v,i)=>'<label>'+esc((labels[key]||labels.s0)[i])+(key==='note'?'<textarea name="v'+i+'" rows="3">'+esc(v)+'</textarea>':'<input name="v'+i+'" value="'+esc(v)+'">')+'</label>').join('')+'<div class="cp-actions"><button type="button" data-cancel>やめる</button><button class="cp-save" type="button" data-save>保存</button></div></form>';}
+ function render(){root.dataset.layout=options.layout;const using=options.family==='using';root.querySelector('.cp-services').hidden=!using;const empty=root.querySelector('.cp-empty');empty.hidden=using;empty.textContent=options.family==='none'?'現在、介護サービスは利用していません。':'利用している支援があるか未確認です。';root.querySelector('.cp-services').innerHTML='<div class="cp-person"><i data-lucide="user-round" aria-hidden="true"></i>本人</div>'+['s0','s1','s2'].map(k=>'<section class="cp-service" data-section="'+k+'"><div class="cp-head"><span class="cp-kind">'+esc(data[k][0])+'</span><button type="button" data-edit="'+k+'" aria-label="'+esc(data[k][0])+'を編集"><i data-lucide="pencil" aria-hidden="true"></i></button></div><div class="cp-content"></div></section>').join('');root.querySelectorAll('[data-section]').forEach(s=>{const k=s.dataset.section;s.querySelector('.cp-content').innerHTML=editing===k?form(k):content(k);const b=s.querySelector('[data-edit]');if(b)b.hidden=editing===k;});if(typeof lucide!=='undefined')lucide.createIcons();}
+ root.addEventListener('click',e=>{const edit=e.target.closest('[data-edit]');if(edit){editing=edit.dataset.edit;render();}else if(e.target.closest('[data-save]')){const f=e.target.closest('form');const k=editing;data[k]=data[k].map((_,i)=>f.elements['v'+i].value);editing=null;render();}else if(e.target.closest('[data-cancel]')){editing=null;render();}});
+ root.addEventListener('submit',e=>{e.preventDefault();const k=editing;if(!k)return;data[k]=data[k].map((_,i)=>e.target.elements['v'+i].value);editing=null;render();});
+ render();
+ if(typeof Tweak!=='undefined'){const tweak=new Tweak({container:root,onChange:()=>{editing=null;render();}});tweak.addSelect(options,'layout',{label:'支援先の配置',options:[{label:'2列の連絡票（推奨案）',value:'grid'},{label:'本人を中央に配置',value:'radial'}]});tweak.addSelect(options,'family',{label:'利用状況',options:[{label:'支援を利用中',value:'using'},{label:'現在は利用なし',value:'none'},{label:'まだ未確認',value:'unknown'}]});}
+})();
+</script>
+</div>
