@@ -34,11 +34,6 @@
      展開している系統見出し（"condition/循環器・血管" のような鍵の集合）。 */
   let picker = null;
   let pickerGroups = new Set();
-  /* 用具の「種類から選ぶ」を開いている札の id の集合。★<details> の
-     open 属性では持てない――チップを1つ押すと render() が札を描き
-     直すので、その場で畳んでしまう（ピッカーが pickerGroups を
-     state 側に持っているのと同じ事情）。 */
-  let equipKindsOpen = new Set();
   /* 治療中の病気・状態を全件見せるモーダルを開いているか。 */
   let condModal = false;
 
@@ -273,6 +268,15 @@
     return '<span class="i-ev' + (isEmpty ? ' i-ev-empty' : '') + '" data-edit="' + path +
       '" data-kind="' + (kind || 'line') + '">' +
       (isEmpty ? esc(placeholder || '未入力') : esc(shown)) + '</span>';
+  }
+  /* Web の入力欄（医療・介護の Web 欄すべてで共通）。★https:// を
+     プレースホルダではなく欄の中身そのものの実値として持たせる
+     （2026-09-11 ユーザー指示）――空欄のまま編集を始めても
+     「https://」が最初から入っていて、続きを打つだけでよい。
+     プレースホルダだと入力の瞬間に消えるので、URL の頭を毎回
+     自分で打つ手間が残っていた。 */
+  function evWeb(path, value) {
+    return ev(path, String(value || '').trim() || 'https://', 'line', '');
   }
   function evSelect(path, value, choices) {
     if (isOpen(path)) {
@@ -1389,10 +1393,10 @@
       /* Web は1本。編集中はただの欄、表示時はリンクとして開ける。 */
       const web = c.web
         ? (on
-            ? ev(p + 'web', c.web, 'line', 'https://…')
+            ? evWeb(p + 'web', c.web)
             : '<a href="' + esc(c.web) + '" target="_blank" rel="noopener" ' +
               'class="cg-link">' + esc(webLabel(c.web)) + EXT + '</a>')
-        : (on ? ev(p + 'web', c.web, 'line', 'https://…') : '');
+        : (on ? evWeb(p + 'web', c.web) : '');
       /* 状態バッジは付けない。診療案内カードは「かかっている先の
          連絡先」で、書いた時点で家族が辿れている――§11 の状態
          （辿れるか・確認できたか）を問う対象ではない。 */
@@ -1569,10 +1573,10 @@
          編集中はただの欄、表示時は <a target=_blank rel=noopener>。 */
       const web = r.web
         ? (on
-            ? ev(p + 'web', r.web, 'line', 'https://…')
+            ? evWeb(p + 'web', r.web)
             : '<a href="' + esc(r.web) + '" target="_blank" rel="noopener" ' +
               'class="cg-link">' + esc(webLabel(r.web)) + EXT + '</a>')
-        : (on ? ev(p + 'web', r.web, 'line', 'https://…') : '');
+        : (on ? evWeb(p + 'web', r.web) : '');
       /* 状態バッジは付けない。かかりつけ薬局は「かかっている先の
          連絡先」で、書いた時点で家族が辿れている――§11 の状態を
          問う対象ではない（通院の診療案内カードと揃える）。 */
@@ -2049,7 +2053,7 @@
        column-gap ひとつで決める（ラベル→値の詰まりと混ざらない）。 */
     const webVal = on
       ? '<span class="cws-web">' +
-          ev('care.manager.web', mg.web, 'line', 'https://…') + '</span>'
+          evWeb('care.manager.web', mg.web) + '</span>'
       : (web
         ? '<a class="cws-web" href="' + esc(web) + '" target="_blank" ' +
             'rel="noopener">' + esc(webLabel(web)) + EXT + '</a>'
@@ -2225,7 +2229,8 @@
     return '<span class="wc-ef">' +
       efLine('事業所', p + 'provider', sv.provider, '例：○○ケアサービス') +
       efLine('電話', p + 'tel', sv.tel, '例：045-111-2222') +
-      efLine('Web', p + 'web', sv.web, 'https://…') +
+      '<label class="wc-ef-l"><span class="wc-ef-lb">Web</span>' +
+        evWeb(p + 'web', sv.web) + '</label>' +
       '</span>';
   }
 
@@ -2757,48 +2762,57 @@
       '</span>' +
       '<span class="eqs-cap"><span class="eqs-capin">' +
         (on
-          ? '<span class="eqs-name">' + ev(p + 'name', eq.name, 'line', '用具の名前') +
-              delBtn(eq.id) + '</span>' + equipKindChips(p, eq)
-          : '<span class="eqs-name">' + esc(eq.name || '') + '</span>') +
-        '<span class="eqs-prov">' + ev(p + 'provider', eq.provider, 'line', '事業所名') + '</span>' +
-        '<span class="eqs-tel">' + TEL + ev(p + 'tel', eq.tel, 'line', '電話番号') + '</span>' +
-        /* 貸与元のサイト。医療の通院カード（clinics.web）・薬局・木札の
-           相談先と同じ扱い――固定文言ではなく webLabel() でドメイン名を
-           出す（「サイト」だけの抽象リンクは電話より一段弱くなる）。 */
-        equipWeb(p, eq) +
+          ? equipEditFields(p, eq)
+          : ('<span class="eqs-name">' + esc(eq.name || '') + '</span>' +
+             '<span class="eqs-prov">' + esc(eq.provider || '') + '</span>' +
+             (eq.tel ? '<span class="eqs-tel">' + TEL + esc(eq.tel) + '</span>' : '') +
+             equipWeb(p, eq))) +
       '</span></span>' +
       '</li>';
   }
 
-  /* 用具名の候補（編集中だけ）。★「想定されるいくつかは用意しておく、
-     それ以外は自由入力」（2026-09-11 ユーザー指示）――押せば名前が
-     入り、型（＝絵）が連動する。ここに無いものは上の欄へ直接書けて、
-     絵は other（名札の箱）になる。手つきは医療の chipField と同じ
-     （datalist は使わない）。
+  /* 編集中の中身。★ラベル無しでプレースホルダだけに頼っていたら
+     「項目名が分からない」（2026-09-11 ユーザー指摘）。医療のカード
+     （fld()）と同格で、欄の上に小さく固定ラベルを1本ずつ持つ。 */
+  function equipEditFields(p, eq) {
+    const efld = (label, inputHtml) =>
+      '<span class="eqs-fld">' +
+        '<span class="eqs-flb">' + label + '</span>' +
+        inputHtml +
+      '</span>';
+    return '<span class="eqs-fld eqs-fld-name">' +
+        '<span class="eqs-flb">用具の名前</span>' +
+        '<span class="eqs-fldrow">' +
+          ev(p + 'name', eq.name, 'line', '用具の名前') + delBtn(eq.id) +
+        '</span>' +
+      '</span>' +
+      efld('種類', equipKindSelect(p, eq)) +
+      efld('貸与元・購入元', ev(p + 'provider', eq.provider, 'line', '事業所名')) +
+      efld('電話', ev(p + 'tel', eq.tel, 'line', '電話番号')) +
+      efld('Web', equipWeb(p, eq));
+  }
 
-     ★ただし**畳んでおく**。9個を平置きにすると札（172px）で5行を
-     占め、絵と連絡先の間に壁ができて、チップが札の主役になった
-     （2026-09-11 実測）。医療のパネル（幅がある）とは条件が違うので、
-     同じ平置きを機械的には持ち込まない（正本 §13）。
-     「用具の種類から選ぶ」の1行に畳み、押したときだけ出す。 */
-  function equipKindChips(p, eq) {
+  /* 用具の種類。★以前はチップを折りたたんでいたが、選択肢が常に
+     見えないと「文字だけのボタン」にしか見えない（2026-09-11
+     ユーザー指摘）。ネイティブ <select> にし、選ぶと名前欄にも
+     その名前が入る（kind は setEquipName が名前から連動して決める
+     ので、ここは名前を書き換えるだけでよい）。名前欄は選んだ後も
+     自由に書き換えられる（例：「車椅子」→「車椅子（電動）」）。
+     現在の名前が候補に無い（自由入力中）ときは選ばれた状態を持たない
+     ――候補と違う名前を「選んだことにしない」。 */
+  function equipKindSelect(p, eq) {
     const cur = String(eq.name || '').trim();
     const hit = S.EQUIP_TYPES.some(t => t.name === cur);
-    const open = equipKindsOpen.has(eq.id);
-    return '<span class="eqs-kinds' + (open ? ' open' : '') + '">' +
-      '<button type="button" class="eqs-kinds-h" data-eqkinds="' + esc(eq.id) + '">' +
-        '<span class="eqs-kinds-ch">' + CHEVRON + '</span>' +
-        (hit ? '種類を選び直す' : '用具の種類から選ぶ') +
-      '</button>' +
-      (open
-        ? '<span class="chipz eqs-chipz">' +
-            S.EQUIP_TYPES.map(t =>
-              '<button type="button" class="chip' + (cur === t.name ? ' on' : '') +
-              '" data-setval="' + p + 'name|' + esc(t.name) + '">' +
-              esc(t.name) + '</button>').join('') +
-          '</span>'
-        : '') +
-      '</span>';
+    /* ★data-path は名前欄と共有しない。同じ path を2つの [data-ef] 欄
+       （テキスト欄とこのセレクト）に付けると、flushInputs() が両方を
+       順に書き戻して後勝ちになり、自由入力した名前をセレクトの空欄が
+       消してしまう。data-setval（候補チップと同じしくみ）でイベント
+       側から名前欄へ反映する「選んだ瞬間のアクション」にする。 */
+    return '<select class="i-ef i-ef-sel" data-setselval="' + p + 'name">' +
+      '<option value=""' + (hit ? '' : ' selected') + '>選択してください</option>' +
+      S.EQUIP_TYPES.map(t => '<option value="' + esc(t.name) + '"' +
+        (cur === t.name ? ' selected' : '') + '>' + esc(t.name) + '</option>').join('') +
+      '</select>';
   }
 
   /* 用具1件の Web。編集中は入力欄、閲覧時は URL があるときだけリンク
@@ -2806,10 +2820,7 @@
   function equipWeb(p, eq) {
     const on = secOn('equipment');
     const web = String(eq.web || '').trim();
-    if (on) {
-      return '<span class="eqs-web">' +
-        ev(p + 'web', eq.web, 'line', 'https://…') + '</span>';
-    }
+    if (on) return '<span class="eqs-web">' + evWeb(p + 'web', web) + '</span>';
     if (!web) return '';
     return '<a class="eqs-web" href="' + esc(web) + '" target="_blank" ' +
       'rel="noopener">' + esc(webLabel(web)) + EXT + '</a>';
@@ -3100,6 +3111,12 @@
      開いている入力欄の値を state へ書き戻す。配列で持っている項目
      （診療科）は専用の適用関数を通す。                             */
   function applyOne(path, value) {
+    /* Web 欄は共通で「https://」を欄の実値として持たせている
+       （evWeb）。頭だけ残して中身を書かずに確定した／全部消して
+       確定した場合、"https://" や "http://" がそのまま保存されて
+       「リンクなのに何も指さない」URL になるので、ここで空文字へ
+       落とす。それ以外（続きを書いた分）はそのまま通す。 */
+    if (/\.web$/.test(path) && /^https?:\/\/$/.test(String(value).trim())) value = '';
     if (/^medical\.clinics\.\d+\.depts$/.test(path)) return S.applyTags(path, value);
     /* 起きた反応・起きたことの「候補にない」自由入力欄。チップの選択は
        保ったまま、自由入力ぶんだけを reactions / events 配列へ差し替える。 */
@@ -3291,18 +3308,6 @@
         return;
       }
 
-      /* 用具の「種類から選ぶ」の開閉。★書きかけの文字を捨てないよう
-         flushInputs を先に通す（曜日の点と同じ事情）。 */
-      const ek = e.target.closest('[data-eqkinds]');
-      if (ek) {
-        flushInputs();
-        const id = ek.dataset.eqkinds;
-        if (equipKindsOpen.has(id)) equipKindsOpen.delete(id);
-        else equipKindsOpen.add(id);
-        render();
-        return;
-      }
-
       /* 現在の医療状態｜候補チップの入り切り（病気・治療・機器）。
          data-chip="kind|値"。足したときは、名前はチップの値で埋まって
          いるので、次に書く補足欄（いまの扱い／続け方・使用状況）へ
@@ -3436,6 +3441,16 @@
        （キー入力が1回で止まって見えるバグの原因だった）。日付欄は
        他の文字欄と同じく、Enter か編集終了の操作で確定させる。     */
     host.addEventListener('change', e => {
+      /* 用具の種類セレクト。選んだ値をそのまま名前欄へ書く（path は
+         セレクト自身ではなく別の欄＝name を指す、data-setval の
+         セレクト版）。空を選んだときは書き戻さない――選択肢に無い
+         自由入力を「選び直して消す」事故を防ぐ。 */
+      const ksel = e.target.closest('[data-setselval]');
+      if (ksel) {
+        if (ksel.value && applyOne(ksel.dataset.setselval, ksel.value)) S.save();
+        render();
+        return;
+      }
       const el = e.target.closest('[data-ef][data-path]');
       if (!el || el.tagName !== 'SELECT') return;
       if (applyOne(el.dataset.path, el.value)) S.save();

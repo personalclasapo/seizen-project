@@ -1101,6 +1101,8 @@ button.st:hover{filter:brightness(.97)}
 .cws-web{display:inline-flex;align-items:center;font-size:13px;
   font-weight:700;color:#33200c;text-decoration:underline;
   text-underline-offset:2px;text-decoration-color:#8a6b42}
+/* ★編集中はリンクの見た目を継がせない（.eqs-web と同じ理由）。 */
+.cws-web:has(.i-ef){font-weight:400;text-decoration:none}
 .cws-memo{display:inline-flex;align-items:flex-start;gap:5px;
   font-size:11.5px;color:#6d4a24;flex:1 1 100%}
 
@@ -1596,32 +1598,28 @@ a:hover > .i-ext{opacity:1}
   max-width:100%;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .eqs-web svg{width:11px;height:11px;flex:none;opacity:.8}
-/* 用具名の候補チップ（編集中だけ・.chipz を介護色で上書き）。
-   ★札は 172px しかないので、医療のパネル内チップ（11.5px・padding
-   4/11）のままだと1個で1行を食う。文字と余白を一段落として、2〜3個が
-   1行に並ぶようにする。選択中は介護の茶――医療の緑をそのまま持ち
-   込まない（正本 §13）。★--sc-bg は使えない（.c-equip は .eqs-obj に
-   付いていて、チップは .eqs-capin の側にあるので継承しない）ので、
-   c-equip と同じ値を直に書く。 */
-/* 候補は畳んでおく。開く手がかりは小さな1行（山形＋文言）。
-   ★平置きにしない理由：9個を並べると 172px の札で5行を占め、絵と
-   連絡先の間に壁ができてチップが札の主役になる（2026-09-11 実測）。
-   医療のパネル（幅がある）と同じ平置きを機械的に持ち込まない。 */
-.eqs-kinds{display:flex;flex-direction:column;align-items:flex-start;
-  margin:3px 0 1px}
-.eqs-kinds-h{display:inline-flex;align-items:center;gap:3px;
-  padding:0;border:0;background:none;cursor:pointer;
-  font-family:inherit;font-size:10.5px;color:var(--ink3)}
-.eqs-kinds-h:hover{color:var(--ink2)}
-.eqs-kinds-ch{display:flex;line-height:0;transition:transform .12s}
-.eqs-kinds-ch svg{width:11px;height:11px}
-.eqs-kinds.open .eqs-kinds-ch{transform:rotate(90deg)}
-.eqs-chipz{padding:6px 0 2px;gap:4px}
-.eqs-chipz .chip{padding:2px 7px;font-size:10.5px;border-radius:11px;
-  line-height:1.5}
-.eqs-chipz .chip:hover{border-color:#d9b887;background:#fdf7ec}
-.eqs-chipz .chip.on{background:#f6eddd;border-color:#d9b887;
-  color:#8a6224;font-weight:650}
+/* ★編集中（.i-ef を包んでいるとき）はリンクの見た目（緑・下線）を
+   継がせない――入力欄なのにリンクに見えていた。 */
+.eqs-web:has(.i-ef){color:inherit;font-weight:400;text-decoration:none;
+  overflow:visible}
+/* 編集中の用具カード。★プレースホルダだけに頼ると、書いたとたんに
+   「何の欄か」が消える（2026-09-11 ユーザー指摘）。ケアマネの連絡先
+   セル（.wc-ef-l）と同じ手つき――欄の上に小さく固定ラベルを1本ずつ
+   持つ縦積みにする。172px の札なので、ラベル＋欄をブロックごと
+   区切って詰める（.wc-ef-l の 2段グリッドは幅に余裕のあるセル向けの
+   ものなので、ここは単純な縦積みに簡略化）。 */
+.eqs-fld{display:flex;flex-direction:column;gap:2px;width:100%;
+  margin-top:7px}
+.eqs-fld:first-child{margin-top:0}
+.eqs-fld-name{margin-top:0}
+.eqs-flb{font-size:9.5px;font-weight:700;color:#8a6b42;
+  letter-spacing:.03em}
+.eqs-fldrow{display:flex;align-items:center;gap:6px}
+.eqs-fldrow .i-ef{flex:1;min-width:0}
+/* 種類セレクト。選ぶと名前欄へ反映される「アクション」なので、
+   選んだあとの見た目は選択済みの値ではなく毎回この定形に戻る
+   （data-setselval、render.js 参照）。 */
+.eqs-fld select.i-ef{width:100%}
 
 /* 書きかけの用具。実データと同じ格で並べない（正本 §11：空欄と
    該当なしを同じ扱いにしない）。棚は残す（「ここに置ける」）が、
