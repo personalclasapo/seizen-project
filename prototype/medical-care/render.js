@@ -1431,8 +1431,13 @@
   }
 
   /* Web の表示名。スキームと末尾スラッシュを落として読みやすく。 */
+  /* ★以前は https:// を削ってドメイン名だけ見せていたが、実在しない
+     ダミー URL で確認したときに「https:// がどこにも表示されない」と
+     見えた（2026-09-11 ユーザー指摘）。URL であることが一見して分かる
+     ほうを優先し、https:// は残す（末尾の "/" だけ、見た目上の意味が
+     薄いので落とす）。医療・介護の全 Web 欄で共通の見せ方。 */
   function webLabel(url) {
-    return String(url || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return String(url || '').replace(/\/$/, '');
   }
 
   /* 薬を確認するとき。正本モック（医療.png）に合わせて、上段は実物
@@ -2755,10 +2760,14 @@
     }
     return '<li class="eqs' + (blank ? ' eqs-blank' : '') + '">' +
       /* 用具は棚板の上に立つ。色は c-equip 固定（種類は絵で見分ける
-         ので、行の識別色は要らない）。 */
+         ので、行の識別色は要らない）。★削除ボタンは絵の右上に置く
+         （2026-09-11 ユーザー指摘）――以前は名前欄の右横にあり、
+         172px 幅の欄をさらに圧迫していた。棚に立つ物を丸ごと消す
+         操作なので、物の絵に添えるほうが自然。 */
       '<span class="eqs-stage">' +
         '<span class="eqs-obj c-equip">' + equipGlyph(eq.kind) + '</span>' +
         careShelf() +
+        (on ? delBtn(eq.id) : '') +
       '</span>' +
       '<span class="eqs-cap"><span class="eqs-capin">' +
         (on
@@ -2780,12 +2789,7 @@
         '<span class="eqs-flb">' + label + '</span>' +
         inputHtml +
       '</span>';
-    return '<span class="eqs-fld eqs-fld-name">' +
-        '<span class="eqs-flb">用具の名前</span>' +
-        '<span class="eqs-fldrow">' +
-          ev(p + 'name', eq.name, 'line', '用具の名前') + delBtn(eq.id) +
-        '</span>' +
-      '</span>' +
+    return efld('用具の名前', ev(p + 'name', eq.name, 'line', '用具の名前')) +
       efld('種類', equipKindSelect(p, eq)) +
       efld('貸与元・購入元', ev(p + 'provider', eq.provider, 'line', '事業所名')) +
       efld('電話', ev(p + 'tel', eq.tel, 'line', '電話番号')) +

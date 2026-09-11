@@ -1585,13 +1585,13 @@ a:hover > .i-ext{opacity:1}
 .eqs-tel{display:inline-flex;align-items:center;gap:5px;
   font-size:11.5px;font-weight:600;color:var(--gr)}
 .eqs-tel svg{width:13px;height:13px;flex:none;color:var(--gr2)}
-/* 貸与元のサイト。医療の通院カード（.cg-link）と同じ格――ドメイン名を
-   出し、電話に近い太さで置く。
+/* 貸与元のサイト。医療の通院カード（.cg-link）と同じ格――URL（webLabel
+   で https:// を残したまま末尾の "/" だけ落としたもの）を出し、電話に
+   近い太さで置く。
    ★語の途中で折らない。折れると2行目に数文字だけ残って、短冊の
-   いちばん下が崩れる（実測：「example.or.jp/hamakko ↗」は 144px で、
-   札幅 150px にちょうど収まる）。入り切らない長さのときは末尾を
-   省略記号にする――URL は読み上げるものではなく押すものなので、
-   途中で折り返すより1行で切れているほうが扱いやすい。 */
+   いちばん下が崩れる。入り切らない長さのときは末尾を省略記号にする
+   ――URL は読み上げるものではなく押すものなので、途中で折り返すより
+   1行で切れているほうが扱いやすい。 */
 .eqs-web{display:inline-flex;align-items:center;gap:4px;
   font-size:11.5px;font-weight:600;color:var(--gr);
   text-decoration:underline;text-underline-offset:2px;
@@ -1611,11 +1611,17 @@ a:hover > .i-ext{opacity:1}
 .eqs-fld{display:flex;flex-direction:column;gap:2px;width:100%;
   margin-top:7px}
 .eqs-fld:first-child{margin-top:0}
-.eqs-fld-name{margin-top:0}
 .eqs-flb{font-size:9.5px;font-weight:700;color:#8a6b42;
   letter-spacing:.03em}
-.eqs-fldrow{display:flex;align-items:center;gap:6px}
-.eqs-fldrow .i-ef{flex:1;min-width:0}
+/* 削除ボタン。★以前は名前欄の右横（172px の札を圧迫）にあったが、
+   絵の右上へ移した（2026-09-11 ユーザー指摘）――棚に立つ物を丸ごと
+   消す操作なので、物の絵に添えるほうが自然。.eqs-stage は
+   position:relative なので右上に絶対配置できる。 */
+.eqs-stage .rowdel{position:absolute;top:0;right:0;z-index:1;
+  background:#fff;border-color:var(--rule)}
+.eqs-stage .rowdel-ask{position:absolute;top:0;right:0;z-index:1;
+  background:#fff;border-radius:8px;padding:3px 6px;
+  box-shadow:0 2px 6px #6b4a2c26;white-space:nowrap}
 /* 種類セレクト。選ぶと名前欄へ反映される「アクション」なので、
    選んだあとの見た目は選択済みの値ではなく毎回この定形に戻る
    （data-setselval、render.js 参照）。 */
