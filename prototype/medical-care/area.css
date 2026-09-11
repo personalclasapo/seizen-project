@@ -963,20 +963,59 @@ button.st:hover{filter:brightness(.97)}
 /* 見附＝ボード幅の 2.9%（正本の実測。care-board-motifs.RESEARCH.md）。
    額は物として厚みがあるので、内側の余白は見附ぶんきっちり空ける。 */
 .care-board{position:relative;isolation:isolate;
-  --rail:clamp(18px,2.9%,34px);
+  /* ★桟の太さは額の幅から引く。% は使う場所で基準が変わる（padding は
+     包含ブロックの幅、height は高さ）ので、同じ --rail でも上下と左右で
+     別の値に解決してしまう。cqw なら四辺とも同じ px になる
+     ――container-type:inline-size は高さを触らないので、コンテンツで
+     伸びるこの器でも循環しない（2026-09-11）。 */
+  container-type:inline-size;
+  /* 下限は狭幅でも額が額に見える太さ、上限は正本の実測（見附＝
+     ボード幅 1223px に対し 36px）に合わせる。 */
+  --rail:clamp(20px,3.6cqw,36px);
   /* 額の内側の余白は実測 38/1223＝3.1%（見附とほぼ同じ）。
      ここを広く取ると背板が見えすぎて、プレートが板の上で泳ぐ。 */
-  padding:calc(var(--rail) + clamp(14px,3.1%,36px));
+  padding:calc(var(--rail) + clamp(14px,3.1cqw,36px));
   filter:drop-shadow(0 12px 20px #3d271230)}
 .care-board-inner{position:relative;display:flex;flex-direction:column;
   gap:clamp(16px,2.6%,26px)}
 
 /* ── 木の額縁 ─────────────────────────────────────────
-   輪郭・木目・合口・面取り・背板は render.js の1枚の SVG が持つ。
-   ここは「置かれ方」だけ（CLAUDE.md：SVG は物の形、CSS は物の配置）。
-   ダボだけは真円を保つため SVG の外に出し、桟の中央へ置く。      */
+   木地・木目は render.js の SVG が持ち、ここは「置かれ方」だけ
+   （CLAUDE.md：SVG は物の形、CSS は物の配置）。
+
+   ★桟の太さは --rail（幅基準）が唯一の持ち主。以前は 1枚の正方
+   viewBox を preserveAspectRatio="none" で額の形へ引き伸ばしており、
+   額が縦長になるほど上下桟だけが太って（実測 36→46→80px）、幅基準で
+   組んだ padding・ダボ位置と食い違い、木札が桟に潜っていた
+   （2026-09-11）。いまは桟・合口・稜線とも --rail で置く。      */
 .care-board-frame{position:absolute;inset:0;z-index:-1;pointer-events:none}
-.cbf-svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* 背板＝額の口いっぱい。桟の内側に敷く。
+   ★svg は既定で幅も高さも内在値を持つので、inset だけでは伸びない
+     （width/height:100% を明示して初めて口いっぱいになる）。 */
+.cbf-board{position:absolute;top:var(--rail);right:var(--rail);
+  bottom:var(--rail);left:var(--rail);
+  width:calc(100% - var(--rail)*2);height:calc(100% - var(--rail)*2);
+  display:block}
+/* 桟。長手だけ伸びる帯。太さはどの辺も --rail。 */
+.cbf-r{position:absolute;display:block}
+.cbf-r svg{width:100%;height:100%;display:block}
+.cbf-r-t{left:0;right:0;top:0;height:var(--rail)}
+.cbf-r-b{left:0;right:0;bottom:0;height:var(--rail)}
+.cbf-r-l{top:0;bottom:0;left:0;width:var(--rail)}
+.cbf-r-r{top:0;bottom:0;right:0;width:var(--rail)}
+/* 隅の合口（留め接ぎ）。桟の角の正方に 45°。4隅で向きを変える。 */
+.cbf-m{position:absolute;width:var(--rail);height:var(--rail)}
+.cbf-m svg{width:100%;height:100%;display:block}
+.cbf-m-tl{left:0;top:0}
+.cbf-m-tr{right:0;top:0;transform:scaleX(-1)}
+.cbf-m-br{right:0;bottom:0;transform:scale(-1)}
+.cbf-m-bl{left:0;bottom:0;transform:scaleY(-1)}
+/* 稜線。外周の光／額の口の手前の光／口の奥の陰。どれも 1px。 */
+.cbf-edge{position:absolute;pointer-events:none}
+.cbf-edge-out{inset:0;box-shadow:inset 0 0 0 1px #f7e3c4bf}
+.cbf-edge-lip{inset:calc(var(--rail) - var(--rail)/4.5);
+  box-shadow:inset 0 0 0 1px #f3dcb873}
+.cbf-edge-in{inset:var(--rail);box-shadow:inset 0 0 0 1px #5e3c22bf}
 /* ダボ（桟の中央、四隅）。真円。 */
 .cbf-peg{position:absolute;width:clamp(9px,1.35%,14px);aspect-ratio:1;
   filter:drop-shadow(0 1px 1.5px #2c1c0a55)}
@@ -1019,7 +1058,12 @@ button.st:hover{filter:brightness(.97)}
   box-shadow:inset 0 2px 3px #6b421f66,inset 0 -1px 0 #f7dcb8aa,
     inset 1px 0 2px #6b421f44,inset -1px 0 0 #f2d2a888}
 
-.cws-inner{position:relative;display:flex;align-items:center;flex-wrap:wrap;
+/* ★介護認定｜相談先は常に横並び（ユーザー確定・2026-09-11）。
+   flex-wrap:wrap にすると 900px 前後で縦積みへ畳まれてしまい、木札が
+   2段の帯に割れる――「相談先」側の狭幅対応は .cws-mgr-tb の
+   container query（760px 以下で事業所/担当・電話/Web を1列に畳む）が
+   既に持っているので、外側でもう一度畳む必要が無い。 */
+.cws-inner{position:relative;display:flex;align-items:center;flex-wrap:nowrap;
   gap:6px clamp(14px,2.4%,26px);
   padding:clamp(11px,1.7%,15px) clamp(16px,2.2%,22px)}
 /* 介護度と相談先は、どちらもラベルを値の上に置く縦組み。値だけを
@@ -1080,13 +1124,23 @@ button.st:hover{filter:brightness(.97)}
    ＝2026-09-10 指摘）。 */
 .cws-mgr-grp{display:grid;grid-template-columns:auto auto;
   column-gap:8px;row-gap:5px;align-items:baseline;min-width:0}
+/* 狭いと2グループは縦に積む。★このとき grp の grid を解いて、4行とも
+   .cws-mgr-tb の1つの表に載せる（display:contents）。グループごとに
+   独立した grid のまま縦に積むと、ラベル列の幅が「事業所／担当」と
+   「電話／Web」で別々に決まり、上2行だけ値が遠のく（2026-09-11 実測：
+   ラベルの字の終わり→値の字の頭が 29.5/40.4px に対し 9.9/8.0px）。 */
 @container (max-width:760px){
-  .cws-mgr-tb{grid-template-columns:auto;row-gap:5px}
+  .cws-mgr-tb{grid-template-columns:auto auto;row-gap:5px;column-gap:8px}
+  .cws-mgr-grp{display:contents}
 }
 .cws-mgr-row{display:contents}
-/* ラベルは値より一段沈める（読む対象は値のほう）。 */
+/* ラベルは値より一段沈める（読む対象は値のほう）。
+   ★右寄せ＝値に寄せる。左寄せだとラベル列に出た余りがラベルと値の
+   間に残り、短いラベル（「担当」）の行だけ値が遠のいて見える
+   （2026-09-11 指摘）。列の右端で切り揃えれば、字数に関わらず
+   ラベルと値の間は column-gap ひとつになる。 */
 .cws-mgr-lb{font-size:10.5px;font-weight:700;color:#7d5730;
-  letter-spacing:.04em;white-space:nowrap}
+  letter-spacing:.04em;white-space:nowrap;text-align:right}
 /* 長い事業所名は折り返す＝連絡先セルと同じ扱い。 */
 .cws-mgr-v{min-width:0;font-size:13px;color:#33200c;
   white-space:normal;overflow-wrap:anywhere;line-height:1.4}
@@ -1252,10 +1306,9 @@ button.st:hover{filter:brightness(.97)}
    ないので、そもそも列を持たせるのが誤りだった。行の右外に出す。   */
 .wcal-head,.wcal-row,.wcal-grid{display:grid;
   grid-template-columns:
-    minmax(0,1fr)             /* 支援：残り幅は全部こちら。説明文を折り返さない */
-    minmax(132px,168px)       /* 連絡先：事業所リンク＋電話1行で足りる幅で頭打ち */
+    minmax(0,1fr)             /* 支援・連絡先：同じ列の中でまとまりを分ける */
     minmax(150px,224px)       /* 曜日7列 */
-    minmax(72px,96px);        /* 時間帯：短い文。2行に折り返してよいので上限を絞り、支援へ回す */
+    minmax(84px,108px);        /* 時間帯：短い文。2行に折り返してよいので上限を絞り、支援へ回す */
   gap:0 10px}
 
 /* 紙の上端の帯（綴じ側）。★曜日は帯の中に入れない――帯の装飾の一部に
@@ -1287,7 +1340,7 @@ button.st:hover{filter:brightness(.97)}
 .wcal-table{position:relative}
 .wcal-rows{position:relative;z-index:1}
 .wcal-grid{position:absolute;inset:0;pointer-events:none;z-index:0}
-.wcal-collines{grid-column:3;align-self:stretch;
+.wcal-collines{grid-column:2;align-self:stretch;
   display:grid;grid-template-columns:repeat(7,1fr)}
 .wcal-col{border-left:1px solid #eae0c6}
 /* 曜日の表の両端は太い罫＝「曜日の表」と両隣を分ける。左端（連絡先側）と
@@ -1301,9 +1354,15 @@ button.st:hover{filter:brightness(.97)}
 .wcal-col-end{background:#f8f3e3}
 
 /* 行。横の軸は紙の左右いっぱいに渡す（途中で切れると格子にならない）。 */
-.wcal-row{position:relative;z-index:1;align-items:center;padding:9px 0}
+.wcal-row{position:relative;z-index:1;align-items:center;padding:16px 0}
 .wcal-row + .wcal-row::before{content:"";position:absolute;
   left:-14px;right:-14px;top:0;border-top:1px solid #ece3cd}
+
+/* 支援と連絡先をひとつのセルに収め、曜日・時間帯は行全体の中央に置く。 */
+.wc-info{min-width:0;display:flex;flex-direction:column;gap:10px}
+.wc-info .wc-ct{padding-left:33px;gap:3px}
+.wc-info .wc-ct:empty{display:none}
+.wc-info .wc-prov-link,.wc-info .wc-tel{font-weight:400}
 
 /* ① 支援＝絵＋名前＋支援内容。 */
 .wc-sv{display:flex;align-items:flex-start;gap:9px;min-width:0}
@@ -1321,7 +1380,7 @@ button.st:hover{filter:brightness(.97)}
 /* 支援内容＝その時間に何をしてもらうか。家族が最初に読む一行なので、
    灰色の添え物にせず地の文の濃さで置く。 */
 .wcal-does{font-size:11.5px;color:var(--ink);line-height:1.5;
-  overflow-wrap:normal;word-break:keep-all;line-break:strict}
+  overflow-wrap:anywhere;word-break:normal;line-break:strict}
 
 /* ② 連絡先。★横に並べると3つ目（Web）が必ず溢れて折り返す――
    セルの中で縦に組み、溢れる構造そのものを無くす（?contact= で
@@ -1350,7 +1409,7 @@ a:hover > .i-ext{opacity:1}
   min-width:0}
 
 /* ③ 曜日のマス。行ごとに枠を持たない（縦の軸は .wcal-grid が持つ）。 */
-.wcal-cells{grid-column:3;display:grid;grid-template-columns:repeat(7,1fr)}
+.wcal-cells{grid-column:2;display:grid;grid-template-columns:repeat(7,1fr)}
 .wcal-c{display:grid;place-items:center;min-height:26px}
 .wcal-dot{width:9px;height:9px;border-radius:50%;background:var(--sc);
   box-shadow:0 0 0 2.5px color-mix(in srgb,var(--sc) 15%,transparent)}
@@ -1358,6 +1417,7 @@ a:hover > .i-ext{opacity:1}
 /* ④ 時間帯。曜日は days が持つので、ここは時間だけ＝短い。
    右の縦罫（曜日の表の右端）と中身を離す＝連絡先と同じ扱い。 */
 .wc-tm{min-width:0;padding-left:12px}
+.wcal-use-detail{display:block}
 .wcal-use{font-size:10.5px;color:var(--ink2);line-height:1.45;
   white-space:normal;overflow-wrap:anywhere;word-break:normal;
   line-break:strict}
@@ -1372,7 +1432,7 @@ a:hover > .i-ext{opacity:1}
      ・曜日と時間帯 … 中身が1つだけなので**上下中央**に置く
    セルごとに揃え方が違うので、行では stretch にして各セルが決める。 */
 .wcal-row-edit{align-items:stretch}
-.wcal-row-edit .wc-sv,.wcal-row-edit .wc-ct{align-self:start}
+.wcal-row-edit .wc-sv,.wcal-row-edit .wc-ct{align-self:stretch}
 .wcal-row-edit .wcal-cells,.wcal-row-edit .wc-tm{align-self:center}
 /* 「削除しますか？」の確認は**吹き出し（ポップアップ）**で出す
    （2026-09-10 ユーザー判断）。他の欄を隠したり場所を譲らせたりせず、
@@ -1476,28 +1536,18 @@ a:hover > .i-ext{opacity:1}
 .wcal-rings-front{z-index:3}
 .wcal-rings-front .wcal-ring-b{display:none}
 
-/* 中くらいの器では、時間帯（4列目）を畳んで曜日の下へ入れる。
-   ★4列になったので、3列時代の 430px では遅すぎる（曜日と時間帯が
-   両方潰れる）。時間帯のほうが先に畳めるので、二段階で畳む。 */
-/* 狭い器では、支援と連絡先を縦に積んで2列にする（曜日＋時間帯は残す）。
-   ★曜日の列と時間帯は畳まない――表の主役なので、畳むのは左側から。 */
+/* 中幅でも同じ3列を保つ。支援と連絡先は常にひとつのセル。 */
 @container (max-width:700px){
   .wcal-head,.wcal-row,.wcal-grid{
-    grid-template-columns:minmax(0,1fr) minmax(148px,224px) minmax(64px,92px)}
-  /* 連絡先は支援セルの下へ入れる（同じ1列目）。 */
-  .wc-h-ct{display:none}
-  .wc-sv{grid-column:1}
-  .wc-ct{grid-column:1;padding-left:33px;margin-top:3px}
-  .wcal-cells{grid-column:2}
-  .wcal-collines{grid-column:2}
-  .wc-tm{grid-column:3}
+    grid-template-columns:minmax(0,1fr) clamp(148px,28cqi,196px) minmax(84px,108px)}
 }
 /* さらに狭いと7列は入らない。曜日を中身の下へ落とす。
    ★見出し帯は消さない――リングが貫く先が無くなり、綴じ具が宙に浮く。 */
 @container (max-width:430px){
   .wcal-head,.wcal-row,.wcal-grid{grid-template-columns:1fr;gap:0}
   .wcal-head{display:none}
-  .wc-sv,.wc-ct,.wcal-cells,.wc-tm{grid-column:1}
+  .wc-info,.wcal-cells,.wc-tm{grid-column:1}
+  .wcal-grid{display:none}
   .wcal-cells{margin-top:7px}
   .wcal-collines{grid-column:1}
   .wc-tm{margin-top:3px;padding-left:33px}
@@ -1671,16 +1721,6 @@ a:hover > .i-ext{opacity:1}
   .sf-idrow{gap:14px}
   .bs{padding:14px 0}
 
-  /* 上部の帯は、狭いと介護度と相談先が横に並ばない。縦に積む
-     （札は1枚のまま＝物は割らない）。溝は横向きの彫りに変える。 */
-  /* 相談先と鉛筆を同じ行に収める（鉛筆だけが次行へ落ちると、札の
-     右下に空きができて帯が無駄に高くなる）。 */
-  .cws-mgr{flex:1 1 auto}
-  .cws-inner{align-items:flex-end}
-  .cws-groove{width:auto;height:3px;align-self:auto;flex:1 1 100%;
-    margin:clamp(4px,1.2%,7px) 0;
-    background:linear-gradient(180deg,
-      #6b421f55 0 1px,#5c3a1c88 1px 2px,#f7dcb8cc 2px 3px)}
   .cp{padding:16px 15px}
 }
 

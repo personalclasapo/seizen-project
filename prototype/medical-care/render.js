@@ -1739,24 +1739,16 @@
       'fill="#6b4426" fill-opacity="' + o + '"/>').join('');
   })();
 
-  /* 額の1辺（桟）。木地＋柾目＋両縁の面取り。木目は材の長手に走るので、
-     縦桟と横桟で向きが変わる――`vertical` で筋の向きを入れ替える。   */
-  function woodRail(x, y, w, h, vertical) {
-    const g = vertical
-      /* 縦桟：筋は上下に走る。100×100 の筋を桟の幅へ潰して敷く。 */
-      ? '<g transform="translate(' + x + ' ' + y + ') scale(' +
-        (w / 100) + ' ' + (h / 100) + ')">' + WOOD_GRAIN + '</g>'
-      /* 横桟：筋は左右に走る。90°回して同じ筋を使う。 */
-      : '<g transform="translate(' + (x + w) + ' ' + y + ') rotate(90) scale(' +
-        (h / 100) + ' ' + (w / 100) + ')">' + WOOD_GRAIN + '</g>';
-    return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h +
-        '" fill="url(#cbfWood)"/>' + g;
-  }
-
   function careBoardFrame() {
     /* 実測由来（RESEARCH.md）。見附＝2.9%、面取り＝見附の約1/4.5。
-       viewBox は 0..100 の正方で持ち、CSS 側で額の実寸へ引き伸ばす。 */
-    const R = 2.9, B = R / 4.5;
+       ★桟は「1枚の正方 viewBox を額の形へ引き伸ばす」形をやめた
+       （2026-09-11）。preserveAspectRatio="none" で縦に伸ばすと、
+       上下桟だけが額の高さに比例して太り（実測：1400px 幅で 36px、
+       900px で 45.6px、375px で 80px）、幅基準の --rail で組んだ
+       padding・ダボ位置と食い違って、木札が桟に潜っていた。
+       現実の額縁は四辺とも同じ材＝同じ太さなので、造形としても
+       こちらが正しい。上下と左右を別レイヤーにし、それぞれ長手の
+       1方向だけ引き伸ばす（太さは CSS の --rail が持つ）。       */
     /* ダボ（木の留め具）。桟の中央、四隅に。真円を保つため別レイヤー。 */
     const peg = (cls) => '<span class="cbf-peg ' + cls + '">' +
       '<svg viewBox="0 0 24 24" aria-hidden="true">' +
@@ -1768,15 +1760,22 @@
           'stroke-opacity=".10" stroke-width="1.6"/>' +
       '</svg></span>';
 
-    return '<div class="care-board-frame" aria-hidden="true">' +
-      '<svg class="cbf-svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
+    /* 共有の塗り。同じ id を何枚もの svg で参照できないので、defs は
+       各レイヤーが自前で持つ（描画コストより取り違えの無さを採る）。 */
+    const defs =
+      '<defs>' +
+        /* 木地の地色。実測 #d9ac81 / #ce945f を明暗に振る。 */
+        '<linearGradient id="cbfWood" x1="0" y1="0" x2="0.7" y2="1">' +
+          '<stop offset="0" stop-color="#e3b98d"/>' +
+          '<stop offset=".45" stop-color="#ce945f"/>' +
+          '<stop offset="1" stop-color="#dbab7a"/>' +
+        '</linearGradient>' +
+      '</defs>';
+
+    /* ① 背板＋額が落とす内影。額の口いっぱいに敷く1枚。 */
+    const board =
+      '<svg class="cbf-board" viewBox="0 0 100 100" preserveAspectRatio="none">' +
         '<defs>' +
-          /* 木地の地色。実測 #d9ac81 / #ce945f を明暗に振る。 */
-          '<linearGradient id="cbfWood" x1="0" y1="0" x2="0.7" y2="1">' +
-            '<stop offset="0" stop-color="#e3b98d"/>' +
-            '<stop offset=".45" stop-color="#ce945f"/>' +
-            '<stop offset="1" stop-color="#dbab7a"/>' +
-          '</linearGradient>' +
           /* 背板。桟より暗い下地。プレートのすき間で実測した #a06b3c
              （額の木地 #ce945f より一段沈む＝板が奥にある）。 */
           '<linearGradient id="cbfBoard" x1="0" y1="0" x2="0" y2="1">' +
@@ -1784,7 +1783,7 @@
             '<stop offset=".5" stop-color="#a06b3c"/>' +
             '<stop offset="1" stop-color="#986338"/>' +
           '</linearGradient>' +
-          /* 額が背板へ落とす内影。 */
+          /* 額が背板へ落とす内影。上と左を濃く（光は左上から）。 */
           '<linearGradient id="cbfDropT" x1="0" y1="0" x2="0" y2="1">' +
             '<stop offset="0" stop-color="#3d2712" stop-opacity=".38"/>' +
             '<stop offset="1" stop-color="#3d2712" stop-opacity="0"/>' +
@@ -1794,47 +1793,53 @@
             '<stop offset="1" stop-color="#3d2712" stop-opacity="0"/>' +
           '</linearGradient>' +
         '</defs>' +
-
-        /* ① 背板（いちばん奥）。 */
         '<rect x="0" y="0" width="100" height="100" fill="url(#cbfBoard)"/>' +
-        /* 額が落とす影。上と左を濃く（光は左上から）。 */
-        '<rect x="' + R + '" y="' + R + '" width="' + (100 - 2 * R) +
-          '" height="4.5" fill="url(#cbfDropT)"/>' +
-        '<rect x="' + R + '" y="' + R + '" width="3.2" height="' + (100 - 2 * R) +
-          '" fill="url(#cbfDropL)"/>' +
+        '<rect x="0" y="0" width="100" height="9" fill="url(#cbfDropT)"/>' +
+        '<rect x="0" y="0" width="6" height="100" fill="url(#cbfDropL)"/>' +
+      '</svg>';
 
-        /* ② 額の4辺。長手方向に木目が走る。 */
-        woodRail(0, 0, 100, R, false) +               /* 上桟（横） */
-        woodRail(0, 100 - R, 100, R, false) +         /* 下桟（横） */
-        woodRail(0, 0, R, 100, true) +                /* 左桟（縦） */
-        woodRail(100 - R, 0, R, 100, true) +          /* 右桟（縦） */
+    /* ② 桟。長手方向にだけ引き伸ばす帯＝太さは CSS の --rail が持つ。
+       木目は帯の中で長手に走る（材の木理と同じ向き）。上下は横桟、
+       左右は縦桟。viewBox は「長手 100 × 太さ 10」に閉じる。      */
+    const railH =                                   /* 上桟・下桟（横） */
+      '<svg class="cbf-rail cbf-rail-h" viewBox="0 0 100 10" ' +
+        'preserveAspectRatio="none">' + defs +
+        '<rect x="0" y="0" width="100" height="10" fill="url(#cbfWood)"/>' +
+        /* 木目：100×100 の筋を 90°回して長手へ走らせ、帯の太さへ潰す。 */
+        '<g transform="translate(100 0) rotate(90) scale(.1 1)">' +
+          WOOD_GRAIN + '</g>' +
+      '</svg>';
+    const railV =                                   /* 左桟・右桟（縦） */
+      '<svg class="cbf-rail cbf-rail-v" viewBox="0 0 10 100" ' +
+        'preserveAspectRatio="none">' + defs +
+        '<rect x="0" y="0" width="10" height="100" fill="url(#cbfWood)"/>' +
+        '<g transform="scale(.1 1)">' + WOOD_GRAIN + '</g>' +
+      '</svg>';
 
-        /* ③ 隅の合口（45°）。木の枠が留め接ぎで組まれている線。 */
-        '<g stroke="#6f5030" stroke-opacity=".42" stroke-width="1" ' +
-          'vector-effect="non-scaling-stroke" fill="none">' +
-          '<path d="M0 0 ' + R + ' ' + R + '"/>' +
-          '<path d="M100 0 ' + (100 - R) + ' ' + R + '"/>' +
-          '<path d="M100 100 ' + (100 - R) + ' ' + (100 - R) + '"/>' +
-          '<path d="M0 100 ' + R + ' ' + (100 - R) + '"/>' +
-        '</g>' +
+    /* ③ 隅の合口（45°）＝留め接ぎの線。桟の角の正方（--rail 角）に
+       1本ずつ引く。4隅とも同じ絵を回して使う。 */
+    const miter =
+      '<svg class="cbf-miter" viewBox="0 0 10 10">' +
+        '<path d="M0 0 10 10" stroke="#6f5030" stroke-opacity=".42" ' +
+          'stroke-width="1" vector-effect="non-scaling-stroke" fill="none"/>' +
+      '</svg>';
 
-        /* ④ 面取り。額の内外の稜線に、光の当たる側と陰る側。 */
-        '<g vector-effect="non-scaling-stroke" fill="none">' +
-          /* 外周のハイライト */
-          '<rect x=".5" y=".5" width="99" height="99" stroke="#f7e3c4" ' +
-            'stroke-opacity=".75" stroke-width="1"/>' +
-          /* 面取り＝額の口が背板へ向かって落ちる稜線。
-             ハイライト（口の手前・上側）→ 陰（口の奥）の順に2本、
-             どちらも1px 相当。太い帯にすると額が二重に見える。   */
-          '<rect x="' + (R - B) + '" y="' + (R - B) + '" width="' +
-            (100 - 2 * (R - B)) + '" height="' + (100 - 2 * (R - B)) +
-            '" stroke="#f3dcb8" stroke-opacity=".45" stroke-width="1"/>' +
-          /* 内周（額の口）の陰＝板が奥にある厚み */
-          '<rect x="' + R + '" y="' + R + '" width="' + (100 - 2 * R) +
-            '" height="' + (100 - 2 * R) + '" stroke="#5e3c22" ' +
-            'stroke-opacity=".75" stroke-width="1"/>' +
-        '</g>' +
-      '</svg>' +
+    return '<div class="care-board-frame" aria-hidden="true">' +
+      board +
+      '<span class="cbf-r cbf-r-t">' + railH + '</span>' +
+      '<span class="cbf-r cbf-r-b">' + railH + '</span>' +
+      '<span class="cbf-r cbf-r-l">' + railV + '</span>' +
+      '<span class="cbf-r cbf-r-r">' + railV + '</span>' +
+      '<span class="cbf-m cbf-m-tl">' + miter + '</span>' +
+      '<span class="cbf-m cbf-m-tr">' + miter + '</span>' +
+      '<span class="cbf-m cbf-m-br">' + miter + '</span>' +
+      '<span class="cbf-m cbf-m-bl">' + miter + '</span>' +
+      /* ④ 面取り＝額の内外の稜線。外周のハイライトと、額の口が背板へ
+         落ちる稜線（手前の光→奥の陰）。CSS の枠線1本ずつで持つ
+         （どの辺も同じ 1px＝物の稜線は太らない）。 */
+      '<span class="cbf-edge cbf-edge-out"></span>' +
+      '<span class="cbf-edge cbf-edge-lip"></span>' +
+      '<span class="cbf-edge cbf-edge-in"></span>' +
       peg('cbf-peg-tl') + peg('cbf-peg-tr') +
       peg('cbf-peg-bl') + peg('cbf-peg-br') +
       '</div>';
@@ -1845,7 +1850,7 @@
      一段軽い格に置く。ただし「軽い」は「装飾なし」ではない――背板に
      文字が直に乗ることは実物では起きないので、物として札を留める。
 
-     材は**額縁と同じ木**（woodRail / WOOD_GRAIN をそのまま使う）。
+     材は**額縁と同じ木**（額の桟と同じ WOOD_GRAIN の柾目を使う）。
      同じ材から切り出した札なので画風が必ず揃い、幅の伸び縮みにも
      額縁と同じ理屈で耐える。外部のクリップアート（Openclipart の
      木札4点）は素朴派の看板で、明るいオークの直線的な柾目という
@@ -2273,8 +2278,7 @@
     /* 列見出し。★全列に見出しを付ける――1枚の表になったので、
        曜日だけが見出しを持つのは筋が通らない。 */
     const head = '<div class="wcal-head">' +
-      '<span class="wc-h wc-h-sv">支援</span>' +
-      '<span class="wc-h wc-h-ct">連絡先</span>' +
+      '<span class="wc-h wc-h-sv">支援・連絡先</span>' +
       '<span class="wcal-cells">' +
         WEEKDAY_CHARS.map((d, i) =>
           '<span class="wcal-d' + (i > 4 ? ' wcal-d-end' : '') + '">' +
@@ -2348,15 +2352,15 @@
           '</div>';
       /* ② 連絡先 ③ 曜日 ④ 時間帯。 */
       return '<div class="wcal-row' + (on ? ' wcal-row-edit' : '') + '">' +
-        svCell +
+        '<div class="wc-info">' + svCell +
         '<div class="wc-ct">' +
           (on ? contactCellEdit(sv, p) : contactCell(sv)) +
-        '</div>' +
+        '</div></div>' +
         '<span class="wcal-cells">' + cells + '</span>' +
         '<div class="wc-tm">' +
           (on
             ? efLine('時間帯', p + 'use', sv.use, '例：午前（9:00〜12:00頃）')
-            : (sv.use ? '<span class="wcal-use">' + esc(sv.use) + '</span>' : '')) +
+            : (sv.use ? '<span class="wcal-use">' + esc(sv.use).replace(/([（(].*[）)])$/, '<span class="wcal-use-detail">$1</span>') + '</span>' : '')) +
         '</div>' +
         '</div>';
     }).join('');
@@ -2376,7 +2380,6 @@
     const grid = '<span class="wcal-grid" aria-hidden="true">' +
       /* 列の仕切り。支援｜連絡先｜曜日｜時間帯 の4ブロックを分ける縦罫
          （曜日7列の内側の細罫は .wcal-collines）。 */
-      '<span class="wcal-vsep wcal-vsep-a"></span>' +
       '<span class="wcal-cells wcal-collines">' +
         WEEKDAY_CHARS.map((d, i) =>
           '<span class="wcal-col' + (i > 4 ? ' wcal-col-end' : '') + '"></span>'
