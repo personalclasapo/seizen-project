@@ -963,18 +963,10 @@ button.st:hover{filter:brightness(.97)}
 /* 見附＝ボード幅の 2.9%（正本の実測。care-board-motifs.RESEARCH.md）。
    額は物として厚みがあるので、内側の余白は見附ぶんきっちり空ける。 */
 .care-board{position:relative;isolation:isolate;
-  /* ★桟の太さは額の幅から引く。% は使う場所で基準が変わる（padding は
-     包含ブロックの幅、height は高さ）ので、同じ --rail でも上下と左右で
-     別の値に解決してしまう。cqw なら四辺とも同じ px になる
-     ――container-type:inline-size は高さを触らないので、コンテンツで
-     伸びるこの器でも循環しない（2026-09-11）。 */
-  container-type:inline-size;
-  /* 下限は狭幅でも額が額に見える太さ、上限は正本の実測（見附＝
-     ボード幅 1223px に対し 36px）に合わせる。 */
-  --rail:clamp(20px,3.6cqw,36px);
+  --rail:clamp(18px,2.9%,34px);
   /* 額の内側の余白は実測 38/1223＝3.1%（見附とほぼ同じ）。
      ここを広く取ると背板が見えすぎて、プレートが板の上で泳ぐ。 */
-  padding:calc(var(--rail) + clamp(14px,3.1cqw,36px));
+  padding:calc(var(--rail) + clamp(14px,3.1%,36px));
   filter:drop-shadow(0 12px 20px #3d271230)}
 .care-board-inner{position:relative;display:flex;flex-direction:column;
   gap:clamp(16px,2.6%,26px)}
@@ -983,28 +975,35 @@ button.st:hover{filter:brightness(.97)}
    木地・木目は render.js の SVG が持ち、ここは「置かれ方」だけ
    （CLAUDE.md：SVG は物の形、CSS は物の配置）。
 
-   ★桟の太さは --rail（幅基準）が唯一の持ち主。以前は 1枚の正方
-   viewBox を preserveAspectRatio="none" で額の形へ引き伸ばしており、
-   額が縦長になるほど上下桟だけが太って（実測 36→46→80px）、幅基準で
-   組んだ padding・ダボ位置と食い違い、木札が桟に潜っていた
-   （2026-09-11）。いまは桟・合口・稜線とも --rail で置く。      */
-.care-board-frame{position:absolute;inset:0;z-index:-1;pointer-events:none}
+   ★以前は 1枚の正方 viewBox を preserveAspectRatio="none" で額の形へ
+   引き伸ばしており、額が縦長になるほど上下桟だけが太って（実測
+   36→46→80px）、幅基準で組んだ padding・ダボ位置と食い違い、木札が
+   桟に潜っていた（2026-09-11）。いまは四辺とも --rail-w で置く。
+
+   ★その --rail-w はこの器の幅から引く。.care-board 側の --rail は % な
+   ので、padding では包含ブロックの幅、height では高さと、使う場所で
+   基準が変わる――同じ変数でも上下桟と左右桟で別の値に解決していた。
+   frame は inset:0 で額の実寸に従い、padding を持たないので、ここを
+   コンテナにすれば循環せず額の幅を分母にできる（.care-board 自身に
+   container-type を付けると padding→内容幅→cqw→padding で循環する）。 */
+.care-board-frame{position:absolute;inset:0;z-index:-1;pointer-events:none;
+  container-type:inline-size;
+  --rail-w:clamp(18px,2.9cqw,34px)}
 /* 背板＝額の口いっぱい。桟の内側に敷く。
    ★svg は既定で幅も高さも内在値を持つので、inset だけでは伸びない
-     （width/height:100% を明示して初めて口いっぱいになる）。 */
-.cbf-board{position:absolute;top:var(--rail);right:var(--rail);
-  bottom:var(--rail);left:var(--rail);
-  width:calc(100% - var(--rail)*2);height:calc(100% - var(--rail)*2);
+     （width/height を明示して初めて口いっぱいになる）。 */
+.cbf-board{position:absolute;top:var(--rail-w);left:var(--rail-w);
+  width:calc(100% - var(--rail-w)*2);height:calc(100% - var(--rail-w)*2);
   display:block}
-/* 桟。長手だけ伸びる帯。太さはどの辺も --rail。 */
+/* 桟。長手だけ伸びる帯。太さはどの辺も --rail-w。 */
 .cbf-r{position:absolute;display:block}
 .cbf-r svg{width:100%;height:100%;display:block}
-.cbf-r-t{left:0;right:0;top:0;height:var(--rail)}
-.cbf-r-b{left:0;right:0;bottom:0;height:var(--rail)}
-.cbf-r-l{top:0;bottom:0;left:0;width:var(--rail)}
-.cbf-r-r{top:0;bottom:0;right:0;width:var(--rail)}
+.cbf-r-t{left:0;right:0;top:0;height:var(--rail-w)}
+.cbf-r-b{left:0;right:0;bottom:0;height:var(--rail-w)}
+.cbf-r-l{top:0;bottom:0;left:0;width:var(--rail-w)}
+.cbf-r-r{top:0;bottom:0;right:0;width:var(--rail-w)}
 /* 隅の合口（留め接ぎ）。桟の角の正方に 45°。4隅で向きを変える。 */
-.cbf-m{position:absolute;width:var(--rail);height:var(--rail)}
+.cbf-m{position:absolute;width:var(--rail-w);height:var(--rail-w)}
 .cbf-m svg{width:100%;height:100%;display:block}
 .cbf-m-tl{left:0;top:0}
 .cbf-m-tr{right:0;top:0;transform:scaleX(-1)}
@@ -1013,17 +1012,17 @@ button.st:hover{filter:brightness(.97)}
 /* 稜線。外周の光／額の口の手前の光／口の奥の陰。どれも 1px。 */
 .cbf-edge{position:absolute;pointer-events:none}
 .cbf-edge-out{inset:0;box-shadow:inset 0 0 0 1px #f7e3c4bf}
-.cbf-edge-lip{inset:calc(var(--rail) - var(--rail)/4.5);
+.cbf-edge-lip{inset:calc(var(--rail-w) - var(--rail-w)/4.5);
   box-shadow:inset 0 0 0 1px #f3dcb873}
-.cbf-edge-in{inset:var(--rail);box-shadow:inset 0 0 0 1px #5e3c22bf}
+.cbf-edge-in{inset:var(--rail-w);box-shadow:inset 0 0 0 1px #5e3c22bf}
 /* ダボ（桟の中央、四隅）。真円。 */
-.cbf-peg{position:absolute;width:clamp(9px,1.35%,14px);aspect-ratio:1;
+.cbf-peg{position:absolute;width:clamp(9px,1.35cqw,14px);aspect-ratio:1;
   filter:drop-shadow(0 1px 1.5px #2c1c0a55)}
 .cbf-peg svg{width:100%;height:100%;display:block}
-.cbf-peg-tl{left:calc(var(--rail)/2);top:calc(var(--rail)/2);transform:translate(-50%,-50%)}
-.cbf-peg-tr{right:calc(var(--rail)/2);top:calc(var(--rail)/2);transform:translate(50%,-50%)}
-.cbf-peg-bl{left:calc(var(--rail)/2);bottom:calc(var(--rail)/2);transform:translate(-50%,50%)}
-.cbf-peg-br{right:calc(var(--rail)/2);bottom:calc(var(--rail)/2);transform:translate(50%,50%)}
+.cbf-peg-tl{left:calc(var(--rail-w)/2);top:calc(var(--rail-w)/2);transform:translate(-50%,-50%)}
+.cbf-peg-tr{right:calc(var(--rail-w)/2);top:calc(var(--rail-w)/2);transform:translate(50%,-50%)}
+.cbf-peg-bl{left:calc(var(--rail-w)/2);bottom:calc(var(--rail-w)/2);transform:translate(-50%,50%)}
+.cbf-peg-br{right:calc(var(--rail-w)/2);bottom:calc(var(--rail-w)/2);transform:translate(50%,50%)}
 
 /* プレート（乳白〜生成りの樹脂板）。実測 #f0e7de――純白ではない。
    背板（#b5814e）の上に乗るので、落ち影と面のハイライトで浮かせる。 */
