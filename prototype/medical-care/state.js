@@ -344,22 +344,29 @@
      「購入（買い切り）」「住宅改修（工事）」が別制度――住宅改修は
      家にある物ではなく工事済みの記録なので、絵札には含めない
      （2026-09-09 ユーザー判断）。貸与・購入だけを物として持つ。
-     kind は絵札のグリフを決める（bed／walker／monitor）。 */
+     kind は絵札のグリフを決める。★グリフを Health Icons（CC0）へ
+     差し替えた際に型を見直した（2026-09-11）――素材で実物の絵が
+     手に入るものだけを型にする。車椅子は `other`（箱＋丸）に埋もれて
+     いたが専用の絵を得たので独立させ、逆に「見守り機器」は CC0 に
+     実物の絵が無く自作も抽象になるため型から外した（該当する用具は
+     `other` ＝車椅子の絵に落ちるので、名前で読ませる）。 */
   const EQUIP_KINDS = {
-    bed:     { label: '介護ベッド', unit: '貸与' },
-    walker:  { label: '歩行器',     unit: '貸与' },
-    monitor: { label: '見守り機器', unit: '貸与' },
-    other:   { label: 'その他の用具', unit: '貸与' }
+    bed:    { label: '介護ベッド',   unit: '貸与' },
+    walker: { label: '歩行器',       unit: '貸与' },
+    chair:  { label: '車椅子',       unit: '貸与' },
+    cane:   { label: '杖',           unit: '購入' },
+    other:  { label: 'その他の用具', unit: '貸与' }
   };
   const EQUIP_TYPES = [
-    { name: '介護ベッド',         kind: 'bed'     },
-    { name: '車椅子',             kind: 'other'   },
-    { name: '歩行器',             kind: 'walker'  },
-    { name: '手すり（工事なし）', kind: 'other'   },
-    { name: 'スロープ',           kind: 'other'   },
-    { name: '見守りセンサー',     kind: 'monitor' },
-    { name: '入浴補助用具',       kind: 'other'   },
-    { name: 'ポータブルトイレ',   kind: 'other'   }
+    { name: '介護ベッド',         kind: 'bed'    },
+    { name: '車椅子',             kind: 'chair'  },
+    { name: '歩行器',             kind: 'walker' },
+    { name: '杖',                 kind: 'cane'   },
+    { name: '手すり（工事なし）', kind: 'other'  },
+    { name: 'スロープ',           kind: 'other'  },
+    { name: '見守りセンサー',     kind: 'other'  },
+    { name: '入浴補助用具',       kind: 'other'  },
+    { name: 'ポータブルトイレ',   kind: 'other'  }
   ];
   function equipType(name) { return EQUIP_TYPES.find(s => s.name === name) || null; }
   function kindOfEquip(name) { const t = equipType(name); return t ? t.kind : null; }
@@ -382,7 +389,7 @@
          引き上げられない領域だけ、その領域を仮データに落とす
        ・本番でユーザーのデータが入ったあとに形を変えるときも、
          この番号を上げて MIGRATIONS に1段足せば地続きで移行できる */
-  const SCHEMA = 5;
+  const SCHEMA = 6;
 
   const data = {
     /* この版で保存する。hydrate() が古い版を読んだら MIGRATIONS で
@@ -576,9 +583,11 @@
          （papers 側に「住宅改修の記録」として置ける）。 */
       equipment: [
         { id: uid('eq'), kind: 'bed', name: '介護ベッド',
-          provider: 'はまっ子福祉用具', tel: '045-222-3333', state: '確認済み' },
+          provider: 'はまっ子福祉用具', tel: '045-222-3333',
+          web: 'https://example.or.jp/hamakko' },
         { id: uid('eq'), kind: 'walker', name: '歩行器',
-          provider: 'はまっ子福祉用具', tel: '045-222-3333', state: '確認済み' }
+          provider: 'はまっ子福祉用具', tel: '045-222-3333',
+          web: 'https://example.or.jp/hamakko' }
       ],
       /* ④ 介護関係の書類やもの。その家にある、比較的安定した書類・
          ものの所在（§13-1）。中身（番号など）は持たない。並びは一例。 */
@@ -673,6 +682,33 @@
                  文の途中にあり、外すと文が壊れる） */
           const head = /^\s*(?:毎日|[月火水木金土日](?:\s*[・,、]\s*[月火水木金土日])*)\s*[　\s]*/;
           if (sv.days.length && head.test(u)) sv.use = u.replace(head, '').trim();
+        }
+      });
+    },
+    /* 版5→6：福祉用具に web を足し、型（kind）を見直した。
+         ・equipment に `web`（貸与元のサイト）を追加 ── 医療の
+           clinics.web / 薬局 / 木札の manager.web と同じ扱い
+         ・kind: 'monitor' を廃止（CC0 に実物の絵が無く、型として持つと
+           絵が抽象記号になる）→ 'other'（＝車椅子の絵）へ寄せる
+         ・車椅子を 'other' から 'chair' へ独立（専用の絵を得たため）
+
+       ★これは「足すだけ」ではない（kind の載せ替えがある）が、care を
+       落とすほどではない――用具の名前・貸与元・電話はそのまま使えて、
+       変わるのは絵の選び方だけ。名前から型を引き直す（kindOfEquip）。
+
+       ★RESEARCH.md §3 の教訓：state.js の形を変えたら hydrate/移行を
+       必ず見直す。ここを飛ばすと、旧セッションの保存分のせいで
+       「直したはずの表示が直っていないように見える」事故になる。 */
+    5: function (s) {
+      const c = s.care;
+      if (!c || !Array.isArray(c.equipment)) return;
+      c.equipment.forEach(eq => {
+        if (!eq) return;
+        if (!('web' in eq)) eq.web = '';
+        /* 旧 'monitor' と、車椅子が入っていた旧 'other' を引き直す。
+           名前で型が引ければそれを使い、引けなければ 'other' に落とす。 */
+        if (eq.kind === 'monitor' || eq.kind === 'other' || !eq.kind) {
+          eq.kind = kindOfEquip(eq.name) || 'other';
         }
       });
     }
@@ -858,12 +894,16 @@
     const medSrc = (m.medSources || []).filter(r => r.kind !== 'pharmacy');
     return [].concat(medSrc);
   }
-  /* ケアマネ（manager）は数え上げに入れない。状態を持たない行なので、
-     入れると分母だけ増えて「まだ辿れない」が薄まる（§12：進捗は入力率
-     ではなく、必要な状態がどこまで成立しているかで数える）。 */
+  /* ケアマネ（manager）と福祉用具（equipment）は数え上げに入れない。
+     どちらも状態を持たない行――ケアマネは書いた時点で辿れる連絡先、
+     用具は「名前と貸与元を書けば辿れる」もので、§11 の状態
+     （未確認／確認中／該当なし）を問う対象ではない。入れると分母だけ
+     増えて「まだ辿れない」が薄まる（§12：進捗は入力率ではなく、必要な
+     状態がどこまで成立しているかで数える）。木札の相談先・医療の通院
+     カードから状態バッジを外したのと同じ理由（2026-09-10）。 */
   function careRows() {
     const c = data.care;
-    return [].concat(c.services || [], c.equipment || [], c.papers || []);
+    return [].concat(c.services || [], c.papers || []);
   }
 
   function tallyOf(rows) {

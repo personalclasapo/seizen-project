@@ -1167,10 +1167,10 @@ button.st:hover{filter:brightness(.97)}
    ★プレート見出し（「今の支援」＋❤️）は落とした（2026-09-10・.cp-nohead）
    ――上節の見出し（.wcal-lead）が兼ねるので二重になるため。器（.cp の
    白い地・ネジ・落ち影）は残す。
-   ★下節「継続して使っている支援」の造形はまだ手を付けていない。次の
-   セッションで作り直す。
+   ★下節「介護で使うもの」は福祉用具の棚差しに作り替えた（2026-09-10。
+   .eqshelf／careShelf）。頭書きは上節（.wcal-lead）と同格の .eqs-lead。
    ★上節の見出しはカレンダー台紙の紙面が持つ（.wcal-lead）。.csh-plain
-   は下節と、上節が空欄のときだけ使う。 */
+   は上節が空欄のときだけ使う。 */
 /* 見出しを持たないプレート。カレンダーのリングは紙の上端より
    --wcal-top（26px）上へ出るので、その逃げがそのままプレートの上
    padding に積まれると、リング上端がプレート上端から 50px 近く下がる。
@@ -1505,29 +1505,100 @@ a:hover > .i-ext{opacity:1}
   .wcal-name{font-size:12px}
 }
 
-/* 継続して使っている支援｜福祉用具の絵札。物の絵（EQUIP_IC）＋
-   名前・事業所・連絡先。色はサービス表と同じ系統色トークンを流用
-   （行を見分ける役割は無いので、絵札はどれも同じ色でよい）。       */
-.eqcards{display:flex;flex-wrap:wrap;gap:12px}
-.eqc{flex:1 1 220px;min-width:190px;display:flex;gap:11px;
-  padding:12px 13px;border-radius:8px;background:#faf6ee;
-  border:1px solid #eae2cc}
-/* 書きかけの札。実データの札と同じ格で並べない（正本 §11）。
-   枠を破線に落とし、地を沈める――「まだ書いていない場所」であって
-   「そういう用具がある」ではない。 */
-.eqc-blank{background:#f6f2e8;border-style:dashed;border-color:#ddd3ba}
-.eqc-blank .eqc-ic{background:#ece5d4;color:#a4967a}
-.eqc-name-blank{color:var(--ink3);font-weight:600}
-.eqc-blank .eqc-prov{font-size:11px;color:var(--ink3)}
-.eqc-ic{flex:none;width:38px;height:38px;border-radius:9px;
-  display:grid;place-items:center;background:var(--sc-bg);color:var(--sc)}
-.eqc-body{min-width:0;display:flex;flex-direction:column;gap:2px}
-.eqc-name{font-size:13px;font-weight:700;color:var(--ink);
+/* ── 介護で使うもの｜福祉用具の棚差し ─────────────────────
+   「今の支援」プレートの下節。ベッド・歩行器などの福祉用具を、棚に
+   立てて置かれた現物として並べる（旧 .eqc の角丸カードは廃止――
+   CLAUDE.md：物の輪郭を CSS の矩形で代用しない）。棚板の造形は SVG
+   （render.js の careShelf：オークの板＋小口の厚み＋三角の受け）。
+   用具のグリフ（EQUIP_IC）は板の上面に接地して立つ正面図。
+   ここが受け持つのは「棚の置かれ方」と文字の余白だけ。 */
+
+/* 頭書き。上節（.wcal-lead）と同格――用具チップ＋見出し＋補足文＋鉛筆。
+   ★§3b・§7 で木札・カレンダー見出しについて2回通った「軽い＝装飾
+   なし」の誤りを繰り返さない。プレート地に文字を直接置かず、器を持つ。
+   カレンダー節＝時間軸なら、この節＝家に据わっている物なのでチップは棚
+   の箱（.wcal-lead の時計と対）。 */
+.eqs-lead{display:flex;align-items:flex-start;gap:10px;
+  padding:2px 0 12px}
+.eqs-lead-ic{flex:0 0 auto;width:30px;height:30px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,#7d6a45,#6a5936);color:#fdfaf3;
+  box-shadow:0 1px 2px #3d271233}
+.eqs-lead-ic svg{width:19px;height:19px}
+.eqs-lead-tx{min-width:0;display:flex;flex-direction:column;gap:2px;
+  padding-top:1px}
+.eqs-lead-tt{font-size:14px;font-weight:700;color:var(--ink1);
+  letter-spacing:.01em;line-height:1.3}
+.eqs-lead-nt{font-size:11px;color:var(--ink3);line-height:1.5}
+.eqs-lead .i-secedit{flex:0 0 auto;margin-left:auto;width:24px;height:24px}
+.eqs-lead .i-secedit svg{width:13px;height:13px}
+
+/* 棚の並び。★札は伸ばさない（flex:0 0 auto）――物の幅で切る。
+   以前は flex:1 1 210px で列を等分していたので、62px の物に対して板が
+   300px まで伸び、物が板の中央にぽつんと乗って左右に空板が残っていた
+   （2026-09-10 実測：絵の面積は札の 6.7%）。物と器の大きさを対応させる。 */
+.eqshelf{list-style:none;margin:0;padding:0;
+  display:flex;flex-wrap:wrap;gap:22px 26px}
+/* 札の幅は**いちばん長い行**から決める（勘で置かない）。実測：
+   用具名 65px／貸与元 92px／電話 101px／URL 144px。いちばん長い URL に
+   左右の逃げを足して 172px――ここを 150px にすると短冊が札いっぱいに
+   なり、「ブロックを中央に置く」余地が消えて左寄せと見分けが付かなく
+   なる（2026-09-11 の1回目でそうなった）。 */
+.eqs{flex:0 0 auto;width:172px;
+  display:flex;flex-direction:column}
+/* 用具が立つ舞台。グリフを棚板の上面に接地させる（.eqs-plank は
+   30px 高、上面は下から 17px。その線にグリフの底を合わせる）。 */
+.eqs-stage{position:relative;height:104px}
+.eqs-obj{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
+  color:var(--sc);line-height:0;
+  filter:drop-shadow(0 3px 2px #6b4a2c26)}
+/* グリフは Health Icons（CC0）と同規格の viewBox 48×48・塗りの
+   シルエット。stroke は使わない（render.js の EQUIP_IC）。 */
+.eqs-glyph{width:86px;height:86px;display:block;fill:currentColor}
+/* 棚板。幅いっぱい、舞台の底に敷く。SVG が preserveAspectRatio="none"
+   なので高さは固定（30 の viewBox を 30px で出す）。 */
+.eqs-plank{position:absolute;left:0;right:0;bottom:0;height:30px;
+  filter:drop-shadow(0 5px 5px #5a3a1e2e)}
+.eqs-plank svg{display:block;width:100%;height:100%}
+/* 足元の短冊。★ブロックそのものを札の中央に置き、ブロックの中の行頭は
+   左で揃える（2026-09-11 ユーザー指示）。絵は札の中央にあるのに文字だけ
+   左端に張り付いていて、1枚の札の中に軸が2本あった。
+
+   ★各行を個別に中央寄せしない（align-items:center は使わない）――
+   行ごとに中央に置くと4行の頭がバラバラになり、読む順序が崩れる。
+   外側の .eqs-cap を flex で中央に寄せ、内側の .eqs-capin が
+   いちばん長い行の幅に縮んで、その中で行頭が左に揃う。 */
+.eqs-cap{margin-top:9px;display:flex;justify-content:center}
+.eqs-capin{display:flex;flex-direction:column;gap:2px;
+  align-items:flex-start;min-width:0;max-width:100%}
+.eqs-name{font-size:13px;font-weight:700;color:var(--ink);
   display:flex;align-items:center;gap:6px}
-.eqc-prov{font-size:11.5px;color:var(--ink2)}
-.eqc-tel{display:inline-flex;align-items:center;gap:5px;
+.eqs-prov{font-size:11.5px;color:var(--ink2)}
+.eqs-tel{display:inline-flex;align-items:center;gap:5px;
   font-size:11.5px;font-weight:600;color:var(--gr)}
-.eqc-tel svg{width:13px;height:13px;flex:none;color:var(--gr2)}
+.eqs-tel svg{width:13px;height:13px;flex:none;color:var(--gr2)}
+/* 貸与元のサイト。医療の通院カード（.cg-link）と同じ格――ドメイン名を
+   出し、電話に近い太さで置く。
+   ★語の途中で折らない。折れると2行目に数文字だけ残って、短冊の
+   いちばん下が崩れる（実測：「example.or.jp/hamakko ↗」は 144px で、
+   札幅 150px にちょうど収まる）。入り切らない長さのときは末尾を
+   省略記号にする――URL は読み上げるものではなく押すものなので、
+   途中で折り返すより1行で切れているほうが扱いやすい。 */
+.eqs-web{display:inline-flex;align-items:center;gap:4px;
+  font-size:11.5px;font-weight:600;color:var(--gr);
+  text-decoration:underline;text-underline-offset:2px;
+  max-width:100%;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eqs-web svg{width:11px;height:11px;flex:none;opacity:.8}
+
+/* 書きかけの用具。実データと同じ格で並べない（正本 §11：空欄と
+   該当なしを同じ扱いにしない）。棚は残す（「ここに置ける」）が、
+   グリフを沈め、板をくすませ、短冊は一言だけ――「まだ書いていない
+   場所」であって「そういう用具が家にある」ではない。 */
+.eqs-blank .eqs-obj{color:#b7ab93;opacity:.6;filter:none}
+.eqs-blank .eqs-plank{opacity:.5;filter:none}
+.eqs-blank .eqs-name-blank{color:var(--ink3);font-weight:600}
+.eqs-blank .eqs-prov{font-size:11px;color:var(--ink3)}
 
 /* ④ 介護関係の書類やもの｜荷札（タグ）の横並び。
    札の輪郭（斜めの切り欠き）とハトメは SVG（render.js の CTAG_SHAPE）。
