@@ -344,29 +344,43 @@
      「購入（買い切り）」「住宅改修（工事）」が別制度――住宅改修は
      家にある物ではなく工事済みの記録なので、絵札には含めない
      （2026-09-09 ユーザー判断）。貸与・購入だけを物として持つ。
-     kind は絵札のグリフを決める。★グリフを Health Icons（CC0）へ
-     差し替えた際に型を見直した（2026-09-11）――素材で実物の絵が
-     手に入るものだけを型にする。車椅子は `other`（箱＋丸）に埋もれて
-     いたが専用の絵を得たので独立させ、逆に「見守り機器」は CC0 に
-     実物の絵が無く自作も抽象になるため型から外した（該当する用具は
-     `other` ＝車椅子の絵に落ちるので、名前で読ませる）。 */
+     kind は絵札のグリフを決める。
+
+     ★想定されるものは**ひととおり型として持ち**、それ以外だけを
+     `other`（自由入力の受け皿）に落とす（2026-09-11 ユーザー指摘）。
+     以前は絵が用意できた4種だけを型にして残りを `other` に寄せ、
+     その `other` が車椅子の絵だったので、手すりもスロープもトイレも
+     棚に車椅子が並んで見えていた。**型の粒度を「絵が用意できたか」で
+     決めない**――家庭で実際に使われるものを型にし、絵はそれに合わせて
+     用意する。`other` は「名札を下げた箱」＝まだ名前でしか分からない
+     物として描く（車椅子を流用しない）。
+
+     貸与／購入の別（unit）は制度上の原則。入浴補助用具・ポータブル
+     トイレは「特定福祉用具販売」＝買い切り、それ以外の可動品は貸与。
+     手すり（工事なし）・スロープは工事を伴わなければ貸与になる
+     （工事を伴うものは住宅改修なので、そもそもここに載せない）。 */
   const EQUIP_KINDS = {
-    bed:    { label: '介護ベッド',   unit: '貸与' },
-    walker: { label: '歩行器',       unit: '貸与' },
-    chair:  { label: '車椅子',       unit: '貸与' },
-    cane:   { label: '杖',           unit: '購入' },
-    other:  { label: 'その他の用具', unit: '貸与' }
+    bed:    { label: '介護ベッド',       unit: '貸与' },
+    chair:  { label: '車椅子',           unit: '貸与' },
+    walker: { label: '歩行器',           unit: '貸与' },
+    cane:   { label: '杖',               unit: '購入' },
+    rail:   { label: '手すり',           unit: '貸与' },
+    ramp:   { label: 'スロープ',         unit: '貸与' },
+    bath:   { label: '入浴補助用具',     unit: '購入' },
+    toilet: { label: 'ポータブルトイレ', unit: '購入' },
+    sensor: { label: '見守りセンサー',   unit: '貸与' },
+    other:  { label: 'その他の用具',     unit: '貸与' }
   };
   const EQUIP_TYPES = [
     { name: '介護ベッド',         kind: 'bed'    },
     { name: '車椅子',             kind: 'chair'  },
     { name: '歩行器',             kind: 'walker' },
     { name: '杖',                 kind: 'cane'   },
-    { name: '手すり（工事なし）', kind: 'other'  },
-    { name: 'スロープ',           kind: 'other'  },
-    { name: '見守りセンサー',     kind: 'other'  },
-    { name: '入浴補助用具',       kind: 'other'  },
-    { name: 'ポータブルトイレ',   kind: 'other'  }
+    { name: '手すり（工事なし）', kind: 'rail'   },
+    { name: 'スロープ',           kind: 'ramp'   },
+    { name: '入浴補助用具',       kind: 'bath'   },
+    { name: 'ポータブルトイレ',   kind: 'toilet' },
+    { name: '見守りセンサー',     kind: 'sensor' }
   ];
   function equipType(name) { return EQUIP_TYPES.find(s => s.name === name) || null; }
   function kindOfEquip(name) { const t = equipType(name); return t ? t.kind : null; }
@@ -389,7 +403,7 @@
          引き上げられない領域だけ、その領域を仮データに落とす
        ・本番でユーザーのデータが入ったあとに形を変えるときも、
          この番号を上げて MIGRATIONS に1段足せば地続きで移行できる */
-  const SCHEMA = 6;
+  const SCHEMA = 7;
 
   const data = {
     /* この版で保存する。hydrate() が古い版を読んだら MIGRATIONS で
@@ -688,9 +702,13 @@
     /* 版5→6：福祉用具に web を足し、型（kind）を見直した。
          ・equipment に `web`（貸与元のサイト）を追加 ── 医療の
            clinics.web / 薬局 / 木札の manager.web と同じ扱い
-         ・kind: 'monitor' を廃止（CC0 に実物の絵が無く、型として持つと
-           絵が抽象記号になる）→ 'other'（＝車椅子の絵）へ寄せる
-         ・車椅子を 'other' から 'chair' へ独立（専用の絵を得たため）
+         ・kind: 'monitor' を廃止 → 'other' へ寄せる
+         ・車椅子を 'other' から 'chair' へ独立
+       ※この版の判断（当時の素材の都合で型を絞った）は版7で覆している
+         ――'monitor' は 'sensor' として型に戻り、'other' に寄せた
+         5種もそれぞれ型を持った。ここは当時の形のまま残す（移行は
+         版を跨いで順に当たるので、6の処理を書き換えると地続きで
+         なくなる）。
 
        ★これは「足すだけ」ではない（kind の載せ替えがある）が、care を
        落とすほどではない――用具の名前・貸与元・電話はそのまま使えて、
@@ -708,6 +726,30 @@
         /* 旧 'monitor' と、車椅子が入っていた旧 'other' を引き直す。
            名前で型が引ければそれを使い、引けなければ 'other' に落とす。 */
         if (eq.kind === 'monitor' || eq.kind === 'other' || !eq.kind) {
+          eq.kind = kindOfEquip(eq.name) || 'other';
+        }
+      });
+    },
+    /* 版6→7：用具の型を増やした（rail / ramp / bath / toilet / sensor）。
+       版6では絵が用意できた4種だけが型で、手すり・スロープ・入浴補助・
+       ポータブルトイレ・見守りセンサーは全部 'other' に落ちていた
+       （そして 'other' の絵が車椅子だった）。型が増えたので、
+       'other' に溜まっていた行を名前から引き直す。
+
+       ★引き直すのは 'other' の行だけ。すでに bed/chair/walker/cane が
+       付いている行は触らない――家族が名前を書き換えずに型だけ直して
+       いる可能性があり、こちらで上書きするとその手直しを消す。
+       名前から型が引けないものは 'other' のまま（受け皿の絵になる）。
+
+       ★RESEARCH.md §3 の教訓：state.js の形を変えたら hydrate/移行を
+       必ず見直す。ここでは equipment の中身は減らないので care は
+       落とさない（型の付け替えだけ）。 */
+    6: function (s) {
+      const c = s.care;
+      if (!c || !Array.isArray(c.equipment)) return;
+      c.equipment.forEach(eq => {
+        if (!eq) return;
+        if (!eq.kind || eq.kind === 'other') {
           eq.kind = kindOfEquip(eq.name) || 'other';
         }
       });
@@ -1090,6 +1132,13 @@
   function setEquipName(eq, name) {
     if (!eq || eq.name === name) return false;
     eq.name = name;
+    /* 名前を空に戻したら型も受け皿へ戻す。★ここを「引けたときだけ
+       付け替える」にしておくと、名前を消したのに前の絵（ベッド等）が
+       残り、空の札にベッドが立つ（正本 §11：空欄を空欄として持つ）。 */
+    if (!String(name || '').trim()) {
+      if (eq.kind !== 'other') eq.kind = 'other';
+      return true;
+    }
     const k = kindOfEquip(name);
     if (k && k !== eq.kind) eq.kind = k;
     return true;

@@ -1510,7 +1510,9 @@ a:hover > .i-ext{opacity:1}
    立てて置かれた現物として並べる（旧 .eqc の角丸カードは廃止――
    CLAUDE.md：物の輪郭を CSS の矩形で代用しない）。棚板の造形は SVG
    （render.js の careShelf：オークの板＋小口の厚み＋三角の受け）。
-   用具のグリフ（EQUIP_IC）は板の上面に接地して立つ正面図。
+   用具のグリフ（EQUIP_IC）は板の上面に接地して立つ、物の絵。向きは
+   物ごとに読みやすいほうを採る（ベッド・車椅子・入浴椅子は側面、
+   歩行器・手すりは正面）――揃えるのは向きではなく層の手つき。
    ここが受け持つのは「棚の置かれ方」と文字の余白だけ。 */
 
 /* 頭書き。上節（.wcal-lead）と同格――用具チップ＋見出し＋補足文＋鉛筆。
@@ -1549,12 +1551,16 @@ a:hover > .i-ext{opacity:1}
 /* 用具が立つ舞台。グリフを棚板の上面に接地させる（.eqs-plank は
    30px 高、上面は下から 17px。その線にグリフの底を合わせる）。 */
 .eqs-stage{position:relative;height:104px}
+/* ★color は持たない――グリフが色を自前で持つので、ここで --sc を
+   流しても効かない（効くように見える指定を残さない）。 */
 .eqs-obj{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
-  color:var(--sc);line-height:0;
+  line-height:0;
   filter:drop-shadow(0 3px 2px #6b4a2c26)}
-/* グリフは Health Icons（CC0）と同規格の viewBox 48×48・塗りの
-   シルエット。stroke は使わない（render.js の EQUIP_IC）。 */
-.eqs-glyph{width:86px;height:86px;display:block;fill:currentColor}
+/* グリフは自作の線画（viewBox 48×48）。色はパスが自前で持つので
+   fill:currentColor は指定しない――医療タイル（.mst-art）と同じで、
+   面（淡色）と線（濃色）の2色を層ごとに使い分けており、1色に潰すと
+   層が消える（render.js の EQUIP_IC）。 */
+.eqs-glyph{width:86px;height:86px;display:block}
 /* 棚板。幅いっぱい、舞台の底に敷く。SVG が preserveAspectRatio="none"
    なので高さは固定（30 の viewBox を 30px で出す）。 */
 .eqs-plank{position:absolute;left:0;right:0;bottom:0;height:30px;
@@ -1590,6 +1596,32 @@ a:hover > .i-ext{opacity:1}
   max-width:100%;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .eqs-web svg{width:11px;height:11px;flex:none;opacity:.8}
+/* 用具名の候補チップ（編集中だけ・.chipz を介護色で上書き）。
+   ★札は 172px しかないので、医療のパネル内チップ（11.5px・padding
+   4/11）のままだと1個で1行を食う。文字と余白を一段落として、2〜3個が
+   1行に並ぶようにする。選択中は介護の茶――医療の緑をそのまま持ち
+   込まない（正本 §13）。★--sc-bg は使えない（.c-equip は .eqs-obj に
+   付いていて、チップは .eqs-capin の側にあるので継承しない）ので、
+   c-equip と同じ値を直に書く。 */
+/* 候補は畳んでおく。開く手がかりは小さな1行（山形＋文言）。
+   ★平置きにしない理由：9個を並べると 172px の札で5行を占め、絵と
+   連絡先の間に壁ができてチップが札の主役になる（2026-09-11 実測）。
+   医療のパネル（幅がある）と同じ平置きを機械的に持ち込まない。 */
+.eqs-kinds{display:flex;flex-direction:column;align-items:flex-start;
+  margin:3px 0 1px}
+.eqs-kinds-h{display:inline-flex;align-items:center;gap:3px;
+  padding:0;border:0;background:none;cursor:pointer;
+  font-family:inherit;font-size:10.5px;color:var(--ink3)}
+.eqs-kinds-h:hover{color:var(--ink2)}
+.eqs-kinds-ch{display:flex;line-height:0;transition:transform .12s}
+.eqs-kinds-ch svg{width:11px;height:11px}
+.eqs-kinds.open .eqs-kinds-ch{transform:rotate(90deg)}
+.eqs-chipz{padding:6px 0 2px;gap:4px}
+.eqs-chipz .chip{padding:2px 7px;font-size:10.5px;border-radius:11px;
+  line-height:1.5}
+.eqs-chipz .chip:hover{border-color:#d9b887;background:#fdf7ec}
+.eqs-chipz .chip.on{background:#f6eddd;border-color:#d9b887;
+  color:#8a6224;font-weight:650}
 
 /* 書きかけの用具。実データと同じ格で並べない（正本 §11：空欄と
    該当なしを同じ扱いにしない）。棚は残す（「ここに置ける」）が、
