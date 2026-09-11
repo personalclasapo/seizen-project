@@ -122,6 +122,77 @@
            '<path d="M6.6 8.7A2 2 0 0 0 5 10.6l-.5 3.1a6 6 0 1 0 6.9 8.3l-2-1a3.9 3.9 0 1 1-3.6-5.5l.3-1.8 3.5 2.3a2 2 0 0 0 1.1.3H16v-2h-4.6L7.9 9.6a2 2 0 0 0-1.3-.9Z"/>' +
            '<path d="M17 20.5 15 15h-2.2l2.3 6.2a1 1 0 0 0 .9.65H20v-2h-2.5Z"/>'
   };
+
+  /* 支援の絵。用具の EQUIP_IC と同じ 48x48・5階調・1.3〜1.8px の
+     手つきで描く。ただし棚には載せない――こちらは家にある物ではなく、
+     暮らしへ届く行為だから、各分類を「支援が届く手掛かり」で表す。
+
+       訪問 … 開いた玄関＋訪問バッグ
+       通い … 送迎車
+       食事 … 保温バッグ＋ふた付きの食事容器
+       暮らし … 掃除用バケツ＋買い物袋
+
+     小さい分類記号を引き伸ばしたものではなく、器・中身・接地・細部の
+     層を持つ物体画。色は曜日の点と対応する分類色を保つ。             */
+  const SERVICE_ART_COLORS = {
+    home: { l:'#bd6877', b:'#fae9ed', m:'#f0cbd2', w:'#fff', f:'#d999a5' },
+    out:  { l:'#5685ad', b:'#e9f2f9', m:'#cbdfee', w:'#fff', f:'#8fb2cf' },
+    meal: { l:'#4f9472', b:'#e8f4ee', m:'#c9e4d6', w:'#fff', f:'#88bea2' },
+    life: { l:'#8370b8', b:'#f0ecfa', m:'#dbd3ef', w:'#fff', f:'#ad9dd3' }
+  };
+  function serviceArt(kind) {
+    const c = SERVICE_ART_COLORS[kind] || SERVICE_ART_COLORS.life;
+    if (kind === 'home') {
+      return (
+        '<path d="M7 13 19 6l12 7v27H7Z" fill="'+c.b+'" stroke="'+c.l+'" stroke-width="1.8" stroke-linejoin="round"/>' +
+        '<path d="M5 14 19 5l14 9" fill="none" stroke="'+c.l+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<path d="M12 17h14v23H12Z" fill="'+c.f+'" fill-opacity=".38" stroke="'+c.l+'" stroke-width="1.5"/>' +
+        '<path d="m13 18 10 3v19l-10-2Z" fill="'+c.m+'" stroke="'+c.l+'" stroke-width="1.7" stroke-linejoin="round"/>' +
+        '<circle cx="20.5" cy="30" r="1" fill="'+c.l+'"/>' +
+        '<path d="M29 28h12v11a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2Z" fill="'+c.m+'" stroke="'+c.l+'" stroke-width="1.7" stroke-linejoin="round"/>' +
+        '<path d="M32 28v-2a3 3 0 0 1 6 0v2" fill="none" stroke="'+c.l+'" stroke-width="1.5" stroke-linecap="round"/>' +
+        /* 名札。医療の十字にすると訪問看護へ限定して読まれるため、
+           介護職が持ってくる仕事用バッグとして識別させる。 */
+        '<rect x="32" y="31" width="6" height="5" rx="1" fill="'+c.w+'" stroke="'+c.l+'" stroke-width="1.2"/>' +
+        '<path d="M33.5 33.5h3" stroke="'+c.f+'" stroke-width="1.1" stroke-linecap="round"/>');
+    }
+    if (kind === 'out') {
+      return (
+        '<path d="M6 17a3 3 0 0 1 3-3h22a5 5 0 0 1 4 2l6 8a4 4 0 0 1 1 2.5V35H6Z" fill="'+c.b+'" stroke="'+c.l+'" stroke-width="1.8" stroke-linejoin="round"/>' +
+        '<path d="M10 18h9v7h-9Zm12 0h9v7h-9Zm12 1 5 6h-5Z" fill="'+c.w+'" stroke="'+c.l+'" stroke-width="1.4" stroke-linejoin="round"/>' +
+        '<path d="M22 27h9v8h-9Z" fill="'+c.m+'" stroke="'+c.l+'" stroke-width="1.5"/>' +
+        '<path d="M25 30h3" stroke="'+c.f+'" stroke-width="1.4" stroke-linecap="round"/>' +
+        '<path d="M8 35h32" stroke="'+c.l+'" stroke-width="1.7" stroke-linecap="round"/>' +
+        '<circle cx="14" cy="37" r="4" fill="'+c.w+'" stroke="'+c.l+'" stroke-width="1.7"/>' +
+        '<circle cx="35" cy="37" r="4" fill="'+c.w+'" stroke="'+c.l+'" stroke-width="1.7"/>' +
+        '<circle cx="14" cy="37" r="1.5" fill="'+c.f+'"/><circle cx="35" cy="37" r="1.5" fill="'+c.f+'"/>');
+    }
+    if (kind === 'meal') {
+      return (
+        '<path d="M8 17h32v23H8Z" fill="'+c.b+'" stroke="'+c.l+'" stroke-width="1.8" stroke-linejoin="round"/>' +
+        '<path d="M15 17v-3a5 5 0 0 1 10 0v3M31 17v-3a3 3 0 0 1 6 0v3" fill="none" stroke="'+c.l+'" stroke-width="1.6" stroke-linecap="round"/>' +
+        '<path d="M8 23h32" stroke="'+c.f+'" stroke-width="1.4"/>' +
+        '<path d="M14 27h20v10H14Z" fill="'+c.w+'" stroke="'+c.l+'" stroke-width="1.6" stroke-linejoin="round"/>' +
+        '<path d="M12.5 26h23v3h-23Z" fill="'+c.m+'" stroke="'+c.l+'" stroke-width="1.5" stroke-linejoin="round"/>' +
+        '<path d="M19 32h10" stroke="'+c.f+'" stroke-width="1.4" stroke-linecap="round"/>' +
+        '<path d="M20 11c-2-2 2-3 0-5M27 11c-2-2 2-3 0-5" fill="none" stroke="'+c.f+'" stroke-width="1.5" stroke-linecap="round"/>');
+    }
+    return (
+      '<path d="M7 20h19l-2 18a2 2 0 0 1-2 1.8H11a2 2 0 0 1-2-1.8Z" fill="'+c.b+'" stroke="'+c.l+'" stroke-width="1.8" stroke-linejoin="round"/>' +
+      '<ellipse cx="16.5" cy="20" rx="9.5" ry="3" fill="'+c.m+'" stroke="'+c.l+'" stroke-width="1.6"/>' +
+      '<path d="M10 19a7 7 0 0 1 14 0" fill="none" stroke="'+c.l+'" stroke-width="1.6" stroke-linecap="round"/>' +
+      '<path d="M12 28h9" stroke="'+c.w+'" stroke-width="1.5" stroke-linecap="round"/>' +
+      '<path d="M27 18h14l-1 22H28Z" fill="'+c.m+'" stroke="'+c.l+'" stroke-width="1.7" stroke-linejoin="round"/>' +
+      '<path d="M31 19v-3a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="'+c.l+'" stroke-width="1.5" stroke-linecap="round"/>' +
+      /* 食材。十字では救急用品に見えるため、買い物袋には果物を描く。 */
+      '<circle cx="34" cy="28" r="2.3" fill="'+c.w+'" stroke="'+c.l+'" stroke-width="1.2"/>' +
+      '<path d="M34 25.5c.2-1.4 1.2-2 2.3-2" fill="none" stroke="'+c.f+'" stroke-width="1.1" stroke-linecap="round"/>' +
+      '<path d="M6 41h36" stroke="'+c.f+'" stroke-width="1.4" stroke-linecap="round"/>');
+  }
+  function serviceGlyph(kind) {
+    return '<svg class="wcal-art-svg" viewBox="0 0 48 48" aria-hidden="true">' +
+      serviceArt(kind) + '</svg>';
+  }
   /* サービス表の「名前」「支援内容」欄の例文。★分類（訪問／通い／食事／
      暮らし）で中身が変わるので、分類ごとに持つ。長い例文はモバイルの
      狭い欄（233px 級）で右が見切れ、プレースホルダーは横スクロールでき
@@ -339,13 +410,21 @@
 
   /* 行を消すボタン（節を開いているときだけ出す）。1度目のクリックで
      「削除しますか？」の文字を出す――アイコンの意味を途中で変えない
-     （✕ が ✓ に化けると、何が起きるのか読めない）。 */
+     （✕ が ✓ に化けると、何が起きるのか読めない）。
+     ★確認は「削除しますか？」を1行目、「やめる｜削除する」のボタン
+     2つを2行目に横並びで置く（2026-09-11 ユーザー指摘）。以前は
+     1行に横並びで、狭い場所（用具の札172px等）で折り返すと「削除
+     しますか？」の途中で改行される・ボタンが縦に積まれるなど、置き場所
+     ごとに崩れ方が変わっていた。行を最初から分けておけば、幅が狭くても
+     この2行の形のまま縮むだけで済む。 */
   function delBtn(id) {
     if (confirmDelete === id) {
-      return '<span class="rowdel-ask">削除しますか？' +
-        '<button type="button" class="rowdel-yes" data-delyes="' + id + '">削除</button>' +
+      return '<span class="rowdel-ask">' +
+        '<span class="rowdel-ask-q">削除しますか？</span>' +
+        '<span class="rowdel-ask-btns">' +
         '<button type="button" class="rowdel-no" data-delno="1">やめる</button>' +
-        '</span>';
+        '<button type="button" class="rowdel-yes" data-delyes="' + id + '">削除する</button>' +
+        '</span></span>';
     }
     return '<button type="button" class="rowdel" data-del="' + id +
       '" aria-label="この行を削除">' + XMARK + '</button>';
@@ -2273,7 +2352,10 @@
         '<span class="wcal-lead-nt">人が来る・出かける・サービスを受けるなど、' +
           '予定が決まっている支援です。</span>' +
       '</span>' +
+      '<span class="lead-actions">' +
+      (on ? '<button type="button" class="rowadd" data-add="service">＋ 支援を追加</button>' : '') +
       editBtn('service') +
+      '</span>' +
       '</div>';
     /* 列見出し。★全列に見出しを付ける――1枚の表になったので、
        曜日だけが見出しを持つのは筋が通らない。 */
@@ -2320,13 +2402,15 @@
          いる――削除も「行そのもの」への操作なので、項目の列とは別の
          この帯に、アイコンと縦に積む。どの項目とも並ばないので、
          「なぜこの項目の隣か」という問いが起きない。                */
+      /* 絵は支援名だけに所属させず、支援名〜電話までの文章全体と並べる。
+         左列の中央に置くことで、1件の支援全体を表す絵として読ませる。 */
+      const artCell = '<span class="wc-art-rail">' +
+        '<span class="wcal-art ' + r.kind.tone + '">' +
+          serviceGlyph(sv.kind) + '</span>' +
+        (on ? delBtn(sv.id) : '') +
+        '</span>';
       const svCell = on
         ? '<div class="wc-sv">' +
-            '<span class="wc-sv-rail">' +
-              '<span class="wcal-ic ' + r.kind.tone + '">' +
-                fillIc(SV_IC[sv.kind] || SV_IC.life, 15) + '</span>' +
-              delBtn(sv.id) +
-            '</span>' +
             '<span class="wc-sv-ef">' +
               /* ラベルは「分類」だけにする。★「（行頭の絵と色）」まで
                  入れると折り返して2行になり、隣の列と段がずれる
@@ -2343,8 +2427,6 @@
             '</span>' +
           '</div>'
         : '<div class="wc-sv">' +
-            '<span class="wcal-ic ' + r.kind.tone + '">' +
-              fillIc(SV_IC[sv.kind] || SV_IC.life, 15) + '</span>' +
             '<span class="wc-sv-tx">' +
               '<span class="wcal-name">' + esc(sv.name || '') + '</span>' +
               (sv.does ? '<span class="wcal-does">' + esc(sv.does) + '</span>' : '') +
@@ -2352,10 +2434,11 @@
           '</div>';
       /* ② 連絡先 ③ 曜日 ④ 時間帯。 */
       return '<div class="wcal-row' + (on ? ' wcal-row-edit' : '') + '">' +
-        '<div class="wc-info">' + svCell +
+        '<div class="wc-info">' + artCell +
+        '<div class="wc-info-body">' + svCell +
         '<div class="wc-ct">' +
           (on ? contactCellEdit(sv, p) : contactCell(sv)) +
-        '</div></div>' +
+        '</div></div></div>' +
         '<span class="wcal-cells">' + cells + '</span>' +
         '<div class="wc-tm">' +
           (on
@@ -2862,6 +2945,7 @@
     '<path d="M10 9V7.4a2 2 0 0 1 4 0V9" fill="none" stroke="currentColor" ' +
       'stroke-width="1.7" stroke-linejoin="round"/>';
   function equipLead() {
+    const on = secOn('equipment');
     return '<div class="eqs-lead">' +
       '<span class="eqs-lead-ic" aria-hidden="true">' +
         svgIc(CARE_SHELF_IC, 19) + '</span>' +
@@ -2869,26 +2953,26 @@
         '<span class="eqs-lead-tt">介護で使うもの</span>' +
         '<span class="eqs-lead-nt">暮らしを支えている、ずっと家にある用具です。</span>' +
       '</span>' +
+      '<span class="lead-actions">' +
+      (on ? '<button type="button" class="rowadd" data-add="equip">＋ 用具を追加</button>' : '') +
       editBtn('equipment') +
+      '</span>' +
       '</div>';
   }
 
   function equipmentBlock() {
     const list = S.data.care.equipment || [];
-    const on = secOn('equipment');
     return equipLead() +
       (list.length
         ? '<ul class="eqshelf">' +
             list.map((eq, i) => equipCard(eq, i)).join('') +
           '</ul>'
-        : '<p class="i-ev-empty">まだ登録がありません。</p>') +
-      (on ? '<button type="button" class="rowadd" data-add="equip">＋ 用具を足す</button>' : '');
+        : '<p class="i-ev-empty">まだ登録がありません。</p>');
   }
 
   /* 「今の支援」プレートの中身。2節を縦に積む。 */
   function careSupportBlock() {
     const services = S.data.care.services || [];
-    const editingService = secOn('service');
     return '<div class="cp-sub">' +
       /* ★上節の見出しはカレンダー台紙の紙面が持つ（weekCalendarLead）。
          空欄のときだけ、器が無いので従来の小見出しを出す。 */
@@ -2899,11 +2983,12 @@
       /* ★編集用の表を下に出さない（2026-09-09 指摘）。表示と編集で場所が
          変わるうえ、同じ項目が2箇所に出て「どちらが本物か」が分からな
          かった。カレンダーの行そのものが入力欄になる（weekCalendar の
-         on）。足すボタンだけは行の外に要る。 */
-      (editingService
-        ? '<button type="button" class="rowadd" data-add="service">' +
-            '＋ 支援を足す</button>'
-        : '') +
+         on）。足すボタンは見出し右上（wcal-lead）へ移した
+         （2026-09-11 ユーザー指摘：左下の単独ボタンを廃止し、用具の
+         「＋ 用具を追加」と同じ並びに揃える）。services が空のときは
+         weekCalendar 自体が描かれないので、その場合だけ careSubHead の
+         右に鉛筆はあっても足すボタンが無い――このケースは節の鉛筆を
+         押して最初の1件を書く動線（既存のまま）。 */
       '</div>' +
       '<div class="cp-sub">' +
       equipmentBlock() +

@@ -73,11 +73,19 @@ button.st:hover{filter:brightness(.97)}
   border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink3)}
 .rowdel:hover{border-color:#e0b3ae;color:var(--rd)}
 .rowdel svg{width:13px;height:13px}
-/* 削除の確認。アイコンを化けさせず、文字で問う。 */
-.rowdel-ask{display:inline-flex;align-items:center;gap:6px;flex:none;
-  font-size:11px;color:var(--ink3)}
+/* 削除の確認。アイコンを化けさせず、文字で問う。
+   ★「削除しますか？」を1行目、「やめる｜削除する」を2行目に横並びで
+   置く縦積み（2026-09-11 ユーザー指摘）。以前は3つを1行に並べて幅の
+   狭い場所（用具の札など）で任せの折り返しに頼っていたので、置き場所
+   によって「削除しますか？」の途中で改行される・ボタンが縦に積まれる
+   など崩れ方が揃わなかった。行を最初から分けておけば、幅が狭くても
+   この2行の形のまま縮むだけで済む。 */
+.rowdel-ask{display:flex;flex-direction:column;align-items:center;gap:6px;
+  flex:none;font-size:11px;color:var(--ink3)}
+.rowdel-ask-q{white-space:nowrap}
+.rowdel-ask-btns{display:flex;align-items:center;gap:6px}
 .rowdel-yes,.rowdel-no{padding:3px 10px;border-radius:6px;font-family:inherit;
-  font-size:11px;font-weight:700;cursor:pointer;border:1px solid}
+  font-size:11px;font-weight:700;cursor:pointer;border:1px solid;white-space:nowrap}
 .rowdel-yes{background:#fbeceb;border-color:#e0b3ae;color:#c24a3f}
 .rowdel-yes:hover{background:#f7ddda}
 .rowdel-no{background:#fff;border-color:var(--line);color:var(--ink2)}
@@ -1267,8 +1275,16 @@ button.st:hover{filter:brightness(.97)}
 .wcal-lead-tt{font-size:14px;font-weight:700;color:var(--ink1);
   letter-spacing:.01em;line-height:1.3}
 .wcal-lead-nt{font-size:11px;color:var(--ink3);line-height:1.5}
-.wcal-lead .i-secedit{flex:0 0 auto;margin-left:auto;width:24px;height:24px}
 .wcal-lead .i-secedit svg{width:13px;height:13px}
+/* 頭書きの操作（＋追加・鉛筆/☑）を1つのグループにまとめ、上下中央を
+   揃える（2026-09-11 ユーザー指摘：以前は align-items:flex-start の
+   行の中で追加ボタンと☑が上端揃えになり、中心が約5pxずれていた）。
+   用具側（.eqs-lead）も同じクラスを共有し、両節で同じ配置ルールに
+   なる。 */
+.lead-actions{flex:0 0 auto;margin-left:auto;align-self:center;
+  display:flex;align-items:center;gap:8px}
+.lead-actions .rowadd{flex:0 0 auto;margin:0;white-space:nowrap}
+.lead-actions .i-secedit{flex:0 0 auto;margin-left:0;width:24px;height:24px}
 
 /* ── 週のカレンダー（1週分の紙）───────────────────────
    造形の正本は参考画像の卓上リングカレンダー（2026-09-09 ユーザー提示）。
@@ -1357,28 +1373,40 @@ button.st:hover{filter:brightness(.97)}
 .wcal-row + .wcal-row::before{content:"";position:absolute;
   left:-14px;right:-14px;top:0;border-top:1px solid #ece3cd}
 
-/* 支援と連絡先をひとつのセルに収め、曜日・時間帯は行全体の中央に置く。 */
-.wc-info{min-width:0;display:flex;flex-direction:column;gap:10px}
-.wc-info .wc-ct{padding-left:33px;gap:3px}
+/* 支援絵は、支援名〜電話までの文章ブロック全体に対して上下中央へ置く。
+   絵を支援名の行だけに入れると、連絡先の左が再び意味のない空白になる。 */
+.wc-info{min-width:0;display:grid;grid-template-columns:64px minmax(0,1fr);
+  column-gap:16px;align-items:center}
+.wc-info-body{min-width:0;display:flex;flex-direction:column;gap:10px}
+.wc-info .wc-ct{padding-left:0;gap:3px}
 .wc-info .wc-ct:empty{display:none}
 .wc-info .wc-prov-link,.wc-info .wc-tel{font-weight:400}
 
 /* ① 支援＝絵＋名前＋支援内容。 */
-.wc-sv{display:flex;align-items:flex-start;gap:9px;min-width:0}
-/* アイコンの縦の帯。★編集中はここに✕を積む（2026-09-10 判断）。
-   時間帯の隣など「項目の並び」に置くと、その項目と横に並ぶ意味が
-   必ず問われる。アイコンは行の左端で「この行が何の支援か」を示す
-   唯一の固定要素――項目の列とは別のこの帯に、削除も縦に積む。     */
-.wc-sv-rail{flex:none;display:flex;flex-direction:column;
-  align-items:center;gap:6px}
-.wc-sv-rail .rowdel{width:24px;height:24px}
-.wcal-ic{flex:none;width:24px;height:24px;border-radius:7px;margin-top:1px;
-  display:grid;place-items:center;background:var(--sc-bg);color:var(--sc)}
+.wc-sv{display:flex;align-items:center;min-width:0}
+/* アイコンの縦の帯。★編集中はここに✕を積む（2026-09-10 判断。
+   2026-09-11：下ではなく上へ――用具の並び（.eqs-stage、絵の上）と
+   縦の位置を揃える）。時間帯の隣など「項目の並び」に置くと、その
+   項目と横に並ぶ意味が必ず問われる。アイコンは行の左端で「この行が
+   何の支援か」を示す唯一の固定要素――項目の列とは別のこの帯に、
+   削除も縦に積む。 */
+.wc-art-rail{position:relative;width:64px;height:64px;align-self:center;
+  display:grid;place-items:center;margin-top:24px}
+/* 編集中は .wc-art-rail 自身が行の高さいっぱいに伸びる（align-self:
+   stretch、下の .wcal-row-edit）ので、✕の位置は rail の上端ではなく
+   絵（.wcal-art、rail の中央に place-items:center で座る）を基準に
+   置く――top を rail 基準の固定値にすると、編集中だけ rail が伸びて
+   絵から離れ、上の入力欄に重なった（2026-09-11 実測）。 */
+.wc-art-rail .rowdel{position:absolute;left:50%;top:50%;
+  transform:translate(-32px,-56px);width:24px;height:24px}
+.wcal-art{flex:none;width:64px;height:64px;display:grid;place-items:center;
+  line-height:0;filter:drop-shadow(0 2px 1px #3d271217)}
+.wcal-art-svg{display:block;width:64px;height:64px}
 .wc-sv-tx{min-width:0;display:flex;flex-direction:column;gap:2px}
-.wcal-name{font-size:12.5px;font-weight:700;color:var(--ink);min-width:0}
+.wcal-name{font-size:14.5px;line-height:1.5;font-weight:700;color:var(--ink);min-width:0}
 /* 支援内容＝その時間に何をしてもらうか。家族が最初に読む一行なので、
    灰色の添え物にせず地の文の濃さで置く。 */
-.wcal-does{font-size:11.5px;color:var(--ink);line-height:1.5;
+.wcal-does{font-size:12px;color:var(--ink);line-height:1.5;
   overflow-wrap:anywhere;word-break:normal;line-break:strict}
 
 /* ② 連絡先。★横に並べると3つ目（Web）が必ず溢れて折り返す――
@@ -1439,15 +1467,23 @@ a:hover > .i-ext{opacity:1}
    量の違う確認テキストがどこかの欄と重なる、を繰り返していた
    （時間帯の隣→分類欄への重なり）。浮かせれば、下の欄が何であっても
    関係なくなる。 */
-.wc-sv-rail{position:relative}
-.wc-sv-rail .rowdel-ask{position:absolute;left:28px;top:0;z-index:6;
-  white-space:nowrap;background:#fff8ea;border:1px solid #e4d3ab;
+/* ★吹き出しは✕の真上ではなく右へ浮かせる（2026-09-11 実測）。
+   編集中の .wc-info は grid の align-items:center で絵を欄ブロック全体
+   の縦中央に置くため、絵の真上は「支援内容」欄などフォームの行と
+   同じ高さに重なる――上に出すと必ずどこかの入力欄に被った。横に
+   出せば、下の欄が何であっても関係なくなる（元の設計意図のまま）。
+   縦位置は絵（rail）の中央よりわずかに上――フォーム欄は1つ43px高な
+   ので、rail の真ん中に置くと吹き出し本体（約44px）が「名前」と
+   「支援内容」の2欄にまたがって重なる。1欄ぶん（21.5px）持ち上げ、
+   「支援内容」欄1つに収まる位置にする。 */
+.wc-art-rail .rowdel-ask{position:absolute;left:68px;top:50%;
+  transform:translateY(calc(-50% - 21.5px));z-index:6;
+  background:#fff8ea;border:1px solid #e4d3ab;
   border-radius:8px;padding:7px 8px;
-  box-shadow:0 3px 10px #6b421f2e;
-  display:flex;align-items:center;gap:6px;font-size:11.5px}
-/* 吹き出しの尖り（左向き＝アイコンを指す）。 */
-.wc-sv-rail .rowdel-ask::before{content:"";position:absolute;
-  left:-5px;top:10px;width:9px;height:9px;background:#fff8ea;
+  box-shadow:0 3px 10px #6b421f2e;font-size:11.5px}
+/* 吹き出しの尖り（左向き＝絵を指す）。 */
+.wc-art-rail .rowdel-ask::before{content:"";position:absolute;
+  left:-5px;bottom:10px;width:9px;height:9px;background:#fff8ea;
   border-left:1px solid #e4d3ab;border-bottom:1px solid #e4d3ab;
   transform:rotate(45deg)}
 /* セルの中の1欄。★支援と連絡先の欄が横一直線に並ぶよう、**1欄の高さを
@@ -1542,18 +1578,22 @@ a:hover > .i-ext{opacity:1}
 }
 /* さらに狭いと7列は入らない。曜日を中身の下へ落とす。
    ★見出し帯は消さない――リングが貫く先が無くなり、綴じ具が宙に浮く。 */
-@container (max-width:430px){
+/* 支援絵を64pxで保ったまま文章を読める幅が必要なので、左列が約190pxに
+   なる前に曜日を下へ送る。小さい分類記号だった時代の430pxでは遅く、
+   絵の横の本文が100pxほどまで潰れて不自然に折り返していた。 */
+@container (max-width:560px){
   .wcal-head,.wcal-row,.wcal-grid{grid-template-columns:1fr;gap:0}
   .wcal-head{display:none}
   .wc-info,.wcal-cells,.wc-tm{grid-column:1}
   .wcal-grid{display:none}
   .wcal-cells{margin-top:7px}
   .wcal-collines{grid-column:1}
-  .wc-tm{margin-top:3px;padding-left:33px}
+  .wc-info .wc-ct{padding-left:0;margin-left:0}
+  .wc-tm{margin-top:3px;padding-left:80px}
   .wcal-use::before{content:"時間帯：";color:var(--ink3);font-weight:600}
   .wcal-c::after{content:attr(data-d);font-size:9px;color:var(--ink3)}
   .wcal-c{grid-auto-flow:row;gap:1px;align-content:center}
-  .wcal-name{font-size:12px}
+  .wcal-name{font-size:14px}
 }
 
 /* ── 介護で使うもの｜福祉用具の棚差し ─────────────────────
@@ -1583,7 +1623,6 @@ a:hover > .i-ext{opacity:1}
 .eqs-lead-tt{font-size:14px;font-weight:700;color:var(--ink1);
   letter-spacing:.01em;line-height:1.3}
 .eqs-lead-nt{font-size:11px;color:var(--ink3);line-height:1.5}
-.eqs-lead .i-secedit{flex:0 0 auto;margin-left:auto;width:24px;height:24px}
 .eqs-lead .i-secedit svg{width:13px;height:13px}
 
 /* 棚の並び。★札は伸ばさない（flex:0 0 auto）――物の幅で切る。
@@ -1600,22 +1639,22 @@ a:hover > .i-ext{opacity:1}
 .eqs{flex:0 0 auto;width:172px;
   display:flex;flex-direction:column}
 /* 用具が立つ舞台。グリフを棚板の上面に接地させる（.eqs-plank は
-   30px 高、上面は下から 17px。その線にグリフの底を合わせる）。 */
-.eqs-stage{position:relative;height:104px}
+   22px 高。絵の足元も棚の縮小に合わせて下げる）。 */
+.eqs-stage{position:relative;height:78px}
 /* ★color は持たない――グリフが色を自前で持つので、ここで --sc を
    流しても効かない（効くように見える指定を残さない）。 */
-.eqs-obj{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
+.eqs-obj{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
   line-height:0;
-  filter:drop-shadow(0 3px 2px #6b4a2c26)}
+  filter:drop-shadow(0 2px 1px #6b4a2c18)}
 /* グリフは自作の線画（viewBox 48×48）。色はパスが自前で持つので
    fill:currentColor は指定しない――医療タイル（.mst-art）と同じで、
    面（淡色）と線（濃色）の2色を層ごとに使い分けており、1色に潰すと
    層が消える（render.js の EQUIP_IC）。 */
-.eqs-glyph{width:86px;height:86px;display:block}
+.eqs-glyph{width:64px;height:64px;display:block}
 /* 棚板。幅いっぱい、舞台の底に敷く。SVG が preserveAspectRatio="none"
-   なので高さは固定（30 の viewBox を 30px で出す）。 */
-.eqs-plank{position:absolute;left:0;right:0;bottom:0;height:30px;
-  filter:drop-shadow(0 5px 5px #5a3a1e2e)}
+   なので高さを22pxに揃えて、棚の厚みを控えめにする。 */
+.eqs-plank{position:absolute;left:0;right:0;bottom:0;height:22px;
+  filter:drop-shadow(0 2px 2px #5a3a1e18)}
 .eqs-plank svg{display:block;width:100%;height:100%}
 /* 足元の短冊。★ブロックそのものを札の中央に置き、ブロックの中の行頭は
    左で揃える（2026-09-11 ユーザー指示）。絵は札の中央にあるのに文字だけ
@@ -1661,11 +1700,25 @@ a:hover > .i-ext{opacity:1}
    絵の右上へ移した（2026-09-11 ユーザー指摘）――棚に立つ物を丸ごと
    消す操作なので、物の絵に添えるほうが自然。.eqs-stage は
    position:relative なので右上に絶対配置できる。 */
-.eqs-stage .rowdel{position:absolute;top:0;right:0;z-index:1;
+.eqs-stage .rowdel{position:absolute;top:0;right:0;z-index:2;
   background:#fff;border-color:var(--rule)}
-.eqs-stage .rowdel-ask{position:absolute;top:0;right:0;z-index:1;
-  background:#fff;border-radius:8px;padding:3px 6px;
-  box-shadow:0 2px 6px #6b4a2c26;white-space:nowrap}
+/* 削除の確認は「支援」節（.wc-art-rail）と同じ吹き出しにする
+   （2026-09-11 ユーザー指摘）――以前は角丸の箱がただ✕の上に乗るだけで、
+   何を指しているかが読めなかった。★横（左右）には出さない――172px の
+   札は隣の札との間が26pxしか無く、横並びの吹き出しは幅が入り切らず
+   隣の札に重なった（実測）。棚板の下、絵の真下に出す――下にはまだ
+   用具名などの欄があるが、確認は一時的な浮きものなので隠れても実害は
+   無い。中身（.rowdel-ask の縦積み：問い→ボタン2つ）は共通の形の
+   まま、幅は札の172pxに収まる（縦積みなので横に広がらない）。 */
+.eqs-stage .rowdel-ask{position:absolute;left:0;right:0;top:100%;
+  margin-top:8px;z-index:6;margin-left:auto;margin-right:auto;width:fit-content;
+  background:#fff8ea;border:1px solid #e4d3ab;border-radius:8px;
+  padding:7px 8px;box-shadow:0 3px 10px #6b421f2e}
+/* 吹き出しの尖り（上向き＝絵を指す）。 */
+.eqs-stage .rowdel-ask::before{content:"";position:absolute;
+  left:50%;top:-5px;margin-left:-4.5px;width:9px;height:9px;background:#fff8ea;
+  border-left:1px solid #e4d3ab;border-top:1px solid #e4d3ab;
+  transform:rotate(45deg)}
 /* 種類セレクト。選ぶと名前欄へ反映される「アクション」なので、
    選んだあとの見た目は選択済みの値ではなく毎回この定形に戻る
    （data-setselval、render.js 参照）。 */
