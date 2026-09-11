@@ -2773,11 +2773,29 @@
         (on
           ? equipEditFields(p, eq)
           : ('<span class="eqs-name">' + esc(eq.name || '') + '</span>' +
-             '<span class="eqs-prov">' + esc(eq.provider || '') + '</span>' +
-             (eq.tel ? '<span class="eqs-tel">' + TEL + esc(eq.tel) + '</span>' : '') +
-             equipWeb(p, eq))) +
+             equipProvView(eq) +
+             (eq.tel ? '<span class="eqs-tel">' + TEL + esc(eq.tel) + '</span>' : ''))) +
       '</span></span>' +
       '</li>';
+  }
+
+  /* 貸与元・購入元（閲覧時）。★サービス表の連絡先セル（contactCell の
+     'link' 案）と同じ手つきに揃えた（2026-09-11 ユーザー指摘）――
+     「暮らしの時間に入る支援」では事業所名そのものをリンクにし、URL の
+     文字列は出さない。用具だけ Web を独立行にして URL 文字列
+     （example.or.jp/hamakko）を出していたのは、介護ゾーン内で手つきが
+     割れていた。URL は家族が読んで判断する情報ではなく、押せれば足りる
+     という同じ理由で、ここも貸与元・購入元の名前自体をリンクにする。
+     Web が無い用具は名前をただの文字として出す（該当する連絡先を
+     持たないだけで、状態としては空欄）。 */
+  function equipProvView(eq) {
+    const prov = String(eq.provider || '').trim();
+    if (!prov) return '';
+    const web = String(eq.web || '').trim();
+    return web
+      ? '<a class="eqs-prov eqs-prov-link" href="' + esc(web) + '" target="_blank" ' +
+          'rel="noopener">' + esc(prov) + EXT + '</a>'
+      : '<span class="eqs-prov">' + esc(prov) + '</span>';
   }
 
   /* 編集中の中身。★ラベル無しでプレースホルダだけに頼っていたら
@@ -2819,15 +2837,13 @@
       '</select>';
   }
 
-  /* 用具1件の Web。編集中は入力欄、閲覧時は URL があるときだけリンク
-     （空欄に「サイト」の文字だけが残らないように）。 */
+  /* 用具1件の Web 入力欄（編集中のみ）。★閲覧時は equipProvView() が
+     貸与元・購入元の名前自体をリンクにするので、Web の URL 文字列を
+     単独で出す場所はもう無い（サービス表の contactCell と同じ手つき
+     に揃えた。2026-09-11 ユーザー指摘）。ここは名前と kind が
+     決まったあとの「連絡先の裏付け」として、編集中だけ書ける欄。 */
   function equipWeb(p, eq) {
-    const on = secOn('equipment');
-    const web = String(eq.web || '').trim();
-    if (on) return '<span class="eqs-web">' + evWeb(p + 'web', web) + '</span>';
-    if (!web) return '';
-    return '<a class="eqs-web" href="' + esc(web) + '" target="_blank" ' +
-      'rel="noopener">' + esc(webLabel(web)) + EXT + '</a>';
+    return '<span class="eqs-web">' + evWeb(p + 'web', eq.web) + '</span>';
   }
 
   /* 「介護で使うもの」節の頭書き。上節（カレンダー紙面の .wcal-lead）と

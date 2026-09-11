@@ -1581,27 +1581,22 @@ a:hover > .i-ext{opacity:1}
   align-items:flex-start;min-width:0;max-width:100%}
 .eqs-name{font-size:13px;font-weight:700;color:var(--ink);
   display:flex;align-items:center;gap:6px}
+/* 貸与元・購入元。★サービス表の連絡先セル（contactCell の 'link' 案）
+   と同じ手つきに揃えた（2026-09-11 ユーザー指摘）――「暮らしの時間に
+   入る支援」では事業所名そのものをリンクにし、URL の文字列は出さない。
+   用具だけ Web を独立行にして URL 文字列を出していたのは、介護ゾーン
+   内で手つきが割れていた。web が無いときは .eqs-prov だけの地の文字、
+   web があるときは .eqs-prov-link で名前自体がリンクになる
+   （equipProvView）。 */
 .eqs-prov{font-size:11.5px;color:var(--ink2)}
+.eqs-prov-link{color:var(--gr);font-weight:600;text-decoration:underline;
+  text-underline-offset:2px}
 .eqs-tel{display:inline-flex;align-items:center;gap:5px;
   font-size:11.5px;font-weight:600;color:var(--gr)}
 .eqs-tel svg{width:13px;height:13px;flex:none;color:var(--gr2)}
-/* 貸与元のサイト。医療の通院カード（.cg-link）と同じ格――URL（webLabel
-   で https:// を残したまま末尾の "/" だけ落としたもの）を出し、電話に
-   近い太さで置く。
-   ★語の途中で折らない。折れると2行目に数文字だけ残って、短冊の
-   いちばん下が崩れる。入り切らない長さのときは末尾を省略記号にする
-   ――URL は読み上げるものではなく押すものなので、途中で折り返すより
-   1行で切れているほうが扱いやすい。 */
-.eqs-web{display:inline-flex;align-items:center;gap:4px;
-  font-size:11.5px;font-weight:600;color:var(--gr);
-  text-decoration:underline;text-underline-offset:2px;
-  max-width:100%;min-width:0;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.eqs-web svg{width:11px;height:11px;flex:none;opacity:.8}
-/* ★編集中（.i-ef を包んでいるとき）はリンクの見た目（緑・下線）を
-   継がせない――入力欄なのにリンクに見えていた。 */
-.eqs-web:has(.i-ef){color:inherit;font-weight:400;text-decoration:none;
-  overflow:visible}
+/* Web の入力欄（編集中のみ。equipWeb）。閲覧時は .eqs-prov-link が
+   兼ねるので、ここはただの欄――リンクらしい色・下線は持たない。 */
+.eqs-web{display:inline-flex;align-items:center;width:100%}
 /* 編集中の用具カード。★プレースホルダだけに頼ると、書いたとたんに
    「何の欄か」が消える（2026-09-11 ユーザー指摘）。ケアマネの連絡先
    セル（.wc-ef-l）と同じ手つき――欄の上に小さく固定ラベルを1本ずつ
