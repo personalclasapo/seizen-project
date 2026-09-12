@@ -3009,79 +3009,133 @@
       '</select>';
   }
 
-  /* 荷札そのもの。輪郭を CSS の角丸矩形で代用しない（CLAUDE.md）――
-     荷札は「左端が斜めに切り落とされ、穴にハトメが入った紙片」で、
-     その切り欠きとハトメが無いとただのカードに見える。
-     紙片は縦に伸びるので、輪郭だけ `preserveAspectRatio="none"` で
-     引き伸ばし、ハトメは真円を保つ別レイヤーに置く。               */
-  /* 札の輪郭は3つの層に分ける――引き伸ばしても斜めの切り欠きが
-     鈍らないように、左の「頭」（切り欠き＋ハトメ）は縦横比を保つ
-     固定幅の SVG、右の「胴」は伸びる矩形。1枚の SVG を
-     `preserveAspectRatio="none"` で伸ばすと、45°の斜めが寝て
-     矢印に見える（実際にそうなった）。                            */
-  /* 札は1本の閉じたパスで描く。分割して重ねると、頭の輪郭の端が
-     胴の途中で切れて「札の中を斜め線が走る」（実際にそうなった）。
-     幅は札ごとに変わるので、`viewBox` の幅を実寸から作り直す――
-     引き伸ばさないので、切り欠きの 45°もハトメの真円も保たれる。 */
-  function ctagShape(w, h) {
-    /* 切り欠きの奥行き。実物の荷札は「短く鈍い導入」で、深く取ると
-       矢印に見える。札の高さのおよそ 1/4.5 に収める。 */
-    const N = Math.round(h / 4.5);
-    const r = 7;               /* 右の角丸 */
-    return '<span class="ctag-shape" aria-hidden="true">' +
-      '<svg class="ctag-svg" viewBox="0 0 ' + w + ' ' + h + '" ' +
-        'preserveAspectRatio="none">' +
+  /* ④ 介護関係の書類やもの｜画鋲で留めたメモ紙。
+     ★2026-09-12：荷札（ctagShape / ctagShapeHung / papersBar）を捨てて
+     作り直した。荷札は 9/11 に「正本が指定している比喩だから残す」と
+     判断したが、実装を並べて見ると、札が板の上に**ただ置かれている**
+     ままで、上2節が持っている「その物が現実でどう留まっているか」を
+     最後まで持てなかった（桟から吊る 'bar' 案も、桟のほうが目立って
+     札が飾りになった）。
+
+     ユーザー提示の参考画像は「画鋲で留めた紙」（2枚）。介護ゾーンの器は
+     コルクボード＝掲示板なので、画鋲は**この器が現実に持っている留め方**。
+     結び先を札ごとに作る必要が消える。
+
+     参考画像から取るのは構造だけ（§追補2 の教訓：参考画像は仕様書では
+     ない）――紙が複数重なる／画鋲1本で留まる／わずかに傾く／紙が
+     たわむ。写実的なぼかし影も太い黒縁も持ち込まない。SeiZen の
+     塗り＋細い線に寄せる。
+
+     層の持たせ方は上2節と同じ：
+       裏の紙（ずれて覗く）→ 表の紙（たわんだ四辺）→ 画鋲（真円）
+     カレンダーが「紙を3枚ずらした束＋綴じ帯」、棚が「板＋小口＋受け」
+     を持つのと同じ密度。                                            */
+
+  /* 紙のたわみ。上下の辺をわずかに反らせる（直線の矩形だと「紙」に
+     ならない）。振幅は 2.2px ―― 深く取ると布に見える。
+     w/h は viewBox 座標。紙は幅が伸びるので preserveAspectRatio="none"
+     だが、稜線は non-scaling-stroke で実 px 固定（棚板と同じ扱い）。 */
+  /* ★上辺は「両端が垂れ下がる」向きに反らせる。1点で留めた紙は、
+     留めた中央が最も高く、左右の角が自重で下がる――ここを逆
+     （中央が膨らむ）にすると、紙が下から押されているように見えて
+     画鋲と噛み合わない（最初の実装がそうなっていた）。
+     下辺は逆に、中央がわずかに垂れる。                              */
+  function memoPaperPath(w, h, sag) {
+    const s = sag == null ? 2.6 : sag;
+    return 'M0 ' + s +
+      ' Q' + (w / 2) + ' ' + (-s * 0.9) + ' ' + w + ' ' + s +
+      ' L' + w + ' ' + (h - s * 0.5) +
+      ' Q' + (w / 2) + ' ' + (h + s * 0.7) + ' 0 ' + (h - s * 0.5) + ' Z';
+  }
+
+  /* メモ紙1枚（裏の紙＋表の紙）。画鋲は真円を保つので別レイヤー。
+     ★裏の紙は「真下に隠す」のではなく、角を外へ出す――影と見分けが
+     つかないと層にならない（棚の小口・カレンダーの紙束と同じ事情で、
+     ここは 2026-09-12 の1回目の実装で実際に潰れた）。 */
+  function memoPaper() {
+    const W = 100, H = 62;
+    return '<span class="cmemo-sheet" aria-hidden="true">' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
         '<defs>' +
-          '<linearGradient id="ctagPaper" x1="0" y1="0" x2="0" y2="1">' +
-            '<stop offset="0" stop-color="#f7eee2"/>' +
-            '<stop offset="1" stop-color="#eaddc9"/>' +
+          '<linearGradient id="cmemoFace" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0" stop-color="#ffffff"/>' +
+            '<stop offset=".6" stop-color="#fdfdfb"/>' +
+            '<stop offset="1" stop-color="#f5f3ee"/>' +
           '</linearGradient>' +
         '</defs>' +
-        '<path d="M' + N + ' 1 H' + (w - r - 1) + ' a' + r + ' ' + r +
-          ' 0 0 1 ' + r + ' ' + r + ' V' + (h - r - 1) + ' a' + r + ' ' + r +
-          ' 0 0 1 -' + r + ' ' + r + ' H' + N + ' L3 ' + (h / 2 + 5) +
-          ' a7 7 0 0 1 0-10 Z" ' +
-          'fill="url(#ctagPaper)" stroke="#cdb894" stroke-width="1.3" ' +
-          'vector-effect="non-scaling-stroke"/>' +
-        /* 紙に開いた穴＋真鍮のハトメ。真円を保つ位置に置く。 */
-        '<g transform="translate(' + (N - 8) + ' ' + (h / 2) + ')">' +
-          '<circle r="6.4" fill="none" stroke="#a8905f" stroke-width="2.2"/>' +
-          '<circle r="6.4" fill="none" stroke="#7d6636" stroke-opacity=".45" ' +
-            'stroke-width=".8"/>' +
-          '<circle r="4.3" fill="#cbb896"/>' +
-          '<path d="M-3.6-2.8a4.3 4.3 0 0 1 6.2-1.4" fill="none" ' +
-            'stroke="#f3e8d2" stroke-opacity=".8" stroke-width="1.1" ' +
-            'stroke-linecap="round"/>' +
+        /* 裏の紙。逆向きに傾けて、左下と右下の角を外へ出す。
+           ★白紙の裏なので、木目地とほぼ同化しない程度に薄いベージュを
+           残す（真っ白の2枚だと層が消える・表と裏の区別が付かない）。 */
+        '<g transform="rotate(-2.2 50 10)">' +
+          '<path d="' + memoPaperPath(W, H - 1, 1.8) + '" fill="#e4d9c4" ' +
+            'transform="translate(0 3.2)"/>' +
+        '</g>' +
+        /* 表の紙の落ち影。板から浮いている厚みぶん。 */
+        '<path d="' + memoPaperPath(W, H) + '" fill="#5a4224" fill-opacity=".18" ' +
+          'transform="translate(.6 1.6)"/>' +
+        /* 表の紙。★プレート地（#f7f1e9〜#eae0d3）との差が付くよう、
+           ほぼ白まで明度を上げた（2026-09-12 ユーザー指摘：地との差が
+           無い）。 */
+        '<path d="' + memoPaperPath(W, H) + '" fill="url(#cmemoFace)"/>' +
+        '<g vector-effect="non-scaling-stroke" fill="none">' +
+          '<path d="' + memoPaperPath(W, H) + '" stroke="#d3c7ae"/>' +
         '</g>' +
       '</svg>' +
-    '</span>';
+      '</span>';
   }
-  /* 札の実寸。CSS の flex-basis と高さに合わせる（幅は伸びるが、
-     viewBox も同じ比で作るので斜めは寝ない）。 */
-  const CTAG_SHAPE = ctagShape(220, 80);
 
-  /* ④ 介護関係の書類やもの｜荷札（タグ）の横並び。その家にある、
-     比較的安定した書類・ものの所在だけを持つ（§13-1）。中身は持たない。 */
+  /* 画鋲。紙の上端中央に刺さる。真円と落ち影を保つので、伸縮する紙の
+     SVG の外へ固定寸法で置く（リングを CSS 側に出したのと同じ事情）。
+     頭（球）＋針の根元＋板に落ちる小さな影の3層。色は介護ゾーンの
+     緑（--gr 系）に寄せる――赤や青を入れるとボードの色数が増える。 */
+  const CMEMO_PIN =
+    '<svg viewBox="0 0 22 22" aria-hidden="true">' +
+      /* 紙に落ちる影。頭の右下、紙の面の上に落ちる（頭より下＝紙側に
+         置く――頭の横に並べると、板の上に転がっているように見える）。 */
+      '<ellipse cx="12.8" cy="15.4" rx="4.6" ry="2.2" fill="#5a4224" ' +
+        'fill-opacity=".20"/>' +
+      /* 針の根元。頭から斜めに出て、紙へ入る手前で切れる。 */
+      '<path d="M10.2 11.2 12.2 14.8" stroke="#9b8d73" stroke-width="1.8" ' +
+        'stroke-linecap="round"/>' +
+      /* 頭（球）。上に光、下に陰。 */
+      '<circle cx="9.8" cy="8" r="5.6" fill="#5d7f52"/>' +
+      '<path d="M9.8 13.6a5.6 5.6 0 0 0 5.2-3.4" fill="none" stroke="#3f5c37" ' +
+        'stroke-width="1.8" stroke-linecap="round" stroke-opacity=".75"/>' +
+      '<path d="M9.8 2.4a5.6 5.6 0 0 1 5.4 4.2" fill="none" stroke="#8bad7d" ' +
+        'stroke-width="2" stroke-linecap="round"/>' +
+      '<circle cx="7.7" cy="5.9" r="1.7" fill="#d6e5cd" fill-opacity=".8"/>' +
+    '</svg>';
+
+  /* ④ 介護関係の書類やもの｜画鋲で留めたメモ紙を並べる。その家にある、
+     比較的安定した書類・ものの所在だけを持つ（§13-1）。中身は持たない。
+
+     ★傾きは付けない（2026-09-12 ユーザー指摘）。紙ごとに角度を変える
+     案で試したが、4列グリッドに傾きを乗せると「傾いた名残」が残って
+     見づらいだけで、手で留めた感じには効かなかった。画鋲と紙の層
+     （たわみ・重なり）で留め物であることは足りている。              */
   function carePapersBlock() {
     const c = S.data.care;
     const on = secOn('cpapers');
-    const tags = (c.papers || []).map((r, i) => {
+    const notes = (c.papers || []).map((r, i) => {
       const p = 'care.papers.' + i + '.';
-      return '<div class="ctag">' +
-        CTAG_SHAPE +
-        '<div class="ctag-body">' +
-          '<div class="ctag-item">' + ev(p + 'item', r.item, 'line', '書類・ものの名前') +
+      return '<li class="cmemo">' +
+        memoPaper() +
+        '<span class="cmemo-pin" aria-hidden="true">' + CMEMO_PIN + '</span>' +
+        '<div class="cmemo-body">' +
+          '<div class="cmemo-item">' +
+            '<span class="cmemo-ic">' + svgIc(CARE_DOC_IC, 16) + '</span>' +
+            ev(p + 'item', r.item, 'line', '書類・ものの名前') +
             (on ? delBtn(r.id) : '') + '</div>' +
-          '<div class="ctag-where">' + PIN_MARK +
+          '<div class="cmemo-where">' + PIN_MARK +
             ev(p + 'where', r.where, 'line', '置き場所') + '</div>' +
-          '<div class="ctag-foot">' + stBadge('care.papers.' + i) + '</div>' +
+          '<div class="cmemo-foot">' + stBadge('care.papers.' + i) + '</div>' +
         '</div>' +
-      '</div>';
+      '</li>';
     }).join('');
-    return '<div class="ctags">' + tags +
-      (on ? '<button type="button" class="ctag-add rowadd" data-add="cpaper">＋ 足す</button>' : '') +
-      '</div>' +
-      '<p class="sec-lead" style="margin:10px 0 0">原本の場所は「書類・資料」にまとめています。</p>';
+    return '<ul class="cmemos">' + notes +
+        (on ? '<li class="cmemo-addwrap"><button type="button" ' +
+          'class="cmemo-add rowadd" data-add="cpaper">＋ 足す</button></li>' : '') +
+      '</ul>';
   }
 
   function renderCare() {

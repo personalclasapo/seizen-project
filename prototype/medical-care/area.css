@@ -1195,7 +1195,12 @@ button.st:hover{filter:brightness(.97)}
 .cp-sc-bl{left:0;bottom:0}
 .cp-sc-br{right:0;bottom:0}
 
-.cp-h{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+/* ★左右に少し余白（2026-09-12 ユーザー指摘：見出しアイコン・編集の
+   鉛筆が、額の隅のネジと間隔なく並んで見える）。ネジは .cp から
+   inset:9px で浮くが、見出しアイコン（26px）・鉛筆（28px）自体の
+   大きさが .cp のパディング残りを食いつぶし、実測でネジの内側に
+   2px 食い込んでいた。 */
+.cp-h{display:flex;align-items:center;gap:9px;margin:0 6px 12px}
 .cp-h h5{margin:0;font-size:14px;font-weight:700;letter-spacing:-.01em;
   color:var(--ink)}
 .cp-h .i-secedit{margin-left:auto}
@@ -1733,28 +1738,68 @@ a:hover > .i-ext{opacity:1}
 .eqs-blank .eqs-name-blank{color:var(--ink3);font-weight:600}
 .eqs-blank .eqs-prov{font-size:11px;color:var(--ink3)}
 
-/* ④ 介護関係の書類やもの｜荷札（タグ）の横並び。
-   札の輪郭（斜めの切り欠き）とハトメは SVG（render.js の CTAG_SHAPE）。
-   ここは札の置かれ方と、文字を紙の上へ乗せる余白だけ。           */
-.ctags{display:flex;flex-wrap:wrap;gap:14px}
-/* 札は紙片なので、伸び縮みしても縦横比を大きく崩さない。
-   viewBox（220×80＝2.75:1）に近いところで止める。 */
-.ctag{position:relative;flex:1 1 220px;min-width:200px;max-width:264px;
-  filter:drop-shadow(0 2px 4px #3d271224)}
-.ctag-shape{position:absolute;inset:0;pointer-events:none}
-/* 札の輪郭（切り欠き・ハトメ・角丸）は1本のパス。viewBox は 220×80 で、
-   札の実寸もこの比に保つ（.ctag の flex-basis と min-height）ので、
-   斜めは寝ず、ハトメも真円のまま。 */
-.ctag-svg{position:absolute;inset:0;width:100%;height:100%;display:block}
-/* 紙の左端は斜めなので、本文は切り欠きのぶん右へ寄せる。 */
-.ctag-body{position:relative;min-width:0;padding:12px 15px 11px 34px}
-.ctag-item{font-size:12.5px;font-weight:700;color:var(--ink);
-  display:flex;align-items:center;gap:6px}
-.ctag-item .rowdel{margin-left:auto}
-.ctag-where{display:flex;align-items:center;gap:5px;margin-top:5px;
-  font-size:11px;color:var(--ink2)}
-.ctag-foot{margin-top:7px}
-.ctag-add{flex:0 0 auto;align-self:center;margin:0}
+/* ④ 介護関係の書類やもの｜画鋲で留めたメモ紙。
+   紙の輪郭（たわんだ四辺）と画鋲は SVG（render.js の memoPaper /
+   CMEMO_PIN）。ここは紙の置かれ方と、文字を紙の上へ乗せる余白だけ。
+   ★2026-09-12：荷札（.ctag / .cbar 一式）を捨てて作り直した。
+
+   4列のグリッド。紙はほぼ同じ大きさの小片なので、幅なりに折り返す
+   flex ではなく grid で列を揃える。
+   ★傾きは付けない（2026-09-12 ユーザー指摘）。1枚ずつ角度を変える
+   案を試したが、4列グリッドの上では「傾いた名残」が邪魔なだけで
+   留め物らしさには効かなかった。画鋲と紙の層（たわみ・重なり）で
+   足りている。 */
+/* 列数は器の実幅から決める（`.cp-papers` にビューポート幅ではなく
+   container query を効かせる）――介護ボードは左のサイドバーぶん
+   ビューポートより狭く、しかも幅で畳まれ方が変わるので、@media では
+   合わない（カレンダー行で同じことをやっている・§追補）。
+   閾値は実測から：4列は1枚 176px まで成立し、それ未満（780px 幅で
+   113px、400px 幅で 57px）になると紙が縦長の短冊に潰れて読めない。 */
+/* ★container は親（`.cp-papers` の本体）に置く――`.cmemos` 自身に
+   container-type を付けても、要素は自分自身を問い合わせられないので
+   クエリが一度も効かない（2026-09-12 の実装で実測して判明）。 */
+/* 左右に少し余白を足す（2026-09-12 ユーザー指摘：紙の角が額の隅の
+   ネジとほぼ同じ位置に来て、間隔なく並んで見える）。棚（.eqs）は
+   絵が板の中央に接地するので同じプレート内寸でもネジまで迫らないが、
+   紙は矩形の縁いっぱいまで塗りがあるぶん、同じ間隔でも近く見える。 */
+.cp-papers .cp-body{container-type:inline-size;padding-left:10px;padding-right:10px}
+.cmemos{list-style:none;margin:0;padding:0;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:18px 14px}
+/* 実測（器の実幅）：1400/1000 で 784/754px → 4列で1枚 176〜184px、
+   ここは成立。780/620 で 476〜495px → 4列だと 107〜113px まで落ちて
+   紙が短冊に潰れるので2列へ。400 で 244px → 1列。 */
+@container (max-width:600px){
+  .cmemos{grid-template-columns:repeat(2,1fr)}
+}
+@container (max-width:300px){
+  .cmemos{grid-template-columns:1fr}
+}
+.cmemo{position:relative;min-width:0;padding:0;
+  filter:drop-shadow(0 3px 5px #3d271220)}
+.cmemo-sheet{position:absolute;inset:0;pointer-events:none}
+.cmemo-sheet svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* 画鋲。真円と落ち影を保つので、伸縮する紙の SVG の外へ固定寸法で。
+   紙の上端中央に刺さる（上端より少し上に頭が出る）。 */
+.cmemo-pin{position:absolute;left:50%;top:-2px;transform:translateX(-50%);
+  width:24px;height:24px;pointer-events:none;z-index:2}
+.cmemo-pin svg{width:100%;height:100%;display:block}
+/* 本文。画鋲の頭を避けて上を空ける。 */
+.cmemo-body{position:relative;min-width:0;padding:20px 14px 14px}
+.cmemo-item{font-size:12.5px;font-weight:700;color:var(--ink);
+  display:flex;align-items:flex-start;gap:6px;line-height:1.45}
+/* item のアイコン。カレンダー行・棚のグリフと同格の部品。 */
+.cmemo-ic{flex:0 0 auto;display:flex;color:var(--ink2);margin-top:1px}
+.cmemo-ic svg{width:16px;height:16px}
+.cmemo-item .rowdel{margin-left:auto;flex:0 0 auto}
+.cmemo-where{display:flex;align-items:flex-start;gap:4px;margin-top:6px;
+  font-size:11px;color:var(--ink2);line-height:1.45}
+.cmemo-where .mk{flex:0 0 auto;margin-top:1px}
+.cmemo-foot{margin-top:8px}
+/* 「足す」は紙ではない（留める紙がまだ無いので画鋲も無い）。
+   グリッドの次のマスに、空きスペースとして置く。 */
+.cmemo-addwrap{display:flex;align-items:center;justify-content:center;
+  min-height:96px;border:1.5px dashed #cbbda4;border-radius:10px}
+.cmemo-add{margin:0}
 
 /* ══ レスポンシブ ═══════════════════════════════════════════
    外殻と同じ2つの境目（1200 / 900）に寄せる。表の列は container query
