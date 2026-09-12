@@ -1870,19 +1870,15 @@
             '<stop offset=".5" stop-color="#dec29f"/>' +
             '<stop offset="1" stop-color="#d7bb96"/>' +
           '</linearGradient>' +
-          /* 額が背板へ落とす内影。上と左を濃く（光は左上から）。 */
-          '<linearGradient id="cbfDropT" x1="0" y1="0" x2="0" y2="1">' +
-            '<stop offset="0" stop-color="#3d2712" stop-opacity=".38"/>' +
-            '<stop offset="1" stop-color="#3d2712" stop-opacity="0"/>' +
-          '</linearGradient>' +
-          '<linearGradient id="cbfDropL" x1="0" y1="0" x2="1" y2="0">' +
-            '<stop offset="0" stop-color="#3d2712" stop-opacity=".26"/>' +
-            '<stop offset="1" stop-color="#3d2712" stop-opacity="0"/>' +
-          '</linearGradient>' +
+          /* ★額が背板へ落とす内影（上・左）は、木札の帯や左端の
+             プレートがちょうど乗る帯域と重なり、そこだけ背板が他の
+             場所よりはっきり濃く沈んで見えていた（2026-09-12 ユーザー
+             指摘：上を消した後も左に同じ濃い帯が残っていた）。
+             opacity を弱めるだけでは足りない――帯域全体にグラデが
+             かかっている以上、際は必ず地より濃い値になる。両方とも
+             無くし、背板は cbfBoard の単一グラデーションだけにする。 */
         '</defs>' +
         '<rect x="0" y="0" width="100" height="100" fill="url(#cbfBoard)"/>' +
-        '<rect x="0" y="0" width="100" height="9" fill="url(#cbfDropT)"/>' +
-        '<rect x="0" y="0" width="6" height="100" fill="url(#cbfDropL)"/>' +
       '</svg>';
 
     /* ② 桟。長手方向にだけ引き伸ばす帯＝太さは CSS の --rail が持つ。
@@ -3135,6 +3131,23 @@
       '<circle cx="7.7" cy="5.9" r="1.7" fill="#d6e5cd" fill-opacity=".8"/>' +
     '</svg>';
 
+  /* 「介護関係の書類やもの」節の頭書き。上2節（.wcal-lead／.eqs-lead）
+     と同じチップ・大きさ・背景色に揃える（2026-09-12 ユーザー指示：
+     この節だけ白チップ＋緑線グリフの .cp-h／headChip で浮いていた）。
+     ★グリフは節の中身（CARE_DOC_IC）をそのまま使う――.eqs-lead の
+     棚の箱・.wcal-lead の時計と同じく「この節の中身は何か」を表す。 */
+  function papersLead() {
+    return '<div class="eqs-lead">' +
+      '<span class="eqs-lead-ic" aria-hidden="true">' +
+        svgIc(CARE_DOC_IC, 19) + '</span>' +
+      '<span class="eqs-lead-tx">' +
+        '<span class="eqs-lead-tt">介護関係の書類やもの</span>' +
+        '<span class="eqs-lead-nt">介護に関わる書類やものの、置き場所です。</span>' +
+      '</span>' +
+      '<span class="lead-actions">' + editBtn('cpapers') + '</span>' +
+      '</div>';
+  }
+
   /* ④ 介護関係の書類やもの｜画鋲で留めたメモ紙を並べる。その家にある、
      比較的安定した書類・ものの所在だけを持つ（§13-1）。中身は持たない。
 
@@ -3161,7 +3174,8 @@
         '</div>' +
       '</li>';
     }).join('');
-    return '<ul class="cmemos">' + notes +
+    return papersLead() +
+      '<ul class="cmemos">' + notes +
         (on ? '<li class="cmemo-addwrap"><button type="button" ' +
           'class="cmemo-add rowadd" data-add="cpaper">＋ 足す</button></li>' : '') +
       '</ul>';
@@ -3186,8 +3200,8 @@
              いう見立てなので、留め具の背景がそのまま意味を持つ。   */
           carePlate(null, null, '', equipmentBlock(),
             { wide: true, cls: 'cp-equip', noHead: true }) +
-          carePlate('cpapers', CARE_DOC_IC, '介護関係の書類やもの',
-            carePapersBlock(), { wide: true, cls: 'cp-papers' }) +
+          carePlate('cpapers', null, '',
+            carePapersBlock(), { wide: true, cls: 'cp-papers', noHead: true }) +
         '</div>' +
       '</div>';
   }

@@ -1046,8 +1046,15 @@ button.st:hover{filter:brightness(.97)}
 /* ── 上部の木札の帯 ───────────────────────────────────
    介護度と主な相談先。プレートより一段軽い格（README・render.js の
    careWoodSlat 参照）。木地と柾目は SVG が持ち、ここは置かれ方だけ。 */
+/* ★上下の余白を、額縁の内側上端〜リング列上端の区間で中央に来る
+   よう調整する（2026-09-12 ユーザー指示）。この帯は元々額縁にすぐ
+   接し（上0px）、リング列との間は .care-board-inner の gap（約32px）
+   だけで空いていた――区間の高さを半分ずつに割ると上下とも約16px。
+   gap 自体は変えず（他の節間隔にも効いてしまう）、この帯だけに
+   margin を足して打ち消す。 */
 .cws-band{position:relative;isolation:isolate;border-radius:4px;
   container-type:inline-size;
+  margin-top:16px;margin-bottom:-16px;
   /* 板に伏せて置かれた札。プレート（0 7px 16px）より落ち影を浅く
      ――浮かず、沈みもしない厚みにする。 */
   box-shadow:0 1px 2px #3d271233,0 2px 5px #3d271222}
@@ -1260,10 +1267,20 @@ button.st:hover{filter:brightness(.97)}
    して座らせる。時計チップは綴じ帯と同じ茶系（この節の中身＝時間軸に
    入る予定、だから時計）。 */
 /* ★「今の支援」はプレート地を持たない（.care-flat）ので、この頭書きが
-   紙面で最初に読む見出しになる。 */
+   紙面で最初に読む見出しになる。
+   ★この頭書きは .wcal-inner（左 padding 固定 14px）の中にあり、下2節
+   （.eqs-lead／papersLead）は .cp（左 padding clamp(15px,2.2%,22px)）の
+   中にある――器が違うので、そのままでは左のラインが揃わない。.cp と
+   同じ clamp から .wcal-inner の固定 14px を引いて打ち消す。% の基準
+   （containing block の幅）が .cp とわずかに違うため数px の誤差は
+   残るが、幅が変わってもズレが常に小さい範囲に収まる（固定 px 差分
+   だと逆に、狭い画面で誤差が拡大する）。
+   （2026-09-12 ユーザー指摘：チップの縦のラインが一致していなかった）。 */
 .wcal-lead{position:relative;z-index:1;
   display:flex;align-items:flex-start;gap:10px;
-  padding:12px 0 11px;border-bottom:1.5px solid #ddd0ae}
+  padding:12px 0 11px;
+  padding-left:calc(clamp(15px,2.2%,22px) - 14px);
+  border-bottom:1.5px solid #ddd0ae}
 /* 帯（.wcal-headsvg）と対の色。2026-09-12：背板を薄くしたことで
    元の茶系が見分けにくくなったため、薄い緑へ変更（ユーザー指示）。 */
 .wcal-lead-ic{flex:0 0 auto;width:30px;height:30px;border-radius:8px;
@@ -1685,8 +1702,10 @@ a:hover > .i-ext{opacity:1}
    だけ縮む作りだった（行ごとに中央寄せすると4行の頭がバラバラになる
    ため）。箱にした今は外枠が札の全幅で決まるので、中身は素直に
    左詰めのブロックでよい。 */
+/* 背景は「介護関係の書類やもの」の白い紙カード（.cmemo）の地色に
+   合わせる――枠線は緑のまま（2026-09-13 ユーザー指示：背景だけ揃える）。 */
 .eqs-cap{margin-top:0;border:1.5px solid #6b8f6655;border-top:0;
-  border-radius:0 0 6px 6px;background:#6b8f660d;
+  border-radius:0 0 6px 6px;background:#f5f3ee;
   padding:10px 12px 12px}
 .eqs-capin{display:flex;flex-direction:column;gap:2px;
   align-items:flex-start;min-width:0;max-width:100%}
@@ -1780,8 +1799,12 @@ a:hover > .i-ext{opacity:1}
    ネジとほぼ同じ位置に来て、間隔なく並んで見える）。棚（.eqs）は
    絵が板の中央に接地するので同じプレート内寸でもネジまで迫らないが、
    紙は矩形の縁いっぱいまで塗りがあるぶん、同じ間隔でも近く見える。 */
-.cp-papers .cp-body{container-type:inline-size;padding-left:10px;padding-right:10px}
-.cmemos{list-style:none;margin:0;padding:0;
+.cp-papers .cp-body{container-type:inline-size}
+/* ★padding は頭書き（papersLead）を巻き込まないよう .cmemos 自身に
+   持たせる――.cp-body に付けると見出しの緑チップが上2節（.wcal-lead-ic
+   ／.eqs-lead-ic）より右にずれ、縦のラインが揃わなくなる
+   （2026-09-12 ユーザー指摘）。 */
+.cmemos{list-style:none;margin:0 10px;padding:0;
   display:grid;grid-template-columns:repeat(4,1fr);gap:18px 14px}
 /* 実測（器の実幅）：1400/1000 で 784/754px → 4列で1枚 176〜184px、
    ここは成立。780/620 で 476〜495px → 4列だと 107〜113px まで落ちて
