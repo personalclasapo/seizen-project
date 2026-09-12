@@ -968,13 +968,16 @@ button.st:hover{filter:brightness(.97)}
    .care-board-frame の SVG が、プレートの立体は各 .cp が受け持つ。
    見出しは白チップ＋緑線グリフ（headChip）。一言・キャッチは置かない。
    ══════════════════════════════════════════════════════════════ */
-/* 見附＝ボード幅の 2.9%（正本の実測。care-board-motifs.RESEARCH.md）。
-   額は物として厚みがあるので、内側の余白は見附ぶんきっちり空ける。 */
+/* 見附＝正本の実測（2.9%）から細く直した（2026-09-12 ユーザー指摘：
+   額縁が幅を取りすぎ、コンテンツ側のプレート地が狭い）。額は物として
+   厚みがあるので輪郭は保ちつつ、太さそのものを絞る。
+   ★一度 1.8% まで絞ったが「もう少しだけ広げてよい」との指摘で
+   2.2% へ戻した（2026-09-12）。 */
 .care-board{position:relative;isolation:isolate;
-  --rail:clamp(18px,2.9%,34px);
-  /* 額の内側の余白は実測 38/1223＝3.1%（見附とほぼ同じ）。
-     ここを広く取ると背板が見えすぎて、プレートが板の上で泳ぐ。 */
-  padding:calc(var(--rail) + clamp(14px,3.1%,36px));
+  --rail:clamp(14px,2.2%,26px);
+  /* 額の内側の余白（背板の見え幅）も同じ理由で詰め、留め具の背景＝
+     乳白プレート地を額いっぱいへ近づける。 */
+  padding:calc(var(--rail) + clamp(6px,1.1%,14px));
   filter:drop-shadow(0 12px 20px #3d271230)}
 .care-board-inner{position:relative;display:flex;flex-direction:column;
   gap:clamp(16px,2.6%,26px)}
@@ -996,7 +999,7 @@ button.st:hover{filter:brightness(.97)}
    container-type を付けると padding→内容幅→cqw→padding で循環する）。 */
 .care-board-frame{position:absolute;inset:0;z-index:-1;pointer-events:none;
   container-type:inline-size;
-  --rail-w:clamp(18px,2.9cqw,34px)}
+  --rail-w:clamp(14px,2.2cqw,26px)}
 /* 背板＝額の口いっぱい。桟の内側に敷く。
    ★svg は既定で幅も高さも内在値を持つので、inset だけでは伸びない
      （width/height を明示して初めて口いっぱいになる）。 */
@@ -1058,12 +1061,13 @@ button.st:hover{filter:brightness(.97)}
    preserveAspectRatio="none" で引き伸ばすので、同じ SVG に置くと
    角丸と削り口の稜線が幅によって寝る（render.js の注記）。
    地は木地より沈んだ色＋わずかに明るい面（削って新しい木肌）。 */
+/* 2026-09-12：白に近い色調へ変更（ユーザー指示・第一段階）。 */
 .cws-plane{position:absolute;inset:clamp(6px,.9%,9px);border-radius:3px;
-  background:linear-gradient(178deg,#c98f58 0%,#dcae7d 22%,#e4bb8d 100%);
+  background:linear-gradient(178deg,#f8f5ee 0%,#f2ede1 22%,#ece5d5 100%);
   /* 削り口＝彫りの内壁。上と左に陰（彫りの奥）、下と右に光（削り口が
      手前で光を拾う）。inset の影2本で厚みを出す。 */
-  box-shadow:inset 0 2px 3px #6b421f66,inset 0 -1px 0 #f7dcb8aa,
-    inset 1px 0 2px #6b421f44,inset -1px 0 0 #f2d2a888}
+  box-shadow:inset 0 2px 3px #6b421f33,inset 0 -1px 0 #ffffffaa,
+    inset 1px 0 2px #6b421f22,inset -1px 0 0 #ffffff88}
 
 /* ★介護認定｜相談先は常に横並び（ユーザー確定・2026-09-11）。
    flex-wrap:wrap にすると 900px 前後で縦積みへ畳まれてしまい、木札が
@@ -1222,31 +1226,21 @@ button.st:hover{filter:brightness(.97)}
 .c-out  {--sc:#4f7ba6;--sc-bg:#e9f0f7}
 .c-meal {--sc:#4f8a68;--sc-bg:#e8f2ec}
 .c-life {--sc:#7a6aa8;--sc-bg:#efecf8}
-.c-equip{--sc:#b3823c;--sc-bg:#f6eddd}
+.c-equip{--sc:#6b8f66;--sc-bg:#eef4ec}
 
 /* ★旧・サービスの表（.svtbl/.svr-*）は撤去した（2026-09-09）。編集用に
    カレンダーの下へ出していた表で、行そのものが入力欄になったので
    役目が無くなった。型セレクトだけはカレンダーの行で使う。 */
 .svr-kindsel{margin-top:3px;font-size:11px}
 
-/* ── 今の支援｜プレート内の2節 ─────────────────────────
-   「暮らしの時間に入る支援」（卸しカレンダー）と「継続して使っている
-   支援」（物の絵札）。1枚のプレートの中に2節を持つ。
-   ★プレート見出し（「今の支援」＋❤️）は落とした（2026-09-10・.cp-nohead）
-   ――上節の見出し（.wcal-lead）が兼ねるので二重になるため。器（.cp の
-   白い地・ネジ・落ち影）は残す。
-   ★下節「介護で使うもの」は福祉用具の棚差しに作り替えた（2026-09-10。
-   .eqshelf／careShelf）。頭書きは上節（.wcal-lead）と同格の .eqs-lead。
-   ★上節の見出しはカレンダー台紙の紙面が持つ（.wcal-lead）。.csh-plain
-   は上節が空欄のときだけ使う。 */
-/* 見出しを持たないプレート。カレンダーのリングは紙の上端より
-   --wcal-top（26px）上へ出るので、その逃げがそのままプレートの上
-   padding に積まれると、リング上端がプレート上端から 50px 近く下がる。
-   .cp の上 padding を削り、.wcal の margin-top も詰めて、リングが
-   プレート上端の近くに来るようにする。 */
-.cp-nohead{padding-top:clamp(8px,1%,12px)}
-.cp-nohead .cp-body{margin-top:0}
-.cp-nohead .cp-body .wcal{margin-top:var(--wcal-top)}
+/* ── 今の支援｜カレンダー（プレート地を持たない）───────────
+   「暮らしの時間に入る支援」は乳白プレート（.cp・留め具の背景）に
+   載せず、額縁の背板へ直接置く（2026-09-12 ユーザー指摘：プレート地
+   ぶんコンテンツが狭くなっていた。カレンダーの紙自体がリング・帯・
+   罫を持つ1枚の器なので、ネジ付きの地を重ねると器が二重になる）。
+   .care-flat は器を持たない素通しの枠――余白（gap）は親
+   .care-board-inner のものだけで足りる。 */
+.care-flat{position:relative}
 .cp-sub + .cp-sub{margin-top:26px;padding-top:0;border-top:0}
 
 /* 節の小見出し（equipment 節／上節が空欄のとき）。部品を作らず
@@ -1265,14 +1259,16 @@ button.st:hover{filter:brightness(.97)}
    浮かせず、リング＋綴じ帯の下・列見出しの上に、紙に刷られた見出しと
    して座らせる。時計チップは綴じ帯と同じ茶系（この節の中身＝時間軸に
    入る予定、だから時計）。 */
-/* ★「今の支援」プレートの見出しは落としたので（.cp-nohead）、この
-   頭書きがこのプレートで最初に読む見出しになる。 */
+/* ★「今の支援」はプレート地を持たない（.care-flat）ので、この頭書きが
+   紙面で最初に読む見出しになる。 */
 .wcal-lead{position:relative;z-index:1;
   display:flex;align-items:flex-start;gap:10px;
   padding:12px 0 11px;border-bottom:1.5px solid #ddd0ae}
+/* 帯（.wcal-headsvg）と対の色。2026-09-12：背板を薄くしたことで
+   元の茶系が見分けにくくなったため、薄い緑へ変更（ユーザー指示）。 */
 .wcal-lead-ic{flex:0 0 auto;width:30px;height:30px;border-radius:8px;
   display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(160deg,#7d6a45,#6a5936);color:#fdfaf3;
+  background:linear-gradient(160deg,#8fae89,#7a9975);color:#fdfaf3;
   box-shadow:0 1px 2px #3d271233}
 .wcal-lead-ic svg{width:19px;height:19px}
 .wcal-lead-tx{min-width:0;display:flex;flex-direction:column;gap:2px;
@@ -1611,6 +1607,16 @@ a:hover > .i-ext{opacity:1}
    歩行器・手すりは正面）――揃えるのは向きではなく層の手つき。
    ここが受け持つのは「棚の置かれ方」と文字の余白だけ。 */
 
+/* 器は「介護関係の書類やもの」と同格の独立プレート（.cp-equip、
+   render.js の carePlate）が持つ――白い地・四隅ネジ・落ち影は共通の
+   .cp がすでに持っているので、この節では作らない（2026-09-12 ユーザー
+   指摘：「今の支援」プレートの茶のプレート地の上に、この節だけ別途
+   白い台紙を重ねて2重の器になっていた。器はボードにつき1段でよい）。
+   ★列も「介護関係の書類やもの」（.cmemos）と同じグリッドに揃える
+   （2026-09-12 ユーザー指摘：棚の並びが flex の固定幅で、下の書類の
+   4列グリッドと縦横が揃っていなかった）。 */
+.cp-equip .cp-body{container-type:inline-size}
+
 /* 頭書き。上節（.wcal-lead）と同格――用具チップ＋見出し＋補足文＋鉛筆。
    ★§3b・§7 で木札・カレンダー見出しについて2回通った「軽い＝装飾
    なし」の誤りを繰り返さない。プレート地に文字を直接置かず、器を持つ。
@@ -1618,9 +1624,11 @@ a:hover > .i-ext{opacity:1}
    の箱（.wcal-lead の時計と対）。 */
 .eqs-lead{display:flex;align-items:flex-start;gap:10px;
   padding:2px 0 12px}
+/* 色は .wcal-lead-ic（暮らしの時間に入る支援）と揃える
+   （2026-09-12 ユーザー指示）。 */
 .eqs-lead-ic{flex:0 0 auto;width:30px;height:30px;border-radius:8px;
   display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(160deg,#7d6a45,#6a5936);color:#fdfaf3;
+  background:linear-gradient(160deg,#8fae89,#7a9975);color:#fdfaf3;
   box-shadow:0 1px 2px #3d271233}
 .eqs-lead-ic svg{width:19px;height:19px}
 .eqs-lead-tx{min-width:0;display:flex;flex-direction:column;gap:2px;
@@ -1630,24 +1638,32 @@ a:hover > .i-ext{opacity:1}
 .eqs-lead-nt{font-size:11px;color:var(--ink3);line-height:1.5}
 .eqs-lead .i-secedit svg{width:13px;height:13px}
 
-/* 棚の並び。★札は伸ばさない（flex:0 0 auto）――物の幅で切る。
-   以前は flex:1 1 210px で列を等分していたので、62px の物に対して板が
-   300px まで伸び、物が板の中央にぽつんと乗って左右に空板が残っていた
-   （2026-09-10 実測：絵の面積は札の 6.7%）。物と器の大きさを対応させる。 */
+/* 棚の並び。★2026-09-12：flex（固定幅172pxが横に流れるだけ）から
+   .cmemos と同じ grid（4列均等・同じ container query の閾値）へ
+   作り替えた。以前の flex は列という概念を持たず、下の「介護関係の
+   書類やもの」の4列グリッドと縦横の基準が揃っていなかった
+   （ユーザー指摘）。
+   ★以前ここに書かれていた「札は伸ばさない・幅は172px固定」という
+   判断（flex:1 1 210px で伸ばすと物が板の中央にぽつんと乗る、という
+   2026-09-10 の実測）は、グリッド化で列幅そのものが変わったので
+   もう成り立たない。今は列幅＝グリッドの1列ぶんで、物の絵はその中で
+   引き続き中央に接地する（.eqs-obj の left:50%）。 */
 .eqshelf{list-style:none;margin:0;padding:0;
-  display:flex;flex-wrap:wrap;gap:22px 26px}
-/* 札の幅は**いちばん長い行**から決める（勘で置かない）。実測：
-   用具名 65px／貸与元 92px／電話 101px／URL 144px。いちばん長い URL に
-   左右の逃げを足して 172px――ここを 150px にすると短冊が札いっぱいに
-   なり、「ブロックを中央に置く」余地が消えて左寄せと見分けが付かなく
-   なる（2026-09-11 の1回目でそうなった）。 */
-.eqs{flex:0 0 auto;width:172px;
-  display:flex;flex-direction:column}
+  display:grid;grid-template-columns:repeat(4,1fr);gap:18px 14px}
+@container (max-width:600px){
+  .eqshelf{grid-template-columns:repeat(2,1fr)}
+}
+@container (max-width:300px){
+  .eqshelf{grid-template-columns:1fr}
+}
+.eqs{min-width:0;display:flex;flex-direction:column}
 /* 用具が立つ舞台。グリフを棚板の上面に接地させる（.eqs-plank は
    22px 高。絵の足元も棚の縮小に合わせて下げる）。 */
 .eqs-stage{position:relative;height:78px}
 /* ★color は持たない――グリフが色を自前で持つので、ここで --sc を
-   流しても効かない（効くように見える指定を残さない）。 */
+   流しても効かない（効くように見える指定を残さない）。
+   ★2026-09-12：四角で囲む対象をアイコンから文章側（.eqs-cap）へ
+   移した（ユーザー指示：アイコンは囲まず、台＋文章を囲む）。 */
 .eqs-obj{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
   line-height:0;
   filter:drop-shadow(0 2px 1px #6b4a2c18)}
@@ -1661,15 +1677,17 @@ a:hover > .i-ext{opacity:1}
 .eqs-plank{position:absolute;left:0;right:0;bottom:0;height:22px;
   filter:drop-shadow(0 2px 2px #5a3a1e18)}
 .eqs-plank svg{display:block;width:100%;height:100%}
-/* 足元の短冊。★ブロックそのものを札の中央に置き、ブロックの中の行頭は
-   左で揃える（2026-09-11 ユーザー指示）。絵は札の中央にあるのに文字だけ
-   左端に張り付いていて、1枚の札の中に軸が2本あった。
-
-   ★各行を個別に中央寄せしない（align-items:center は使わない）――
-   行ごとに中央に置くと4行の頭がバラバラになり、読む順序が崩れる。
-   外側の .eqs-cap を flex で中央に寄せ、内側の .eqs-capin が
-   いちばん長い行の幅に縮んで、その中で行頭が左に揃う。 */
-.eqs-cap{margin-top:9px;display:flex;justify-content:center}
+/* 足元の短冊。★2026-09-12：棚板の下にぶら下がる箱として囲む
+   （ユーザー指示：アイコンではなく「台＋文章」を四角で囲む）。
+   箱は棚板（.eqs-plank、幅いっぱい）と同じ左右幅で、上辺は棚板と
+   接する＝上だけ罫を持たない（棚板が箱の蓋を兼ねる）。
+   ★以前は .eqs-cap を flex で中央寄せし、中の .eqs-capin が内容量ぶん
+   だけ縮む作りだった（行ごとに中央寄せすると4行の頭がバラバラになる
+   ため）。箱にした今は外枠が札の全幅で決まるので、中身は素直に
+   左詰めのブロックでよい。 */
+.eqs-cap{margin-top:0;border:1.5px solid #6b8f6655;border-top:0;
+  border-radius:0 0 6px 6px;background:#6b8f660d;
+  padding:10px 12px 12px}
 .eqs-capin{display:flex;flex-direction:column;gap:2px;
   align-items:flex-start;min-width:0;max-width:100%}
 .eqs-name{font-size:13px;font-weight:700;color:var(--ink);

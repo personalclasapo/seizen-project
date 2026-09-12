@@ -1851,16 +1851,24 @@
         '</linearGradient>' +
       '</defs>';
 
-    /* ① 背板＋額が落とす内影。額の口いっぱいに敷く1枚。 */
+    /* ① 背板＋額が落とす内影。額の口いっぱいに敷く1枚。
+       ★2026-09-12：背板をコルクボード（写真素材 assets/cork-tile.jpg
+       のパターン敷き）に差し替える試みを一度やったが、粒の尺度が桟の
+       木目と噛み合わず「取ってつけた」見た目になり撤回した。単色
+       グラデーションに戻す。コルク化を再検討する場合は、桟・プレート・
+       札との密度を合わせるところから――医療タイルの回でも触れた
+       「同じ絵の別の描き方へ移る」判断を先に検討すること。 */
     const board =
       '<svg class="cbf-board" viewBox="0 0 100 100" preserveAspectRatio="none">' +
         '<defs>' +
-          /* 背板。桟より暗い下地。プレートのすき間で実測した #a06b3c
-             （額の木地 #ce945f より一段沈む＝板が奥にある）。 */
+          /* 背板。以前は実測 #a06b3c（額の木地より一段沈む濃い茶色）
+             だったが、額縁・プレート・カレンダー・アイコンなど周りが
+             全体的に明るい方向へ動いたので、背板も薄くした
+             （2026-09-12 ユーザー指示）。 */
           '<linearGradient id="cbfBoard" x1="0" y1="0" x2="0" y2="1">' +
-            '<stop offset="0" stop-color="#9a6537"/>' +
-            '<stop offset=".5" stop-color="#a06b3c"/>' +
-            '<stop offset="1" stop-color="#986338"/>' +
+            '<stop offset="0" stop-color="#d9bb98"/>' +
+            '<stop offset=".5" stop-color="#dec29f"/>' +
+            '<stop offset="1" stop-color="#d7bb96"/>' +
           '</linearGradient>' +
           /* 額が背板へ落とす内影。上と左を濃く（光は左上から）。 */
           '<linearGradient id="cbfDropT" x1="0" y1="0" x2="0" y2="1">' +
@@ -1980,12 +1988,15 @@
     return '<span class="cws" aria-hidden="true">' +
       '<svg class="cws-svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
         '<defs>' +
-          /* 額の桟より一段明るい木地。同じ材の、削って新しい面。
-             上から下へ光が回る（札は板に伏せて置かれている）。 */
+          /* 2026-09-12：白に近い色調へ変更（ユーザー指示・第一段階）。
+             木目（CWS_GRAIN）はそのまま引くが、実際にはほぼ視認でき
+             ないほど淡い――この面は「木」としては知覚されておらず、
+             ただの単色の面だった（ユーザー指摘）。だから木目の扱いは
+             気にせず、地の色だけを差し替える。 */
           '<linearGradient id="cwsWood" x1="0" y1="0" x2="0.15" y2="1">' +
-            '<stop offset="0" stop-color="#e9c49c"/>' +
-            '<stop offset=".55" stop-color="#d7a26c"/>' +
-            '<stop offset="1" stop-color="#c68f5c"/>' +
+            '<stop offset="0" stop-color="#fbf9f4"/>' +
+            '<stop offset=".55" stop-color="#f4f0e7"/>' +
+            '<stop offset="1" stop-color="#ede7d9"/>' +
           '</linearGradient>' +
         '</defs>' +
         '<rect x="0" y="0" width="100" height="100" fill="url(#cwsWood)"/>' +
@@ -2038,14 +2049,15 @@
      一言（lead）は付けない――README のとおり素っ気なくする。
      opt.noEdit … プレートの中に性質の違う複数節を持ち、鉛筆を節ごと
      （careSubHead）に持たせるとき、プレート本体の鉛筆は省く。
-     opt.noHead … プレート見出し（.cp-h）そのものを出さない。「今の支援」
-     はプレートの器（白い地・ネジ・落ち影）は要るが、中身がカレンダー
-     1枚＋絵札で、その頭書き（.wcal-lead）が見出しを兼ねるので、プレート
-     見出しは二重になる（2026-09-10：文字と ❤️ だけ落とす。器は残す）。 */
+     opt.noHead … プレート見出し（.cp-h）そのものを出さない。「介護で
+     使うもの」は器（白い地・ネジ・落ち影）を持つが、頭書き（.eqs-lead）
+     が見出しを兼ねるので、プレート見出しは二重になる。
+     ★「今の支援」＝カレンダーは、この器（.cp）自体を使わない
+     （2026-09-12：留め具の背景の分だけコンテンツ幅が狭くなっていた
+     というユーザー指摘。renderCare 参照）。 */
   function carePlate(key, glyph, title, body, opt) {
     const o = opt || {};
-    return '<section class="cp' + (o.cls ? ' ' + o.cls : '') +
-        (o.noHead ? ' cp-nohead' : '') + '">' +
+    return '<section class="cp' + (o.cls ? ' ' + o.cls : '') + '">' +
       careScrews(!!o.wide) +
       (o.noHead ? ''
         : '<div class="cp-h">' + headChip(glyph) +
@@ -2518,12 +2530,16 @@
      曜日の文字は CSS グリッドで列に揃えるので、SVG が持つのは帯の地と
      穴だけ――文字は wcal-head が持つ。                              */
   function weekCalendarHeadPlate() {
+    /* 帯の色は元は綴じ帯の茶（額縁・背板と同系）だったが、背板が薄く
+       なったことで見分けが付きにくくなったため、薄い緑へ変更した
+       （2026-09-12 ユーザー指示。時計チップ .wcal-lead-ic と対で
+       変える）。 */
     return '<svg class="wcal-headsvg" viewBox="0 0 100 100" ' +
       'preserveAspectRatio="none" aria-hidden="true">' +
       '<defs>' +
         '<linearGradient id="wcalBand" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#7d6a45"/>' +
-          '<stop offset="1" stop-color="#6a5936"/>' +
+          '<stop offset="0" stop-color="#8fae89"/>' +
+          '<stop offset="1" stop-color="#7a9975"/>' +
         '</linearGradient>' +
       '</defs>' +
       '<rect x="0" y="0" width="100" height="100" fill="url(#wcalBand)"/>' +
@@ -2545,19 +2561,42 @@
 
        ・奥の弧  … 輪の上〜左。紙の裏へ回る側。細く・暗く
        ・手前の弧 … 輪の右〜下。紙の表を通る側。太く・明るく
-       2つで1つの輪。紙が間に挟まるので「貫いている」になる。      */
+       2つで1つの輪。紙が間に挟まるので「貫いている」になる。
+
+       ★上端（輪の頂点、y=5.4）は紙側の穴と対になる**もう1つの貫通**
+       ――背板に取り付けた真鍮の座金へ差し込まれて消える（2026-09-12
+       ユーザー指摘：リングの上半分がただ茶色い背板の上に浮いていて、
+       留まっている理由が無かった）。
+       ★1回目は座金を奥の層に置いて手前の弧に隠れ、2回目は手前の層に
+       描き直したが半径3の座金では通常表示でほぼ視認できなかった
+       （ユーザー「本当に見える？」）。この時点でのユーザー判断は
+       「座金という発想は誤りではない、単純に小さすぎた」――
+       次の一手は**同じ座金を大きくして確かめる**ことだったが、
+       一度「釘に掛かる」という別の造形に飛んでしまい、差し戻しに
+       なった（「リングに釘って変」というユーザー指摘。釘は物として
+       ネジ・座金と並ぶ道具ではなく、綴じ具に打ち付ける対象として
+       不自然だった）。
+       ★座金へ戻し、半径を 3→5 に拡大。色は真鍮のまま
+       （careScrews と同系）。中心は輪の頂点と同じ y=5.4 のまま
+       ――半径5でも上端は y=0.4 で viewBox（高さ30）内に収まる。 */
     return '<span class="wcal-ring" aria-hidden="true">' +
       /* 奥＝向こう側。輪の左半分（上から下へ左回り）。紙に潜って終わる。 */
       '<svg class="wcal-ring-b" viewBox="0 0 26 30">' +
         '<path d="M13 5.4 A7.8 7.8 0 0 0 13 21" fill="none" ' +
           'stroke="#7e838c" stroke-width="2.2" stroke-linecap="round"/>' +
       '</svg>' +
-      /* 手前＝こちら側。輪の右半分と、紙に開いた**穴**。
+      /* 手前＝こちら側。輪の右半分と、上下2つの貫通穴。
          ★穴が要る（Openclipart のスパイラルノートで判明）。穴が無いと、
-         輪が紙の上に置かれたフックにしか見えない――綴じ具は「紙に開いた
-         穴を通っている」から綴じ具に見える。穴は帯の上に落ちる小さな
-         楕円（紙の面に開いた穴なので、正面から見ると横長）。        */
+         輪が紙・板の上に置かれたフックにしか見えない――綴じ具は「面に
+         開いた穴を通っている」から綴じ具に見える。
+         下＝紙に開いた穴（正面から見た横長の楕円）。
+         上＝背板の取付座（真鍮の座金＋暗い穴）。どちらも弧より先に
+         描き、弧をその上に重ねて「通っている」ように見せる。        */
       '<svg class="wcal-ring-f" viewBox="0 0 26 30">' +
+        '<circle cx="13" cy="5.4" r="5" fill="#c99a5e"/>' +
+        '<circle cx="13" cy="5.4" r="5" fill="none" stroke="#7d5a33" ' +
+          'stroke-opacity=".65" stroke-width="1.1"/>' +
+        '<ellipse cx="13" cy="5.4" rx="2.7" ry="2.4" fill="#3c2c18"/>' +
         '<ellipse cx="13" cy="20.4" rx="3.4" ry="1.9" fill="#5a4a2c"/>' +
         '<ellipse cx="13" cy="20.1" rx="3.4" ry="1.9" fill="#4a3d24"/>' +
         '<path d="M13 5.4 A7.8 7.8 0 0 1 13 21" fill="none" ' +
@@ -2592,11 +2631,14 @@
      全て viewBox 0 0 48 48、線画（`fill="none"` ではなく面は淡色で
      塗り、線を主にする）。パスが色を自前で持つので `currentColor` は
      使わない――医療タイルと同じ扱い。                                */
-  const EQ_L = '#b3823c';   /* 線。いちばん手前の外形 */
-  const EQ_B = '#f6eddd';   /* 地。本体の面（＝--sc-bg） */
-  const EQ_M = '#eddcc0';   /* 中間。一段手前に出る面（台座・グリップ） */
+  /* 2026-09-12：茶系から薄い緑系へ変更（ユーザー指示。カレンダー
+     ヘッダーの帯 wcalBand と揃える）。層の役割（線／地／中間／明／弱線）
+     は変えず、色相だけ差し替える。 */
+  const EQ_L = '#6b8f66';   /* 線。いちばん手前の外形 */
+  const EQ_B = '#eef4ec';   /* 地。本体の面（＝--sc-bg） */
+  const EQ_M = '#dee9db';   /* 中間。一段手前に出る面（台座・グリップ） */
   const EQ_W = '#fff';      /* 明。別素材（枕・車輪・便座・名札） */
-  const EQ_F = '#cfa870';   /* 弱線。罫・穴・スポークなど弱い要素 */
+  const EQ_F = '#9db89a';   /* 弱線。罫・穴・スポークなど弱い要素 */
   const EQUIP_IC = {
 
   /* 介護ベッド｜側面図。マットレス（器）／起き上がったヘッドボード／
@@ -2970,29 +3012,16 @@
         : '<p class="i-ev-empty">まだ登録がありません。</p>');
   }
 
-  /* 「今の支援」プレートの中身。2節を縦に積む。 */
+  /* 「今の支援」プレートの中身。カレンダー1節のみ（2026-09-12：
+     「介護で使うもの」は別プレートへ分離。理由は下の renderCare 参照）。 */
   function careSupportBlock() {
     const services = S.data.care.services || [];
-    return '<div class="cp-sub">' +
-      /* ★上節の見出しはカレンダー台紙の紙面が持つ（weekCalendarLead）。
-         空欄のときだけ、器が無いので従来の小見出しを出す。 */
-      (services.length
-        ? weekCalendar(services)
-        : careSubHead('service', '暮らしの時間に入る支援') +
-          '<p class="i-ev-empty">まだ登録がありません。</p>') +
-      /* ★編集用の表を下に出さない（2026-09-09 指摘）。表示と編集で場所が
-         変わるうえ、同じ項目が2箇所に出て「どちらが本物か」が分からな
-         かった。カレンダーの行そのものが入力欄になる（weekCalendar の
-         on）。足すボタンは見出し右上（wcal-lead）へ移した
-         （2026-09-11 ユーザー指摘：左下の単独ボタンを廃止し、用具の
-         「＋ 用具を追加」と同じ並びに揃える）。services が空のときは
-         weekCalendar 自体が描かれないので、その場合だけ careSubHead の
-         右に鉛筆はあっても足すボタンが無い――このケースは節の鉛筆を
-         押して最初の1件を書く動線（既存のまま）。 */
-      '</div>' +
-      '<div class="cp-sub">' +
-      equipmentBlock() +
-      '</div>';
+    /* ★上節の見出しはカレンダー台紙の紙面が持つ（weekCalendarLead）。
+       空欄のときだけ、器が無いので従来の小見出しを出す。 */
+    return services.length
+      ? weekCalendar(services)
+      : careSubHead('service', '暮らしの時間に入る支援') +
+        '<p class="i-ev-empty">まだ登録がありません。</p>';
   }
 
   /* ★旧・サービスの表（serviceRow / servicesBlock）は撤去した
@@ -3145,14 +3174,18 @@
         careBoardFrame() +
         '<div class="care-board-inner">' +
           careTopSlat() +
-          /* ★「今の支援」プレートは器（白い地・ネジ・落ち影）は残し、
-             見出し（「今の支援」＋❤️）だけ落とす（2026-09-10 opt.noHead）。
-             中身のカレンダー頭書き（.wcal-lead）が見出しを兼ねるので、
-             プレート見出しは二重になる。❤️（CARE_HEART_IC）は削除。
-             「継続して使っている支援」「介護関係の書類やもの」の造形は
-             まだ手を付けていない（次）。 */
-          carePlate(null, null, '', careSupportBlock(),
-            { wide: true, cls: 'cp-service', noHead: true }) +
+          /* ★「今の支援」＝カレンダーは、留め具の背景（.cp の乳白プレート
+             地＋真鍮ネジ）を持たない――紙自体がリング・帯・罫を持つ1枚
+             の器で、プレートに重ねるとネジ付きの地×紙という2つの器が
+             二重になる（2026-09-12 ユーザー指摘：留め具の背景の分だけ
+             コンテンツ幅が狭くなっていた）。額縁の背板の上に紙を直接
+             置く。頭書き（.wcal-lead）が見出しを兼ねる。            */
+          '<div class="care-flat">' + careSupportBlock() + '</div>' +
+          /* 「介護で使うもの」「介護関係の書類やもの」は引き続き乳白
+             プレート（ネジ付き）に載せる――こちらは板に留めた資料と
+             いう見立てなので、留め具の背景がそのまま意味を持つ。   */
+          carePlate(null, null, '', equipmentBlock(),
+            { wide: true, cls: 'cp-equip', noHead: true }) +
           carePlate('cpapers', CARE_DOC_IC, '介護関係の書類やもの',
             carePapersBlock(), { wide: true, cls: 'cp-papers' }) +
         '</div>' +
