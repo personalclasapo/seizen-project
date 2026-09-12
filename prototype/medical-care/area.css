@@ -1852,11 +1852,6 @@ a:hover > .i-ext{opacity:1}
   font-size:11px;color:var(--ink2);line-height:1.45}
 .cmemo-where .mk{flex:0 0 auto;margin-top:1px}
 .cmemo-foot{margin-top:8px}
-/* 「足す」は紙ではない（留める紙がまだ無いので画鋲も無い）。
-   グリッドの次のマスに、空きスペースとして置く。 */
-.cmemo-addwrap{display:flex;align-items:center;justify-content:center;
-  min-height:96px;border:1.5px dashed #cbbda4;border-radius:10px}
-.cmemo-add{margin:0}
 
 /* ══ レスポンシブ ═══════════════════════════════════════════
    外殻と同じ2つの境目（1200 / 900）に寄せる。表の列は container query

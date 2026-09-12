@@ -3152,6 +3152,7 @@
      ★グリフは節の中身（CARE_DOC_IC）をそのまま使う――.eqs-lead の
      棚の箱・.wcal-lead の時計と同じく「この節の中身は何か」を表す。 */
   function papersLead() {
+    const on = secOn('cpapers');
     return '<div class="eqs-lead">' +
       '<span class="eqs-lead-ic" aria-hidden="true">' +
         svgIc(CARE_DOC_IC, 19) + '</span>' +
@@ -3159,7 +3160,10 @@
         '<span class="eqs-lead-tt">介護関係の書類やもの</span>' +
         '<span class="eqs-lead-nt">介護に関わる書類やものの、置き場所です。</span>' +
       '</span>' +
-      '<span class="lead-actions">' + editBtn('cpapers') + '</span>' +
+      '<span class="lead-actions">' +
+      (on ? '<button type="button" class="rowadd" data-add="cpaper">＋ 追加</button>' : '') +
+      editBtn('cpapers') +
+      '</span>' +
       '</div>';
   }
 
@@ -3190,10 +3194,7 @@
       '</li>';
     }).join('');
     return papersLead() +
-      '<ul class="cmemos">' + notes +
-        (on ? '<li class="cmemo-addwrap"><button type="button" ' +
-          'class="cmemo-add rowadd" data-add="cpaper">＋ 足す</button></li>' : '') +
-      '</ul>';
+      '<ul class="cmemos">' + notes + '</ul>';
   }
 
   function renderCare() {
