@@ -55,6 +55,9 @@ button.st:hover{filter:brightness(.97)}
 .i-ev{border-bottom:1px dashed transparent;cursor:text}
 .i-ev:hover{border-bottom-color:#c8c2b0;background:#fbf8ee}
 .i-ev-empty{color:var(--ink3);font-style:normal}
+/* 相談先の閲覧時の値。.i-ev と違いクリックでは開かない（鉛筆一本化・
+   2026-09-13）ので、text カーソルを持たせない。 */
+.cws-mgr-fixed{cursor:default}
 .i-ef{width:100%;padding:3px 7px;border:1px solid #b9cbbd;border-radius:6px;
   background:#fff;color:inherit;font-size:inherit;font-family:inherit}
 .i-ef-area{min-height:74px;line-height:1.8;resize:vertical}
@@ -1089,8 +1092,13 @@ button.st:hover{filter:brightness(.97)}
 .cws-item{display:flex;flex-direction:column;gap:2px;min-width:0}
 /* 介護認定は内容幅ぶんしか無い（「要介護2」）。札の左縁と溝の両方に
    詰まるので、左右にパディングを持たせて空気を作る。 */
-.cws-level{flex:none;padding:0 clamp(12px,1.8%,18px)}
-.cws-mgr{flex:1;min-width:0}
+/* 見出しをタグ化した分、値との間が詰まって見える（gap:2px は素の
+   ラベル向け）――介護度・相談先どちらも底上げする。 */
+.cws-level{flex:none;padding:0 clamp(12px,1.8%,18px);gap:7px}
+/* 相談先は値がテーブル（事業所・担当・電話・Web）で、介護度の
+   1行値より重い。.cws-item 共通の gap:2px のままだとラベルと
+   表が密着して読みにくいので、この項目だけ余白を足す。 */
+.cws-mgr{flex:1;min-width:0;gap:7px}
 
 /* 二者の境目＝彫り込んだ溝。CSS の区切り線（1本のヘアライン）に
    すると UI の罫に見えるので、**溝の断面**として持たせる：
@@ -1112,10 +1120,18 @@ button.st:hover{filter:brightness(.97)}
 /* ラベルは小さく、値は大きく。格の差はここで出す。 */
 .cws-lb{display:inline-flex;align-items:center;gap:5px;
   font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#6d4a24}
+/* 閲覧時は <span>（クリックでは開かない・鉛筆一本化）。 */
 .cws-lv{font-size:19px;font-weight:800;letter-spacing:.01em;line-height:1.15;
-  background:none;border:0;padding:0;cursor:pointer;font-family:inherit;
-  text-align:left}
+  display:inline-block}
 .cws-lv-off{color:#7a5c3c;font-weight:700;font-size:16px}
+/* 介護度・相談先、両方の見出しを小さな木ラベルタグに載せる
+   （ユーザー選定案）。彫り面から浮いた薄い板を1枚追加し、見出しに
+   物としての起点を持たせる――色を変えるのではなく層を足す。 */
+.cws-lb-tag{background:linear-gradient(180deg,#e8dcc4,#ddccaa);
+  padding:3px 9px 3px 7px;border-radius:3px;
+  box-shadow:inset 0 1px 0 #fff8ea99,inset 0 -1px 1px #6b421f33,
+    0 1px 1px #3d271222;
+  align-self:flex-start}
 /* 相談先は「事業所名＋担当者名」「電話＋Web」の2行。行内は横並び。
    ★事業所名を先に置き、担当者名と対等な太さ・近いサイズで並べる
    （2026-09-09 レビュー：事業所名だけ11.5pxの添え物になっていて、

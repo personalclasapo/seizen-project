@@ -2093,16 +2093,20 @@
 
   /* ① 介護認定。要介護度は制度上の区分（正本 §9）。認定の有無だけを
      状態として持つ。帯の左に、彫り込んだ文字として置く。 */
+  /* ★介護度・相談先は、この帯右端の鉛筆（editBtn('manager')）だけを
+     編集の入口にする（2026-09-13 ユーザー指示）。値を直接クリックして
+     その場を開く個別入口は持たない――帯には鉛筆1つしか見えないのに
+     値ごとにも開けると、入口が2つあるように振る舞ってしまう。 */
   function levelBlock() {
     const c = S.data.care;
     const certified = S.isCertified(c.level);
     if (isOpen('care.level')) {
       return '<div class="cws-item cws-level cl-edit">' +
-        '<span class="cws-lb">介護認定</span>' +
+        '<span class="cws-lb cws-lb-tag">介護認定</span>' +
         evSelect('care.level', c.level, S.CARE_LEVELS) + '</div>';
     }
     return '<div class="cws-item cws-level">' +
-      '<span class="cws-lb">介護認定' +
+      '<span class="cws-lb cws-lb-tag">介護認定' +
         /* ⓘ は要介護度という区分の説明。いまは title 属性まで――
            用語解説の器（モーダル／ポップオーバー）は介護にまだ無く、
            医療の「治療中の病気」モーダルは領域内で完結させたものなので
@@ -2111,10 +2115,9 @@
           'role="img" aria-label="' + esc(S.levelAbout(c.level)) + '">' +
           INFO_IC + '</span>' +
       '</span>' +
-      '<button type="button" class="cws-lv' + (certified ? '' : ' cws-lv-off') + '" ' +
-        'data-edit="care.level" data-kind="select">' +
+      '<span class="cws-lv' + (certified ? '' : ' cws-lv-off') + '">' +
         esc(c.level || '未確認') +
-      '</button>' +
+      '</span>' +
       '</div>';
   }
 
@@ -2139,6 +2142,15 @@
       '<span class="cws-mgr-v' + (cls ? ' ' + cls : '') + '">' + val + '</span>' +
       '</span>';
   }
+  /* 閲覧時の固定表示。ev() と違い data-edit を持たない――この帯は
+     値のクリックでは開かない（鉛筆一本化）。.i-ev は cursor:text と
+     hover の破線を持つ＝クリックできる見た目なので、ここでは使わない
+     （クリック不可なのにクリックできそうに見えるのを避ける）。   */
+  function mgrVal(value, placeholder) {
+    const empty = value === '' || value == null;
+    return '<span class="cws-mgr-fixed' + (empty ? ' i-ev-empty' : '') + '">' +
+      (empty ? esc(placeholder || '未入力') : esc(value)) + '</span>';
+  }
 
   function managerBlock() {
     const mg = S.data.care.manager || {};
@@ -2156,9 +2168,12 @@
             'rel="noopener">' + esc(webLabel(web)) + EXT + '</a>'
         : '');
     const groupWho = '<div class="cws-mgr-grp">' +
-      mgrRow('事業所', ev('care.manager.office', mg.office, 'line', '事業所名'),
-        'cws-mgr-office') +
-      mgrRow('担当', ev('care.manager.name', mg.name, 'line', '担当者名')) +
+      mgrRow('事業所', on
+        ? ev('care.manager.office', mg.office, 'line', '事業所名')
+        : mgrVal(mg.office, '事業所名'), 'cws-mgr-office') +
+      mgrRow('担当', on
+        ? ev('care.manager.name', mg.name, 'line', '担当者名')
+        : mgrVal(mg.name, '担当者名')) +
       '</div>';
     /* 電話の受話器アイコンは閲覧時だけ――番号に寄り添って「これは
        電話番号」と伝える。編集時は入力欄の頭を事業所・担当と揃えたい
@@ -2166,13 +2181,13 @@
     const telVal = on
       ? ev('care.manager.tel', mg.tel, 'line', '電話番号')
       : '<span class="cws-tel">' + TEL +
-          ev('care.manager.tel', mg.tel, 'line', '電話番号') + '</span>';
+          mgrVal(mg.tel, '電話番号') + '</span>';
     const groupHow = '<div class="cws-mgr-grp">' +
       mgrRow('電話', telVal) +
       (on || web ? mgrRow('Web', webVal) : '') +
       '</div>';
     return '<div class="cws-item cws-mgr">' +
-      '<span class="cws-lb">介護の主な相談先</span>' +
+      '<span class="cws-lb cws-lb-tag">介護の主な相談先</span>' +
       '<div class="cws-mgr-tb">' + groupWho + groupHow + '</div>' +
       '</div>';
   }
