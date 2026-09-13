@@ -1420,7 +1420,18 @@ button.st:hover{filter:brightness(.97)}
    絵を支援名の行だけに入れると、連絡先の左が再び意味のない空白になる。 */
 .wc-info{min-width:0;display:grid;grid-template-columns:64px minmax(0,1fr);
   column-gap:16px;align-items:center}
-.wc-info-body{min-width:0;display:flex;flex-direction:column;gap:10px}
+/* 名前・支援内容（.wc-sv）と事業所名・電話（.wc-ct）を左右に並べる
+   （2026-09-13 ユーザー指示：右側が空いて見える）。6:4＝支援内容の
+   文章のほうが長くなりやすいので広めに取る。中央の区切りは見出しから
+   連なる縦罫にはしない――上下に空間を残した短い薄線1本だけを
+   .wc-info-body::before に置き、行の境界（.wcal-row の横罫）と
+   混同されないようにする。 */
+.wc-info-body{min-width:0;display:grid;
+  grid-template-columns:6fr 4fr;column-gap:14px;align-items:center;
+  position:relative}
+.wc-info-body::before{content:"";position:absolute;
+  left:calc((100% - 14px) * 0.6 + 7px);
+  top:6px;bottom:6px;border-left:1px solid #e4d6b0}
 .wc-info .wc-ct{padding-left:0;gap:3px}
 .wc-info .wc-ct:empty{display:none}
 .wc-info .wc-prov-link,.wc-info .wc-tel{font-weight:400}
@@ -1669,6 +1680,19 @@ a:hover > .i-ext{opacity:1}
    実体化し、両者を同じグリッドの折り返しの中に入れる。 */
 @container (max-width:559px){
   .wcal-head,.wcal-row,.wcal-grid{grid-template-columns:6fr 4fr}
+  /* ★「支援・連絡先」列自体がここで6:4の2列グリッドの片側（左）に
+     縮む――その中でさらに名前・支援内容と事業所名・電話を横に割ると
+     窮屈になる（2026-09-13 ユーザー指摘：曜日が円の粒になる狭幅表示で
+     横並びが崩れていた）。広い表示だけの組み方なので、ここでは元の
+     縦積みに戻す。 */
+  /* ★align-items は縦（グリッドの行）中央用の値（center）がベース
+     定義に残ったまま――flex-direction:column に変えると交差軸（横）の
+     揃え方に化け、子（.wc-sv/.wc-ct）が内容幅に縮んで中央寄せになる
+     （2026-09-13 発覚：事業所名が支援名より右へ寄っていた）。
+     縦積みでは交差軸いっぱいに伸ばす stretch に戻す。 */
+  .wc-info-body{display:flex;flex-direction:column;gap:10px;
+    align-items:stretch}
+  .wc-info-body::before{display:none}
   /* 曜日7列の細罫は引かない（上記の理由）。ただし「支援・連絡先」と
      「曜日・時間帯」を分ける**1本だけ**は残す（2026-09-13 ユーザー
      指示）。この線は曜日の折り返しと無関係に2つのブロックの境目を
