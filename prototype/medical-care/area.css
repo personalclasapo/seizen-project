@@ -1820,7 +1820,10 @@ a:hover > .i-ext{opacity:1}
    持たせる――.cp-body に付けると見出しの緑チップが上2節（.wcal-lead-ic
    ／.eqs-lead-ic）より右にずれ、縦のラインが揃わなくなる
    （2026-09-12 ユーザー指摘）。 */
-.cmemos{list-style:none;margin:0 10px;padding:0;
+/* ★見出し（papersLead）との縦の間隔（2026-09-13 ユーザー指摘：見出しと
+   カード列の間が狭い）。.eqs-lead の下 padding（12px）は「介護で使う
+   もの」と共通のため、ここでは触らずこの節側の margin-top だけ足す。 */
+.cmemos{list-style:none;margin:10px 10px 0;padding:0;
   display:grid;grid-template-columns:repeat(4,1fr);gap:18px 14px}
 /* 実測（器の実幅）：1400/1000 で 784/754px → 4列で1枚 176〜184px、
    ここは成立。780/620 で 476〜495px → 4列だと 107〜113px まで落ちて
@@ -1871,6 +1874,12 @@ a:hover > .i-ext{opacity:1}
   .bs{padding:14px 0}
 
   .cp{padding:16px 15px}
+  /* ★.cp の左右パディングが clamp(…,2.2%,…) から 15px 固定へ削られる分、
+     頭書き（.eqs-lead＝「介護で使うもの」「介護関係の書類やもの」共通）
+     のチップ・鉛筆と額隅のネジ（.cp-screws は inset:9px 固定）の間隔が
+     狭まる（2026-09-13 ユーザー指摘）。.cp 自体は表など他の中身の幅にも
+     効くので触らず、頭書きの左右にだけ padding を足して打ち消す。 */
+  .eqs-lead{padding-left:6px;padding-right:6px}
 }
 
 /* 医療冊子の印刷記号。カードや写真にだけ落ち影を残す。 */
