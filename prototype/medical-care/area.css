@@ -1083,7 +1083,13 @@ button.st:hover{filter:brightness(.97)}
    flex-wrap:wrap にすると 900px 前後で縦積みへ畳まれてしまい、木札が
    2段の帯に割れる――「相談先」側の狭幅対応は .cws-mgr-tb の
    container query（760px 以下で事業所/担当・電話/Web を1列に畳む）が
-   既に持っているので、外側でもう一度畳む必要が無い。 */
+   既に持っているので、外側でもう一度畳む必要が無い。
+   ★ただし 500px 以下はこの前提が壊れる。相談先側が事業所名の折り返し
+   込みで最低幅を要求し続け、介護認定の札が押し潰されて「要介護2」が
+   詰まる。ここだけは例外としてピンポイントで縦積みへ切り替える
+   （2026-09-13 指摘。500px 以下用の上書きは .cws-groove/.cws-mgr の
+   無条件定義より後ろ、このファイル末尾近くの @media にまとめてある
+   ――ソース順で後勝ちなので、途中に置くと無条件ルールに潰される）。 */
 .cws-inner{position:relative;display:flex;align-items:center;flex-wrap:nowrap;
   gap:6px clamp(14px,2.4%,26px);
   padding:clamp(11px,1.7%,15px) clamp(16px,2.2%,22px)}
@@ -1098,7 +1104,7 @@ button.st:hover{filter:brightness(.97)}
 /* 相談先は値がテーブル（事業所・担当・電話・Web）で、介護度の
    1行値より重い。.cws-item 共通の gap:2px のままだとラベルと
    表が密着して読みにくいので、この項目だけ余白を足す。 */
-.cws-mgr{flex:1;min-width:0;gap:7px}
+.cws-mgr{flex:1;min-width:0;gap:10px}
 
 /* 二者の境目＝彫り込んだ溝。CSS の区切り線（1本のヘアライン）に
    すると UI の罫に見えるので、**溝の断面**として持たせる：
@@ -1193,6 +1199,38 @@ button.st:hover{filter:brightness(.97)}
 .cws-web:has(.i-ef){font-weight:400;text-decoration:none}
 .cws-memo{display:inline-flex;align-items:flex-start;gap:5px;
   font-size:11.5px;color:#6d4a24;flex:1 1 100%}
+
+/* ★500px 以下だけ「介護認定｜相談先」を縦積みに例外化（2026-09-13）。
+   .cws-inner の無条件 nowrap 宣言・.cws-groove/.cws-mgr の無条件定義
+   より後ろに置く（ソース順で後勝ちさせるため）。 */
+@media (max-width:500px){
+  /* ★row-gap は使わない。溝の margin と .cws-mgr の padding-top が
+     両方効いて合算され、どちらか片方だけ変えても見た目が動かない
+     （2026-09-13 指摘で発覚）。行間はすべて要素自身の margin/padding
+     だけで決め、.cws-inner 側では作らない。 */
+  .cws-inner{flex-wrap:wrap;row-gap:0}
+  /* ★縦積み時は上下左右に空気を持たせる（2026-09-13 指摘：横並びの
+     ままの padding だと介護度の札が左上に密着して見える）。 */
+  .cws-level{padding:14px clamp(12px,1.8%,18px) 10px}
+  /* 縦に積んだら溝は「間の縦線」ではなく「上の項目との仕切り線」。
+     断面の3層グラデーションを90度回し、幅いっぱいの横線として結ぶ。 */
+  .cws-groove{width:auto;align-self:stretch;flex-basis:100%;
+    height:3px;margin:0 0 10px;border-radius:1.5px;
+    background:linear-gradient(180deg,
+      #6b421f55 0 1px,#5c3a1c88 1px 2px,#f7dcb8cc 2px 3px)}
+  /* ★縦積み時は「相談先」側も個別に上下を持てるようにする
+     （2026-09-13 指摘：介護認定は .cws-level で個別調整できるのに、
+     相談先は .cws-inner の共通 padding 任せで揃えて調整できなかった）。
+     上＝溝からタグまでの距離、下＝Web行から札の縁までの距離。
+     ★この2値がそのまま効く（row-gap を 0 にしたので合算されない）。 */
+  .cws-mgr{flex-basis:100%;padding:3px 0 10px}
+  /* ★鉛筆は横並び時は margin-left:auto で「札の外の右端」に流れるが、
+     縦積みだと flex-wrap で3番目の行の先頭に落ちて左に出てしまう
+     （2026-09-13 指摘）。縦積み時だけ絶対配置に切り替え、介護度
+     エリアの右上へ固定する。 */
+  .cws-inner > .i-secedit{position:absolute;top:10px;right:10px;
+    margin-left:0}
+}
 
 /* ⓘ ＝ 区分の説明。いまは title（ホバーで出る）まで。 */
 .cws-info{display:inline-flex;align-items:center;justify-content:center;
