@@ -1423,16 +1423,21 @@ button.st:hover{filter:brightness(.97)}
 /* 名前・支援内容（.wc-sv）と事業所名・電話（.wc-ct）を左右に並べる
    （2026-09-13 ユーザー指示：右側が空いて見える）。6:4＝支援内容の
    文章のほうが長くなりやすいので広めに取る。中央の区切りは見出しから
-   連なる縦罫にはしない――上下に空間を残した短い薄線1本だけを
-   .wc-info-body::before に置き、行の境界（.wcal-row の横罫）と
-   混同されないようにする。 */
+   連なる縦罫にはしない――短い薄線1本だけを置き、行の境界
+   （.wcal-row の横罫）と混同されないようにする。 */
 .wc-info-body{min-width:0;display:grid;
-  grid-template-columns:6fr 4fr;column-gap:14px;align-items:center;
-  position:relative}
-.wc-info-body::before{content:"";position:absolute;
-  left:calc((100% - 14px) * 0.6 + 7px);
-  top:6px;bottom:6px;border-left:1px solid #e4d6b0}
-.wc-info .wc-ct{padding-left:0;gap:3px}
+  grid-template-columns:5.5fr 4.5fr;column-gap:0;align-items:center}
+/* ★線は .wc-info-body ではなく .wc-info に置く。.wc-info-body は
+   連絡先の文字の高さ（実測49px）しか持たないので、そこを基準にすると
+   行（実測120px）の中で線だけが半分以下に見える――「事業所名と電話の
+   分しかない」（2026-09-13 指摘）の正体がこれ。.wc-info は絵を含む
+   行のコンテンツ高（88px＝行の73%）を持つので、ここに置けば狙いの
+   7〜8割になる。横位置は絵（64px）＋gap（16px）の先、残り幅の55%
+   ＝.wc-info-body の列境界。 */
+.wcal-row .wc-info{position:relative}
+.wcal-row .wc-info::after{content:"";position:absolute;
+  left:calc(80px + (100% - 80px) * 0.55);top:0;bottom:0;
+  border-left:1px solid #e4d6b0;pointer-events:none}
 .wc-info .wc-ct:empty{display:none}
 .wc-info .wc-prov-link,.wc-info .wc-tel{font-weight:400}
 
@@ -1444,7 +1449,7 @@ button.st:hover{filter:brightness(.97)}
    ので、渡された 382px との差 190px がそのまま行の中央に空いた。
    すぐ下の連絡先（.wc-ct）は 450px まで伸びており、同じ列の中で
    上段と下段の右端が揃わない状態でもあった。 */
-.wc-sv{display:flex;align-items:center;min-width:0}
+.wc-sv{display:flex;align-items:center;min-width:0;padding-right:10px}
 /* アイコンの縦の帯。★編集中はここに✕を積む（2026-09-10 判断。
    2026-09-11：下ではなく上へ――用具の並び（.eqs-stage、絵の上）と
    縦の位置を揃える）。時間帯の隣など「項目の並び」に置くと、その
@@ -1473,8 +1478,8 @@ button.st:hover{filter:brightness(.97)}
 /* ② 連絡先。★横に並べると3つ目（Web）が必ず溢れて折り返す――
    セルの中で縦に組み、溢れる構造そのものを無くす（?contact= で
    組み方の案を切り替えて見比べる）。 */
-.wc-ct{min-width:0;display:flex;flex-direction:column;gap:5px;
-  font-size:11px;line-height:1.45;padding-left:12px}
+.wc-ct{min-width:0;display:flex;flex-direction:column;gap:15px;
+  font-size:12px;line-height:1.45;padding-left:15px}
 /* 事業所名は「…」で切らず折り返す＝家族が電話先を識別する情報なので、
    読めなくなるほうが困る（2026-09-10 判断）。 */
 .wc-prov{color:var(--ink2);min-width:0;
@@ -1692,7 +1697,7 @@ a:hover > .i-ext{opacity:1}
      縦積みでは交差軸いっぱいに伸ばす stretch に戻す。 */
   .wc-info-body{display:flex;flex-direction:column;gap:10px;
     align-items:stretch}
-  .wc-info-body::before{display:none}
+  .wcal-row .wc-info::after{display:none}
   /* 曜日7列の細罫は引かない（上記の理由）。ただし「支援・連絡先」と
      「曜日・時間帯」を分ける**1本だけ**は残す（2026-09-13 ユーザー
      指示）。この線は曜日の折り返しと無関係に2つのブロックの境目を
