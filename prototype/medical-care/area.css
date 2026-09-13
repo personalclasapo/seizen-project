@@ -1212,10 +1212,14 @@ button.st:hover{filter:brightness(.97)}
   /* ★縦積み時は上下左右に空気を持たせる（2026-09-13 指摘：横並びの
      ままの padding だと介護度の札が左上に密着して見える）。
      ★介護認定群（見出しタグ＋要介護度の値）は左寄せではなく中央寄せ
-     （2026-09-13 ユーザー指摘）。.cws-level は縦積みの flex-column
-     なので、align-items:center で子（タグ・値）を横中央へ揃える。
+     （2026-09-13 ユーザー指摘）。.cws-level は無条件定義（1103行）で
+     flex:none のままだと箱自体が内容幅（「要介護2」の文字幅）にしか
+     広がらず、align-items:center を足しても中に寄せる余地が無くて
+     見た目が変わらなかった（最初の修正はここを見落としていた）。
+     flex-basis:100% で .cws-mgr と同じく札の幅いっぱいに広げてから
+     align-items:center で子を横中央へ揃える。
      タグは align-self:flex-start を明示で持つので、ここで打ち消す。 */
-  .cws-level{padding:14px clamp(12px,1.8%,18px) 10px;
+  .cws-level{flex-basis:100%;padding:14px clamp(12px,1.8%,18px) 10px;
     align-items:center;text-align:center}
   .cws-level .cws-lb-tag{align-self:center}
   /* 縦に積んだら溝は「間の縦線」ではなく「上の項目との仕切り線」。
