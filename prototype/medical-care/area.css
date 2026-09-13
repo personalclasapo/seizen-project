@@ -1210,8 +1210,14 @@ button.st:hover{filter:brightness(.97)}
      だけで決め、.cws-inner 側では作らない。 */
   .cws-inner{flex-wrap:wrap;row-gap:0}
   /* ★縦積み時は上下左右に空気を持たせる（2026-09-13 指摘：横並びの
-     ままの padding だと介護度の札が左上に密着して見える）。 */
-  .cws-level{padding:14px clamp(12px,1.8%,18px) 10px}
+     ままの padding だと介護度の札が左上に密着して見える）。
+     ★介護認定群（見出しタグ＋要介護度の値）は左寄せではなく中央寄せ
+     （2026-09-13 ユーザー指摘）。.cws-level は縦積みの flex-column
+     なので、align-items:center で子（タグ・値）を横中央へ揃える。
+     タグは align-self:flex-start を明示で持つので、ここで打ち消す。 */
+  .cws-level{padding:14px clamp(12px,1.8%,18px) 10px;
+    align-items:center;text-align:center}
+  .cws-level .cws-lb-tag{align-self:center}
   /* 縦に積んだら溝は「間の縦線」ではなく「上の項目との仕切り線」。
      断面の3層グラデーションを90度回し、幅いっぱいの横線として結ぶ。 */
   .cws-groove{width:auto;align-self:stretch;flex-basis:100%;
