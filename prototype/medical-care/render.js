@@ -2390,6 +2390,10 @@
             d + '</span>').join('') +
       '</span>' +
       '<span class="wc-h wc-h-tm">時間帯</span>' +
+      /* 狭い表示だけの見出し。曜日7列が折り返して格子が成立しなくなる
+         ので、曜日名は各マスが自分で持ち（.wcal-dname）、ここは
+         右ブロック全体の名前を1本置くだけにする。 */
+      '<span class="wc-h wc-h-dt">曜日・時間帯</span>' +
       '</div>';
     const body = rows.map((r, ri) => {
       const sv = r.sv;
@@ -2406,11 +2410,17 @@
         const cls = 'wcal-c ' + r.kind.tone + (hit ? ' on' : '') +
           (i > 4 ? ' wcal-c-end' : '');
         const dot = hit ? '<span class="wcal-dot"></span>' : '';
-        if (!on) return '<span class="' + cls + '" data-d="' + d + '">' + dot + '</span>';
+        /* 曜日名。広い表示では列見出しが曜日を示すので視覚的に隠し、
+           読み上げ専用として働く（.i-sr）。狭い表示では列見出しが
+           無くなり、この文字自体が曜日の表示になる（area.css の
+           @container 520px：粒の中の文字として現れる）。 */
+        const nm = '<span class="wcal-dname i-sr">' + d + '</span>';
+        if (!on) return '<span class="' + cls + '" data-d="' + d + '">' +
+          nm + dot + '</span>';
         return '<button type="button" class="' + cls + ' wcal-c-btn" data-d="' + d + '" ' +
           'data-day="' + esc(sv.id) + '|' + d + '" ' +
           'aria-pressed="' + (hit ? 'true' : 'false') + '" ' +
-          'title="' + d + '曜日を入切"><span class="i-sr">' + d + '</span>' +
+          'title="' + d + '曜日を入切">' + nm +
           dot + '</button>';
       }).join('');
       /* ① 支援＝絵・名前・内容。編集中は同じセルの中が欄になる。
@@ -2455,18 +2465,27 @@
               (sv.does ? '<span class="wcal-does">' + esc(sv.does) + '</span>' : '') +
             '</span>' +
           '</div>';
-      /* ② 連絡先 ③ 曜日 ④ 時間帯。 */
+      /* ② 連絡先 ③ 曜日 ④ 時間帯。
+         ★.wc-daytime は曜日・時間帯を包む器（2026-09-13 ユーザー指示：
+         600px以下では「支援・連絡先｜曜日」の2列＝幅比6:4にし、右列の
+         中で月〜金の次に土日・時間帯を続けて折り返す）。広い表示では
+         display:contents で透明化し、.wcal-row の3列グリッド
+         （支援｜曜日｜時間帯）に .wcal-cells と .wc-tm がそのまま
+         独立の列として乗る――マークアップは1つ増えるが、広い表示の
+         構造・見え方は変えない。 */
       return '<div class="wcal-row' + (on ? ' wcal-row-edit' : '') + '">' +
         '<div class="wc-info">' + artCell +
         '<div class="wc-info-body">' + svCell +
         '<div class="wc-ct">' +
           (on ? contactCellEdit(sv, p) : contactCell(sv)) +
         '</div></div></div>' +
+        '<div class="wc-daytime">' +
         '<span class="wcal-cells">' + cells + '</span>' +
         '<div class="wc-tm">' +
           (on
             ? efLine('時間帯', p + 'use', sv.use, '例：午前（9:00〜12:00頃）')
             : (sv.use ? '<span class="wcal-use">' + esc(sv.use).replace(/([（(].*[）)])$/, '<span class="wcal-use-detail">$1</span>') + '</span>' : '')) +
+        '</div>' +
         '</div>' +
         '</div>';
     }).join('');

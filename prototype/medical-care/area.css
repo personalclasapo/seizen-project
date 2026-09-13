@@ -1376,6 +1376,9 @@ button.st:hover{filter:brightness(.97)}
    中央にすると行頭のアイコンや事業所名の開始位置がガタつく）。
    曜日7列はもともと中央なので、これで全列の見出しが揃う。 */
 .wc-h-sv,.wc-h-ct,.wc-h-tm{text-align:center}
+/* 「曜日・時間帯」＝狭い表示だけの見出し（下の @container 520px で
+   出す）。広い表示では曜日7列と時間帯がそれぞれ列見出しを持つ。 */
+.wc-h-dt{display:none}
 .wcal-d{text-align:center;font-size:10.5px;font-weight:700;
   color:var(--ink2);letter-spacing:.02em;padding-bottom:1px}
 .wcal-d-end{color:#a08a5c}
@@ -1404,8 +1407,14 @@ button.st:hover{filter:brightness(.97)}
 
 /* 行。横の軸は紙の左右いっぱいに渡す（途中で切れると格子にならない）。 */
 .wcal-row{position:relative;z-index:1;align-items:center;padding:16px 0}
+/* ★支援と支援の境界＝1件と1件を分ける、この表で最も強い区切り。
+   狭い表示（下の @container 420px）で支援・連絡先の下に曜日・時間帯を
+   積むブロック内の区切りと並ぶと、同じ太さ・同じ薄さでは「件の境目」
+   と「1件の中の区切り」の区別がつかなかった（2026-09-13 ユーザー
+   指摘）。色を1段濃くし、上下の余白も広めに取って「ここで1件終わる」
+   と分かる強さにする。 */
 .wcal-row + .wcal-row::before{content:"";position:absolute;
-  left:-14px;right:-14px;top:0;border-top:1px solid #ece3cd}
+  left:-14px;right:-14px;top:0;border-top:1.5px solid #ddd0ae}
 
 /* 支援絵は、支援名〜電話までの文章ブロック全体に対して上下中央へ置く。
    絵を支援名の行だけに入れると、連絡先の左が再び意味のない空白になる。 */
@@ -1416,7 +1425,14 @@ button.st:hover{filter:brightness(.97)}
 .wc-info .wc-ct:empty{display:none}
 .wc-info .wc-prov-link,.wc-info .wc-tel{font-weight:400}
 
-/* ① 支援＝絵＋名前＋支援内容。 */
+/* ① 支援＝絵＋名前＋支援内容。
+   ★中身は列の幅いっぱいに伸ばす（2026-09-13 ユーザー指摘：行の
+   真ん中に意味不明な空白）。align-items:center は縦の揃えのためだが、
+   flex の交差軸の既定（stretch）まで殺すので、中の .wc-sv-tx が
+   内容幅（実測192px）で止まっていた――1列目は 1fr で余りを全部吸う
+   ので、渡された 382px との差 190px がそのまま行の中央に空いた。
+   すぐ下の連絡先（.wc-ct）は 450px まで伸びており、同じ列の中で
+   上段と下段の右端が揃わない状態でもあった。 */
 .wc-sv{display:flex;align-items:center;min-width:0}
 /* アイコンの縦の帯。★編集中はここに✕を積む（2026-09-10 判断。
    2026-09-11：下ではなく上へ――用具の並び（.eqs-stage、絵の上）と
@@ -1436,7 +1452,7 @@ button.st:hover{filter:brightness(.97)}
 .wcal-art{flex:none;width:64px;height:64px;display:grid;place-items:center;
   line-height:0;filter:drop-shadow(0 2px 1px #3d271217)}
 .wcal-art-svg{display:block;width:64px;height:64px}
-.wc-sv-tx{min-width:0;display:flex;flex-direction:column;gap:2px}
+.wc-sv-tx{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
 .wcal-name{font-size:14.5px;line-height:1.5;font-weight:700;color:var(--ink);min-width:0}
 /* 支援内容＝その時間に何をしてもらうか。家族が最初に読む一行なので、
    灰色の添え物にせず地の文の濃さで置く。 */
@@ -1468,6 +1484,16 @@ a:hover > .i-ext{opacity:1}
 /* split 案＝電話とWebだけを横に並べる段。 */
 .wc-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;
   min-width:0}
+
+/* 曜日・時間帯を包む器。広い表示では display:contents で透明化し、
+   中の .wcal-cells と .wc-tm がそのまま .wcal-row の3列グリッドに
+   独立の列として乗る（この器を挟む前と同じ見え方）。520px以下だけ
+   実体化してグリッドに変わる（下の @container 参照）。
+   ★これを書き忘れると、.wc-daytime が既定の display:block のまま
+   3列目（時間帯の列）を1マス占有し、中の .wcal-cells と .wc-tm が
+   縦積みでその狭い幅に潰れる――広い表示まで壊れる（2026-09-13
+   ユーザー指摘：確認せず全体に影響を出していた）。 */
+.wc-daytime{display:contents}
 
 /* ③ 曜日のマス。行ごとに枠を持たない（縦の軸は .wcal-grid が持つ）。 */
 .wcal-cells{grid-column:2;display:grid;grid-template-columns:repeat(7,1fr)}
@@ -1605,29 +1631,160 @@ a:hover > .i-ext{opacity:1}
 .wcal-rings-front{z-index:3}
 .wcal-rings-front .wcal-ring-b{display:none}
 
-/* 中幅でも同じ3列を保つ。支援と連絡先は常にひとつのセル。 */
-@container (max-width:700px){
-  .wcal-head,.wcal-row,.wcal-grid{
-    grid-template-columns:minmax(0,1fr) clamp(148px,28cqi,196px) minmax(84px,108px)}
-}
-/* さらに狭いと7列は入らない。曜日を中身の下へ落とす。
-   ★見出し帯は消さない――リングが貫く先が無くなり、綴じ具が宙に浮く。 */
-/* 支援絵を64pxで保ったまま文章を読める幅が必要なので、左列が約190pxに
-   なる前に曜日を下へ送る。小さい分類記号だった時代の430pxでは遅く、
-   絵の横の本文が100pxほどまで潰れて不自然に折り返していた。 */
-@container (max-width:560px){
-  .wcal-head,.wcal-row,.wcal-grid{grid-template-columns:1fr;gap:0}
-  .wcal-head{display:none}
-  .wc-info,.wcal-cells,.wc-tm{grid-column:1}
-  .wcal-grid{display:none}
-  .wcal-cells{margin-top:7px}
-  .wcal-collines{grid-column:1}
-  .wc-info .wc-ct{padding-left:0;margin-left:0}
-  .wc-tm{margin-top:3px;padding-left:80px}
+/* ── 中幅：2列化（支援・連絡先｜曜日・時間帯） ─────────────
+   ★2026-09-13 ユーザー指示：ウィンドウ900px以下で、下の2列レイアウト
+   を適用する。実測でウィンドウ900px＝.wcal幅 約559px（901pxとの間で
+   746px→559pxに落ちる段差があり、これはこのページのサイドバーの
+   出入りによるもの＝カレンダー自身の幅とは無関係の要因。カレンダーの
+   折り返しはカレンダー自身が使える幅で決めるべきなので、コンテナ幅
+   （@container）のまま実装し、ウィンドウ幅は実測して換算するに留める
+   ――ユーザーへの指示・報告は常にウィンドウ幅、実装の閾値はコンテナ幅
+   という使い分け）。700px（旧の中幅3列）はこの2列化に統合し、廃止。
+
+   曜日7列を横一列に並べる幅が無い帯では、3列（支援｜曜日｜時間帯）を
+   1列へ崩すのではなく、「支援・連絡先｜曜日・時間帯」の2列（幅比6:4）
+   にし、右列の中で曜日を月〜金／土日の2行に折り返し、時間帯を土日の
+   続きに置く：
+     支援・連絡先 | 月火水木金
+                  | 土日 時間帯
+
+   ★縦罫はここでは引かない（2026-09-13 判断）。この表の縦罫は装飾
+   ではなく「7つの曜日が一直線に並び、その交点に印が置かれる」格子
+   そのもの（§曜日の縦の軸）。折り返した瞬間その前提は崩れ、土曜は
+   月曜の真下に来るが両者に縦の関係は無い――5列に引き直しても、
+   1行目（月〜金）と2行目（土日＋時間帯）で列の意味が食い違うので、
+   罫は交点を示すどころか、無関係なものが同じ軸に乗っているように
+   見せる嘘の線になる。格子を保てないなら、線は引かない。
+
+   ★曜日名は列見出しから各マスへ移す。見出しが「曜日・時間帯」の
+   1本になるので、どのマスがどの曜日かは、マス自身が文字として持つ
+   しかない。点（塗り円）と曜日名を別々の要素として上下に積むと、
+   点の無い曜日で上段が空いて行が倍の高さになるので、**塗り円の中に
+   曜日名を置いて1つの粒に畳む**：該当する曜日は色の粒に白抜き文字、
+   該当しない曜日は地のままの文字。罫が無くても「点いている曜日が
+   濃い粒として並ぶ」形で週が読める。
+
+   ★.wc-daytime は広い表示では display:contents（透明）で、.wcal-cells
+   と .wc-tm をそれぞれ独立の列として3列グリッドに乗せる。ここでだけ
+   実体化し、両者を同じグリッドの折り返しの中に入れる。 */
+@container (max-width:559px){
+  .wcal-head,.wcal-row,.wcal-grid{grid-template-columns:6fr 4fr}
+  /* 曜日7列の細罫は引かない（上記の理由）。ただし「支援・連絡先」と
+     「曜日・時間帯」を分ける**1本だけ**は残す（2026-09-13 ユーザー
+     指示）。この線は曜日の折り返しと無関係に2つのブロックの境目を
+     上から下まで一直線に通るので、格子の嘘は生じない――広い表示で
+     .wcal-col:first-child が持っていた「曜日の表の左端」の役目を、
+     狭い表示ではこの1本が引き受ける。 */
+  .wcal-collines{grid-template-columns:1fr;
+    border-left:1.5px solid #d8c9a4}
+  .wcal-collines .wcal-col{display:none}
+  .wc-h-tm{display:none}
+  .wcal-head .wcal-cells{display:none}
+  .wc-h-sv{grid-column:1}
+  .wc-h-dt{display:block;grid-column:2;text-align:center}
+  /* 曜日と時間帯を同じ5列グリッドに乗せる。.wcal-cells は7個の曜日
+     マスの器なので、それ自体を display:contents で透明化し、中の
+     7マスを親（.wc-daytime）の5列グリッドへ直接流し込む――5列に
+     7個入れると自動で月〜金／土日の2行に折り返る。.wc-tm はその
+     3列目（土日の隣）から明示的に置き、土日の続きに並べる：
+       月 火 水 木 金
+       土 日 時間帯
+     grid-auto-flow の自動配置には委ねられない位置（曜日の行の中）
+     なので、.wc-tm の行・列だけ数値で指定する。 */
+  /* 左の padding は縦罫と粒を離すため（広い表示で .wc-ct や .wc-tm が
+     罫との間に取っているのと同じ扱い）。これが無いと月・土の粒が罫に
+     接する。 */
+  .wc-daytime{display:grid;grid-column:2;
+    grid-template-columns:repeat(5,1fr);grid-auto-rows:auto;
+    column-gap:6px;row-gap:6px;align-content:center;
+    padding-left:12px}
+  .wc-daytime .wcal-cells{display:contents}
+  .wc-tm{grid-row:2;grid-column:3/6;min-width:0;padding-left:6px;
+    align-self:center;text-align:left}
   .wcal-use::before{content:"時間帯：";color:var(--ink3);font-weight:600}
-  .wcal-c::after{content:attr(data-d);font-size:9px;color:var(--ink3)}
-  .wcal-c{grid-auto-flow:row;gap:1px;align-content:center}
-  .wcal-name{font-size:14px}
+
+  /* ── 曜日の粒（塗り円＋曜日名） ──────────────────────
+     表示時・編集時のどちらも同じ粒にする。表示時のマス（.wcal-c）は
+     広い表示では点（.wcal-dot）だけを持つ器だが、ここでは器自身が
+     円になり、中の曜日名を出す。 */
+  .wcal-dname{position:static;width:auto;height:auto;overflow:visible;
+    clip-path:none;font-size:11px;font-weight:700;line-height:1;
+    letter-spacing:0}
+  .wcal-c{width:26px;height:26px;min-height:0;justify-self:center;
+    border-radius:50%;box-sizing:border-box;
+    border:1.4px solid #dfd3b4;background:#fffdf7;color:var(--ink2)}
+  .wcal-c.on{border-color:transparent;background:var(--sc);color:#fffdf7}
+  /* 点は円の中に重ねない――円そのものが点灯を表す。 */
+  .wcal-c .wcal-dot{display:none}
+  /* 編集時のボタンも同じ粒。::before の小さな円は使わず、ボタン本体を
+     円にして曜日名を載せる（広い表示と違い、どのマスが何曜日かを
+     文字で示す必要がある）。 */
+  .wcal-c-btn{width:26px;height:26px;cursor:pointer}
+  .wcal-c-btn::before{display:none}
+  .wcal-c-btn:not(.on):hover{border-color:#a8946a;background:#f5efdd}
+  .wcal-c-btn.on:hover{filter:brightness(1.08)}
+  /* 土日は地の色を変えて、折り返した2行目が週末だと分かるようにする
+     （広い表示の .wcal-col-end と同じ役目を、罫ではなく粒が持つ）。 */
+  .wcal-c-end:not(.on){background:#f8f3e3}
+}
+
+/* ── さらに狭い：1列へ縦積み ────────────────────────────
+   ★2026-09-13 ユーザー指示：ウィンドウ500px以下（実測 .wcal 約420px、
+   上の換算と同じ理由でコンテナ幅のまま実装）では、2列（支援・連絡先
+   ｜曜日・時間帯）を並べる幅そのものが無い。実測：右列（曜日5列＋
+   gap＋左padding）の最小幅が166px で fr の対象にならず、920px→420px
+   まで縮む間、166pxを引いた残りが全部左列（支援・連絡先）から削られる
+   ――420pxでは支援名・内容の幅が56px、390pxで26px、360pxで0pxまで
+   潰れて読めなくなっていた（実測で発覚）。左右の奪い合いをやめ、
+   支援・連絡先を上、曜日・時間帯をその下に積む＝行の幅をどちらも
+   まるごと使える形に変える。
+
+   ★見出し行（支援・連絡先｜曜日・時間帯の並置）も1列では意味を失う
+   ので出さない――見出しが無くても、通帳の1件ずつが「名前→連絡先→
+   いつ」の順で読めれば表として成立する（実際、上の各行も同じ順で
+   組まれている）。
+   ★縦罫（.wcal-collines の1本）も列の境目が無くなるので出さない。
+   代わりに、支援・連絡先ブロックと曜日・時間帯ブロックの間に薄い
+   横線を1本引き、「行の中の2つの塊」だと分かるようにする（行と行の
+   境目 .wcal-row+.wcal-row::before と同じ発想・同じ太さ）。 */
+@container (max-width:420px){
+  .wcal-head{display:none}
+  .wcal-grid{display:none}
+  .wcal-row{grid-template-columns:1fr;row-gap:10px}
+  /* ★559px段の「月〜金／土日+時間帯」の5列2行グリッド（.wc-daytime
+     の grid-template-columns:repeat(5,1fr) と .wc-tm の
+     grid-row:2/grid-column:3/6）はここでも引き継ぐ――1列縦積みに
+     なっても曜日の並べ方自体は559px段と同じでよく、変える理由が
+     無い。★以前ここで .wcal-cells を display:flex に変えて7つを
+     横一列に戻そうとしたが、その結果 .wc-tm の grid-row/column 指定
+     が効く先（5列グリッド）が無くなり、時間帯が月〜金の下・土日の上に
+     挟まって浮いた（2026-09-13 ユーザー指摘：スクリーンショットで
+     発覚）。5列グリッドは崩さない。 */
+  /* ★件と件の境目（.wcal-row+.wcal-row::before、左右いっぱい・濃い色）
+     と同じ太さ・同じ左右いっぱいの線を引くと、「件の境目」と「1件の
+     中の区切り」が見分けられなかった（2026-09-13 ユーザー指摘：1回目
+     の指摘で線ごと消したところ、今度は境目自体が無く曖昧という指摘）。
+     線は残すが、紙の端まで届く線は「件の境目」の専売にする。
+     ★中央35%〜65%の固定割合にしたところ「短すぎる」との指摘――
+     曜日の粒の並び（月〜金）と無関係な比率だったのが原因。「月の右側
+     〜金の左側」（2026-09-13 ユーザー指示）に合わせたい。
+     ★一度 ::before をグリッドアイテムとして2列目に置いたが、それが
+     曜日7マスの自動配置に割り込み、月の次に線が来て火水木...の順が
+     ずれた（2026-09-13 発覚）。グリッドの中身とは独立させる必要が
+     あるので、絶対配置に戻し、位置は曜日の粒の実寸（26px）と
+     gap（6px）から計算する：1列分＝(100% − gap4本ぶん)/5列。
+     月の右端＝1列ぶん、金の左端＝100%−1列ぶん。 */
+  .wc-daytime{grid-column:1;padding-left:0;padding-top:14px;
+    position:relative}
+  .wc-daytime::before{content:"";position:absolute;top:0;
+    --wc-col:calc((100% - 24px) / 5);
+    left:var(--wc-col);right:var(--wc-col);
+    border-top:1px solid #ece3cd}
+  /* 土日と時間帯の間に「｜」の縦の仕切りを1本入れる（2026-09-13
+     ユーザー指示：「土日｜時間帯」）。559px段では同じ場所に罫が無い
+     ――右列が6:4の奪い合いで狭く、時間帯の文字がすぐ隣に来て仕切りを
+     入れる余地が無かったが、ここは1列で幅に余裕があるので引ける。 */
+  .wc-tm{border-left:1px solid #ece3cd;padding-left:10px;margin-left:2px}
 }
 
 /* ── 介護で使うもの｜福祉用具の棚差し ─────────────────────
