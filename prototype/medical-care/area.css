@@ -1493,14 +1493,12 @@ button.st:hover{filter:brightness(.97)}
    縦の位置を揃える）。時間帯の隣など「項目の並び」に置くと、その
    項目と横に並ぶ意味が必ず問われる。アイコンは行の左端で「この行が
    何の支援か」を示す唯一の固定要素――項目の列とは別のこの帯に、
-   削除も縦に積む。 */
+   削除も縦に積む。
+   ★margin-top:24px を持たせていたため、.wc-info の align-items:
+   center が効かず絵だけ下寄りに見えていた（2026-09-13 ユーザー
+   指摘）。縦位置は align-self:center だけに委ね、margin は持たない。 */
 .wc-art-rail{position:relative;width:64px;height:64px;align-self:center;
-  display:grid;place-items:center;margin-top:24px}
-/* 編集中は .wc-art-rail 自身が行の高さいっぱいに伸びる（align-self:
-   stretch、下の .wcal-row-edit）ので、✕の位置は rail の上端ではなく
-   絵（.wcal-art、rail の中央に place-items:center で座る）を基準に
-   置く――top を rail 基準の固定値にすると、編集中だけ rail が伸びて
-   絵から離れ、上の入力欄に重なった（2026-09-11 実測）。 */
+  display:grid;place-items:center}
 .wc-art-rail .rowdel{position:absolute;left:50%;top:50%;
   transform:translate(-32px,-56px);width:24px;height:24px}
 .wcal-art{flex:none;width:64px;height:64px;display:grid;place-items:center;
