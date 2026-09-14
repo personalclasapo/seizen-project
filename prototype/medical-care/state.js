@@ -40,12 +40,25 @@
 
      done は「家族が辿れる」、open は「まだ辿れない」。銀行口座の
      KIT_STATES・保険の CHECK_STATES と同じ数え方にして、領域を
-     またいでも進捗の意味がずれないようにする。                    */
+     またいでも進捗の意味がずれないようにする。
+
+     ★2026-09-14：介護保険関係の証書（負担割合証・限度額認定証・
+     ケアプラン）は「該当なし」だけでは事情が潰れる。制度上、
+     手元に無い理由がそれぞれ違うため（下の CARE_DOC_KINDS 参照）。
+     未交付・未申請・未作成 を足す――3つとも「そもそも家に無い」で
+     done でも open でもない（該当なしと同じ数え方）。ただしバッジの
+     語としては該当なしと使い分ける（なぜ無いかが項目の性質から
+     決まっているので、項目ごとに候補を絞る＝下の CARE_DOC_KINDS の
+     states）。ここへ足すのは語彙の置き場所を1か所に保つため
+     （銀行口座・保険と共有する CHECK_STATES を割らない）。 */
   const CHECK_STATES = {
     '確認済み': { tone: 'ok', done: true,  open: false },
     '未確認':   { tone: 'no', done: false, open: true  },
     '確認中':   { tone: 'wk', done: false, open: true  },
-    '該当なし': { tone: 'na', done: false, open: false }
+    '該当なし': { tone: 'na', done: false, open: false },
+    '未交付':   { tone: 'na', done: false, open: false },
+    '未申請':   { tone: 'na', done: false, open: false },
+    '未作成':   { tone: 'na', done: false, open: false }
   };
   const CHECK_ORDER = ['確認済み', '未確認', '確認中', '該当なし'];
 
@@ -385,6 +398,46 @@
   function equipType(name) { return EQUIP_TYPES.find(s => s.name === name) || null; }
   function kindOfEquip(name) { const t = equipType(name); return t ? t.kind : null; }
 
+  /* 介護保険関係の書類｜固定4種。医療の MEDSRC_KINDS と同じ形
+     （fixed：行が常設で消せない）。名前は制度上の呼び名で、家庭は
+     書き換えない（§9：制度が決めるものを自由記述にしない）。
+
+     4つとも「手元に無い」の中身が違う（§11：空欄と該当なしを同じ
+     扱いにしない、を1歩進めて――該当なしにもいくつかの理由がある）。
+     states は stBadge が出す候補の並び。states に無い値が保存分に
+     残っていても checkState は該当なし相当（tone:'na'）へ落ちる
+     （CHECK_STATES 参照）ので、表示が壊れることはない。
+
+       被保険者証     … 65歳になれば全員に自動で交付される。
+                        「無い」は探せていないだけ＝該当なしで足りる。
+       負担割合証     … 要介護・要支援の認定者に自動で交付される。
+                        認定を受けていなければ交付されない＝未交付。
+       限度額認定証   … 本人が申請し、所得・資産の要件を満たした
+                        ときだけ交付される。申請していなければ
+                        未申請、申請して要件を満たさなければ該当なし
+                        （どちらも「手元に無い」だが家族の次の行動が
+                        違う――申請するか、しても無駄と分かっているか）。
+       ケアプラン     … ケアマネが作る。認定前はまだ作られていない
+                        ＝未作成。 */
+  const CARE_DOC_KINDS = {
+    hihoken: { label: '介護保険被保険者証',
+      states: ['確認済み', '未確認', '確認中', '該当なし'], def: '未確認' },
+    futan:   { label: '介護保険負担割合証',
+      states: ['確認済み', '未確認', '確認中', '未交付'], def: '未交付' },
+    gendo:   { label: '介護保険負担限度額認定証',
+      states: ['確認済み', '未確認', '確認中', '未申請', '該当なし'], def: '未申請' },
+    plan:    { label: 'ケアプラン',
+      states: ['確認済み', '未確認', '確認中', '未作成'], def: '未作成' }
+  };
+  const CARE_DOC_ORDER = ['hihoken', 'futan', 'gendo', 'plan'];
+  const CARE_DOC_FIXED = CARE_DOC_ORDER;   /* 標準行が常設される書類 */
+  /* 書類の状態候補。固定4種はその項目の states、自由行（kind:'other'）
+     は該当なしまでの標準4語（CHECK_ORDER と同じ）。 */
+  function careDocStates(kind) {
+    const k = CARE_DOC_KINDS[kind];
+    return k ? k.states : CHECK_ORDER;
+  }
+
   let seq = 0;
   const uid = p => p + '-' + (++seq);
 
@@ -403,7 +456,7 @@
          引き上げられない領域だけ、その領域を仮データに落とす
        ・本番でユーザーのデータが入ったあとに形を変えるときも、
          この番号を上げて MIGRATIONS に1段足せば地続きで移行できる */
-  const SCHEMA = 7;
+  const SCHEMA = 8;
 
   const data = {
     /* この版で保存する。hydrate() が古い版を読んだら MIGRATIONS で
@@ -603,13 +656,21 @@
           provider: 'はまっ子福祉用具', tel: '045-222-3333',
           web: 'https://example.or.jp/hamakko' }
       ],
-      /* ④ 介護関係の書類やもの。その家にある、比較的安定した書類・
-         ものの所在（§13-1）。中身（番号など）は持たない。並びは一例。 */
+      /* ④ 介護保険関係の書類。固定4種（CARE_DOC_KINDS）は行が常設で
+         消せない。名前（item）は制度上の呼び名なので書き換えない。
+         家庭が書くのは所在（where）と状態（state）だけ（正本 §13-1：
+         中身＝番号などは持たない）。5件目以降は kind:'other' の自由行
+         として足せる（住宅改修の記録・診察券など、固定4種に収まらない
+         もの。医療のかかりつけ薬局と同じ「fixed＋multi」の形）。 */
       papers: [
-        { id: uid('cp'), item: '介護保険関係の書類', where: 'リビングの書類棚', state: '確認済み' },
-        { id: uid('cp'), item: 'ケアプラン', where: 'リビングの書類棚', state: '確認済み' },
-        { id: uid('cp'), item: '負担割合証', where: 'リビングの引き出し', state: '確認済み' },
-        { id: uid('cp'), item: '介護保険証', where: 'リビングの書類棚', state: '未確認' }
+        { id: uid('cp'), kind: 'hihoken', item: '介護保険被保険者証',
+          where: 'リビングの書類棚', state: '未確認' },
+        { id: uid('cp'), kind: 'futan', item: '介護保険負担割合証',
+          where: 'リビングの引き出し', state: '確認済み' },
+        { id: uid('cp'), kind: 'gendo', item: '介護保険負担限度額認定証',
+          where: '', state: '未申請' },
+        { id: uid('cp'), kind: 'plan', item: 'ケアプラン',
+          where: 'リビングの書類棚', state: '確認済み' }
       ]
     }
   };
@@ -753,6 +814,72 @@
           eq.kind = kindOfEquip(eq.name) || 'other';
         }
       });
+    },
+    /* 版7→8：介護保険関係の書類を、自由行から固定4種＋自由行へ
+       作り替えた（医療の医薬品源＝ fixed／multi と同じ形）。旧行は
+       item が自由文字列で、家庭ごとに書き方がばらけている
+       （「介護保険関係の書類」「介護保険証」等）。
+
+       ★引き継ぎ方針：旧行の item を緩く読んで、固定4種のどれかに
+       対応が付くものだけ where・state を引き継ぐ。対応が付かない
+       行（住宅改修の記録・診察券など）は kind:'other' の自由行として
+       そのまま残す――家族が書いた行を消さない（正本 §11 の精神）。
+       対応が付かなかった固定4種は、仮データと同じ既定値で新規に足す
+       （未確認／未交付／未申請／未作成。上の CARE_DOC_KINDS 参照）。
+
+       ★state の引き継ぎ：旧語彙は確認済み／未確認／確認中／該当なし
+       の4つしか無い。「該当なし」は固定4種それぞれの「手元に無い」
+       語（futan→未交付／gendo→未申請／plan→未作成）へ読み替える
+       ――旧語彙のまま残すと、futan の候補に「該当なし」が無いのに
+       保存分にだけ残り、stBadge の選択肢に出ない値になる
+       （checkState 自体は tone:'na' へ落ちるので表示は壊れないが、
+       選び直すまで元の語のままになるのは据わりが悪い）。
+       確認済み／未確認／確認中はそのまま引き継ぐ（4種とも候補に持つ）。
+
+       ★RESEARCH.md §3 の教訓：state.js の形を変えたら hydrate/移行を
+       必ず見直す。ここは papers の要素の形が変わる（item の意味が
+       自由文字列→固定ラベルに変わる）ので、旧行を機械的に新形へ
+       当てはめず、対応の可否で振り分ける。 */
+    7: function (s) {
+      const c = s.care;
+      if (!c || !Array.isArray(c.papers)) return;
+      /* 旧 item の書きぶりから固定4種を緩く引き当てる。複数の言い方が
+         同じ書類を指すことがある（「介護保険証」＝被保険者証の通称）。 */
+      const GUESS = [
+        { kind: 'hihoken', test: /被保険者証|介護保険証|保険証/ },
+        { kind: 'futan',   test: /負担割合証|割合証/ },
+        { kind: 'gendo',   test: /限度額|負担限度額認定証|認定証/ },
+        { kind: 'plan',    test: /ケアプラン|介護計画/ }
+      ];
+      const matched = {};   /* kind → 旧行（最初に見つかったもの） */
+      const rest = [];      /* 対応が付かなかった旧行 */
+      c.papers.forEach(r => {
+        if (!r) return;
+        const item = String(r.item || '');
+        const hit = GUESS.find(g => g.test.test(item) && !matched[g.kind]);
+        if (hit) matched[hit.kind] = r; else rest.push(r);
+      });
+      /* 旧 state（確認済み／未確認／確認中／該当なし）を、固定4種の
+         「手元に無い」語へ読み替える。 */
+      const NA_OF = { hihoken: '該当なし', futan: '未交付',
+        gendo: '未申請', plan: '未作成' };
+      c.papers = CARE_DOC_ORDER.map(kind => {
+        const def = CARE_DOC_KINDS[kind];
+        const old = matched[kind];
+        if (!old) {
+          return { id: uid('cp'), kind: kind, item: def.label,
+            where: '', state: def.def };
+        }
+        let state = old.state;
+        if (state === '該当なし') state = NA_OF[kind];
+        if (def.states.indexOf(state) < 0) state = def.def;
+        return { id: old.id, kind: kind, item: def.label,
+          where: old.where || '', state: state };
+      }).concat(rest.map(r => {
+        if (!('kind' in r)) r.kind = 'other';
+        if (CHECK_ORDER.indexOf(r.state) < 0) r.state = '未確認';
+        return r;
+      }));
     }
   };
 
@@ -1144,6 +1271,22 @@
     return true;
   }
 
+  /* 介護保険関係の書類｜固定4種の他に足す1件（kind:'other' の
+     自由行）。名前は家庭が自由に書く（住宅改修の記録・診察券など）。
+     状態は該当なしまでの標準4語（careDocStates('other') → CHECK_ORDER）。 */
+  function addCarePaper() {
+    const row = { id: uid('cp'), kind: 'other', item: '',
+      where: '', state: '未確認' };
+    data.care.papers.push(row);
+    return row;
+  }
+  /* 固定4種（CARE_DOC_FIXED）は消せない。5件目以降の自由行だけ消せる
+     （かかりつけ薬局の canRemoveMedSource と同じ考え方）。 */
+  function canRemoveCarePaper(id) {
+    const row = findIn(data.care.papers, id);
+    return !!row && CARE_DOC_FIXED.indexOf(row.kind) < 0;
+  }
+
   function removeFrom(list, id) {
     const i = (list || []).findIndex(x => x.id === id);
     if (i > -1) list.splice(i, 1);
@@ -1166,7 +1309,11 @@
       if (canRemoveMedSource(id)) removeFrom(m.medSources, id);
       return;
     }
-    [m.clinics, c.services, c.equipment, c.papers].forEach(list => removeFrom(list, id));
+    if (findIn(c.papers, id)) {
+      if (canRemoveCarePaper(id)) removeFrom(c.papers, id);
+      return;
+    }
+    [m.clinics, c.services, c.equipment].forEach(list => removeFrom(list, id));
     ['conditions', 'treatments', 'devices', 'allergies', 'adverse'].forEach(k => {
       const g = m[k];
       if (g && Array.isArray(g.items)) removeFrom(g.items, id);
@@ -1183,6 +1330,7 @@
     ALLERGY_REACTIONS, ADVERSE_EVENTS,
     MEDSRC_KINDS, MEDSRC_ORDER, MEDSRC_FIXED,
     CARE_LEVELS, SERVICE_KINDS, SERVICE_TYPES, EQUIP_KINDS, EQUIP_TYPES,
+    CARE_DOC_KINDS, CARE_DOC_ORDER, CARE_DOC_FIXED, careDocStates,
     /* 事実 */
     data, save,
     /* 引き出し */
@@ -1205,6 +1353,7 @@
     addCurrent, addCurrentRow, addAllergy, addAdverse, addService,
     toggleServiceDay,
     setServiceName, setServiceKind, addEquip, setEquipName,
-    removeFrom, removeAny, canRemoveMedSource
+    addCarePaper,
+    removeFrom, removeAny, canRemoveMedSource, canRemoveCarePaper
   };
 })(window);

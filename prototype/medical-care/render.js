@@ -386,14 +386,18 @@
      語彙：2択はその場トグル、3つ以上はセレクト）。ここは常に
      セレクトだが、地・色はバッジの見た目のまま（appearance:none）。
      山形は付けない――他エリアのバッジと揃える。 */
-  function stBadge(path) {
+  /* order を渡すと候補をその並びに絞る（介護保険関係の書類｜固定
+     4種は項目ごとに候補が違う――CARE_DOC_KINDS 参照）。省略時は
+     従来どおり CHECK_ORDER の4語。 */
+  function stBadge(path, order) {
     const row = S.getByPath(path);
     const st = S.checkState(row);
     const cur = row && row.state ? row.state : '未確認';
+    const opts = order || S.CHECK_ORDER;
     return '<span class="st st-sel st-' + st.tone + '">' +
       '<select class="st-sel-el" data-ef="1" data-path="' + path + '.state" ' +
         'aria-label="状態を選ぶ">' +
-      S.CHECK_ORDER.map(s => '<option value="' + esc(s) + '"' +
+      opts.map(s => '<option value="' + esc(s) + '"' +
         (s === cur ? ' selected' : '') + '>' + esc(s) + '</option>').join('') +
       '</select>' +
       '</span>';
@@ -2858,6 +2862,121 @@
       (EQUIP_IC[kind] || EQUIP_IC.other) + '</svg>';
   }
 
+  /* 介護保険関係の書類｜固定4種の絵（2026-09-14・自作）。
+
+     ★素材探しは再実行していない。§8（用具アイコン）で同じ register
+     ――「医療タイルと同じ層の手つき」――の既製セットを網羅的に当たり
+     全滅している（Health Icons=画風／ICOOON MONO=再配布禁止／
+     Tabler=層なし／Openclipart・Material Symbols=網羅せず）。
+     日本固有の証書様式はさらに見込みが薄い。判断の記録は
+     `care-board-motifs.RESEARCH.md` §9。
+
+     ★実寸・様式を調べてから描いた（勘で置かない・CLAUDE.md）：
+       被保険者証   … 128×273mm・**三つ折り**（厚労省様式 Vol.654）
+       負担割合証   … **はがき大の1枚**（市川市「ピンク色ではがき大」）
+       限度額認定証 … 統一様式を確認できず。**証**として描き、はがきと
+                      判型で差を付ける
+       ケアプラン   … **A4 の綴じ書類**（居宅サービス計画書 第1〜7表）
+
+     この調査でいちばん効いたのは「4つは同じ物の色違いではない」こと。
+     三つ折りの紙／はがき／証／綴じた複数枚と**物の種類が違う**ので、
+     そこを描き分ける。知らずに描くと4枚とも「角丸の矩形＋罫線」に
+     なる（§8 で通った失敗）。
+
+     層の手つきは EQUIP_IC と同じ（器→中身を別層で覗かせる→記号1つ→
+     線幅が層の遠近に対応）。色も EQ_* をそのまま使う――同じ介護ゾーン
+     の紙の上に並ぶので、用具と色が変わる理由がない。 */
+  const CARE_DOC_ART = {
+
+  /* 介護保険被保険者証｜三つ折りの紙を開いたところ。横に長い紙が
+     縦の折り目2本で3面に分かれる。左右の面は奥へ折れる＝台形にし、
+     中央面だけ正対させる（折れていることが形で分かる）。 */
+  hihoken:
+    /* 左の面（奥へ折れる） */
+    '<path d="M7 15.5 15 13v22l-8-2.5Z" fill="'+EQ_M+'" stroke="'+EQ_L+'" stroke-width="1.5" stroke-linejoin="round"/>' +
+    /* 右の面（同じく奥へ） */
+    '<path d="M41 15.5 33 13v22l8-2.5Z" fill="'+EQ_M+'" stroke="'+EQ_L+'" stroke-width="1.5" stroke-linejoin="round"/>' +
+    /* 中央の面（正対・いちばん手前＝太い線） */
+    '<path d="M15 13h18v22H15Z" fill="'+EQ_B+'" stroke="'+EQ_L+'" stroke-width="1.8" stroke-linejoin="round"/>' +
+    /* 記載（中央面の中身） */
+    '<path d="M18.5 18.5h11M18.5 22.5h11M18.5 26.5h7" stroke="'+EQ_F+'" stroke-width="1.4" stroke-linecap="round"/>',
+
+  /* 介護保険負担割合証｜はがき大の1枚。「割合」＝大きな数字1文字が
+     この証を決める記号。★棒を3本並べる案はバーコードに見えた（1回目）
+     ので、枠の中に数字1文字を置く形にした。 */
+  futan:
+    /* 紙（器）。はがき ≒ 100×148mm の横置き */
+    '<path d="M8 14h32a1.6 1.6 0 0 1 1.6 1.6v16.8A1.6 1.6 0 0 1 40 34H8a1.6 1.6 0 0 1-1.6-1.6V15.6A1.6 1.6 0 0 1 8 14Z" fill="'+EQ_B+'" stroke="'+EQ_L+'" stroke-width="1.8" stroke-linejoin="round"/>' +
+    /* 割合の欄（中身の層・白く抜く） */
+    '<path d="M25 18.5h12.5v11H25Z" fill="'+EQ_W+'" stroke="'+EQ_L+'" stroke-width="1.5" stroke-linejoin="round"/>' +
+    /* 数字（1）＝割合。1〜3割で変わるので代表として1を置く */
+    '<path d="M29 21.5l2-1.2V27" fill="none" stroke="'+EQ_L+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M28.8 27h4.4" stroke="'+EQ_L+'" stroke-width="1.8" stroke-linecap="round"/>' +
+    /* 宛名面の罫（弱い層） */
+    '<path d="M11 19h10M11 23h10M11 27h6.5" stroke="'+EQ_F+'" stroke-width="1.4" stroke-linecap="round"/>',
+
+  /* 介護保険負担限度額認定証｜証。認定の判が押してある。
+     ★中に字を入れた角印は「H」に見えた（2回目）。判らしさは字ではなく
+     **傾いて押されている**ことなので、傾けた枠だけにして中は空にする
+     ――同じ絵の別の描き方へ切り替えた（CLAUDE.md §2 の検出器）。 */
+  gendo:
+    /* 証（器）。縦長 */
+    '<path d="M13 9h22a2 2 0 0 1 2 2v26a2 2 0 0 1-2 2H13a2 2 0 0 1-2-2V11a2 2 0 0 1 2-2Z" fill="'+EQ_B+'" stroke="'+EQ_L+'" stroke-width="1.8" stroke-linejoin="round"/>' +
+    /* 見出しの帯（中身の層） */
+    '<path d="M15 13h18v4H15Z" fill="'+EQ_M+'" stroke="'+EQ_L+'" stroke-width="1.4" stroke-linejoin="round"/>' +
+    /* 記載の罫 */
+    '<path d="M15 21.5h13M15 25h13M15 28.5h8" stroke="'+EQ_F+'" stroke-width="1.4" stroke-linecap="round"/>' +
+    /* 判（手前の層・傾けて押す） */
+    '<g transform="rotate(-12 30 31)">' +
+      '<path d="M25 26h10v10H25Z" fill="none" stroke="'+EQ_L+'" stroke-width="2.2" stroke-linejoin="round"/>' +
+    '</g>',
+
+  /* ケアプラン｜綴じた書類。A4 が複数枚。中身の紙が覗くから「束」に
+     見える（医療のお薬手帳が中身を覗かせているのと同じ理屈）。 */
+  plan:
+    /* 奥の紙（2枚目・3枚目がずれて覗く） */
+    '<path d="M17 11h19v25H17Z" fill="'+EQ_W+'" stroke="'+EQ_F+'" stroke-width="1.3" stroke-linejoin="round"/>' +
+    '<path d="M15 12.5h19v25H15Z" fill="'+EQ_W+'" stroke="'+EQ_F+'" stroke-width="1.3" stroke-linejoin="round"/>' +
+    /* 表紙（手前・いちばん太い） */
+    '<path d="M12 14h19a1.8 1.8 0 0 1 1.8 1.8v21.4A1.8 1.8 0 0 1 31 39H12Z" fill="'+EQ_B+'" stroke="'+EQ_L+'" stroke-width="1.8" stroke-linejoin="round"/>' +
+    /* 綴じ（左の背・手前の層） */
+    '<path d="M12 14h3.5v25H12Z" fill="'+EQ_M+'" stroke="'+EQ_L+'" stroke-width="1.5" stroke-linejoin="round"/>' +
+    /* 綴じ穴 */
+    '<circle cx="13.7" cy="21" r="1.1" fill="'+EQ_L+'"/>' +
+    '<circle cx="13.7" cy="31" r="1.1" fill="'+EQ_L+'"/>' +
+    /* 表紙の記載 */
+    '<path d="M19 21h10M19 25h10M19 29h6.5" stroke="'+EQ_F+'" stroke-width="1.4" stroke-linecap="round"/>',
+
+  /* その他＝自由行の受け皿｜まだ描き分けていない書類。折れた右上角
+     ＋罫線という、書類そのものを指す定番のシルエット。固定4種のように
+     「この書類が何か」を示す固有の記号（三つ折り・数字・判・綴じ）は
+     持たない――持たせると「その他」なのに特定の書類に見えてしまう。
+
+     ★2026-09-14：以前は汎用グリフ（CARE_DOC_IC、24×24 の塗り面
+     アイコンを48pxへ引き伸ばしたもの）を流用していたが、線の太さも
+     絵の密度も他4種と釣り合わず「同じ格に見えない」という指摘を受けた
+     （実測でも viewBox が 24×24 のまま拡大されているだけと判明）。
+     ここでは他4種と同じ 48×48 のキャンバス・同じ色・同じ層の手つき
+     （器→折れた角が中身の層を覗かせる→弱い罫線）で描き直した。 */
+  other:
+    /* 紙（器）。右上角が折れた、書類の定番シルエット。 */
+    '<path d="M12 8h18l6 6v26a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z" ' +
+      'fill="'+EQ_B+'" stroke="'+EQ_L+'" stroke-width="1.8" stroke-linejoin="round"/>' +
+    /* 折れた角（中身が覗く層） */
+    '<path d="M30 8v6h6Z" fill="'+EQ_M+'" stroke="'+EQ_L+'" stroke-width="1.5" stroke-linejoin="round"/>' +
+    /* 罫線（弱い層） */
+    '<path d="M15 22h18M15 26h18M15 30h12" stroke="'+EQ_F+'" stroke-width="1.4" stroke-linecap="round"/>'
+  };
+  /* 書類のグリフ。EQUIP_IC と同じく、パスが色を自前で持つので
+     CSS の color には依存しない。固定4種は各書類固有の記号を持ち、
+     自由行（'other'）は書類一般を指す共通の絵――どちらも同格の
+     実物イラストとして扱う（弱く見せない）。 */
+  function careDocArt(kind) {
+    if (!CARE_DOC_ART[kind]) return '';
+    return '<svg class="cmemo-art-svg" viewBox="0 0 48 48" aria-hidden="true">' +
+      CARE_DOC_ART[kind] + '</svg>';
+  }
+
   /* 用具を載せる棚板。1枚ずつの持ち送り棚（プランク＋三角の受け）を
      SVG で描く――CLAUDE.md の振り分けでは「矩形＋三角ふたつ、寸法を
      数個決めれば完成する」＝自作可の側。角丸の div に色を敷いた
@@ -2965,8 +3084,12 @@
         '<span class="eqs-flb">' + label + '</span>' +
         inputHtml +
       '</span>';
-    return efld('用具の名前', ev(p + 'name', eq.name, 'line', '用具の名前')) +
-      efld('種類', equipKindSelect(p, eq)) +
+    /* ★種類→名前の順（2026-09-14 ユーザー指摘：以前は名前が先）。
+       種類を選ぶと名前欄にその名前が反映される仕組み（下の
+       equipKindSelect 参照）なので、先に種類を選ぶほうが操作の
+       流れに合う。 */
+    return efld('種類', equipKindSelect(p, eq)) +
+      efld('用具の名前', ev(p + 'name', eq.name, 'line', '用具の名前')) +
       efld('貸与元・購入元', ev(p + 'provider', eq.provider, 'line', '事業所名')) +
       efld('電話', ev(p + 'tel', eq.tel, 'line', '電話番号')) +
       efld('Web', equipWeb(p, eq));
@@ -3068,7 +3191,7 @@
       '</select>';
   }
 
-  /* ④ 介護関係の書類やもの｜画鋲で留めたメモ紙。
+  /* ④ 介護保険関係の書類｜画鋲で留めたメモ紙。
      ★2026-09-12：荷札（ctagShape / ctagShapeHung / papersBar）を捨てて
      作り直した。荷札は 9/11 に「正本が指定している比喩だから残す」と
      判断したが、実装を並べて見ると、札が板の上に**ただ置かれている**
@@ -3165,50 +3288,127 @@
       '<circle cx="7.7" cy="5.9" r="1.7" fill="#d6e5cd" fill-opacity=".8"/>' +
     '</svg>';
 
-  /* 「介護関係の書類やもの」節の頭書き。上2節（.wcal-lead／.eqs-lead）
+  /* 「介護保険関係の書類」節の頭書き。上2節（.wcal-lead／.eqs-lead）
      と同じチップ・大きさ・背景色に揃える（2026-09-12 ユーザー指示：
      この節だけ白チップ＋緑線グリフの .cp-h／headChip で浮いていた）。
      ★グリフは節の中身（CARE_DOC_IC）をそのまま使う――.eqs-lead の
-     棚の箱・.wcal-lead の時計と同じく「この節の中身は何か」を表す。 */
+     棚の箱・.wcal-lead の時計と同じく「この節の中身は何か」を表す。
+     ★2026-09-14：＋ボタンは「書類を追加」（固定4種は常設で追加の
+     対象ではなく、5件目以降の自由行を足すためのボタン。用具の
+     「＋ 用具を追加」と語調を揃えた）。 */
   function papersLead() {
     const on = secOn('cpapers');
     return '<div class="eqs-lead">' +
       '<span class="eqs-lead-ic" aria-hidden="true">' +
         svgIc(CARE_DOC_IC, 19) + '</span>' +
       '<span class="eqs-lead-tx">' +
-        '<span class="eqs-lead-tt">介護関係の書類やもの</span>' +
-        '<span class="eqs-lead-nt">介護に関わる書類やものの、置き場所です。</span>' +
+        '<span class="eqs-lead-tt">介護保険関係の書類</span>' +
+        '<span class="eqs-lead-nt">介護保険関係の書類の、置き場所です。</span>' +
       '</span>' +
       '<span class="lead-actions">' +
-      (on ? '<button type="button" class="rowadd" data-add="cpaper">＋ 追加</button>' : '') +
+      (on ? '<button type="button" class="rowadd" data-add="cpaper">＋ 書類を追加</button>' : '') +
       editBtn('cpapers') +
       '</span>' +
       '</div>';
   }
 
-  /* ④ 介護関係の書類やもの｜画鋲で留めたメモ紙を並べる。その家にある、
-     比較的安定した書類・ものの所在だけを持つ（§13-1）。中身は持たない。
+  /* 状態が「手元に無い」系（tone:'na'）かどうか。該当なし・未交付・
+     未申請・未作成のどれでも真。案A（2026-09-14 ユーザー判断）：
+     ★2026-09-14：以前はこの行ごと畳んでいたが、ユーザー指摘で撤回
+     ――場所欄そのものは残し、ピンを灰色にして「置き場所」の代わりに
+     状態に応じた一言を薄字で出す（CAREDOC_NA_NOTE）。畳むと「この
+     行に何があるはずか」が読めなくなる（見出しも罫線も消える）。
+     行の形は他の書類と揃えたまま、中身だけを事実に合わせる。 */
+  function paperIsNA(r) { return S.checkState(r).tone === 'na'; }
+
+  /* NA系状態のとき、場所欄に出す一言。(kind, state) の組で決める――
+     「なぜ手元に無いか」は項目の性質ごとに違う（state.js の
+     CARE_DOC_KINDS 参照）ので、同じ一言で済ませない。
+       hihoken＋該当なし … この家庭では起こらない類（65歳未満など）
+       futan＋未交付     … 認定を受けていないので交付されない
+       gendo＋未申請     … 申請していないので手元に無い
+       gendo＋該当なし   … 申請したが要件を満たさず交付されなかった
+       plan＋未作成      … ケアマネがまだ作っていない
+       other＋該当なし   … 自由行の既定（この家庭には無いという判断） */
+  const CAREDOC_NA_NOTE = {
+    'hihoken|該当なし': 'この家庭では該当しません',
+    'futan|未交付':     '認定を受けると交付されます',
+    'gendo|未申請':     '申請すると交付されることがあります',
+    'gendo|該当なし':   '申請したが、要件を満たさず交付されていません',
+    'plan|未作成':      'ケアマネが作成すると届きます',
+    'other|該当なし':   'この家庭には無いもの、という扱いです'
+  };
+  function paperNaNote(r) {
+    return CAREDOC_NA_NOTE[r.kind + '|' + r.state] || 'いまは手元にありません';
+  }
+
+  /* ④ 介護保険関係の書類｜画鋲で留めたメモ紙を並べる。固定4種
+     （CARE_DOC_KINDS）は常設・名前は書き換えない。5件目以降の自由行
+     （kind:'other'）だけ名前を書け、消せる（医療のかかりつけ薬局と
+     同じ fixed／multi の形）。
+
+     紙の中の並び：絵＋バッジを1行（絵＝この紙は何か＝不変、
+     バッジ＝いまどうか＝可変。縦に積むと不変と可変が同じ流れに
+     見えるので、横に分けて対比させる――2026-09-14 ユーザー判断）。
+     続けて名前（絵の読み下し）、置き場所（名前の補足）。
+     絵とバッジは上端で揃える（バッジを絵の中央に合わせると宙に浮く）。
 
      ★傾きは付けない（2026-09-12 ユーザー指摘）。紙ごとに角度を変える
      案で試したが、4列グリッドに傾きを乗せると「傾いた名残」が残って
      見づらいだけで、手で留めた感じには効かなかった。画鋲と紙の層
-     （たわみ・重なり）で留め物であることは足りている。              */
+     （たわみ・重なり）で留め物であることは足りている。
+
+     ★アイコンは固定4種それぞれの実物イラスト（CARE_DOC_ART）を自作
+     済み（2026-09-14・Opus。判断の記録は care-board-motifs.RESEARCH.md
+     §9）。自由行（'other'）も同じ手つきの絵を持つ（同ファイル参照）。 */
   function carePapersBlock() {
     const c = S.data.care;
     const on = secOn('cpapers');
-    const notes = (c.papers || []).map((r, i) => {
+    const list = c.papers || [];
+    const notes = list.map((r, i) => {
       const p = 'care.papers.' + i + '.';
+      const fixed = S.CARE_DOC_FIXED.indexOf(r.kind) > -1;
+      const order = S.careDocStates(r.kind);
+      const nameRow = fixed
+        ? '<div class="cmemo-item"><span class="cmemo-name">' +
+            esc(r.item) + '</span></div>'
+        : '<div class="cmemo-item">' +
+            ev(p + 'item', r.item, 'line', '書類・ものの名前') + '</div>';
+      /* NA系状態かつ表示中は、置き場所の代わりに一言（paperNaNote）を
+         灰色のピンとともに出す（2026-09-14 ユーザー判断：行ごと畳む
+         のをやめ、事実に合わせた一言に差し替える）。編集中は他の項目
+         と同じ入力欄のまま――家族が実際に何か書いていれば見えるし、
+         書いていなくても編集の対象であることが分かる。 */
+      const whereRow = paperIsNA(r) && !on
+        ? '<div class="cmemo-where cmemo-where-na">' + PIN_MARK +
+            '<span>' + esc(paperNaNote(r)) + '</span></div>'
+        : '<div class="cmemo-where">' + PIN_MARK +
+            ev(p + 'where', r.where, 'line', '置き場所') + '</div>';
+      /* 固定4種は各書類固有の絵、自由行（'other'）は書類一般を指す
+         共通の絵（どちらも CARE_DOC_ART・同じ大きさ・同じ色・同じ層の
+         手つき）。何の書類かは家族が書いた名前でしか分からないので、
+         他の書類固有の絵を当てるのは嘘になる（2026-09-11「その他が
+         全部車椅子」の指摘と同じ筋）が、絵の格まで落とす理由は無い
+         （2026-09-14 ユーザー指摘：以前の受け皿は小さく灰色だった）。
+         kind が未知の値でも careDocArt が空を返すので other へ保険。 */
+      const art = '<span class="cmemo-art">' +
+        (careDocArt(r.kind) || careDocArt('other')) + '</span>';
+      /* 削除ボタン（自由行だけ）はバッジの真上に置く（.cmemo-topbar）。
+         紙の上辺からバッジ上端までの空きにボタンが収まる。カードの
+         大きさは変えない。 */
+      const topbar = (on && !fixed)
+        ? '<div class="cmemo-topbar">' + delBtn(r.id) + '</div>' : '';
       return '<li class="cmemo">' +
         memoPaper() +
         '<span class="cmemo-pin" aria-hidden="true">' + CMEMO_PIN + '</span>' +
         '<div class="cmemo-body">' +
-          '<div class="cmemo-item">' +
-            '<span class="cmemo-ic">' + svgIc(CARE_DOC_IC, 16) + '</span>' +
-            ev(p + 'item', r.item, 'line', '書類・ものの名前') +
-            (on ? delBtn(r.id) : '') + '</div>' +
-          '<div class="cmemo-where">' + PIN_MARK +
-            ev(p + 'where', r.where, 'line', '置き場所') + '</div>' +
-          '<div class="cmemo-foot">' + stBadge('care.papers.' + i) + '</div>' +
+          topbar +
+          '<div class="cmemo-head">' +
+            '<span class="cmemo-head-art">' + art + '</span>' +
+            stBadge('care.papers.' + i, order) +
+          '</div>' +
+          nameRow +
+          whereRow +
         '</div>' +
       '</li>';
     }).join('');
@@ -3230,7 +3430,7 @@
              コンテンツ幅が狭くなっていた）。額縁の背板の上に紙を直接
              置く。頭書き（.wcal-lead）が見出しを兼ねる。            */
           '<div class="care-flat">' + careSupportBlock() + '</div>' +
-          /* 「介護で使うもの」「介護関係の書類やもの」は引き続き乳白
+          /* 「介護で使うもの」「介護保険関係の書類」は引き続き乳白
              プレート（ネジ付き）に載せる――こちらは板に留めた資料と
              いう見立てなので、留め具の背景がそのまま意味を持つ。   */
           carePlate(null, null, '', equipmentBlock(),
@@ -3632,8 +3832,13 @@
         else if (what === 'adverse') S.addAdverse();
         else if (what === 'service') S.addService('', 'home');
         else if (what === 'equip') S.addEquip('', 'other');
-        else if (what === 'cpaper')
-          S.data.care.papers.push({ id: 'cp-' + Date.now(), item: '', where: '', state: '未確認' });
+        else if (what === 'cpaper') {
+          S.addCarePaper();
+          /* 足したその行の名前欄をすぐ開く（pharm と同じ扱い）。 */
+          editing = { path: 'care.papers.' +
+            (S.data.care.papers.length - 1) + '.item', kind: 'line' };
+          scrollToEditingAfterRender = true;
+        }
         S.save();
         render();
         return;

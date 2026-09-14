@@ -1872,12 +1872,12 @@ a:hover > .i-ext{opacity:1}
    歩行器・手すりは正面）――揃えるのは向きではなく層の手つき。
    ここが受け持つのは「棚の置かれ方」と文字の余白だけ。 */
 
-/* 器は「介護関係の書類やもの」と同格の独立プレート（.cp-equip、
+/* 器は「介護保険関係の書類」と同格の独立プレート（.cp-equip、
    render.js の carePlate）が持つ――白い地・四隅ネジ・落ち影は共通の
    .cp がすでに持っているので、この節では作らない（2026-09-12 ユーザー
    指摘：「今の支援」プレートの茶のプレート地の上に、この節だけ別途
    白い台紙を重ねて2重の器になっていた。器はボードにつき1段でよい）。
-   ★列も「介護関係の書類やもの」（.cmemos）と同じグリッドに揃える
+   ★列も「介護保険関係の書類」（.cmemos）と同じグリッドに揃える
    （2026-09-12 ユーザー指摘：棚の並びが flex の固定幅で、下の書類の
    4列グリッドと縦横が揃っていなかった）。 */
 .cp-equip .cp-body{container-type:inline-size}
@@ -1950,7 +1950,7 @@ a:hover > .i-ext{opacity:1}
    だけ縮む作りだった（行ごとに中央寄せすると4行の頭がバラバラになる
    ため）。箱にした今は外枠が札の全幅で決まるので、中身は素直に
    左詰めのブロックでよい。 */
-/* 背景は「介護関係の書類やもの」の白い紙カード（.cmemo）の地色に
+/* 背景は「介護保険関係の書類」の白い紙カード（.cmemo）の地色に
    合わせる――枠線は緑のまま（2026-09-13 ユーザー指示：背景だけ揃える）。 */
 .eqs-cap{margin-top:0;border:1.5px solid #6b8f6655;border-top:0;
   border-radius:0 0 6px 6px;background:#f5f3ee;
@@ -2023,7 +2023,7 @@ a:hover > .i-ext{opacity:1}
 .eqs-blank .eqs-name-blank{color:var(--ink3);font-weight:600}
 .eqs-blank .eqs-prov{font-size:11px;color:var(--ink3)}
 
-/* ④ 介護関係の書類やもの｜画鋲で留めたメモ紙。
+/* ④ 介護保険関係の書類｜画鋲で留めたメモ紙。
    紙の輪郭（たわんだ四辺）と画鋲は SVG（render.js の memoPaper /
    CMEMO_PIN）。ここは紙の置かれ方と、文字を紙の上へ乗せる余白だけ。
    ★2026-09-12：荷札（.ctag / .cbar 一式）を捨てて作り直した。
@@ -2077,16 +2077,60 @@ a:hover > .i-ext{opacity:1}
 .cmemo-pin svg{width:100%;height:100%;display:block}
 /* 本文。画鋲の頭を避けて上を空ける。 */
 .cmemo-body{position:relative;min-width:0;padding:20px 14px 14px}
+/* 削除ボタン（自由行だけ）。バッジの真上、少し内側に寄せて置く。
+   紙の上辺からバッジ上端までの 32px に、20px のボタンが上下 6px
+   ずつの余白で収まる。右はバッジの右端より 8px 内側。 */
+.cmemo-topbar{position:absolute;top:0;right:35px;height:35px;
+  display:flex;align-items:center;justify-content:flex-end}
+/* 頭：絵（この紙は何か＝不変）とバッジ（いまどうか＝可変）を分けて
+   対比させる。絵はカードの左右中央、バッジは右端。縦は中央揃え。
+   「絵の中央」はカード全幅の中央ではなくバッジを除いた残り幅の中央
+   ――絵の親（.cmemo-head-art）をバッジと並ぶ flex アイテムにして
+   その中だけで中央揃えすると、バッジぶんの幅が自然に除かれる。
+   min-width:0 は、グリッドの列が中身の最小幅を下回って縮むとき、
+   この行だけ紙の外へ突き出さないため。 */
+.cmemo-head{position:relative;display:flex;align-items:center;
+  min-width:0}
+/* 絵を置く領域。バッジと並ぶ flex アイテムとして残り幅いっぱいに
+   広がり（flex:1 1 auto）、その中で絵を中央揃えする。 */
+.cmemo-head-art{flex:1 1 auto;display:flex;justify-content:center;
+  min-width:0}
+.cmemo-head > .st{flex:0 0 auto;margin-left:8px}
+/* 共通の .rowdel（枠あり・24px角）を、紙の上の狭い空きに合わせて
+   ひとまわり小さく（20px角）。地と枠の色は用具の削除
+   （.eqs-stage .rowdel）と同じ扱いで紙に合わせる。 */
+.cmemo-topbar .rowdel{flex:0 0 auto;width:20px;height:20px;padding:0;
+  background:#fff;border-color:var(--rule)}
+.cmemo-topbar .rowdel svg{width:11px;height:11px}
+/* 削除の確認は用具（.eqs-stage .rowdel-ask）と同じ吹き出し。ボタンの
+   すぐ下に右寄せで出す。確認は一時的な浮きものなので、下の絵・バッジ
+   に重なってよい（用具の削除確認と同じ扱い）。 */
+.cmemo-body > .cmemo-topbar .rowdel-ask{position:absolute;right:0;top:32px;
+  z-index:6;width:max-content;max-width:164px;
+  background:#fff8ea;border:1px solid #e4d3ab;border-radius:8px;
+  padding:7px 8px;box-shadow:0 3px 10px #6b421f2e}
+/* 絵。固定4種は実物のグリフ（render.js の CARE_DOC_ART・48×48・
+   パスが色を自前で持つ）、自由行（'other'）も同じ CARE_DOC_ART の
+   一員として同じ手つきの絵を持つ（2026-09-14：どちらも 48×48・
+   同じ色・同じ層。以前は自由行だけ 24×24 の汎用アイコンを引き伸ばして
+   小さく灰色にしていたが、専用の絵が無いことと絵の格を落とすことは
+   別の話――弱く見せると「その他」の書類だけ浮いて見えた）。
+   パスは自前で色（EQ_L 系＝#6b8f66）を持つので、この要素自体は
+   color を指定しない。 */
+.cmemo-art{flex:0 0 auto;display:flex}
+.cmemo-art svg{width:48px;height:48px;display:block}
 .cmemo-item{font-size:12.5px;font-weight:700;color:var(--ink);
-  display:flex;align-items:flex-start;gap:6px;line-height:1.45}
-/* item のアイコン。カレンダー行・棚のグリフと同格の部品。 */
-.cmemo-ic{flex:0 0 auto;display:flex;color:var(--ink2);margin-top:1px}
-.cmemo-ic svg{width:16px;height:16px}
-.cmemo-item .rowdel{margin-left:auto;flex:0 0 auto}
+  display:flex;align-items:flex-start;gap:6px;line-height:1.45;margin-top:8px}
+.cmemo-name{line-height:1.4}
 .cmemo-where{display:flex;align-items:flex-start;gap:4px;margin-top:6px;
   font-size:11px;color:var(--ink2);line-height:1.45}
 .cmemo-where .mk{flex:0 0 auto;margin-top:1px}
-.cmemo-foot{margin-top:8px}
+/* NA系状態（該当なし／未交付／未申請／未作成）のとき。置き場所の
+   代わりに一言（render.js の paperNaNote）を出す行――ピンの色を
+   落として「所在ではなく、なぜ無いかの説明」だと分かるようにする
+   （2026-09-14 ユーザー判断：行を畳むのをやめ、灰色表示に変更）。 */
+.cmemo-where-na{color:var(--ink3);font-style:italic}
+.cmemo-where-na .mk{color:var(--ink3)}
 
 /* ══ レスポンシブ ═══════════════════════════════════════════
    外殻と同じ2つの境目（1200 / 900）に寄せる。表の列は container query
@@ -2107,7 +2151,7 @@ a:hover > .i-ext{opacity:1}
 
   .cp{padding:16px 15px}
   /* ★.cp の左右パディングが clamp(…,2.2%,…) から 15px 固定へ削られる分、
-     頭書き（.eqs-lead＝「介護で使うもの」「介護関係の書類やもの」共通）
+     頭書き（.eqs-lead＝「介護で使うもの」「介護保険関係の書類」共通）
      のチップ・鉛筆と額隅のネジ（.cp-screws は inset:9px 固定）の間隔が
      狭まる（2026-09-13 ユーザー指摘）。.cp 自体は表など他の中身の幅にも
      効くので触らず、頭書きの左右にだけ padding を足して打ち消す。 */
