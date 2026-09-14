@@ -1240,6 +1240,19 @@ button.st:hover{filter:brightness(.97)}
      エリアの右上へ固定する。 */
   .cws-inner > .i-secedit{position:absolute;top:10px;right:10px;
     margin-left:0}
+  /* 頭書き（.wcal-lead／.eqs-lead 共通）。編集時は「＋追加」ボタンが
+     加わるので、見出し＋説明文と操作群が横並びのままだと幅を奪い合って
+     詰まる（2026-09-14 ユーザー指摘）。編集時だけ操作群を次の行へ
+     落として右揃えにする。非編集時（鉛筆だけ）は横並びのまま。
+     ★flex-wrap:wrap は使わない――「どの子を折り返すか」を選べず、
+     min-width:0 を持つテキスト側が先に落ちてアイコンと縦積みになる。
+     grid の行を明示して、アイコン＋テキストの行と操作群の行を分ける。 */
+  .wcal-lead:has(.rowadd),.eqs-lead:has(.rowadd){
+    display:grid;grid-template-columns:auto 1fr;
+    align-items:start;column-gap:10px;row-gap:6px}
+  .wcal-lead:has(.rowadd) > .lead-actions,
+  .eqs-lead:has(.rowadd) > .lead-actions{
+    grid-column:1 / -1;justify-content:flex-end;margin-left:0}
 }
 
 /* ⓘ ＝ 区分の説明。いまは title（ホバーで出る）まで。 */
