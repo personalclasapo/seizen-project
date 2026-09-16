@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産｜間取り骨格 v8</title>
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);
+    padding:28px 20px 60px}
+  .wrap{max-width:1120px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);margin:0 0 24px;line-height:1.85}
+  .lead b{color:var(--ink)}
+  h2{font-size:14px;margin:32px 0 4px;display:flex;align-items:baseline;gap:10px}
+  h2 span{font-size:11.5px;font-weight:400;color:var(--ink3)}
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:18px;margin-top:10px}
+  svg{display:block;width:100%;height:auto}
+  .note{font-size:12px;color:var(--ink2);margin:12px 0 0;line-height:1.85}
+  .note b{color:var(--ink)}
+  table{border-collapse:collapse;font-size:11.5px;margin-top:10px;width:100%}
+  th,td{border:1px solid var(--line);padding:5px 9px;text-align:left}
+  th{background:var(--paper2);font-weight:600;color:var(--ink2)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .ok{color:var(--gr);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>不動産・住まい｜間取りの骨格 v8</h1>
+<p class="lead">
+  v7 が壊れていた原因は、<b>開口の位置を手で打っていた</b>こと。
+  壁の区間は部屋から自動で出るのに、開口だけ手打ちだったので噛み合わず、
+  極小の壁片と迷子の小口が残った。<br>
+  v8 は<b>接する長さから逆算して寸法を決める</b>。開口は共有辺の中央に自動生成。
+  手で置く座標は無い。<b>描く前に数値で検証済み</b>（下表）。
+</p>
+
+<h2>間取り <span>実寸 11700×9000mm</span></h2>
+<div class="stage">
+  <svg id="plan" viewBox="-10 -10 1190 920"></svg>
+  <p class="note">
+    廊下は玄関から北へ通り、突き当たりは上の大部屋へ全開。
+    左右の部屋への開口は<b>向かい合わせに一致</b>（中心 480 / 680）。
+  </p>
+</div>
+
+<h2>検証 <span>描画前に数値で確認した内容</span></h2>
+<div class="stage">
+  <table id="chk"></table>
+  <p class="note" id="sum"></p>
+</div>
+
+<p class="note" style="margin-top:28px">
+  <b>項目の割り当ては未定。</b>どの面にどの項目を入れるかは、
+  必要な項目と情報量が固まってから。面の大小は、
+  寸法（H1・MID・KAMA など）を変えれば追随する。
+</p>
+
+</div>
+
+<script>
+/* ──────────────────────────────────────────────
+   1単位＝10mm。外形 11700×9000mm。
+
+   ■ 寸法の決め方（v7 からの転換）
+   v7 は開口の位置を手打ちしていたので、壁の区間と噛み合わず
+   極小の壁片が残った。v8 は逆順で決める。
+
+     1. 廊下に面する部屋が、十分な長さで接するように境界を置く
+     2. 開口は共有辺の中央に、幅 780mm で自動生成
+     3. 壁は部屋の縁から自動生成し、開口で切る
+
+   廊下が部屋に面する範囲を、左右それぞれ NL・NR 等分する。
+   1部屋あたり最低 1280mm（開口780＋両側250ずつ）必要なので、
+   廊下が足りなければ建物の高さを自動で伸ばす。
+   左右の分割数は違ってよい（左3・右2 など）。             */
+const W = 1170;                  /* 外形の幅 11700mm */
+const TO = 15, TI = 10;          /* 外壁150mm・内壁100mm */
+const OPW = 78;                  /* 室内開口 780mm */
+
+const H1 = 380;                  /* 上段／下段 */
+const V1 = 830;                  /* 上段の右切り */
+const V2 = 390, V3 = 500;        /* 廊下の左右（幅1100mm） */
+const GK = 120;                  /* 玄関の奥行 1200mm */
+const KAMA0 = 780;               /* 上がり框の既定位置 */
+
+/* ■ 左右の分割数は自由に変えられる（左3・右2 なども可）
+   1部屋を廊下に面させるには、最低 開口780 ＋ 両側250ずつ ＝ 1280mm 要る。
+   したがって  最大分割数 ＝ 廊下の長さ ÷ 1280。
+   足りなければ建物の高さを自動で伸ばす（造形の都合で部屋を削らない）。 */
+const NL = 3, NR = 2;            /* ← 左3・右2。ここを変えるだけ */
+
+const MINSLOT = OPW + 25 * 2;    /* 1部屋あたり最低 1280mm */
+const needCorr = Math.max(NL, NR) * MINSLOT;
+const KAMA = Math.max(KAMA0, H1 + needCorr);   /* 上がり框の位置 */
+const H    = KAMA + GK;                        /* 外形高さ */
+
+/* 範囲を n 等分した境界を返す */
+const band = (y0, y1, n) => {
+  const out = [];
+  for (let i = 1; i < n; i++) out.push(y0 + (y1 - y0) * i / n);
+  return out;
+};
+
+const rooms = [
+  { id:'a',  x1:0,  y1:0,    x2:V1, y2:H1   },
+  { id:'b',  x1:V1, y1:0,    x2:W,  y2:H1   },
+  { id:'ro', x1:V2, y1:H1,   x2:V3, y2:KAMA },
+  { id:'gk', x1:V2, y1:KAMA, x2:V3, y2:H    }
+];
+/* 左右の列。最下段だけ玄関の脇まで伸ばして、床を余らせない。 */
+[['L', 0, V2, NL], ['R', V3, W, NR]].forEach(([pre, x1, x2, n]) => {
+  const ys = [H1, ...band(H1, KAMA, n), KAMA];
+  for (let i = 0; i < n; i++)
+    rooms.push({ id:pre+i, x1, x2, y1:ys[i], y2:(i === n-1 ? H : ys[i+1]) });
+});
+const R = Object.fromEntries(rooms.map(r => [r.id, r]));
+
+/* 2部屋の共有辺。開口も框も、ここから計算する。 */
+function sharedEdge(p, q) {
+  if (p.x2 === q.x1 || q.x2 === p.x1) {
+    const x = (p.x2 === q.x1) ? p.x2 : q.x2;
+    const a = Math.max(p.y1, q.y1), b = Math.min(p.y2, q.y2);
+    if (b > a) return { dir:'v', pos:x, a, b };
+  }
+  if (p.y2 === q.y1 || q.y2 === p.y1) {
+    const y = (p.y2 === q.y1) ? p.y2 : q.y2;
+    const a = Math.max(p.x1, q.x1), b = Math.min(p.x2, q.x2);
+    if (b > a) return { dir:'h', pos:y, a, b };
+  }
+  return null;
+}
+
+/* 部屋どうしのつながり。位置は書かない（共有辺から出す）。
+   廊下に面する部屋は分割数から自動で並ぶ。 */
+const links = rooms.filter(r => /^[LR]\d/.test(r.id))
+  .map(r => ['ro', r.id]);
+links.push(['a', 'b']);
+/* 壁を建てない境界：框（段差）と、廊下の突き当たり（全開） */
+const NOWALL = [['ro','gk'], ['ro','a']];
+
+const openings = links.map(([i, j]) => {
+  const e = sharedEdge(R[i], R[j]);
+  return [e.dir, e.pos, (e.a + e.b) / 2, OPW];
+});
+/* 玄関：外壁を玄関の幅いっぱい開ける */
+openings.push(['h', H, (V2 + V3) / 2, V3 - V2 - TI]);
+const nowall = NOWALL.map(([i, j]) => sharedEdge(R[i], R[j])).filter(Boolean);
+
+/* ── 壁のセグメント ───────────────────────── */
+const segs = new Map();
+const addSeg = (dir, pos, a, b, outer) => {
+  const k = dir+':'+pos+':'+Math.min(a,b)+':'+Math.max(a,b);
+  if (!segs.has(k)) segs.set(k, { dir, pos, a:Math.min(a,b), b:Math.max(a,b), outer });
+};
+rooms.forEach(r => {
+  addSeg('h', r.y1, r.x1, r.x2, r.y1 === 0);
+  addSeg('h', r.y2, r.x1, r.x2, r.y2 === H);
+  addSeg('v', r.x1, r.y1, r.y2, r.x1 === 0);
+  addSeg('v', r.x2, r.y1, r.y2, r.x2 === W);
+});
+/* 同じ直線上で隣り合うものは1本に繋ぐ。繋がないまま開口で切ると、
+   部屋の継ぎ目に細い壁片が残る（v7 で玄関が塞がった原因）。 */
+{
+  const byLine = new Map();
+  segs.forEach(s => {
+    const k = s.dir + ':' + s.pos;
+    if (!byLine.has(k)) byLine.set(k, []);
+    byLine.get(k).push(s);
+  });
+  segs.clear();
+  byLine.forEach((list, k) => {
+    list.sort((p, q) => p.a - q.a);
+    let cur = null; const out = [];
+    list.forEach(s => {
+      if (cur && s.a <= cur.b) { cur.b = Math.max(cur.b, s.b); cur.outer = cur.outer || s.outer; }
+      else { cur = Object.assign({}, s); out.push(cur); }
+    });
+    out.forEach((s, i) => segs.set(k + ':' + i, s));
+  });
+}
+
+/* ── 描画 ───────────────────────────────── */
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('plan');
+const el = (n, a) => { const e = document.createElementNS(NS, n);
+  for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+const defs = el('defs');
+const pat = el('pattern', { id:'hw', width:6, height:6,
+  patternTransform:'rotate(45)', patternUnits:'userSpaceOnUse' });
+pat.appendChild(el('line', { x1:0, y1:0, x2:0, y2:6, stroke:'#B9B3A4', 'stroke-width':1.1 }));
+defs.appendChild(pat); svg.appendChild(defs);
+
+/* 床 */
+const FLOOR = { ro:'#F4F1E7', gk:'#EDE9DC' };
+rooms.forEach(r => {
+  const x  = r.x1 + (r.x1 === 0 ? TO : TI) / 2;
+  const y  = r.y1 + (r.y1 === 0 ? TO : TI) / 2;
+  const x2 = r.x2 - (r.x2 === W ? TO : TI) / 2;
+  const y2 = r.y2 - (r.y2 === H ? TO : TI) / 2;
+  svg.appendChild(el('rect', { x, y, width:x2-x, height:y2-y,
+    fill: FLOOR[r.id] || '#FDFCF8' }));
+});
+
+const wallG = el('g', { stroke:'#6E6A60', fill:'url(#hw)' });
+const winG  = el('g', { stroke:'#6E6A60' });
+
+/* 壁の端を、そこで直交する壁の内側の面まで引っ込める。
+   dirSign +1 は始端（値を増やす）、-1 は終端（値を減らす）。
+
+   引っ込めないのは外壁どうしの角だけ。角は突き合わせて
+   L字に閉じるのが正しく、引っ込めると隅が欠ける。      */
+function trimEnd(seg, v, dirSign) {
+  const cross = seg.dir === 'h' ? 'v' : 'h';
+  let hit = null;
+  segs.forEach(o => {
+    if (o.dir !== cross || o.pos !== v) return;
+    /* その壁が、この壁の芯を含む位置まで伸びているか */
+    if (seg.pos < o.a - 0.01 || seg.pos > o.b + 0.01) return;
+    if (!hit || (o.outer && !hit.outer)) hit = o;
+  });
+  if (!hit) return v;
+  /* 相手の壁の「向こう側の面」まで伸ばして、必ず重ねる。
+     重ねた矩形は後段で線なしの塗りに覆われるので、
+     継ぎ目の線が消え、壁が一続きに見える。
+     引っ込めると逆に隙間や段差が出る。                  */
+  return v - dirSign * (hit.outer ? TO : TI) / 2;
+}
+
+const slabs = [];   /* 壁の板。[x, y, w, h, 外壁か] */
+segs.forEach(s => {
+  const th = s.outer ? TO : TI;
+  const cuts = openings.filter(o => o[0] === s.dir && o[1] === s.pos)
+    .map(o => [o[2] - o[3]/2, o[2] + o[3]/2])
+    .concat(nowall.filter(e => e.dir === s.dir && e.pos === s.pos).map(e => [e.a, e.b]))
+    .filter(o => o[1] > s.a && o[0] < s.b)
+    .sort((p, q) => p[0] - q[0]);
+
+  let cur = s.a; const pieces = [];
+  cuts.forEach(o => { if (o[0] > cur) pieces.push([cur, o[0]]); cur = Math.max(cur, o[1]); });
+  if (cur < s.b) pieces.push([cur, s.b]);
+
+  pieces.forEach(p => {
+    let [q0, q1] = p;
+    /* 壁の端は、そこで交差する壁の「内側の面」まで引っ込める。
+       ただし T 字・十字の接合部では、相手の壁と重ねて
+       継ぎ目を消す（下の describe を参照）。            */
+    q0 = trimEnd(s, q0, +1);
+    q1 = trimEnd(s, q1, -1);
+    if (s.dir === 'h') slabs.push([q0, s.pos-th/2, q1-q0, th, s.outer]);
+    else               slabs.push([s.pos-th/2, q0, th, q1-q0, s.outer]);
+  });
+});
+
+/* ── 壁を一体の図形として描く ──────────────────
+   各壁を「輪郭付きの矩形」として別々に描くと、接合部で
+   互いの輪郭線が交差し、L字の継ぎ目として見えてしまう。
+
+   そこで2段に分ける。
+     1. 輪郭つきで全部描く（外形の線はここで出る）
+     2. 接合部だけ、線なしの塗りで上から塞ぐ
+   2 が 1 の継ぎ目を覆うので、壁が一続きに見える。      */
+const EPS = 0.01;
+
+/* 1. 塗り（地＋ハッチ）を先に、輪郭なしで全部描く。
+      ハッチは userSpaceOnUse なので、板をまたいで連続する。 */
+slabs.forEach(([x, y, w, h]) => {
+  wallG.appendChild(el('rect', { x, y, width:w, height:h,
+    fill:'#FDFCF8', stroke:'none' }));
+});
+slabs.forEach(([x, y, w, h]) => {
+  wallG.appendChild(el('rect', { x, y, width:w, height:h,
+    fill:'url(#hw)', stroke:'none' }));
+});
+
+/* 2. 輪郭は「実際に外形になる部分」だけを線分で描く。
+      板ごとに矩形の枠を描くと接合部で線が交差し、あとから
+      塗りで隠しても線幅の分が残る（v8 で消えなかった理由）。
+      そこで各辺を、他の板の内部に入る区間だけ取り除いてから引く。 */
+function subtract(a, b, ranges) {          /* [a,b] から ranges を引く */
+  let segsOut = [[a, b]];
+  ranges.forEach(([c, d]) => {
+    const next = [];
+    segsOut.forEach(([s0, s1]) => {
+      if (d <= s0 + EPS || c >= s1 - EPS) { next.push([s0, s1]); return; }
+      if (c > s0 + EPS) next.push([s0, c]);
+      if (d < s1 - EPS) next.push([d, s1]);
+    });
+    segsOut = next;
+  });
+  return segsOut;
+}
+slabs.forEach((sl, idx) => {
+  const [x, y, w, h, outer] = sl;
+  const sw = outer ? 2 : 1.6;
+  const others = slabs.filter((_, k) => k !== idx);
+  /* 上下の辺（水平）・左右の辺（垂直）を、それぞれ他の板で削る */
+  [[y, 'h'], [y + h, 'h']].forEach(([yy]) => {
+    const covered = others.filter(o =>
+      o[1] < yy - EPS && o[1] + o[3] > yy + EPS)      /* その辺を跨ぐ板 */
+      .map(o => [o[0], o[0] + o[2]]);
+    subtract(x, x + w, covered).forEach(([s0, s1]) => {
+      if (s1 - s0 > EPS) wallG.appendChild(el('line',
+        { x1:s0, y1:yy, x2:s1, y2:yy, 'stroke-width':sw }));
+    });
+  });
+  [[x, 'v'], [x + w, 'v']].forEach(([xx]) => {
+    const covered = others.filter(o =>
+      o[0] < xx - EPS && o[0] + o[2] > xx + EPS)
+      .map(o => [o[1], o[1] + o[3]]);
+    subtract(y, y + h, covered).forEach(([s0, s1]) => {
+      if (s1 - s0 > EPS) wallG.appendChild(el('line',
+        { x1:xx, y1:s0, x2:xx, y2:s1, 'stroke-width':sw }));
+    });
+  });
+});
+
+/* 窓：部屋ごとに1つ、いちばん長い外壁面の中央へ。 */
+const NOWIN = { ro:1, gk:1 };
+rooms.forEach(r => {
+  if (NOWIN[r.id]) return;
+  const cand = [];
+  if (r.y1 === 0) cand.push(['h', 0, r.x1, r.x2]);
+  if (r.y2 === H) cand.push(['h', H, r.x1, r.x2]);
+  if (r.x1 === 0) cand.push(['v', 0, r.y1, r.y2]);
+  if (r.x2 === W) cand.push(['v', W, r.y1, r.y2]);
+  cand.sort((p, q) => (q[3]-q[2]) - (p[3]-p[2]));
+  const f = cand[0]; if (!f) return;
+  const [dir, pos, a, b] = f;
+  const span = b - a; if (span < 200) return;
+  const len = Math.min(220, span * 0.45);
+  const c = (a + b) / 2, s0 = c - len/2, e0 = c + len/2;
+  const clash = openings.some(o => o[0] === dir && o[1] === pos &&
+    o[2]+o[3]/2 > s0 && o[2]-o[3]/2 < e0);
+  if (clash) return;
+  if (dir === 'h') {
+    winG.appendChild(el('rect', { x:s0, y:pos-TO/2, width:len, height:TO,
+      fill:'#FDFCF8', 'stroke-width':1.4 }));
+    winG.appendChild(el('line', { x1:s0, y1:pos, x2:e0, y2:pos, 'stroke-width':1.1 }));
+  } else {
+    winG.appendChild(el('rect', { x:pos-TO/2, y:s0, width:TO, height:len,
+      fill:'#FDFCF8', 'stroke-width':1.4 }));
+    winG.appendChild(el('line', { x1:pos, y1:s0, x2:pos, y2:e0, 'stroke-width':1.1 }));
+  }
+});
+
+svg.appendChild(wallG);
+svg.appendChild(winG);
+
+/* 上がり框：壁ではなく段差。細い線で、廊下は框を越えて通る。 */
+svg.appendChild(el('line', { x1:V2+TI/2, y1:KAMA, x2:V3-TI/2, y2:KAMA,
+  stroke:'#B9B3A4', 'stroke-width':1.6 }));
+
+/* viewBox は建物の実寸に追従させる（分割数で高さが変わるため） */
+svg.setAttribute('viewBox', `-10 -10 ${W + 20} ${H + 20}`);
+
+/* ── 検証表 ─────────────────────────────── */
+const rows = [];
+links.forEach(([i, j]) => {
+  const e = sharedEdge(R[i], R[j]);
+  const span = e.b - e.a, rest = (span - OPW) / 2;
+  rows.push([`${i} ↔ ${j}`, (span*10)+'mm', (OPW*10)+'mm', (rest*10)+'mm',
+    rest >= 25 ? 'ok' : 'ng']);
+});
+const lv = openings.filter(o => o[0]==='v' && o[1]===V2).map(o => o[2]).join(', ');
+const rv = openings.filter(o => o[0]==='v' && o[1]===V3).map(o => o[2]).join(', ');
+
+let tiny = 0;
+segs.forEach(s => {
+  const cuts = openings.filter(o => o[0]===s.dir && o[1]===s.pos)
+    .map(o => [o[2]-o[3]/2, o[2]+o[3]/2])
+    .concat(nowall.filter(e => e.dir===s.dir && e.pos===s.pos).map(e => [e.a, e.b]))
+    .filter(o => o[1]>s.a && o[0]<s.b).sort((p,q)=>p[0]-q[0]);
+  let cur = s.a; const pieces = [];
+  cuts.forEach(o => { if (o[0]>cur) pieces.push([cur,o[0]]); cur = Math.max(cur,o[1]); });
+  if (cur < s.b) pieces.push([cur, s.b]);
+  pieces.forEach(p => { if (p[1]-p[0] < 25) tiny++; });
+});
+
+const t = document.getElementById('chk');
+t.innerHTML = '<tr><th>つながり</th><th>接する長さ</th><th>開口</th>' +
+  '<th>両側に残る壁</th><th>判定</th></tr>' +
+  rows.map(r => `<tr><td>${r[0]}</td><td class="n">${r[1]}</td>` +
+    `<td class="n">${r[2]}</td><td class="n">${r[3]}</td>` +
+    `<td class="${r[4]==='ok'?'ok':''}">${r[4]==='ok'?'○':'✗'}</td></tr>`).join('') +
+  `<tr><td>廊下の開口が向かい合うか</td><td colspan="3">左 ${lv} ／ 右 ${rv}</td>` +
+  `<td class="${lv===rv?'ok':''}">${lv===rv?'○':'✗'}</td></tr>` +
+  `<tr><td>極小の壁片（250mm未満）</td><td colspan="3">${tiny} 本</td>` +
+  `<td class="${tiny===0?'ok':''}">${tiny===0?'○':'✗'}</td></tr>`;
+
+document.getElementById('sum').innerHTML =
+  '部屋の広さ：' + rooms.map(r =>
+    `${r.id} ${((r.x2-r.x1)*(r.y2-r.y1)/100/3.3).toFixed(1)}坪`).join('／');
+</script>
+</body>
+</html>
