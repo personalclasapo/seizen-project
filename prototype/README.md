@@ -17,6 +17,9 @@
       shell.js            ナビの描画、トースト、意味説明の開閉
     bank-account/         銀行口座（通帳）
     contract-digital/     契約・デジタル（索引＋詳細シート）
+    insurance/            保険（証券）
+    medical-care/         医療・介護（手帳＋連絡ボード）
+    real-estate/          不動産・住まい（間取り図）
     assets/               画像
 
 各領域は同じ3点セットを持つ。

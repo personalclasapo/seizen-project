@@ -1,0 +1,234 @@
+/* SeiZen｜不動産・住まいの成果物UI
+   ------------------------------------------------------------------
+   造形（家の形・壁・建具）は SVG が持つ。ここが受け持つのは
+   その置かれ方――部屋の中の段組み・余白・色・状態の差分・
+   画面幅での畳み方（CLAUDE.md「CSS が受け持つもの」）。
+
+   色は tokens.css の名前を参照する。直接の色指定は、この領域の
+   造形にしか出てこない質感（壁のハッチ・土間・草）に限る。     */
+
+/* ══ 一覧（上段）══════════════════════════════════
+   物件の数だけ並ぶ小さな札。通帳の棚とは別物にする（正本§13）。
+   ここは「どの家の話か」を選ぶだけの索引なので、造形を持たせず
+   平たい札にとどめる。家の造形は下の間取りが持つ。            */
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px}
+.card{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;
+  gap:2px 10px;text-align:left;padding:14px 15px;background:var(--card);
+  border:1px solid var(--line);border-radius:10px;cursor:pointer;font:inherit;
+  color:var(--ink);transition:border-color .15s,box-shadow .15s}
+.card:hover{border-color:#bfd3c3;box-shadow:0 2px 10px rgba(30,90,61,.07)}
+.card-ic{grid-row:1/3;width:34px;height:34px;display:grid;place-items:center;
+  border:1px solid var(--line2);border-radius:8px;background:var(--paper)}
+.card-ic svg{width:19px;color:var(--gr)}
+.card b{font-size:14.5px;font-weight:700;align-self:end}
+.card-a{font-size:11.5px;color:var(--ink3);line-height:1.5;align-self:start}
+.card-f{grid-column:1/3;display:flex;gap:8px;align-items:center;margin-top:8px;
+  font-size:11px;font-weight:600}
+.card-r{color:var(--or);background:var(--or-bg);border:1px solid var(--or-ln);
+  border-radius:20px;padding:2px 9px}
+
+/* ══ 物件の見出し ══════════════════════════════ */
+.prop{margin:0 0 42px}
+.ph{margin:0 0 14px;scroll-margin-top:20px}
+.ph-t{display:flex;align-items:center;gap:10px}
+.ph-ic{width:30px;height:30px;display:grid;place-items:center;flex:none;
+  border:1px solid var(--line2);border-radius:8px;background:var(--card)}
+.ph-ic svg{width:18px;color:var(--gr)}
+.ph-t h3{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
+.ph-use{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px}
+.ph-addr{display:flex;align-items:center;gap:5px;margin:7px 0 0 40px;
+  font-size:12.5px;color:var(--ink2)}
+.ph-addr svg{width:14px;flex:none;color:var(--ink3)}
+
+/* 「本人に聞けるうちに」――§13-1 の中心。進捗より先に出す。 */
+.pg-risk{display:flex;gap:9px;margin:12px 0 0 40px;padding:10px 13px;
+  background:var(--or-bg);border:1px solid var(--or-ln);border-radius:9px;
+  font-size:12px;line-height:1.65;color:#8a5410}
+.pg-risk svg{width:16px;flex:none;color:var(--or);margin-top:1px}
+.pg-risk b{display:block;font-size:12px;color:var(--or)}
+
+/* 進捗。％は補助表示（正本§12）＝細く、小さく。 */
+.pg{display:flex;align-items:center;gap:10px;margin:10px 0 0 40px}
+.pg-bar{flex:1;max-width:260px;height:5px;border-radius:3px;background:var(--line);
+  overflow:hidden}
+.pg-bar i{display:block;height:100%;background:var(--gr2);border-radius:3px}
+.pg-n{font-size:11px;color:var(--ink3)}
+
+/* ══ 間取り図 ══════════════════════════════════
+   壁・建具・床は SVG の形。ここは色だけを当てる。           */
+.plan{display:block;width:100%;height:auto;
+  filter:drop-shadow(0 1px 3px rgba(50,50,46,.06))}
+.pl-hatch{stroke:#B9B3A4;stroke-width:1.1}
+.pl-g1{fill:#CFDCC9}
+.pl-g2{fill:#DCE5D6}
+.pl-site{opacity:.5}
+.pl-shadow{fill:#000;opacity:.045}
+.pl-floor{fill:var(--paper)}
+.pl-doma{fill:#F2EFE4}
+/* 壁＝二重線＋ハッチ。単色の帯にしない（間取り図に見えなくなる） */
+.pl-w{fill:url(#re-hatch);stroke:#6E6A60;stroke-width:1.6}
+.pl-w-out{stroke-width:2}
+.pl-doors path{fill:none;stroke:#8A857A;stroke-width:1.6}
+.pl-doors .pl-swing{opacity:.8}
+.pl-doors .pl-entry{opacity:.5}
+.pl-win{fill:var(--paper);stroke:#6E6A60;stroke-width:1.4}
+.pl-win-l{stroke:#6E6A60;stroke-width:1.1}
+.pl-north circle{fill:none;stroke:#B9B3A4;stroke-width:1.4}
+.pl-n-arrow{fill:#6E6A60}
+.pl-north text{font-size:15px;fill:#6E6A60;font-family:var(--font)}
+
+/* ══ 部屋の中身 ════════════════════════════════
+   foreignObject の中はふつうの HTML。部屋の内法に収まるよう、
+   文字は小さめ・行間は詰めすぎない。                        */
+/* height を固定しない。部屋の高さは中身から決まり（render.js の
+   layout が実測して壁を置く）、ここで切ると測れなくなる。      */
+.rm{font-family:var(--font);color:var(--ink);
+  display:flex;flex-direction:column}
+.rm-h{display:flex;align-items:center;gap:7px;margin:0 0 9px;flex:none}
+.rm-ic{width:22px;height:22px;flex:none;display:grid;place-items:center;
+  background:var(--card);border:1px solid #c7dbcb;border-radius:6px}
+.rm-ic svg{width:13px;color:var(--gr)}
+.rm-h h4{margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em}
+.rm-add{margin-left:auto;font:inherit;font-size:10.5px;font-weight:600;
+  color:var(--gr);background:var(--card);border:1px solid #c7dbcb;
+  border-radius:20px;padding:3px 10px;cursor:pointer}
+
+/* 状態バッジ（§11） */
+.bdg{display:inline-flex;align-items:center;gap:4px;flex:none;
+  font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+  border:1px solid;white-space:nowrap}
+.bdg i{font-style:normal;font-size:9.5px}
+.t-gr,.bdg.t-gr{color:var(--gr);background:var(--gr-bg);border-color:#c7dbcb}
+.t-or,.bdg.t-or{color:var(--or);background:var(--or-bg);border-color:var(--or-ln)}
+.t-gy,.bdg.t-gy{color:var(--gy);background:#F1EFE9;border-color:var(--line2)}
+.t-bl,.bdg.t-bl{color:var(--bl);background:#EDF1F6;border-color:#C6D3E0}
+
+/* 「本人しか知らない」。§13-1 の基準を画面の言葉にしたもの。 */
+.only{display:inline-block;font-size:9.5px;font-weight:700;color:var(--or);
+  border:1px dashed var(--or-ln);border-radius:20px;padding:1px 7px}
+.only-s{margin-top:5px}
+
+/* 値の行 */
+.kv{display:flex;align-items:baseline;gap:8px;padding:4px 0;
+  border-bottom:1px solid var(--line);font-size:11.5px}
+.kv:last-child{border-bottom:0}
+.kv-k{flex:none;width:96px;color:var(--ink3);font-size:10.5px}
+.kv-v{flex:1;font-weight:600;line-height:1.5}
+.kv-empty .kv-v{color:var(--or);font-weight:600}
+
+/* ── 権利関係 ── 土地と建物を2段で。戸建ての要点。 */
+.rt{display:flex;flex-direction:column;gap:8px}
+.rt-row{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:start;
+  padding:9px 11px;background:var(--card);border:1px solid var(--line);border-radius:8px}
+.rt-t{font-size:11px;font-weight:700;color:var(--ink2);padding-top:2px}
+.rt-owner{font-size:12.5px;font-weight:700;line-height:1.4}
+.rt-sh{font-size:10.5px;color:var(--ink3);margin-top:1px}
+.rt-memo{margin:5px 0 0;font-size:10.5px;line-height:1.6;color:var(--ink2)}
+.rt-s{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+
+/* ── ローン・担保 ── */
+.ln{background:var(--card);border:1px solid var(--line);border-radius:8px;
+  padding:6px 11px}
+.ln-f{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px}
+.ln-memo{flex-basis:100%;margin:2px 0 0;font-size:10.5px;line-height:1.6;color:var(--ink2)}
+.ln-none{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  padding:11px 13px;background:var(--card);border:1px solid var(--line);border-radius:8px}
+.ln-none p{margin:0;font-size:11.5px;color:var(--ink2)}
+
+/* ── 関わる相手 ── 行が伸びるので横長の部屋に置いてある。 */
+.pts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;
+}
+.pt{display:grid;grid-template-columns:26px minmax(150px,auto) auto 1fr auto auto;
+  gap:10px;align-items:center;padding:8px 11px;background:var(--card);
+  border:1px solid var(--line);border-radius:8px}
+.pt-ic{width:26px;height:26px;display:grid;place-items:center;
+  background:var(--gr-bg);border-radius:6px}
+.pt-ic svg{width:15px;color:var(--gr)}
+.pt-n b{display:block;font-size:12.5px;font-weight:700;line-height:1.3}
+.pt-r{font-size:10.5px;color:var(--ink3)}
+.flow{font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;
+  border:1px solid;white-space:nowrap}
+.pt-w{font-size:11px;color:var(--ink2);line-height:1.5}
+.pt-tel{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;
+  font-weight:700;color:var(--gr);text-decoration:none;white-space:nowrap}
+.pt-tel svg{width:13px}
+.pt-none{color:var(--or);font-weight:600}
+.pt-empty{padding:12px;font-size:11.5px;color:var(--ink3);line-height:1.6;
+  background:var(--card);border:1px dashed var(--line2);border-radius:8px}
+
+/* ── 後から分かりにくい事情 ──
+   この領域の中心。右列を縦に通した最大の部屋。8つの型を全部出す
+   ――載っていない＝該当なし、にしないため（§11）。         */
+.mt-lead{margin:0 0 9px;font-size:10.5px;line-height:1.6;color:var(--ink2)}
+.mts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;
+  flex:1}
+.mt{padding:8px 10px;background:var(--card);border:1px solid var(--line);
+  border-left:3px solid var(--line2);border-radius:7px}
+.mt-h{display:flex;align-items:center;gap:7px;justify-content:space-between}
+.mt-h b{font-size:11.5px;font-weight:700}
+.mt-memo{margin:4px 0 0;font-size:10.5px;line-height:1.6;color:var(--ink)}
+.mt-ask{margin:4px 0 0;font-size:10.5px;line-height:1.55;color:var(--ink3)}
+/* 状態で左の色を変える。「対応が必要」だけが強い色を持つ。 */
+.mt-action{border-left-color:var(--or);background:#FEFBF6}
+.mt-doing{border-left-color:var(--or-ln)}
+.mt-todo{border-left-color:var(--line2)}
+.mt-none{border-left-color:var(--line);opacity:.72}
+
+/* ── 家族が入る方法 ── */
+.ac{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+.ac .kv-k{width:78px}
+.ac-f{display:flex;align-items:center;gap:7px;margin-top:7px}
+
+/* ── 関係書類 ── */
+.dc-place{display:flex;align-items:center;gap:7px;margin:0 0 8px;padding:7px 10px;
+  background:var(--gr-bg);border-radius:7px;font-size:11px;color:var(--ink2)}
+.dc-place svg{width:14px;flex:none;color:var(--gr)}
+.dc-place b{display:block;font-size:12px;color:var(--ink);font-weight:700}
+.dcs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;
+  flex:1}
+.dc{display:grid;grid-template-columns:1fr auto auto;gap:9px;align-items:center;
+  padding:7px 10px;background:var(--card);border:1px solid var(--line);border-radius:7px}
+.dc-n{font-size:11.5px;font-weight:600}
+.dc-w{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--ink3)}
+.dc-w svg{width:12px;flex:none}
+.dc-miss .dc-w{color:var(--or)}
+.dc-empty{padding:11px;font-size:11.5px;color:var(--ink3);
+  background:var(--card);border:1px dashed var(--line2);border-radius:7px}
+.dc-link{display:inline-flex;align-items:center;gap:3px;margin-top:8px;flex:none;
+  font-size:11px;font-weight:600;color:var(--gr);text-decoration:none}
+.dc-link svg{width:13px}
+
+/* ── 玄関（基本情報の表札）── */
+.gk{height:100%;display:flex;flex-direction:column;justify-content:center}
+.gk-plate{display:flex;align-items:center;gap:8px}
+.gk-plate b{font-size:14px;font-weight:700}
+.gk-use{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px}
+.gk-sub{font-size:10.5px;color:var(--ink3);margin-top:3px}
+
+/* ══ 画面幅（外殻と同じ 1200 / 900 の境目に寄せる）══════
+   間取りは横に広い造形なので、狭い画面では「家の形のまま縮める」
+   のではなく、部屋を縦に積み替える。造形を保つために内容を
+   読めなくしない――物の形より、家族が読めることを優先する。   */
+@media (max-width:1200px){
+  .kv-k{width:84px}
+  .pt{grid-template-columns:26px minmax(120px,auto) auto 1fr auto auto;gap:8px}
+}
+
+/* 900px 以下：間取りをやめ、部屋を縦に積む（render.js の stackOf）。
+   foreignObject の中身は画面幅に合わせて折り返せないので、
+   ここで間取りごと差し替える。造形は「家の輪郭を持った枠」に
+   退き、中身の読みやすさを優先する。                          */
+.stack{display:none}
+@media (max-width:900px){
+  .plan{display:none}
+  .stack{display:flex;flex-direction:column;gap:12px}
+  .stack .rm{padding:14px 15px;background:var(--paper);
+    border:1px solid var(--line);border-radius:10px}
+  /* 縦積みでは「事情」を先に出す。この領域の中心だから。 */
+  .stack .rm-matters{order:-1;border-color:var(--or-ln);background:#FEFBF6}
+  .pt{grid-template-columns:26px 1fr;gap:6px 10px}
+  .pt-n{grid-column:2}
+  .flow,.pt-w,.pt-tel,.pt .bdg{grid-column:2}
+  .dc{grid-template-columns:1fr auto}
+  .dc-w{grid-column:1/3}
+}
