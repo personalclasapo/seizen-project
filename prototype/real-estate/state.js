@@ -85,6 +85,18 @@
                 about: '登記・役所で取得できます。急ぎではありません。' }
   };
 
+  /* 登記上の名義と、現在認識している権利関係（項目設計 §2）。
+     登記の記載そのものは調べれば分かる。家族が調べられないのは
+     「実態と違う」という本人の認識のほうなので、それを状態に持つ。 */
+  const MATCH = {
+    same:    { label: '一致',       tone: 'gr',
+               about: '登記の名義と、実際の権利関係が同じです。' },
+    differ:  { label: '不一致',     tone: 'or',
+               about: '登記の名義と実態が違います。手続きが要ります。' },
+    unknown: { label: '分からない', tone: 'or',
+               about: '登記を確認していない、または実態が不明です。' }
+  };
+
   /* 物件の種別。家族の動き方が実質的に変わる分け方だけを持つ
      （分類学ではない。正本 §3）。
        house  戸建て … 土地と建物が別の権利。境界・越境が起きる
@@ -107,53 +119,77 @@
     unused: { label: '使っていない土地', tone: 'or' }
   };
 
-  /* 「後から分かりにくい事情」の型。正本 §9（外部知識は SeiZen 側が
-     持つ）に従い、何を確認すべきかの問いはここが持つ。利用者は
-     問いに答えるだけでよく、論点を自分で思いつく必要がない。    */
+  /* 5. 確認しておきたい事情。項目設計 §5 の A・B・C の3つだけを持つ。
+
+     以前は8つの型（境界／越境／私道／未登記／増改築／名義／取り決め／
+     その他）を並べていたが、項目設計はこれを明示的に否定している。
+
+       ・「未登記部分がある」は独立項目ではなく、C の確認結果として
+         把握する（増改築したか → 必要な登記は済んでいるか）
+       ・書面にない取り決め・話し合い中・未解決・関係する相手は
+         独立分類にしない。すべて A〜C の詳細情報として持つ
+       ・名義の事情は 2 権利関係（登記と実態の一致／不一致）が持つ
+
+     正本 §9 に従い、何を確認すべきかの問いは SeiZen 側が持つ。
+     利用者は問いに答えるだけでよく、論点を自分で思いつく必要がない。 */
   const MATTERS = {
     boundary: {
-      label: '境界', icon: 'bound',
-      ask: '隣地との境界は確定していますか。境界標はありますか。',
+      label: '境界・越境', icon: 'bound',
+      ask: '境界に不明・曖昧なところはありませんか。塀・建物・屋根' +
+           'などの越境はありませんか。',
       why: '確定していないと、売却・建て替えのときに隣家との協議から' +
-           '始めることになります。当事者が健在なうちに聞けているかが' +
-           '効きます。' },
-    encroach: {
-      label: '越境', icon: 'cross',
-      ask: '塀・樹木・庇・配管が、隣地との間で越えていませんか。',
-      why: '越境は口約束で済ませていることが多く、代が変わると' +
-           '「聞いていない」になります。' },
+           '始めることになります。越境は口約束で済ませていることが' +
+           '多く、代が変わると「聞いていない」になります。',
+      /* 「あり」のとき確認する詳細（項目設計 §5-A） */
+      detail: ['何があるか', '相手', '取り決め', '書面の有無'] },
     road: {
-      label: '私道', icon: 'road',
-      ask: '前面道路は私道ですか。持分・通行・掘削の承諾はありますか。',
+      label: '私道・通行・配管', icon: 'road',
+      ask: '私道が関係しますか。他人の土地を通行している・させている、' +
+           '水道やガスが他人の土地を通っていませんか。',
       why: '私道だと、水道・ガスの工事や再建築に承諾が要ります。' +
-           '誰の承諾が要るかは本人しか知らないことが多い項目です。' },
-    unreg: {
-      label: '未登記', icon: 'unreg',
-      ask: '登記されていない建物・増築部分はありませんか。',
-      why: '未登記部分は売却・相続の手続きで必ず表に出ます。' },
-    rebuilt: {
-      label: '増改築', icon: 'build',
-      ask: '増築・改築をしたことがありますか。確認申請は出しましたか。',
-      why: '図面と現況が違うと、建て替え・売却時に是正を求められる' +
-           'ことがあります。' },
-    titled: {
-      label: '名義に関する事情', icon: 'name',
-      ask: '名義と実際の負担・出資が違っていませんか。相続未了の' +
-           '名義はありませんか。',
-      why: '「父名義のまま」は非常に多く、そのままでは売れません。' +
-           '相続人が増えるほど難しくなるので、早いほど楽です。' },
-    promise: {
-      label: '親族・近隣との取り決め', icon: 'talk',
-      ask: '書面にしていない約束はありませんか（通行・使用・費用負担）。',
-      why: 'この領域でもっとも失われやすい情報です。本人が亡くなると' +
-           '相手方の言い分しか残りません。' },
-    other: {
-      label: 'その他の特記事項', icon: 'note',
-      ask: '家族が後から知って驚きそうなことは、ほかにありませんか。',
-      why: '' }
+           '誰の承諾が要るかは本人しか知らないことが多い項目です。',
+      detail: ['何についての関係か', '相手', '取り決め', '書面の有無'] },
+    changed: {
+      label: '建物の変更・登記', icon: 'build',
+      ask: '増築・改築、取り壊し、物置などの新築をしたことは' +
+           'ありませんか。必要な登記・手続きは済んでいますか。',
+      why: '目的は増改築歴の保存ではなく、実際の建物と登記等に' +
+           'ズレが残っていないかの確認です。未登記部分は売却・相続の' +
+           '手続きで必ず表に出ます。',
+      detail: ['何をしたか', '登記・手続きの状況'] }
   };
 
-  /* 関わる相手との、お金のやり取りの向き。 */
+  /* 事情の確認結果。項目設計 §5「共通UI」。
+     まず なし／あり／分からない で受け、あり・分からない のときだけ
+     詳細を開く。§11 に従い「あり」と「分からない」を同じにしない。 */
+  const FINDINGS = {
+    no:      { label: 'なし',       tone: 'gy',
+               about: '確認した結果、当てはまりませんでした。', open: false },
+    yes:     { label: 'あり',       tone: 'or',
+               about: '当てはまります。詳細を確認します。',     open: true  },
+    unknown: { label: '分からない', tone: 'or',
+               about: '本人にも分からない・確認できていない状態です。',
+               open: true  },
+    unasked: { label: '未確認',     tone: 'or',
+               about: 'まだ確認していません。本人に聞けるうちに。',
+               open: false }
+  };
+
+  /* 3. 契約・やり取り。項目設計 §3 の A・B・C。
+     「管理会社」「賃貸管理会社」などを別分類にはしない（§3-C）。 */
+  const DEALS = {
+    lend:   { label: '貸す・使わせる', tone: 'gr',
+              about: '本人側の不動産を、本人以外が使っている関係です。',
+              who: '誰が使っているか' },
+    borrow: { label: '借りる',         tone: 'bl',
+              about: '本人が他人の土地・建物などを使っている関係です。',
+              who: '誰から借りているか' },
+    manage: { label: '管理',           tone: 'bl',
+              about: '本人以外が物件の管理に関わっている関係です。',
+              who: '誰が管理しているか' }
+  };
+
+  /* お金のやり取りの向き。 */
   const FLOWS = {
     pay:  { label: '支払う',   tone: 'or' },
     recv: { label: '受け取る', tone: 'gr' },
@@ -170,22 +206,26 @@
       addr: '神奈川県横浜市青葉区あざみ野1丁目12-34',
       built: '2004年', note: '',
 
-      /* 2. 権利関係。土地と建物を別に持つ（戸建ての要点） */
+      /* 2. 権利関係。土地と建物を別に持つ（戸建ての要点）。
+         match は「登記上の名義と、現在認識している権利関係」。
+         登記の記載そのものは調べれば分かる。調べられないのは
+         実態とのズレなので、そこを状態として持つ（§13-1）。 */
       rights: {
-        land:  { owner: '父（故人）名義のまま', shares: '', st: 'action',
-                 reach: 'onlyself',
+        land:  { owner: '父（故人）名義のまま', shares: '', match: 'differ',
+                 st: 'action', reach: 'onlyself',
                  memo: '相続登記が済んでいない。兄弟3人が相続人。' },
-        bldg:  { owner: '本人', shares: '単独', st: 'done', reach: 'public',
+        bldg:  { owner: '本人', shares: '単独', match: 'same',
+                 st: 'done', reach: 'public',
                  memo: '2004年6月に保存登記。' }
       },
 
-      /* 3. この物件に関わる相手 */
-      parties: [
-        { name: '○○管理株式会社', role: '建物管理', flow: 'pay',
-          what: '管理費・修繕積立金 月12,000円（毎月27日）',
-          tel: '045-123-4567', st: 'done' },
-        { name: '△△ガス株式会社', role: 'ガス供給（都市ガス）', flow: 'pay',
-          what: 'ガス料金 月5,000〜8,000円', tel: '0570-000-123', st: 'done' }
+      /* 3. 契約・やり取り。本人以外との間で「現在も続いている関係」。
+         公共料金（ガス・電気）はここに入れない。止める・名義を変える
+         手続きであって、引き継ぐ関係ではないため（§3 の役割）。 */
+      deals: [
+        { kind: 'manage', who: '○○管理株式会社', flow: 'pay',
+          what: '建物管理。管理費・修繕積立金 月12,000円（毎月27日）',
+          tel: '045-123-4567', st: 'done' }
       ],
 
       /* 4. ローン・担保 */
@@ -197,23 +237,27 @@
         memo: '返済は2044年3月まで。残債は銀行に照会すれば分かる。'
       },
 
-      /* 5. 後から分かりにくい事情 */
-      matters: [
-        { type: 'boundary', st: 'action', reach: 'onlyself',
+      /* 5. 確認しておきたい事情。A・B・C それぞれを
+         なし／あり／分からない／未確認 で持つ。
+         「あり」「分からない」のときだけ detail を持つ。
+
+         以前あった未登記・名義・取り決めの行は、独立項目をやめて
+         それぞれ C の結果・2 権利関係・各詳細の中へ移した。      */
+      matters: {
+        boundary: { find: 'yes', st: 'action', reach: 'onlyself',
           memo: '西側の境界は、隣家と口頭で「ブロック塀の中心」と' +
-                '決めたまま。境界標なし。先方も高齢。' },
-        { type: 'encroach', st: 'todo', reach: 'onlyself', memo: '' },
-        { type: 'road',     st: 'none',  reach: 'public',
-          memo: '前面道路は市道。' },
-        { type: 'unreg',    st: 'action', reach: 'onlyself',
-          memo: '北側の増築部分（約6畳）が未登記。1998年ごろ。' },
-        { type: 'rebuilt',  st: 'doing', reach: 'onlyself',
-          memo: '増築時の確認申請の有無を工務店に照会中。' },
-        { type: 'titled',   st: 'action', reach: 'onlyself',
-          memo: '土地が父名義のまま。上の「権利関係」と同じ話。' },
-        { type: 'promise',  st: 'todo',  reach: 'onlyself', memo: '' },
-        { type: 'other',    st: 'todo',  reach: 'onlyself', memo: '' }
-      ],
+                '決めたまま。境界標なし。先方も高齢。',
+          detail: { what: '境界標がなく、位置が口約束のまま',
+                    who: '西隣の◇◇さん', deal: '口頭のみ',
+                    paper: 'なし', state: '未解決' } },
+        road:     { find: 'no', st: 'done', reach: 'public',
+          memo: '前面道路は市道。', detail: null },
+        changed:  { find: 'yes', st: 'action', reach: 'onlyself',
+          memo: '北側の増築部分（約6畳、1998年ごろ）。登記は未対応。' +
+                '確認申請の有無は工務店に照会中。',
+          detail: { what: '北側に約6畳を増築',
+                    reg: '未対応', state: '確認申請の有無を照会中' } }
+      },
 
       /* 6. 家族が入る方法 */
       access: {
@@ -223,46 +267,57 @@
         st: 'done', reach: 'onlyself'
       },
 
-      /* 7. 関係書類 */
+      /* 6. 確認・手続きに使う書類。
+         ここは書類を入力する場所ではなく、この物件を扱うために
+         必要な資料が揃っているかを見るインデックス（項目設計 §6）。
+         実体と保管場所は「書類・資料」カテゴリが持つ。
+         need は 3〜5 の内容から出る（下の neededDocs）。       */
       docs: {
         place: '書斎のキャビネット上段',
-        items: [
-          { name: '登記識別情報（権利証）', where: '書斎のキャビネット上段', st: 'done' },
-          { name: '売買契約書・重要事項説明書', where: '書斎のキャビネット上段', st: 'done' },
-          { name: '住宅ローン契約書', where: '書斎のキャビネット上段', st: 'done' },
-          { name: '確定測量図・境界確認書', where: '', st: 'action' },
-          { name: '固定資産税の納税通知書', where: 'リビングの棚', st: 'done' }
-        ],
+        /* 種類ごとの状態だけを持つ。'—' は連動先に記録が無い状態。 */
+        have: { deed: 'done', acquire: 'done', build: 'done',
+                manage: 'done', loan: 'done', gtee: 'done',
+                boundary: 'action', road: 'none', changed: 'action' },
         st: 'action'
       }
     },
 
     {
       id: 'p2',
-      name: '実家', kind: 'house', use: 'empty',
+      /* 本人（親）が自分の情報を残す画面なので、物件名も本人の視点で持つ。
+         「実家」は本人から見れば自分の親の家であって、ここには並ばない。 */
+      name: '長岡の家', kind: 'house', use: 'empty',
       addr: '新潟県長岡市○○町2-5-1',
-      built: '1971年', note: '母が施設に入ってから空き家。',
+      built: '1971年', note: '本人が生まれ育った家。施設に移ってから空き家。',
       rights: {
-        land: { owner: '母', shares: '単独', st: 'done', reach: 'public', memo: '' },
-        bldg: { owner: '母', shares: '単独', st: 'done', reach: 'public', memo: '' }
+        land: { owner: '本人', shares: '単独', match: 'same',
+                st: 'done', reach: 'public', memo: '' },
+        bldg: { owner: '本人', shares: '単独', match: 'same',
+                st: 'done', reach: 'public', memo: '' }
       },
-      parties: [
-        { name: '近所の□□さん', role: '見回り・郵便物の確認', flow: 'none',
-          what: '月1回ほど様子を見てもらっている', tel: '0258-00-0000', st: 'doing' }
+      /* 見回りは「管理を頼んでいる親族等」（§3-C の対象例）。 */
+      deals: [
+        { kind: 'manage', who: '近所の□□さん', flow: 'none',
+          what: '見回り・郵便物の確認。月1回ほど様子を見てもらっている',
+          tel: '0258-00-0000', st: 'doing' }
       ],
       loan: { has: false, st: 'none', reach: 'public', memo: '完済済み。' },
-      matters: [
-        { type: 'boundary', st: 'todo', reach: 'onlyself', memo: '' },
-        { type: 'road', st: 'action', reach: 'onlyself',
-          memo: '前面が私道。持分の有無が不明。近隣3軒との共有かもしれない。' },
-        { type: 'promise', st: 'todo', reach: 'onlyself',
-          memo: '' }
-      ],
+      matters: {
+        boundary: { find: 'unasked', st: 'todo', reach: 'onlyself',
+          memo: '', detail: null },
+        road:     { find: 'unknown', st: 'action', reach: 'onlyself',
+          memo: '前面が私道。持分の有無が不明。近隣3軒との共有かもしれない。',
+          detail: { what: '前面道路が私道。持分の有無が不明',
+                    who: '近隣3軒（未確認）', deal: '不明',
+                    paper: '不明', state: '未解決' } },
+        changed:  { find: 'unasked', st: 'todo', reach: 'onlyself',
+          memo: '', detail: null }
+      },
       access: {
         who: '', key: '', keyKind: '', code: '', how: '',
         st: 'todo', reach: 'onlyself'
       },
-      docs: { place: '', items: [], st: 'todo' }
+      docs: { place: '', have: {}, st: 'todo' }
     }
   ];
 
@@ -292,16 +347,56 @@
     add(p.loan.st, p.loan.reach, 'ローン・担保');
     add(p.access.st, p.access.reach, '家族が入る方法');
     add(p.docs.st, 'onlyself', '書類のありか');
-    (p.matters || []).forEach(m => add(m.st, m.reach, MATTERS[m.type].label));
-    (p.parties || []).forEach(x => add(x.st, 'askable', x.name));
+    Object.keys(p.matters || {}).forEach(k =>
+      add(p.matters[k].st, p.matters[k].reach, MATTERS[k].label));
+    (p.deals || []).forEach(x => add(x.st, 'askable', x.who));
     return { got, need, risk, pct: need ? Math.round(got / need * 100) : 0 };
   }
 
+  /* 6. この物件で確認すべき書類。項目設計 §6。
+     固定の一覧ではなく、3〜5 の内容から出る。基礎的なものは常に、
+     残りは「その関係が実際にあるとき」だけ必要になる。          */
+  const DOC_KINDS = {
+    deed:     { label: '権利証・登記識別情報', base: true },
+    acquire:  { label: '取得時の資料（売買・贈与・相続）', base: true },
+    build:    { label: '建築・図面の資料', base: 'bldg' },
+    manage:   { label: '管理委託契約', from: 'deal:manage' },
+    lend:     { label: '賃貸借契約',   from: 'deal:lend' },
+    borrow:   { label: '借地契約',     from: 'deal:borrow' },
+    loan:     { label: 'ローン関係',   from: 'loan' },
+    gtee:     { label: '団信関係',     from: 'loan' },
+    boundary: { label: '境界・測量、越境の合意', from: 'matter:boundary' },
+    road:     { label: '私道・通行・配管の取り決め', from: 'matter:road' },
+    changed:  { label: '増改築・建物変更の資料',     from: 'matter:changed' }
+  };
+
+  function neededDocs(p) {
+    const out = [];
+    const hasBldg = p.kind !== 'land';
+    Object.keys(DOC_KINDS).forEach(k => {
+      const d = DOC_KINDS[k];
+      let need = false;
+      if (d.base === true) need = true;
+      else if (d.base === 'bldg') need = hasBldg;
+      else if (d.from === 'loan') need = !!(p.loan && p.loan.has);
+      else if (d.from && d.from.indexOf('deal:') === 0)
+        need = (p.deals || []).some(x => x.kind === d.from.slice(5));
+      else if (d.from && d.from.indexOf('matter:') === 0) {
+        const m = (p.matters || {})[d.from.slice(7)];
+        need = !!m && (m.find === 'yes' || m.find === 'unknown');
+      }
+      if (need) out.push({ kind: k, label: d.label,
+        st: (p.docs && p.docs.have && p.docs.have[k]) || 'todo' });
+    });
+    return out;
+  }
+
   global.SeiZenRealEstate = {
-    ST, REACH, KINDS, USES, MATTERS, FLOWS,
+    ST, REACH, MATCH, KINDS, USES, MATTERS, FINDINGS, DEALS, FLOWS, DOC_KINDS,
     all: () => props,
     find: id => props.filter(p => p.id === id)[0] || null,
     gauge,
+    neededDocs,
     save
   };
 })(window);
