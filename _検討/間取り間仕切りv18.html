@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産｜間取り 間仕切りの段階 v18</title>
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);
+    padding:28px 20px 60px}
+  .wrap{max-width:1500px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);margin:0 0 24px;line-height:1.85}
+  .lead b{color:var(--ink)}
+  h2{font-size:14px;margin:34px 0 4px;display:flex;align-items:baseline;gap:10px}
+  h2 span{font-size:11.5px;font-weight:400;color:var(--ink3)}
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:18px;margin-top:10px}
+  .note{font-size:12px;color:var(--ink2);margin:12px 0 0;line-height:1.85}
+  .note b{color:var(--ink)}
+  table{border-collapse:collapse;font-size:11.5px;margin-top:10px;width:100%}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;
+    vertical-align:top;line-height:1.7}
+  th{background:var(--paper2);font-weight:600;color:var(--ink2)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .ok{color:var(--gr);font-weight:700}
+  .ng{color:var(--or);font-weight:700}
+  .cap{font-size:12px;margin:0 0 3px;color:var(--ink)}
+  .cap b{font-size:13px}
+  .capsub{font-size:11px;color:var(--ink2);margin:0 0 10px;line-height:1.7;
+    min-height:54px}
+
+  .four{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  @media (max-width:1280px){ .four{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:700px){ .four{grid-template-columns:1fr} }
+
+  .plan{position:relative;width:100%}
+  .plan svg{display:block;width:100%;height:auto}
+  .layer{position:absolute;inset:0}
+  .cell{position:absolute;overflow:hidden;display:flex;flex-direction:column}
+  .cell > h4{font-size:10.5px;margin:0 0 3px;color:var(--ink2);font-weight:600;
+    letter-spacing:.04em;flex:none;display:flex;align-items:baseline;gap:5px}
+  .cell > h4 .cnt{font-size:9px;color:var(--ink3);font-weight:400}
+  .body{flex:1;overflow-y:auto;min-height:0}
+  .body::-webkit-scrollbar{width:4px}
+  .body::-webkit-scrollbar-thumb{background:#DCD6C8;border-radius:2px}
+
+  .r{padding:3px 0;border-top:1px solid #EFEBE0;font-size:10.5px;line-height:1.6}
+  .r:first-child{border-top:0}
+  .r .lb{color:var(--ink3);font-size:9.5px}
+  .bdg{display:inline-block;font-size:9px;padding:0 4px;border-radius:3px;
+    border:1px solid var(--line);color:var(--ink2);background:var(--paper2);
+    margin-left:3px;white-space:nowrap}
+  .bdg.or{color:#9A6A2F;border-color:#E2CDA8;background:#FBF3E5}
+  .bdg.gr{color:#4E7A54;border-color:#C6DCC8;background:#F0F6F0}
+  .bdg.gy{color:var(--ink3)}
+  .dt{display:flex;flex-wrap:wrap;gap:0 10px;margin-top:1px}
+  .dt span{font-size:9.5px;color:var(--ink2)}
+  .dt b{font-weight:400;color:var(--ink3)}
+  .memo{font-size:10px;color:var(--ink2);line-height:1.55;margin-top:1px}
+  .grp{font-size:9px;color:var(--ink3);margin:5px 0 1px;letter-spacing:.06em}
+  .grp:first-child{margin-top:0}
+  .act{padding:2.5px 0;font-size:11px;line-height:1.6;border-top:1px solid #EFEBE0}
+  .act b{font-weight:600}
+  .act .sub{color:var(--ink2);font-size:10px}
+
+  /* 書類＝索引。1件1行、名前と状態だけ。連結した文にしない。 */
+  .doc{display:flex;align-items:baseline;gap:5px;padding:2px 0;
+    font-size:10px;line-height:1.55;border-top:1px solid #F1EDE3}
+  .doc:first-child{border-top:0}
+  .doc .nm{flex:1;color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>不動産・住まい｜間取り　権利・契約・ローンの間仕切り v18</h1>
+<p class="lead">
+  v16 は3つを<b>別々の部屋</b>にし、v17 は<b>壁を全部消して</b>一室にした。
+  0 か 100 しか試していない。<br>
+  この3つは<b>性質が似ているが、同じではない</b>。
+  権利はこの不動産そのものに付いていて相手がいない。契約は相手がいて今も続いている。
+  ローンは相手がいて、かつ<b>権利に打たれている</b>（担保）――
+  つまり <b>権利 ―(担保)― ローン ―(相手)― 契約</b> と繋がり、ローンが間に立つ。<br>
+  家はこれを持っている。<b>続き間</b>――襖を開ければ一室、閉じれば二室。
+  A〜D は間仕切りの強さの段階で、並びはこの繋がり順に固定してある。
+</p>
+
+<h2>1. 4つの段階 <span>同じ中身・同じ並び・間仕切りだけが違う</span></h2>
+<div class="stage">
+  <div class="four" id="plansA"></div>
+  <p class="note">
+    <b>自宅</b>（権利に不一致あり・契約1件・ローンあり）。
+    どれも並びは 権利 → ローン → 契約。繋がりの順に置いてある。
+  </p>
+</div>
+
+<h2>2. 同じ4段階を、中身の少ない物件で <span>長岡の家</span></h2>
+<div class="stage">
+  <div class="four" id="plansB"></div>
+  <p class="note">
+    <b>長岡の家</b>（権利は一致・契約1件・ローンなし）。
+    間仕切りが弱いほど、中身の少なさが目立たない。強いほど「該当なし」の
+    区画が独立して見える ―― どちらが正しいかは、<b>該当なしを見せたいか</b>による。
+  </p>
+</div>
+
+<h2>3. 段階の違い</h2>
+<div class="stage">
+  <table id="cmp"></table>
+</div>
+
+<h2>4. 検証</h2>
+<div class="stage">
+  <table id="chk"></table>
+</div>
+
+</div>
+
+<script src="../prototype/real-estate/state.js"></script>
+<script>
+const S = window.SeiZenRealEstate;
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* ══════════════════════════════════════════════════════════
+   ■ 中身。                                                   */
+function livHTML(acts) {
+  const GN = { 連絡:'誰に連絡するか', 引継:'何を引き継ぐか',
+               確認:'何を確認するか', 手続:'何を手続きするか' };
+  let out = '', cur = '';
+  acts.forEach(a => {
+    if (a[0] !== cur) { cur = a[0]; out += `<div class="grp">${esc(GN[cur])}</div>`; }
+    out += `<div class="act"><b>${esc(a[1])}</b>　` +
+      `<span class="sub">${esc(a[2])}</span>` +
+      (a[3] ? `<span class="bdg">${esc(a[3])}</span>` : '') + '</div>';
+  });
+  return out;
+}
+function matterHTML(p) {
+  return Object.keys(p.matters).map(k => {
+    const m = p.matters[k], f = S.FINDINGS[m.find];
+    const tone = m.find === 'no' ? 'gy' : 'or';
+    let h = `<div class="r">${esc(S.MATTERS[k].label)}` +
+            `<span class="bdg ${tone}">${esc(f.label)}</span>`;
+    if (m.memo) h += `<div class="memo">${esc(m.memo)}</div>`;
+    if (m.detail) {
+      const d = m.detail, pairs = [];
+      if (d.who)   pairs.push(['相手', d.who]);
+      if (d.deal)  pairs.push(['取り決め', d.deal]);
+      if (d.paper) pairs.push(['書面', d.paper]);
+      if (d.reg)   pairs.push(['登記', d.reg]);
+      if (d.state) pairs.push(['状況', d.state]);
+      h += '<div class="dt">' + pairs.map(x =>
+        `<span><b>${esc(x[0])}</b> ${esc(x[1])}</span>`).join('') + '</div>';
+    }
+    return h + '</div>';
+  }).join('');
+}
+
+/* 3つの区画。中身は段階によらず同じものを出す。
+   ここで見出しを積まない ―― 見出しは間仕切り（造形）が受け持つ。 */
+function rightHTML(p) {
+  return ['land', 'bldg'].map(k => {
+    const r = p.rights[k], mt = S.MATCH[r.match];
+    return `<div class="r"><span class="lb">${k === 'land' ? '土地' : '建物'}</span> ` +
+      esc(r.owner) + (r.shares ? `<span class="bdg gy">${esc(r.shares)}</span>` : '') +
+      `<span class="bdg ${mt.tone === 'gr' ? 'gr' : 'or'}">登記と${esc(mt.label)}</span>` +
+      (r.memo ? `<div class="memo">${esc(r.memo)}</div>` : '') + '</div>';
+  }).join('');
+}
+function loanHTML(p) {
+  const l = p.loan;
+  if (!l.has) return '<div class="r">借入なし<span class="bdg gy">該当なし</span>' +
+    (l.memo ? `<div class="memo">${esc(l.memo)}</div>` : '') + '</div>';
+  return `<div class="r"><span class="lb">借入</span> ${esc(l.bank)}` +
+    `<div class="dt"><span><b>種類</b> ${esc(l.type)}</span>` +
+    `<span><b>借りている人</b> ${esc(l.debtor)}</span>` +
+    `<span><b>団信</b> ${esc(l.gtee)}</span></div></div>` +
+    `<div class="r"><span class="lb">担保</span> ${esc(l.mortgage)}` +
+    `<div class="dt"><span><b>他の借入の担保</b> ${esc(l.cross)}</span></div></div>`;
+}
+function dealHTML(p) {
+  const list = p.deals || [];
+  if (!list.length) return '<div class="r">続いている関係なし' +
+    '<span class="bdg gy">該当なし</span></div>';
+  return list.map(d =>
+    `<div class="r"><span class="bdg">${esc(S.DEALS[d.kind].label)}</span> ` +
+    esc(d.who) + `<div class="memo">${esc(d.what)}</div>` +
+    `<div class="dt"><span><b>連絡先</b> ${esc(d.tel)}</span></div></div>`).join('');
+}
+/* 書類＝索引。1件1行。v17 の「読点で連結した文」は捨てた。 */
+function docsHTML(p) {
+  return S.neededDocs(p).map(d => {
+    const st = S.ST[d.st] || { label: d.st };
+    const tone = d.st === 'done' ? 'gr' : (d.st === 'none' ? 'gy' : 'or');
+    return `<div class="doc"><span class="nm">${esc(d.label)}</span>` +
+      `<span class="bdg ${tone}">${esc(st.label)}</span></div>`;
+  }).join('');
+}
+
+const ACTS = {
+  p1: [
+    ['連絡', '○○管理株式会社', '管理費の引き落とし口座を変更する', '045-123-4567'],
+    ['連絡', '○○銀行 青葉台支店', '団信の手続きを申し出る', ''],
+    ['連絡', '西隣の◇◇さん', '境界の話が途中のままになっている', ''],
+    ['引継', '建物管理の契約', '管理費・修繕積立金 月12,000円（毎月27日）', ''],
+    ['確認', '土地の名義', '父のまま。兄弟3人が相続人', ''],
+    ['確認', '北側の増築部分', '未登記。確認申請の有無も不明', ''],
+    ['手続', '相続登記', '土地の名義を本人へ', ''],
+    ['手続', 'ローンの完済', '団信により完済される見込み', '']
+  ],
+  p2: [
+    ['連絡', '近所の□□さん', '見回りをお願いしている。今後どうするか', '0258-00-0000'],
+    ['確認', '前面道路', '私道かどうか、持分の有無が分からない', ''],
+    ['確認', '境界', 'まだ本人に聞けていない', '']
+  ]
+};
+
+/* ══════════════════════════════════════════════════════════
+   ■ 4つの段階。
+
+   違うのは「区画の境が何であるか」だけ。並び順（権利→ローン→契約）と
+   中身は共通。                                                */
+const STAGES = [
+  { id:'A', name:'A　三室',
+    sub:'内壁で完全に分ける。開口はそれぞれ廊下から。v16 の形。' +
+        '三つが別のものに見える。',
+    div:'wall' },
+  { id:'B', name:'B　続き間（襖）',
+    sub:'一室の中を襖で仕切る。閉じれば三室、開ければ一室。' +
+        '敷居の線と引手を描く。',
+    div:'fusuma' },
+  { id:'C', name:'C　腰壁・垂れ壁',
+    sub:'床は続いていて、天井と腰から壁が出ている。' +
+        '区画はあるが、跨いで行き来できる。',
+    div:'kabe' },
+  { id:'D', name:'D　一室',
+    sub:'仕切らない。v17 の形。区画が消え、三つの違いは行の中だけになる。',
+    div:'none' }
+];
+
+/* ══════════════════════════════════════════════════════════
+   ■ 寸法。1単位＝10mm。                                       */
+const W   = 1170;
+const TO  = 15, TI = 10;
+const OPW = 78;
+const GK  = 140;
+const V2  = 570, V3 = 680;
+const MINR = 200, MAXR = 1200;
+
+function measure(html, wpx) {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:absolute;visibility:hidden;left:-9999px;' +
+    'font-family:' + getComputedStyle(document.body).fontFamily;
+  d.style.width = wpx + 'px';
+  d.innerHTML = html;
+  document.body.appendChild(d);
+  const h = d.getBoundingClientRect().height;
+  d.remove();
+  return h;
+}
+
+/* 区画（右側の三つ）。並びは繋がり順に固定。 */
+const PARTS = [
+  { id:'right', label:'権利関係',       fn:rightHTML },
+  { id:'loan',  label:'ローン・担保',   fn:loanHTML  },
+  { id:'deal',  label:'契約・やり取り', fn:dealHTML  }
+];
+
+function buildPlan(p, stage, probeSel) {
+  const acts = ACTS[p.id] || [];
+  const html = { liv: livHTML(acts), matter: matterHTML(p), docs: docsHTML(p) };
+  PARTS.forEach(s => { html[s.id] = s.fn(p); });
+
+  const probe = document.querySelector(probeSel + ' .plan');
+  const stageW = probe ? probe.getBoundingClientRect().width : 300;
+  const wStudy = W - V3 - TI/2 - TO/2;
+  const wUnit = { liv: W - TO, matter: V2 - TO/2 - TI/2, docs: V2 - TO/2 - TI/2 };
+  PARTS.forEach(s => { wUnit[s.id] = wStudy; });
+  const PADIN0 = 12;
+  const toPx = u => (u - PADIN0 * 2) / (W + 20) * stageW;
+  const raw = {}, need = {};
+  const HEAD = 18;
+  Object.keys(html).forEach(k => {
+    raw[k] = measure(html[k], Math.max(50, toPx(wUnit[k])));
+    const inUnit = raw[k] * (W + 20) / stageW + HEAD + PADIN0 * 2;
+    need[k] = Math.round(inUnit);
+  });
+
+  const H1 = Math.max(MINR, Math.min(MAXR, need.liv));
+
+  /* 右側＝三つの区画の合計。段階によって見出しぶんの回数が変わる。
+     A は三室ぶんの見出し、D は一つぶん。B・C は区画ごとに小見出しが付く
+     （＝A と同じ回数だが、壁ではないので薄い）。                */
+  const headCount = { wall:0, fusuma:0, kabe:0, none:2 };  /* none は見出しが1つに畳まれる */
+  let studyNeed = PARTS.reduce((a, s) => a + need[s.id], 0)
+                  - (stage.div === 'none' ? HEAD * 2 : 0);
+  studyNeed = Math.max(MINR, studyNeed);
+
+  /* 左側＝事情＋書類。書類は索引なので事情の下に置く（棚ではなく、
+     行の並ぶ小さな部屋）。v17 で「文として連結」したのをやめた結果、
+     行として高さを持つ。                                        */
+  const leftNeed = Math.max(MINR, need.matter) + Math.max(MINR * 0.7, need.docs);
+
+  const CORR = Math.max(leftNeed, studyNeed);
+  const KAMA = H1 + CORR, H = KAMA + GK;
+
+  const rooms = [
+    { id:'liv',  label:'家族がすること', kind:'liv',  x1:0,  y1:0,  x2:W,  y2:H1 },
+    { id:'corr', label:'',               kind:'corr', x1:V2, y1:H1, x2:V3, y2:KAMA },
+    { id:'gk',   label:'玄関',           kind:'gk',   x1:V2, y1:KAMA, x2:V3, y2:H }
+  ];
+  /* 左：事情と書類。比で分ける。 */
+  const mH = Math.max(MINR, need.matter), dH = Math.max(MINR * 0.7, need.docs);
+  const lTot = mH + dH, mY = H1 + (H - H1) * mH / lTot;
+  rooms.push({ id:'matter', label:'事情', kind:'main2', x1:0, y1:H1, x2:V2, y2:mY });
+  rooms.push({ id:'docs',   label:'書類', kind:'room',  x1:0, y1:mY, x2:V2, y2:H });
+
+  /* 右：三つの区画。段階によって境の種類が変わるが、
+     区画の矩形そのものは同じ計算で出す。                         */
+  const sTot = PARTS.reduce((a, s) => a + Math.max(MINR * 0.6, need[s.id]), 0);
+  const parts = [];
+  let y = H1;
+  PARTS.forEach((s, i) => {
+    const h = Math.max(MINR * 0.6, need[s.id]) / sTot * (H - H1);
+    const y2 = (i === PARTS.length - 1) ? H : y + h;
+    parts.push({ id:s.id, label:s.label, x1:V3, x2:W, y1:y, y2:y2 });
+    y = y2;
+  });
+
+  if (stage.div === 'wall') {
+    /* A：それぞれが部屋。壁が建つ。 */
+    parts.forEach(pt => rooms.push(Object.assign({ kind:'room' }, pt)));
+  } else {
+    /* B・C・D：外形は一室。中の区画は壁を建てず、別に描く。 */
+    rooms.push({ id:'study', label:'', kind:'room', x1:V3, y1:H1, x2:W, y2:H });
+  }
+
+  const COUNT = { liv:acts.length, matter:3, docs:S.neededDocs(p).length,
+                  right:2, loan:p.loan.has ? 2 : 1, deal:(p.deals||[]).length };
+  return { p, stage, rooms, parts, R:Object.fromEntries(rooms.map(r => [r.id, r])),
+           H, KAMA, H1, html, COUNT, raw, need };
+}
+
+/* ══════════════════════════════════════════════════════════
+   ■ 壁（部屋の定義から生成）                                  */
+function sharedEdge(a, b) {
+  if (!a || !b) return null;
+  if (a.x2 === b.x1 || b.x2 === a.x1) {
+    const x = (a.x2 === b.x1) ? a.x2 : b.x2;
+    const s = Math.max(a.y1, b.y1), e = Math.min(a.y2, b.y2);
+    if (e > s) return { dir:'v', pos:x, a:s, b:e };
+  }
+  if (a.y2 === b.y1 || b.y2 === a.y1) {
+    const y = (a.y2 === b.y1) ? a.y2 : b.y2;
+    const s = Math.max(a.x1, b.x1), e = Math.min(a.x2, b.x2);
+    if (e > s) return { dir:'h', pos:y, a:s, b:e };
+  }
+  return null;
+}
+const NS = 'http://www.w3.org/2000/svg';
+const el = (n, a) => { const e = document.createElementNS(NS, n);
+  for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+function draw(plan, host, uid) {
+  const { rooms, R, H, KAMA, parts, stage } = plan;
+  const links = [['liv','matter'], ['matter','docs']];
+  rooms.forEach(r => {
+    if (r.kind === 'room' && r.id !== 'docs') links.push(['corr', r.id]);
+  });
+  const NOWALL = [['corr','gk'], ['corr','liv']];
+  const openings = links.map(([i, j]) => {
+    const e = sharedEdge(R[i], R[j]); if (!e) return null;
+    return [e.dir, e.pos, (e.a + e.b) / 2, Math.min(OPW, (e.b - e.a) * 0.7)];
+  }).filter(Boolean);
+  openings.push(['h', H, (V2 + V3) / 2, V3 - V2 - TI]);
+  const nowall = NOWALL.map(([i, j]) => sharedEdge(R[i], R[j])).filter(Boolean);
+
+  const segs = new Map();
+  const addSeg = (dir, pos, a, b, outer) => {
+    const k = dir+':'+pos+':'+Math.min(a,b)+':'+Math.max(a,b);
+    if (!segs.has(k)) segs.set(k, { dir, pos, a:Math.min(a,b), b:Math.max(a,b), outer });
+  };
+  rooms.forEach(r => {
+    addSeg('h', r.y1, r.x1, r.x2, r.y1 === 0);
+    addSeg('h', r.y2, r.x1, r.x2, r.y2 === H);
+    addSeg('v', r.x1, r.y1, r.y2, r.x1 === 0);
+    addSeg('v', r.x2, r.y1, r.y2, r.x2 === W);
+  });
+  { const byLine = new Map();
+    segs.forEach(s => { const k = s.dir+':'+s.pos;
+      if (!byLine.has(k)) byLine.set(k, []); byLine.get(k).push(s); });
+    segs.clear();
+    byLine.forEach((list, k) => {
+      list.sort((a, b) => a.a - b.a);
+      let cur = null; const out = [];
+      list.forEach(s => {
+        if (cur && s.a <= cur.b + 0.01) {
+          cur.b = Math.max(cur.b, s.b); cur.outer = cur.outer || s.outer;
+        } else { cur = Object.assign({}, s); out.push(cur); }
+      });
+      out.forEach((s, i) => segs.set(k+':'+i, s));
+    });
+  }
+
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `-10 -10 ${W + 20} ${H + 20}`);
+  host.appendChild(svg);
+  const defs = el('defs');
+  const pat = el('pattern', { id:'hw'+uid, width:6, height:6,
+    patternTransform:'rotate(45)', patternUnits:'userSpaceOnUse' });
+  pat.appendChild(el('line', { x1:0, y1:0, x2:0, y2:6,
+    stroke:'#B9B3A4', 'stroke-width':1.1 }));
+  defs.appendChild(pat); svg.appendChild(defs);
+
+  const FLOOR = { corr:'#F4F1E7', gk:'#EDE9DC', liv:'#FBF7E9',
+                  main2:'#FAF6E8', room:'#FDFCF8' };
+  rooms.forEach(r => {
+    const x  = r.x1 + (r.x1 === 0 ? TO : TI) / 2;
+    const y  = r.y1 + (r.y1 === 0 ? TO : TI) / 2;
+    const x2 = r.x2 - (r.x2 === W ? TO : TI) / 2;
+    const y2 = r.y2 - (r.y2 === H ? TO : TI) / 2;
+    svg.appendChild(el('rect', { x, y, width:x2-x, height:y2-y,
+      fill: FLOOR[r.kind] || '#FDFCF8' }));
+  });
+
+  const wallG = el('g', { stroke:'#6E6A60', fill:'url(#hw'+uid+')' });
+  function trimEnd(seg, v, dirSign) {
+    const cross = seg.dir === 'h' ? 'v' : 'h';
+    let hit = null;
+    segs.forEach(o => {
+      if (o.dir !== cross || o.pos !== v) return;
+      if (seg.pos < o.a - 0.01 || seg.pos > o.b + 0.01) return;
+      if (!hit || (o.outer && !hit.outer)) hit = o;
+    });
+    if (!hit) return v;
+    return v - dirSign * (hit.outer ? TO : TI) / 2;
+  }
+  const slabs = [];
+  segs.forEach(s => {
+    const th = s.outer ? TO : TI;
+    const cuts = openings.filter(o => o[0] === s.dir && o[1] === s.pos)
+      .map(o => [o[2] - o[3]/2, o[2] + o[3]/2])
+      .concat(nowall.filter(e => e.dir === s.dir && e.pos === s.pos)
+        .map(e => [e.a, e.b]))
+      .filter(o => o[1] > s.a && o[0] < s.b).sort((a, b) => a[0] - b[0]);
+    let cur = s.a; const pieces = [];
+    cuts.forEach(o => { if (o[0] > cur) pieces.push([cur, o[0]]); cur = Math.max(cur, o[1]); });
+    if (cur < s.b) pieces.push([cur, s.b]);
+    pieces.forEach(pc => {
+      const q0 = trimEnd(s, pc[0], +1), q1 = trimEnd(s, pc[1], -1);
+      if (s.dir === 'h') slabs.push([q0, s.pos-th/2, q1-q0, th, s.outer]);
+      else               slabs.push([s.pos-th/2, q0, th, q1-q0, s.outer]);
+    });
+  });
+  const EPS = 0.01;
+  slabs.forEach(([x, y, w, h]) => wallG.appendChild(el('rect',
+    { x, y, width:w, height:h, fill:'#FDFCF8', stroke:'none' })));
+  slabs.forEach(([x, y, w, h]) => wallG.appendChild(el('rect',
+    { x, y, width:w, height:h, fill:'url(#hw'+uid+')', stroke:'none' })));
+  function subtract(a, b, ranges) {
+    let out = [[a, b]];
+    ranges.forEach(([c, d]) => {
+      const next = [];
+      out.forEach(([s0, s1]) => {
+        if (d <= s0 + EPS || c >= s1 - EPS) { next.push([s0, s1]); return; }
+        if (c > s0 + EPS) next.push([s0, c]);
+        if (d < s1 - EPS) next.push([d, s1]);
+      });
+      out = next;
+    });
+    return out;
+  }
+  slabs.forEach((sl, idx) => {
+    const [x, y, w, h, outer] = sl;
+    const sw = outer ? 2 : 1.6;
+    const others = slabs.filter((_, k) => k !== idx);
+    [y, y + h].forEach(yy => {
+      const cov = others.filter(o => o[1] < yy - EPS && o[1] + o[3] > yy + EPS)
+        .map(o => [o[0], o[0] + o[2]]);
+      subtract(x, x + w, cov).forEach(([s0, s1]) => {
+        if (s1 - s0 > EPS) wallG.appendChild(el('line',
+          { x1:s0, y1:yy, x2:s1, y2:yy, 'stroke-width':sw }));
+      });
+    });
+    [x, x + w].forEach(xx => {
+      const cov = others.filter(o => o[0] < xx - EPS && o[0] + o[2] > xx + EPS)
+        .map(o => [o[1], o[1] + o[3]]);
+      subtract(y, y + h, cov).forEach(([s0, s1]) => {
+        if (s1 - s0 > EPS) wallG.appendChild(el('line',
+          { x1:xx, y1:s0, x2:xx, y2:s1, 'stroke-width':sw }));
+      });
+    });
+  });
+  svg.appendChild(wallG);
+
+  /* ── 間仕切り。壁ではないので、壁の生成系には入れない。
+        框（段差）を細い線で描くのと同じ扱い。               */
+  const divG = el('g');
+  if (stage.div !== 'wall' && stage.div !== 'none') {
+    const x1 = V3 + TI/2, x2 = W - TO/2;
+    parts.slice(1).forEach(pt => {
+      const y = pt.y1;
+      if (stage.div === 'fusuma') {
+        /* 襖：敷居＝二本の細い線。建具は引き分けで、引手を2つ。 */
+        divG.appendChild(el('line', { x1, y1:y-2.2, x2, y2:y-2.2,
+          stroke:'#B0AA9A', 'stroke-width':1.2 }));
+        divG.appendChild(el('line', { x1, y1:y+2.2, x2, y2:y+2.2,
+          stroke:'#B0AA9A', 'stroke-width':1.2 }));
+        /* 引き分けの合わせ目 */
+        const mid = (x1 + x2) / 2;
+        divG.appendChild(el('line', { x1:mid, y1:y-2.2, x2:mid, y2:y+2.2,
+          stroke:'#B0AA9A', 'stroke-width':1.2 }));
+        /* 引手（小さな縦の楕円） */
+        [mid - 26, mid + 26].forEach(hx => {
+          divG.appendChild(el('ellipse', { cx:hx, cy:y, rx:2.4, ry:4.6,
+            fill:'none', stroke:'#A79F8D', 'stroke-width':1 }));
+        });
+      } else if (stage.div === 'kabe') {
+        /* 腰壁・垂れ壁：両端から壁が出て、中央が開いている。
+           壁の断面なのでハッチを持つが、厚みは内壁の半分。 */
+        const th = TI * 0.62, run = (x2 - x1) * 0.26;
+        [[x1, x1 + run], [x2 - run, x2]].forEach(([a, b]) => {
+          divG.appendChild(el('rect', { x:a, y:y-th/2, width:b-a, height:th,
+            fill:'#FDFCF8', stroke:'none' }));
+          divG.appendChild(el('rect', { x:a, y:y-th/2, width:b-a, height:th,
+            fill:'url(#hw'+uid+')', stroke:'#8D8779', 'stroke-width':1.2 }));
+        });
+      }
+    });
+  }
+  svg.appendChild(divG);
+
+  svg.appendChild(el('line', { x1:V2+TI/2, y1:KAMA, x2:V3-TI/2, y2:KAMA,
+    stroke:'#B9B3A4', 'stroke-width':1.6 }));
+  const gkT = el('text', { x:(V2+V3)/2, y:(KAMA+H)/2, 'text-anchor':'middle',
+    'dominant-baseline':'middle', 'font-size':15, fill:'#8C8779',
+    'font-family':'system-ui, sans-serif' });
+  gkT.textContent = '玄関'; svg.appendChild(gkT);
+
+  /* ── 中身を重ねる ──────────────────────── */
+  const layer = document.createElement('div');
+  layer.className = 'layer'; host.appendChild(layer);
+  const VBW = W + 20, VBH = H + 20, PADIN = 12;
+  const place = (d, x1u, y1u, x2u, y2u) => {
+    d.style.left   = ((x1u + 10) / VBW * 100) + '%';
+    d.style.top    = ((y1u + 10) / VBH * 100) + '%';
+    d.style.width  = ((x2u - x1u) / VBW * 100) + '%';
+    d.style.height = ((y2u - y1u) / VBH * 100) + '%';
+  };
+  rooms.forEach(r => {
+    if (!plan.html[r.id]) return;
+    const d = document.createElement('div');
+    d.className = 'cell';
+    place(d,
+      r.x1 + (r.x1 === 0 ? TO : TI) / 2 + PADIN,
+      r.y1 + (r.y1 === 0 ? TO : TI) / 2 + PADIN,
+      r.x2 - (r.x2 === W ? TO : TI) / 2 - PADIN,
+      r.y2 - (r.y2 === H ? TO : TI) / 2 - PADIN);
+    d.innerHTML = `<h4>${esc(r.label)}<span class="cnt">${plan.COUNT[r.id]}</span></h4>` +
+      `<div class="body">${plan.html[r.id]}</div>`;
+    layer.appendChild(d);
+  });
+  /* B・C・D は一室なので、区画の中身を別に載せる。 */
+  if (stage.div !== 'wall') {
+    if (stage.div === 'none') {
+      /* D：区画が無い。三つを続けて流す。見出しは一つ。 */
+      const d = document.createElement('div');
+      d.className = 'cell';
+      place(d, V3 + TI/2 + PADIN, plan.H1 + TI/2 + PADIN,
+            W - TO/2 - PADIN, plan.H - TO/2 - PADIN);
+      d.innerHTML = '<h4>権利・契約・ローン</h4><div class="body">' +
+        PARTS.map(s => plan.html[s.id]).join('') + '</div>';
+      layer.appendChild(d);
+    } else {
+      parts.forEach((pt, i) => {
+        const d = document.createElement('div');
+        d.className = 'cell';
+        place(d, V3 + TI/2 + PADIN, pt.y1 + (i === 0 ? TI/2 : 4) + PADIN * 0.7,
+              W - TO/2 - PADIN,
+              pt.y2 - (pt.y2 === plan.H ? TO/2 : 4) - PADIN * 0.7);
+        d.innerHTML = `<h4>${esc(pt.label)}<span class="cnt">${plan.COUNT[pt.id]}</span></h4>` +
+          `<div class="body">${plan.html[pt.id]}</div>`;
+        layer.appendChild(d);
+      });
+    }
+  }
+  return layer;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ■ 実行                                                      */
+const props = S.all();
+const P1 = props[0], P2 = props[1];
+
+function renderRow(p, hostId) {
+  const host = document.getElementById(hostId);
+  const cells = STAGES.map(st => {
+    const wrap = document.createElement('div');
+    const cap = document.createElement('p'); cap.className = 'cap';
+    cap.innerHTML = `<b>${esc(st.name)}</b>`;
+    const sub = document.createElement('p'); sub.className = 'capsub';
+    sub.textContent = st.sub;
+    const d = document.createElement('div'); d.className = 'plan';
+    wrap.appendChild(cap); wrap.appendChild(sub); wrap.appendChild(d);
+    host.appendChild(wrap);
+    return d;
+  });
+  return STAGES.map((st, i) => {
+    const pl = buildPlan(p, st, '#' + hostId);
+    const layer = draw(pl, cells[i], hostId + i);
+    return { pl, layer };
+  });
+}
+const rowA = renderRow(P1, 'plansA');
+const rowB = renderRow(P2, 'plansB');
+
+/* ── 段階の比較 ─────────────────────────── */
+let t = '<tr><th>段階</th><th>境は何か</th><th>「別のもの」に見える度合い</th>' +
+        '<th>該当なしの区画</th><th>外形の高さ（自宅／長岡）</th></tr>';
+const CMP = {
+  A: ['内壁100mm（ハッチ付き）。開口は廊下から3つ',
+      '強い。三つの部屋',
+      '独立して見える。「借入なし」だけの部屋ができる'],
+  B: ['敷居の線＋引き分けの襖（引手つき）。床は続く',
+      '中くらい。閉じれば三室、開ければ一室',
+      '区画としては残るが、部屋ほど独立しない'],
+  C: ['腰壁・垂れ壁。両端から出て中央が開く',
+      '弱い。一室の中の場所',
+      '場所としてだけ残る'],
+  D: ['なし',
+      'ない。三つの違いは行の中だけ',
+      '消える。行として流れる']
+};
+STAGES.forEach((st, i) => {
+  t += `<tr><td><b>${esc(st.name)}</b></td>` +
+    CMP[st.id].map(c => `<td>${esc(c)}</td>`).join('') +
+    `<td class="n">${rowA[i].pl.H * 10}／${rowB[i].pl.H * 10}mm</td></tr>`;
+});
+document.getElementById('cmp').innerHTML = t;
+
+/* ── 検証 ────────────────────────────── */
+requestAnimationFrame(() => {
+  const tsubo = r => (r.x2-r.x1) * (r.y2-r.y1) / 100 / 3.3;
+  let rows = '<tr><th>確認</th>' + STAGES.map(s =>
+    `<th>${esc(s.name)}</th>`).join('') + '</tr>';
+  const add = (label, fn) => {
+    rows += `<tr><td>${label}</td>` +
+      STAGES.map((s, i) => `<td>${fn(i)}</td>`).join('') + '</tr>';
+  };
+  const fill = (row, i) => {
+    const out = [];
+    row[i].layer.querySelectorAll('.cell').forEach(c => {
+      const b = c.querySelector('.body');
+      let inner = 0;
+      Array.from(b.children).forEach(ch => { inner += ch.getBoundingClientRect().height; });
+      const used = Math.round(inner / b.getBoundingClientRect().height * 100);
+      const nm = c.querySelector('h4').childNodes[0].textContent.trim() || '（区画）';
+      out.push(`${nm} <b class="${used < 75 || used > 102 ? 'ng' : 'ok'}">${used}%</b>`);
+    });
+    return out.join('<br>');
+  };
+  const over = (row, i) => {
+    const o = [];
+    row[i].layer.querySelectorAll('.cell').forEach(c => {
+      const b = c.querySelector('.body');
+      if (b.scrollHeight > b.clientHeight + 2)
+        o.push(c.querySelector('h4').childNodes[0].textContent.trim() || '（区画）');
+    });
+    return o.length ? '<span class="ng">' + o.join('、') + '</span>' : '<span class="ok">なし</span>';
+  };
+  add('<b>充填率・自宅</b>',   i => fill(rowA, i));
+  add('溢れ・自宅',            i => over(rowA, i));
+  add('<b>充填率・長岡</b>',   i => fill(rowB, i));
+  add('溢れ・長岡',            i => over(rowB, i));
+  add('主役が最大か・自宅', i => {
+    const pl = rowA[i].pl;
+    const others = pl.rooms.filter(r => r.kind === 'room' || r.kind === 'main2');
+    const ok = tsubo(pl.R.liv) > Math.max(...others.map(tsubo));
+    return `<span class="${ok?'ok':'ng'}">${ok?'○':'✗'}</span> ` +
+           Math.round(tsubo(pl.R.liv)) + ' 対 ' +
+           Math.round(Math.max(...others.map(tsubo)));
+  });
+  document.getElementById('chk').innerHTML = rows;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産｜間取りの骨格 v9</title>
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);
+    padding:28px 20px 60px}
+  .wrap{max-width:1120px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);margin:0 0 24px;line-height:1.85}
+  .lead b{color:var(--ink)}
+  h2{font-size:14px;margin:34px 0 4px;display:flex;align-items:baseline;gap:10px}
+  h2 span{font-size:11.5px;font-weight:400;color:var(--ink3)}
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:18px;margin-top:10px}
+  svg{display:block;width:100%;height:auto}
+  .note{font-size:12px;color:var(--ink2);margin:12px 0 0;line-height:1.85}
+  .note b{color:var(--ink)}
+  table{border-collapse:collapse;font-size:11.5px;margin-top:10px;width:100%}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;
+    vertical-align:top;line-height:1.7}
+  th{background:var(--paper2);font-weight:600;color:var(--ink2)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .ok{color:var(--gr);font-weight:700}
+  .ng{color:var(--or);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>不動産・住まい｜間取りの骨格 v9</h1>
+<p class="lead">
+  v8 は部屋を等分し、項目を後から流し込んだ。だから
+  <b>カギが事情より広い</b>（297坪 対 159坪）という破れが出た。
+  面積を重みで足しても直らない。順番が逆だったから。<br>
+  v9 は<b>住宅としての関係を先に置く</b>。玄関は外との境、廊下は動線、
+  リビングは動線の終点、個室は廊下から入る、納戸は部屋から入る従属。
+  この関係を満たす部屋だけが部屋になり、寸法はそこから出る。
+</p>
+
+<h2>0. 前提にした関係 <span>住宅として成立する条件</span></h2>
+<div class="stage">
+  <table id="rel"></table>
+</div>
+
+<h2>1. 項目の当てはめ <span>関係 → 部屋の種類</span></h2>
+<div class="stage">
+  <table id="map"></table>
+  <p class="note">
+    <b>部屋の種類が項目の立ち位置から決まる。</b>廊下から入る個室は
+    「相手がいる・前提になる」もの。納戸は「あったりなかったりする」もの。
+    玄関付属は「現地に入る」もの。面積を割り振る前に、<b>どの種類の部屋か</b>
+    が先に決まっている。
+  </p>
+</div>
+
+<h2>2. 間取り</h2>
+<div class="stage">
+  <svg id="plan"></svg>
+  <p class="note" id="planNote"></p>
+</div>
+
+<h2>3. 検証 <span>関係が成立しているか・寸法が破れていないか</span></h2>
+<div class="stage">
+  <table id="chk"></table>
+  <p class="note" id="sum"></p>
+</div>
+
+<h2>4. 残る論点</h2>
+<div class="stage">
+  <table id="open"></table>
+</div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   ■ v9 の方針
+
+   v8 は「矩形を並べて等分し、後から項目を入れる」だった。
+   v9 は逆。住宅としての関係を先に宣言し、それを満たす形だけを作る。
+
+     玄関   外との境。上がり框で内外が切り替わる。家族は必ずここから入る
+     廊下   動線。玄関から各室へ通じる唯一の道
+     リビング 動線の終点。廊下はここで終わる（突き当たりに全開）
+     個室   廊下に面する辺を持つことが、部屋である条件
+     納戸   廊下からでなく、他の部屋から入る従属した小部屋
+            ＝「ある家とない家がある」
+
+   この関係が、項目の立ち位置とそのまま対応する。         */
+
+const RELATIONS = [
+  ['玄関',     '外との境',   '上がり框で内外が切り替わる。家族は必ずここから入る'],
+  ['廊下',     '動線',       '玄関から各室へ通じる唯一の道。部屋どうしは廊下を介して繋がる'],
+  ['リビング', '動線の終点', '廊下はリビングで終わる。家の中心であり、最大の面'],
+  ['個室',     '廊下から入る', '廊下に面する辺を持つことが、部屋である条件'],
+  ['納戸',     '部屋から入る', '廊下に面さない従属した小部屋。だから「ある家とない家がある」'],
+  ['玄関付属', '土間・収納', '独立した個室ではない。玄関に付いている']
+];
+
+const MAP = [
+  ['中央：家族がすること', 'リビング', '動線の終点',
+   '1〜7 はすべてここへ集約される。廊下が突き当たりで全開になる先'],
+  ['2 権利関係',      '個室（廊下から）', '前提',
+   '名義・共有者は手続きの起点。相手がいる'],
+  ['3 契約・やり取り', '個室（廊下から）', '続いている関係',
+   '貸借・管理。相手ごとに行が増える'],
+  ['4 ローン・担保',   '個室（廊下から）', '続いている関係',
+   '金融機関・団信。相手がいる'],
+  ['6 書類',          '個室（廊下から）', '索引',
+   '行動するとき見る。どの手続きからも辿る'],
+  ['5 事情',          '納戸（リビングから）', '今のうちに確認',
+   '主役を最も強く生む材料なのでリビングに接する。' +
+   'A〜C すべて「なし」なら最小＝ある家とない家がある'],
+  ['7 カギ',          '玄関付属', '補助',
+   '現地に入る話。独立した個室である必要がない'],
+  ['1 基本情報',      '屋根（外観）', '前提',
+   '部屋ではない。その家が何であるか。種別で外観が変わる']
+];
+
+const OPEN = [
+  ['納戸の開口',
+   '事情（納戸）はリビングから入る。この開口は「リビングと納戸が繋がっている」' +
+   'という本当の関係を表すので、v1 で否定されたドアの弧とは別。ただし記号としての' +
+   '弧は使わず、開口として壁を切るだけにしてある'],
+  ['カギの面',
+   '玄関付属にしたので独立した面積を持たない。画面上どう出すかは未定' +
+   '（玄関の土間として描くか、玄関の中の一区画か）'],
+  ['重みの出し方',
+   '面積は state.js の内容から出す。該当する行の数 × 本人しか知らない度' +
+   '（W={onlyself:3,askable:1,public:0}）。今は例として固定値を置いている'],
+  ['リビングの中身',
+   '「家族がすること」は連絡／引継ぎ／確認／手続きの4種。1部屋に列として出すのか、' +
+   '中で分けるのか。分けると部屋の中に部屋ができるので、造形としては列が妥当か']
+];
+
+/* ══════════════════════════════════════════════════════════
+   ■ 寸法
+
+   1単位＝10mm。外形の幅は 11700mm。
+   高さは関係から決まる（廊下が4室に面する長さ＋玄関の奥行）。       */
+const W   = 1170;
+const TO  = 15, TI = 10;       /* 外壁150mm・内壁100mm */
+const OPW = 78;                /* 室内開口 780mm */
+const MIN = OPW + 25 * 2;      /* 1室が廊下に面する最低 1280mm */
+
+const V2 = 430, V3 = 540;      /* 廊下の左右（幅1100mm） */
+const GK = 130;                /* 玄関の奥行 1300mm */
+
+/* 廊下から入る個室。左右に振る。
+   4室は左2・右2（片側に4列並べると細長くなり、住宅として不自然）。
+   重みは「その項目が今どれだけ場所を要るか」。本番は state.js から。 */
+const LEFT  = [ { id:'loan',  label:'ローン・担保',   w:1.0 },
+                { id:'docs',  label:'書類',           w:0.9 } ];
+const RIGHT = [ { id:'right', label:'権利関係',       w:1.0 },
+                { id:'deal',  label:'契約・やり取り', w:1.3 } ];
+
+/* リビングの高さ。動線の終点であり最大の面なので、
+   個室の列より深く取る。 */
+const H1 = 400;
+
+/* 廊下が個室に面する長さ。左右で必要な分の大きい方。
+   足りなければ建物を伸ばす（造形の都合で部屋を削らない）。 */
+const corrNeed = Math.max(LEFT.length, RIGHT.length) * MIN;
+const KAMA = H1 + corrNeed;    /* 上がり框の位置 */
+const H    = KAMA + GK;        /* 外形の高さ */
+
+/* 納戸（事情）。リビングから入る従属した小部屋。
+   リビングの一角を占め、廊下には面さない。          */
+const NANDO_W = 260;           /* 納戸の幅。事情が「なし」なら縮む */
+const NANDO_X = W - NANDO_W;   /* リビングの右隣 */
+
+/* 玄関付属（カギ）。玄関の脇。独立した個室ではない。 */
+const KEY_W = 210;
+
+/* 重み付き分割。どの区画も MIN を下回らせない。 */
+function bandW(y0, y1, ws) {
+  const n = ws.length, span = y1 - y0;
+  const extra = Math.max(0, span - MIN * n);
+  const sum = ws.reduce((a, b) => a + b, 0);
+  const sizes = ws.map(w => MIN + extra * w / sum);
+  const out = []; let y = y0;
+  for (let i = 0; i < n - 1; i++) { y += sizes[i]; out.push(y); }
+  return out;
+}
+
+/* ── 部屋 ──────────────────────────────────
+   リビングは上段いっぱい。ただし右端を納戸に譲る。
+
+   納戸はリビングの「中」ではなく「隣」に置く。中に置くと
+   包含になり、共有辺が生まれない＝開口が作れない。
+   （壁で仕切られて初めて、そこを切って通れる）           */
+const rooms = [
+  { id:'liv',   label:'家族がすること', kind:'liv',
+    x1:0, y1:0, x2:NANDO_X, y2:H1 },
+  { id:'nando', label:'事情', kind:'nando',
+    x1:NANDO_X, y1:0, x2:W, y2:H1 },
+  { id:'corr',  label:'', kind:'corr',
+    x1:V2, y1:H1, x2:V3, y2:KAMA },
+  { id:'gk',    label:'玄関', kind:'gk',
+    x1:V2, y1:KAMA, x2:V3, y2:H },
+  { id:'key',   label:'カギ', kind:'key',
+    x1:V3, y1:KAMA, x2:V3 + KEY_W, y2:H }
+];
+
+/* 廊下の左右に個室を並べる。最下段は框の高さで終わる
+   （v8 は最下段だけ玄関脇まで伸ばしていた。そのせいで
+     カギが事情より広くなった。v9 では伸ばさない）。     */
+[[LEFT, 0, V2], [RIGHT, V3, W]].forEach(([list, x1, x2]) => {
+  const ys = [H1, ...bandW(H1, KAMA, list.map(r => r.w)), KAMA];
+  list.forEach((r, i) => rooms.push(
+    { id:r.id, label:r.label, kind:'room', x1, x2, y1:ys[i], y2:ys[i+1] }));
+});
+
+/* 玄関の左右に残る床。玄関ホールとして廊下に含める
+   （部屋ではないので項目は持たない）。                 */
+rooms.push({ id:'hall', label:'', kind:'corr',
+  x1:0, y1:KAMA, x2:V2, y2:H });
+if (V3 + KEY_W < W)
+  rooms.push({ id:'hall2', label:'', kind:'corr',
+    x1:V3 + KEY_W, y1:KAMA, x2:W, y2:H });
+
+const R = Object.fromEntries(rooms.map(r => [r.id, r]));
+
+/* ── 関係（どの部屋がどの部屋に通じるか）──────────
+   ここが v9 の要。開口は「通れる」という本当の関係だけに置く。 */
+const links = [];
+LEFT.concat(RIGHT).forEach(r => links.push(['corr', r.id]));  /* 個室は廊下から */
+links.push(['liv', 'nando']);                                 /* 納戸はリビングから */
+links.push(['gk', 'key']);                                    /* カギは玄関から */
+
+/* 壁を建てない境界：框（段差）と、廊下の突き当たり（リビングへ全開）*/
+const NOWALL = [['corr','gk'], ['corr','liv'], ['gk','hall'], ['gk','hall2']];
+
+/* ══════════════════════════════════════════════════════════
+   以下、壁と開口の生成は v8 と同じ方式。
+   部屋の定義から共有辺を求め、その中央に開口を置き、
+   壁は部屋の縁から生成してマージし、開口で切る。          */
+function sharedEdge(p, q) {
+  if (!p || !q) return null;
+  if (p.x2 === q.x1 || q.x2 === p.x1) {
+    const x = (p.x2 === q.x1) ? p.x2 : q.x2;
+    const a = Math.max(p.y1, q.y1), b = Math.min(p.y2, q.y2);
+    if (b > a) return { dir:'v', pos:x, a, b };
+  }
+  if (p.y2 === q.y1 || q.y2 === p.y1) {
+    const y = (p.y2 === q.y1) ? p.y2 : q.y2;
+    const a = Math.max(p.x1, q.x1), b = Math.min(p.x2, q.x2);
+    if (b > a) return { dir:'h', pos:y, a, b };
+  }
+  return null;
+}
+
+const openings = links.map(([i, j]) => {
+  const e = sharedEdge(R[i], R[j]);
+  if (!e) return null;
+  return [e.dir, e.pos, (e.a + e.b) / 2, Math.min(OPW, (e.b - e.a) * 0.7)];
+}).filter(Boolean);
+/* 玄関：外壁を玄関の幅いっぱい開ける */
+openings.push(['h', H, (V2 + V3) / 2, V3 - V2 - TI]);
+
+const nowall = NOWALL.map(([i, j]) => sharedEdge(R[i], R[j])).filter(Boolean);
+
+const segs = new Map();
+const addSeg = (dir, pos, a, b, outer) => {
+  const k = dir+':'+pos+':'+Math.min(a,b)+':'+Math.max(a,b);
+  if (!segs.has(k)) segs.set(k, { dir, pos, a:Math.min(a,b), b:Math.max(a,b), outer });
+};
+rooms.forEach(r => {
+  addSeg('h', r.y1, r.x1, r.x2, r.y1 === 0);
+  addSeg('h', r.y2, r.x1, r.x2, r.y2 === H);
+  addSeg('v', r.x1, r.y1, r.y2, r.x1 === 0);
+  addSeg('v', r.x2, r.y1, r.y2, r.x2 === W);
+});
+{
+  const byLine = new Map();
+  segs.forEach(s => {
+    const k = s.dir + ':' + s.pos;
+    if (!byLine.has(k)) byLine.set(k, []);
+    byLine.get(k).push(s);
+  });
+  segs.clear();
+  byLine.forEach((list, k) => {
+    list.sort((p, q) => p.a - q.a);
+    let cur = null; const out = [];
+    list.forEach(s => {
+      if (cur && s.a <= cur.b + 0.01) {
+        cur.b = Math.max(cur.b, s.b); cur.outer = cur.outer || s.outer;
+      } else { cur = Object.assign({}, s); out.push(cur); }
+    });
+    out.forEach((s, i) => segs.set(k + ':' + i, s));
+  });
+}
+
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('plan');
+const el = (n, a) => { const e = document.createElementNS(NS, n);
+  for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+const defs = el('defs');
+const pat = el('pattern', { id:'hw', width:6, height:6,
+  patternTransform:'rotate(45)', patternUnits:'userSpaceOnUse' });
+pat.appendChild(el('line', { x1:0, y1:0, x2:0, y2:6,
+  stroke:'#B9B3A4', 'stroke-width':1.1 }));
+defs.appendChild(pat); svg.appendChild(defs);
+
+const FLOOR = { corr:'#F4F1E7', gk:'#EDE9DC', liv:'#FBF7E9',
+                nando:'#F7F3E6', key:'#EDE9DC', room:'#FDFCF8' };
+rooms.forEach(r => {
+  const x  = r.x1 + (r.x1 === 0 ? TO : TI) / 2;
+  const y  = r.y1 + (r.y1 === 0 ? TO : TI) / 2;
+  const x2 = r.x2 - (r.x2 === W ? TO : TI) / 2;
+  const y2 = r.y2 - (r.y2 === H ? TO : TI) / 2;
+  svg.appendChild(el('rect', { x, y, width:x2-x, height:y2-y,
+    fill: FLOOR[r.kind] || '#FDFCF8' }));
+});
+
+const wallG = el('g', { stroke:'#6E6A60', fill:'url(#hw)' });
+const winG  = el('g', { stroke:'#6E6A60' });
+
+function trimEnd(seg, v, dirSign) {
+  const cross = seg.dir === 'h' ? 'v' : 'h';
+  let hit = null;
+  segs.forEach(o => {
+    if (o.dir !== cross || o.pos !== v) return;
+    if (seg.pos < o.a - 0.01 || seg.pos > o.b + 0.01) return;
+    if (!hit || (o.outer && !hit.outer)) hit = o;
+  });
+  if (!hit) return v;
+  return v - dirSign * (hit.outer ? TO : TI) / 2;
+}
+
+const slabs = [];
+segs.forEach(s => {
+  const th = s.outer ? TO : TI;
+  const cuts = openings.filter(o => o[0] === s.dir && o[1] === s.pos)
+    .map(o => [o[2] - o[3]/2, o[2] + o[3]/2])
+    .concat(nowall.filter(e => e.dir === s.dir && e.pos === s.pos)
+      .map(e => [e.a, e.b]))
+    .filter(o => o[1] > s.a && o[0] < s.b)
+    .sort((p, q) => p[0] - q[0]);
+  let cur = s.a; const pieces = [];
+  cuts.forEach(o => { if (o[0] > cur) pieces.push([cur, o[0]]); cur = Math.max(cur, o[1]); });
+  if (cur < s.b) pieces.push([cur, s.b]);
+  pieces.forEach(p => {
+    let q0 = trimEnd(s, p[0], +1), q1 = trimEnd(s, p[1], -1);
+    if (s.dir === 'h') slabs.push([q0, s.pos-th/2, q1-q0, th, s.outer]);
+    else               slabs.push([s.pos-th/2, q0, th, q1-q0, s.outer]);
+  });
+});
+
+const EPS = 0.01;
+slabs.forEach(([x, y, w, h]) => wallG.appendChild(el('rect',
+  { x, y, width:w, height:h, fill:'#FDFCF8', stroke:'none' })));
+slabs.forEach(([x, y, w, h]) => wallG.appendChild(el('rect',
+  { x, y, width:w, height:h, fill:'url(#hw)', stroke:'none' })));
+
+function subtract(a, b, ranges) {
+  let out = [[a, b]];
+  ranges.forEach(([c, d]) => {
+    const next = [];
+    out.forEach(([s0, s1]) => {
+      if (d <= s0 + EPS || c >= s1 - EPS) { next.push([s0, s1]); return; }
+      if (c > s0 + EPS) next.push([s0, c]);
+      if (d < s1 - EPS) next.push([d, s1]);
+    });
+    out = next;
+  });
+  return out;
+}
+slabs.forEach((sl, idx) => {
+  const [x, y, w, h, outer] = sl;
+  const sw = outer ? 2 : 1.6;
+  const others = slabs.filter((_, k) => k !== idx);
+  [y, y + h].forEach(yy => {
+    const covered = others.filter(o => o[1] < yy - EPS && o[1] + o[3] > yy + EPS)
+      .map(o => [o[0], o[0] + o[2]]);
+    subtract(x, x + w, covered).forEach(([s0, s1]) => {
+      if (s1 - s0 > EPS) wallG.appendChild(el('line',
+        { x1:s0, y1:yy, x2:s1, y2:yy, 'stroke-width':sw }));
+    });
+  });
+  [x, x + w].forEach(xx => {
+    const covered = others.filter(o => o[0] < xx - EPS && o[0] + o[2] > xx + EPS)
+      .map(o => [o[1], o[1] + o[3]]);
+    subtract(y, y + h, covered).forEach(([s0, s1]) => {
+      if (s1 - s0 > EPS) wallG.appendChild(el('line',
+        { x1:xx, y1:s0, x2:xx, y2:s1, 'stroke-width':sw }));
+    });
+  });
+});
+
+/* 窓：外に面する部屋に1つ。廊下・玄関・納戸は持たない
+   （納戸は本来、外に面さない収納）。                    */
+const NOWIN = { corr:1, gk:1, nando:1, key:1 };
+rooms.forEach(r => {
+  if (NOWIN[r.kind]) return;
+  const cand = [];
+  if (r.y1 === 0) cand.push(['h', 0, r.x1, r.x2]);
+  if (r.y2 === H) cand.push(['h', H, r.x1, r.x2]);
+  if (r.x1 === 0) cand.push(['v', 0, r.y1, r.y2]);
+  if (r.x2 === W) cand.push(['v', W, r.y1, r.y2]);
+  cand.sort((p, q) => (q[3]-q[2]) - (p[3]-p[2]));
+  const f = cand[0]; if (!f) return;
+  const [dir, pos, a, b] = f;
+  const a2 = a, b2 = b;
+  const span = b2 - a2; if (span < 200) return;
+  const len = Math.min(220, span * 0.45);
+  const c = (a2 + b2) / 2, s0 = c - len/2, e0 = c + len/2;
+  const clash = openings.some(o => o[0] === dir && o[1] === pos &&
+    o[2]+o[3]/2 > s0 && o[2]-o[3]/2 < e0);
+  if (clash) return;
+  if (dir === 'h') {
+    winG.appendChild(el('rect', { x:s0, y:pos-TO/2, width:len, height:TO,
+      fill:'#FDFCF8', 'stroke-width':1.4 }));
+    winG.appendChild(el('line', { x1:s0, y1:pos, x2:e0, y2:pos, 'stroke-width':1.1 }));
+  } else {
+    winG.appendChild(el('rect', { x:pos-TO/2, y:s0, width:TO, height:len,
+      fill:'#FDFCF8', 'stroke-width':1.4 }));
+    winG.appendChild(el('line', { x1:pos, y1:s0, x2:pos, y2:e0, 'stroke-width':1.1 }));
+  }
+});
+
+svg.appendChild(wallG);
+svg.appendChild(winG);
+
+/* 上がり框：壁ではなく段差。廊下は框を越えて通る。 */
+svg.appendChild(el('line', { x1:V2+TI/2, y1:KAMA, x2:V3-TI/2, y2:KAMA,
+  stroke:'#B9B3A4', 'stroke-width':1.6 }));
+
+/* ラベル（検討用。本番の成果物UIではない） */
+const labG = el('g', {});
+rooms.forEach(r => {
+  if (!r.label) return;
+  const cx = (r.x1 + r.x2) / 2, cy = (r.y1 + r.y2) / 2;
+  const main = r.kind === 'liv';
+  const t = el('text', { x:cx, y:cy, 'text-anchor':'middle',
+    'dominant-baseline':'middle', 'font-size': main ? 27 : 16,
+    'font-weight': main ? 700 : 400, fill: main ? '#6E6A60' : '#8C8779',
+    'font-family':'system-ui, sans-serif' });
+  t.textContent = r.label;
+  labG.appendChild(t);
+});
+svg.appendChild(labG);
+svg.setAttribute('viewBox', `-10 -10 ${W + 20} ${H + 20}`);
+
+/* ══════════════════════════════════════════════════════════
+   ── 検証 ───────────────────────────────── */
+const tsubo = r => (r.x2-r.x1) * (r.y2-r.y1) / 100 / 3.3;
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+document.getElementById('rel').innerHTML =
+  '<tr><th>要素</th><th>役割</th><th>条件</th></tr>' +
+  RELATIONS.map(r => `<tr><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td>` +
+    `<td>${esc(r[2])}</td></tr>`).join('');
+
+document.getElementById('map').innerHTML =
+  '<tr><th>項目</th><th>部屋の種類</th><th>立ち位置</th><th>理由</th></tr>' +
+  MAP.map(r => `<tr><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td>` +
+    `<td>${esc(r[2])}</td><td>${esc(r[3])}</td></tr>`).join('');
+
+document.getElementById('open').innerHTML =
+  '<tr><th>論点</th><th>中身</th></tr>' +
+  OPEN.map(r => `<tr><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td></tr>`).join('');
+
+const rows = [];
+links.forEach(([i, j]) => {
+  const e = sharedEdge(R[i], R[j]);
+  if (!e) { rows.push([`${i} ↔ ${j}`, '接していない', '-', '-', 'ng']); return; }
+  const span = e.b - e.a;
+  const ow = Math.min(OPW, span * 0.7), rest = (span - ow) / 2;
+  rows.push([`${i} ↔ ${j}`, (span*10).toFixed(0)+'mm', (ow*10).toFixed(0)+'mm',
+    (rest*10).toFixed(0)+'mm', rest >= 25 ? 'ok' : 'ng']);
+});
+
+/* 関係の検証：個室はすべて廊下に面しているか／納戸は廊下に面していないか */
+const roomIds = LEFT.concat(RIGHT).map(r => r.id);
+const allFaceCorr = roomIds.every(id => sharedEdge(R.corr, R[id]));
+const nandoIsolated = !sharedEdge(R.corr, R.nando);
+const livIsEnd = !!sharedEdge(R.corr, R.liv);
+
+/* リビングが最大であること */
+const liv = tsubo(R.liv);
+const others = rooms.filter(r => r.kind === 'room' || r.kind === 'nando');
+const maxOther = Math.max(...others.map(tsubo));
+const livOK = liv > maxOther;
+
+let tiny = 0;
+segs.forEach(s => {
+  const cuts = openings.filter(o => o[0]===s.dir && o[1]===s.pos)
+    .map(o => [o[2]-o[3]/2, o[2]+o[3]/2])
+    .concat(nowall.filter(e => e.dir===s.dir && e.pos===s.pos).map(e => [e.a, e.b]))
+    .filter(o => o[1]>s.a && o[0]<s.b).sort((p,q)=>p[0]-q[0]);
+  let cur = s.a; const pieces = [];
+  cuts.forEach(o => { if (o[0]>cur) pieces.push([cur,o[0]]); cur = Math.max(cur,o[1]); });
+  if (cur < s.b) pieces.push([cur, s.b]);
+  pieces.forEach(p => { if (p[1]-p[0] < 25) tiny++; });
+});
+
+/* カギ（玄関付属）が個室より小さいこと。v8 の破れの再発防止。 */
+const keyT = tsubo(R.key);
+const minRoom = Math.min(...rooms.filter(r => r.kind === 'room').map(tsubo));
+const keyOK = keyT < minRoom;
+
+const row = (a, b, ok) =>
+  `<tr><td>${a}</td><td colspan="3">${b}</td>` +
+  `<td class="${ok?'ok':'ng'}">${ok?'○':'✗'}</td></tr>`;
+
+document.getElementById('chk').innerHTML =
+  '<tr><th>つながり</th><th>接する長さ</th><th>開口</th>' +
+  '<th>両側に残る壁</th><th>判定</th></tr>' +
+  rows.map(r => `<tr><td>${r[0]}</td><td class="n">${r[1]}</td>` +
+    `<td class="n">${r[2]}</td><td class="n">${r[3]}</td>` +
+    `<td class="${r[4]==='ok'?'ok':'ng'}">${r[4]==='ok'?'○':'✗'}</td></tr>`).join('') +
+  row('<b>個室はすべて廊下に面するか</b>', '個室 ' + roomIds.length + ' 室', allFaceCorr) +
+  row('<b>納戸は廊下に面していないか</b>', 'リビングからのみ入る', nandoIsolated) +
+  row('<b>廊下の終点がリビングか</b>', '突き当たりで全開', livIsEnd) +
+  row('<b>リビングが最大か</b>',
+      `リビング ${liv.toFixed(1)} ／ 次点 ${maxOther.toFixed(1)}`, livOK) +
+  row('<b>カギが個室より小さいか</b>',
+      `カギ ${keyT.toFixed(1)} ／ 最小の個室 ${minRoom.toFixed(1)}`, keyOK) +
+  row('極小の壁片（250mm未満）', tiny + ' 本', tiny === 0);
+
+document.getElementById('sum').innerHTML =
+  '面積：' + rooms.filter(r => r.label).map(r =>
+    `${r.label} ${(r.kind==='liv' ? liv : tsubo(r)).toFixed(1)}`).join('／');
+
+document.getElementById('planNote').innerHTML =
+  `外形 ${W*10}×${H*10}mm。高さは関係から決まる` +
+  `（リビング ${H1*10} ＋ 廊下が個室に面する ${corrNeed*10} ＋ 玄関 ${GK*10}）。<br>` +
+  '<b>事情（納戸）はリビングからだけ入る。</b>廊下には面さない。' +
+  '<b>カギは玄関付属</b>で、独立した個室ではない。' +
+  '個室の面積は重みで決まるが、<b>納戸とカギは種類が違うので重みの土俵に乗らない</b> ' +
+  '―― v8 でカギが事情より広くなった破れは、ここで構造的に起きなくなる。';
+</script>
+</body>
+</html>

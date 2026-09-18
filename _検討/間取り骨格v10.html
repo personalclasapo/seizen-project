@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産｜間取りの骨格 v10</title>
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);
+    padding:28px 20px 60px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);margin:0 0 24px;line-height:1.85}
+  .lead b{color:var(--ink)}
+  h2{font-size:14px;margin:34px 0 4px;display:flex;align-items:baseline;gap:10px}
+  h2 span{font-size:11.5px;font-weight:400;color:var(--ink3)}
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:18px;margin-top:10px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:760px){ .two{grid-template-columns:1fr} }
+  .plan h3{font-size:13px;margin:0 0 2px}
+  .plan .sub{font-size:11.5px;color:var(--ink3);margin:0 0 10px}
+  svg{display:block;width:100%;height:auto}
+  .note{font-size:12px;color:var(--ink2);margin:12px 0 0;line-height:1.85}
+  .note b{color:var(--ink)}
+  table{border-collapse:collapse;font-size:11.5px;margin-top:10px;width:100%}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;
+    vertical-align:top;line-height:1.7}
+  th{background:var(--paper2);font-weight:600;color:var(--ink2)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .ok{color:var(--gr);font-weight:700}
+  .ng{color:var(--or);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>不動産・住まい｜間取りの骨格 v10</h1>
+<p class="lead">
+  v9 は重み付きの関数を持ちながら、<b>重みで配れる余りが 0mm</b> だった
+  ―― 廊下の長さを「個室数 × 下限1280mm」ちょうどで決めていたので、
+  下限が寸法を決め、重みは飾りになっていた。だから4室が同じ大きさで並んだ。<br>
+  v10 は<b>重みの合計から廊下の長さを決める</b>。下限は「割ったら建物を伸ばす」
+  制約としてだけ効かせる。重みは <b>state.js の実データ</b>から出す
+  （該当する行の数 × 本人しか知らない度）。<b>同じ仕組みに2物件を入れて、
+  違う形が出るかを見る。</b>
+</p>
+
+<h2>1. 重み <span>項目の中身から出した量</span></h2>
+<div class="stage">
+  <table id="wt"></table>
+  <p class="note">
+    勘で置いた数字は使わない。<b>行の数だけでも数えない</b>
+    ―― 進捗（§12）と同じく、本人しか知らないものを重く数える。
+    「なし」「未確認」の事情は場所を取らない（確認していないことは、
+    まだ家族が抱える量ではない）。
+  </p>
+</div>
+
+<h2>2. 間取り <span>同じ仕組み・違う物件</span></h2>
+<div class="stage">
+  <div class="two" id="plans"></div>
+  <p class="note" id="planNote"></p>
+</div>
+
+<h2>3. 検証</h2>
+<div class="stage">
+  <table id="chk"></table>
+</div>
+
+<h2>4. 残る論点</h2>
+<div class="stage">
+  <table id="open"></table>
+</div>
+
+</div>
+
+<script src="../prototype/real-estate/state.js"></script>
+<script>
+const S = window.SeiZenRealEstate;
+
+/* ══════════════════════════════════════════════════════════
+   ■ 重み ―― 項目の中身から出す
+
+   勘で置いた固定値ではなく、state.js の実データから計算する。
+   数え方は進捗（§12）と揃える：本人しか知らないものを重く。    */
+const RW = { onlyself: 3, askable: 1, public: 0 };
+
+function weights(p) {
+  const w = {};
+  /* 2 権利：土地・建物の2件。登記と実態が不一致・不明なら
+     手続きが要るぶん重い。 */
+  w.right = ['land', 'bldg'].reduce((a, k) => {
+    const r = p.rights[k]; if (!r) return a;
+    return a + 1 + (r.match !== 'same' ? 2 : 0)
+             + (r.reach === 'onlyself' ? 1 : 0);
+  }, 0);
+  /* 3 契約：相手の数。相手がいる分だけ連絡先と引継ぎが要る。 */
+  w.deal = (p.deals || []).length * 2;
+  /* 4 ローン：無ければ最小。ただし面は残る（該当なしも事実）。 */
+  w.loan = (p.loan && p.loan.has) ? 3 : 1;
+  /* 5 事情：あり・分からない だけ数える。「なし」「未確認」は
+     場所を取らない ―― 確認していないことは、まだ家族が抱える量ではない。 */
+  w.matter = Object.keys(p.matters || {}).reduce((a, k) => {
+    const m = p.matters[k];
+    const live = (m.find === 'yes' || m.find === 'unknown');
+    return a + (live ? 2 + RW[m.reach || 'askable'] / 3 : 0);
+  }, 0);
+  /* 6 書類：この物件で必要になる書類の件数（3〜5から導出済み）。 */
+  w.docs = S.neededDocs(p).length;
+  return w;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ■ 寸法。1単位＝10mm。                                      */
+const W   = 1170;              /* 外形の幅 11700mm */
+const TO  = 15, TI = 10;       /* 外壁150mm・内壁100mm */
+const OPW = 78;                /* 室内開口 780mm */
+const MIN = OPW + 25 * 2;      /* 1室が廊下に面する最低 1280mm */
+const V2  = 430, V3 = 540;     /* 廊下の左右（幅1100mm） */
+const GK  = 130;               /* 玄関の奥行 1300mm */
+const H1  = 400;               /* リビングの深さ */
+
+/* 1単位の重みが何mmに相当するか。これが「量→広さ」の換算率。 */
+const PER_W = 62;
+
+/* 個室の位置は固定する。物件が変わっても同じ項目は同じ場所。
+   家族は繰り返し見るので、位置が動くと毎回探し直すことになる。
+   量は「大きさ」だけで表し、「場所」では表さない。
+
+   右＝相手がいるもの（権利・契約）、左＝自分側で確認するもの
+   （ローン・書類）。廊下に沿う順は家族が辿る順。               */
+const SLOTS = {
+  R: [ { id:'right', label:'権利関係'       },
+       { id:'deal',  label:'契約・やり取り' } ],
+  L: [ { id:'loan',  label:'ローン・担保'   },
+       { id:'docs',  label:'書類'           } ]
+};
+function assign(w) {
+  const put = side => SLOTS[side].map(s => ({ ...s, w: w[s.id] }));
+  return { L: put('L'), R: put('R') };
+}
+
+/* 重みから各室の長さを出す。下限を割る室は下限まで引き上げ、
+   その分を他室から取らない（建物が伸びる）。造形の都合で部屋を削らない。 */
+function lengths(list) {
+  return list.map(it => Math.max(MIN, it.w * PER_W));
+}
+
+function buildPlan(p) {
+  const w = weights(p);
+  const { L, R } = assign(w);
+  const lenL = lengths(L), lenR = lengths(R);
+  const sumL = lenL.reduce((a, b) => a + b, 0);
+  const sumR = lenR.reduce((a, b) => a + b, 0);
+  /* 廊下の長さは左右の必要量の大きい方。短い側は余った分を
+     各室に比例配分して埋める（廊下に面する壁に隙間を作らない）。 */
+  const corr = Math.max(sumL, sumR);
+  const fit = (list, len, sum) => {
+    if (sum >= corr - 0.01) return len;
+    const extra = corr - sum;
+    return len.map(v => v + extra * v / sum);
+  };
+  const fL = fit(L, lenL, sumL), fR = fit(R, lenR, sumR);
+
+  const KAMA = H1 + corr;
+  const H = KAMA + GK;
+
+  /* 納戸（事情）。リビングの隣。事情の量で幅が変わる。
+     「なし」「未確認」だけの物件では最小になる＝小さな納戸。 */
+  const nandoW = Math.max(160, Math.min(420, w.matter * 56));
+
+  const rooms = [
+    { id:'liv', label:'家族がすること', kind:'liv',
+      x1:0, y1:0, x2:W - nandoW, y2:H1 },
+    { id:'nando', label:'事情', kind:'nando',
+      x1:W - nandoW, y1:0, x2:W, y2:H1 },
+    { id:'corr', label:'', kind:'corr', x1:V2, y1:H1, x2:V3, y2:KAMA },
+    { id:'gk', label:'玄関', kind:'gk', x1:V2, y1:KAMA, x2:V3, y2:H }
+  ];
+  /* 左右の列。最下段は框で止めず、建物の下端まで伸ばす。
+     玄関だけが凹む形になり、玄関の脇に余った床が生まれない。
+     （余りを「廊下」と呼んで塗ると、入口の無い部屋が出る）   */
+  [[L, fL, 0, V2], [R, fR, V3, W]].forEach(([list, len, x1, x2]) => {
+    let y = H1;
+    list.forEach((it, i) => {
+      const last = (i === list.length - 1);
+      const y2 = last ? H : y + len[i];
+      rooms.push({ id:it.id, label:it.label, kind:'room', x1, x2, y1:y, y2:y2 });
+      y = y2;
+    });
+  });
+  return { p, w, rooms, H, KAMA, corr, nandoW,
+           R: Object.fromEntries(rooms.map(r => [r.id, r])) };
+}
+
+/* ══════════════════════════════════════════════════════════
+   ■ 壁と開口。v9 と同じ方式（部屋の定義 → 共有辺 → 開口）。   */
+function sharedEdge(p, q) {
+  if (!p || !q) return null;
+  if (p.x2 === q.x1 || q.x2 === p.x1) {
+    const x = (p.x2 === q.x1) ? p.x2 : q.x2;
+    const a = Math.max(p.y1, q.y1), b = Math.min(p.y2, q.y2);
+    if (b > a) return { dir:'v', pos:x, a, b };
+  }
+  if (p.y2 === q.y1 || q.y2 === p.y1) {
+    const y = (p.y2 === q.y1) ? p.y2 : q.y2;
+    const a = Math.max(p.x1, q.x1), b = Math.min(p.x2, q.x2);
+    if (b > a) return { dir:'h', pos:y, a, b };
+  }
+  return null;
+}
+
+const NS = 'http://www.w3.org/2000/svg';
+const el = (n, a) => { const e = document.createElementNS(NS, n);
+  for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+function draw(plan, svg, uid) {
+  const { rooms, R, H, KAMA } = plan;
+  const links = rooms.filter(r => r.kind === 'room').map(r => ['corr', r.id]);
+  links.push(['liv', 'nando']);
+  const NOWALL = [['corr','gk'], ['corr','liv']];
+
+  const openings = links.map(([i, j]) => {
+    const e = sharedEdge(R[i], R[j]); if (!e) return null;
+    return [e.dir, e.pos, (e.a + e.b) / 2, Math.min(OPW, (e.b - e.a) * 0.7)];
+  }).filter(Boolean);
+  openings.push(['h', H, (V2 + V3) / 2, V3 - V2 - TI]);
+  const nowall = NOWALL.map(([i, j]) => sharedEdge(R[i], R[j])).filter(Boolean);
+
+  const segs = new Map();
+  const addSeg = (dir, pos, a, b, outer) => {
+    const k = dir+':'+pos+':'+Math.min(a,b)+':'+Math.max(a,b);
+    if (!segs.has(k)) segs.set(k, { dir, pos, a:Math.min(a,b), b:Math.max(a,b), outer });
+  };
+  rooms.forEach(r => {
+    addSeg('h', r.y1, r.x1, r.x2, r.y1 === 0);
+    addSeg('h', r.y2, r.x1, r.x2, r.y2 === H);
+    addSeg('v', r.x1, r.y1, r.y2, r.x1 === 0);
+    addSeg('v', r.x2, r.y1, r.y2, r.x2 === W);
+  });
+  { const byLine = new Map();
+    segs.forEach(s => { const k = s.dir+':'+s.pos;
+      if (!byLine.has(k)) byLine.set(k, []); byLine.get(k).push(s); });
+    segs.clear();
+    byLine.forEach((list, k) => {
+      list.sort((p, q) => p.a - q.a);
+      let cur = null; const out = [];
+      list.forEach(s => {
+        if (cur && s.a <= cur.b + 0.01) {
+          cur.b = Math.max(cur.b, s.b); cur.outer = cur.outer || s.outer;
+        } else { cur = Object.assign({}, s); out.push(cur); }
+      });
+      out.forEach((s, i) => segs.set(k+':'+i, s));
+    });
+  }
+
+  svg.textContent = '';
+  const defs = el('defs');
+  const pat = el('pattern', { id:'hw'+uid, width:6, height:6,
+    patternTransform:'rotate(45)', patternUnits:'userSpaceOnUse' });
+  pat.appendChild(el('line', { x1:0, y1:0, x2:0, y2:6,
+    stroke:'#B9B3A4', 'stroke-width':1.1 }));
+  defs.appendChild(pat); svg.appendChild(defs);
+
+  const FLOOR = { corr:'#F4F1E7', gk:'#EDE9DC', liv:'#FBF7E9',
+                  nando:'#F7F3E6', room:'#FDFCF8' };
+  rooms.forEach(r => {
+    const x  = r.x1 + (r.x1 === 0 ? TO : TI) / 2;
+    const y  = r.y1 + (r.y1 === 0 ? TO : TI) / 2;
+    const x2 = r.x2 - (r.x2 === W ? TO : TI) / 2;
+    const y2 = r.y2 - (r.y2 === H ? TO : TI) / 2;
+    svg.appendChild(el('rect', { x, y, width:x2-x, height:y2-y,
+      fill: FLOOR[r.kind] || '#FDFCF8' }));
+  });
+
+  const wallG = el('g', { stroke:'#6E6A60', fill:'url(#hw'+uid+')' });
+  const winG  = el('g', { stroke:'#6E6A60' });
+
+  function trimEnd(seg, v, dirSign) {
+    const cross = seg.dir === 'h' ? 'v' : 'h';
+    let hit = null;
+    segs.forEach(o => {
+      if (o.dir !== cross || o.pos !== v) return;
+      if (seg.pos < o.a - 0.01 || seg.pos > o.b + 0.01) return;
+      if (!hit || (o.outer && !hit.outer)) hit = o;
+    });
+    if (!hit) return v;
+    return v - dirSign * (hit.outer ? TO : TI) / 2;
+  }
+
+  const slabs = [];
+  segs.forEach(s => {
+    const th = s.outer ? TO : TI;
+    const cuts = openings.filter(o => o[0] === s.dir && o[1] === s.pos)
+      .map(o => [o[2] - o[3]/2, o[2] + o[3]/2])
+      .concat(nowall.filter(e => e.dir === s.dir && e.pos === s.pos)
+        .map(e => [e.a, e.b]))
+      .filter(o => o[1] > s.a && o[0] < s.b)
+      .sort((p, q) => p[0] - q[0]);
+    let cur = s.a; const pieces = [];
+    cuts.forEach(o => { if (o[0] > cur) pieces.push([cur, o[0]]); cur = Math.max(cur, o[1]); });
+    if (cur < s.b) pieces.push([cur, s.b]);
+    pieces.forEach(pc => {
+      const q0 = trimEnd(s, pc[0], +1), q1 = trimEnd(s, pc[1], -1);
+      if (s.dir === 'h') slabs.push([q0, s.pos-th/2, q1-q0, th, s.outer]);
+      else               slabs.push([s.pos-th/2, q0, th, q1-q0, s.outer]);
+    });
+  });
+
+  const EPS = 0.01;
+  slabs.forEach(([x, y, w, h]) => wallG.appendChild(el('rect',
+    { x, y, width:w, height:h, fill:'#FDFCF8', stroke:'none' })));
+  slabs.forEach(([x, y, w, h]) => wallG.appendChild(el('rect',
+    { x, y, width:w, height:h, fill:'url(#hw'+uid+')', stroke:'none' })));
+
+  function subtract(a, b, ranges) {
+    let out = [[a, b]];
+    ranges.forEach(([c, d]) => {
+      const next = [];
+      out.forEach(([s0, s1]) => {
+        if (d <= s0 + EPS || c >= s1 - EPS) { next.push([s0, s1]); return; }
+        if (c > s0 + EPS) next.push([s0, c]);
+        if (d < s1 - EPS) next.push([d, s1]);
+      });
+      out = next;
+    });
+    return out;
+  }
+  slabs.forEach((sl, idx) => {
+    const [x, y, w, h, outer] = sl;
+    const sw = outer ? 2 : 1.6;
+    const others = slabs.filter((_, k) => k !== idx);
+    [y, y + h].forEach(yy => {
+      const covered = others.filter(o => o[1] < yy - EPS && o[1] + o[3] > yy + EPS)
+        .map(o => [o[0], o[0] + o[2]]);
+      subtract(x, x + w, covered).forEach(([s0, s1]) => {
+        if (s1 - s0 > EPS) wallG.appendChild(el('line',
+          { x1:s0, y1:yy, x2:s1, y2:yy, 'stroke-width':sw }));
+      });
+    });
+    [x, x + w].forEach(xx => {
+      const covered = others.filter(o => o[0] < xx - EPS && o[0] + o[2] > xx + EPS)
+        .map(o => [o[1], o[1] + o[3]]);
+      subtract(y, y + h, covered).forEach(([s0, s1]) => {
+        if (s1 - s0 > EPS) wallG.appendChild(el('line',
+          { x1:xx, y1:s0, x2:xx, y2:s1, 'stroke-width':sw }));
+      });
+    });
+  });
+
+  /* 窓：外に面する部屋に1つ。廊下・玄関・納戸は持たない。 */
+  const NOWIN = { corr:1, gk:1, nando:1 };
+  rooms.forEach(r => {
+    if (NOWIN[r.kind]) return;
+    const cand = [];
+    if (r.y1 === 0) cand.push(['h', 0, r.x1, r.x2]);
+    if (r.y2 === H) cand.push(['h', H, r.x1, r.x2]);
+    if (r.x1 === 0) cand.push(['v', 0, r.y1, r.y2]);
+    if (r.x2 === W) cand.push(['v', W, r.y1, r.y2]);
+    cand.sort((a, b) => (b[3]-b[2]) - (a[3]-a[2]));
+    const f = cand[0]; if (!f) return;
+    const [dir, pos, a, b] = f;
+    const span = b - a; if (span < 200) return;
+    const len = Math.min(220, span * 0.45);
+    const c = (a + b) / 2, s0 = c - len/2, e0 = c + len/2;
+    if (openings.some(o => o[0] === dir && o[1] === pos &&
+        o[2]+o[3]/2 > s0 && o[2]-o[3]/2 < e0)) return;
+    if (dir === 'h') {
+      winG.appendChild(el('rect', { x:s0, y:pos-TO/2, width:len, height:TO,
+        fill:'#FDFCF8', 'stroke-width':1.4 }));
+      winG.appendChild(el('line', { x1:s0, y1:pos, x2:e0, y2:pos, 'stroke-width':1.1 }));
+    } else {
+      winG.appendChild(el('rect', { x:pos-TO/2, y:s0, width:TO, height:len,
+        fill:'#FDFCF8', 'stroke-width':1.4 }));
+      winG.appendChild(el('line', { x1:pos, y1:s0, x2:pos, y2:e0, 'stroke-width':1.1 }));
+    }
+  });
+
+  svg.appendChild(wallG); svg.appendChild(winG);
+  svg.appendChild(el('line', { x1:V2+TI/2, y1:KAMA, x2:V3-TI/2, y2:KAMA,
+    stroke:'#B9B3A4', 'stroke-width':1.6 }));
+
+  const labG = el('g', {});
+  rooms.forEach(r => {
+    if (!r.label) return;
+    const main = r.kind === 'liv';
+    const t = el('text', { x:(r.x1+r.x2)/2, y:(r.y1+r.y2)/2,
+      'text-anchor':'middle', 'dominant-baseline':'middle',
+      'font-size': main ? 30 : 19, 'font-weight': main ? 700 : 400,
+      fill: main ? '#6E6A60' : '#8C8779', 'font-family':'system-ui, sans-serif' });
+    t.textContent = r.label;
+    labG.appendChild(t);
+  });
+  svg.appendChild(labG);
+  svg.setAttribute('viewBox', `-10 -10 ${W + 20} ${H + 20}`);
+  return { openings, nowall, segs, links };
+}
+
+/* ══════════════════════════════════════════════════════════
+   ■ 実行                                                      */
+const plans = S.all().map(p => buildPlan(p));
+const host = document.getElementById('plans');
+const drawn = plans.map((pl, i) => {
+  const d = document.createElement('div'); d.className = 'plan';
+  const kind = S.KINDS[pl.p.kind].label, use = S.USES[pl.p.use].label;
+  d.innerHTML = `<h3>${pl.p.name}</h3><div class="sub">${kind}／${use}　` +
+    `外形 ${W*10}×${Math.round(pl.H*10)}mm</div>`;
+  const svg = document.createElementNS(NS, 'svg');
+  d.appendChild(svg); host.appendChild(d);
+  return draw(pl, svg, i);
+});
+
+/* ── 重みの表 ───────────────────────────── */
+const KEYS = [['right','2 権利関係'], ['deal','3 契約・やり取り'],
+              ['loan','4 ローン・担保'], ['matter','5 事情'], ['docs','6 書類']];
+let wt = '<tr><th>項目</th>' +
+  plans.map(pl => `<th>${pl.p.name}</th>`).join('') + '<th>根拠</th></tr>';
+const BASIS = {
+  right: '土地・建物の各1＋不一致なら+2＋本人しか知らないなら+1',
+  deal:  '相手の数 × 2',
+  loan:  '借入ありなら3、なしなら1（該当なしも面は残る）',
+  matter:'「あり」「分からない」だけ × (2＋本人しか知らない度)',
+  docs:  '3〜5から導出した必要書類の件数'
+};
+KEYS.forEach(([k, label]) => {
+  wt += `<tr><td><b>${label}</b></td>` +
+    plans.map(pl => `<td class="n">${pl.w[k].toFixed(1)}</td>`).join('') +
+    `<td>${BASIS[k]}</td></tr>`;
+});
+wt += '<tr><td>合計</td>' + plans.map(pl =>
+  `<td class="n">${KEYS.reduce((a,[k])=>a+pl.w[k],0).toFixed(1)}</td>`).join('') +
+  '<td></td></tr>';
+document.getElementById('wt').innerHTML = wt;
+
+/* ── 検証 ───────────────────────────────── */
+const tsubo = r => (r.x2-r.x1) * (r.y2-r.y1) / 100 / 3.3;
+let chk = '<tr><th>確認</th>' + plans.map(pl => `<th>${pl.p.name}</th>`).join('') +
+  '<th>判定</th></tr>';
+const rowOf = (label, fn, test) => {
+  const vals = plans.map(fn);
+  const ok = plans.every((pl, i) => test(vals[i], pl));
+  chk += `<tr><td>${label}</td>` + vals.map(v => `<td>${v}</td>`).join('') +
+    `<td class="${ok?'ok':'ng'}">${ok?'○':'✗'}</td></tr>`;
+};
+rowOf('個室はすべて廊下に面するか',
+  pl => pl.rooms.filter(r => r.kind === 'room').length + ' 室',
+  (v, pl) => pl.rooms.filter(r => r.kind === 'room')
+    .every(r => sharedEdge(pl.R.corr, r)));
+rowOf('納戸は廊下に面していないか', () => 'リビングからのみ',
+  (v, pl) => !sharedEdge(pl.R.corr, pl.R.nando));
+rowOf('廊下の終点がリビングか', () => '突き当たりで全開',
+  (v, pl) => !!sharedEdge(pl.R.corr, pl.R.liv));
+rowOf('リビングが最大か',
+  pl => tsubo(pl.R.liv).toFixed(1) + ' 坪相当',
+  (v, pl) => {
+    const others = pl.rooms.filter(r => r.kind === 'room' || r.kind === 'nando');
+    return tsubo(pl.R.liv) > Math.max(...others.map(tsubo));
+  });
+rowOf('個室の大きさが違うか',
+  pl => pl.rooms.filter(r => r.kind === 'room')
+    .map(r => r.label + ' ' + tsubo(r).toFixed(0)).join('／'),
+  (v, pl) => {
+    const ts = pl.rooms.filter(r => r.kind === 'room').map(r => tsubo(r).toFixed(1));
+    return new Set(ts).size > 1;    /* 全部同じなら重みが効いていない */
+  });
+rowOf('建物の高さ', pl => (pl.H * 10).toFixed(0) + 'mm',
+  () => true);
+rowOf('2物件で形が違うか',
+  pl => '事情の納戸 ' + (pl.nandoW * 10).toFixed(0) + 'mm',
+  () => plans.length < 2 ||
+    Math.abs(plans[0].H - plans[1].H) > 1 ||
+    Math.abs(plans[0].nandoW - plans[1].nandoW) > 1);
+document.getElementById('chk').innerHTML = chk;
+
+document.getElementById('planNote').innerHTML =
+  `重み1単位 ＝ ${PER_W*10}mm。廊下の長さは<b>重みの合計から決まる</b>ので、` +
+  `量の多い物件ほど建物が伸びる（自宅 ${Math.round(plans[0].H*10)}mm ／ ` +
+  `実家 ${Math.round(plans[1].H*10)}mm）。<br>` +
+  '<b>個室の位置は固定</b>（右＝権利・契約、左＝ローン・書類）。' +
+  '物件が変わっても同じ項目は同じ場所にある。量は大きさだけで表す。' +
+  '廊下は1本なので左右の長さは揃う必要があり、短い側は各室に比例配分して埋める。' +
+  '<b>玄関は凹んでいる</b>（左右の列は建物の下端まで伸びる）。' +
+  '<b>カギは部屋から降ろした</b>（玄関のクリックで出すポップアップ。' +
+  '独立した面を持つ必要がない）。';
+
+const OPEN = [
+  ['書類の重みが大きすぎないか',
+   '必要書類の件数をそのまま重みにしたので、自宅で 8（全体の33%）になった。' +
+   '書類は索引で中身を持たないのに、個室の中で最大になる。件数ではなく' +
+   '「揃っていない件数」で数えるほうが、家族が抱える量に近いかもしれない'],
+  ['左右の振り分け',
+   '重みの大きいものから交互に置いているので、物件によって左右が入れ替わる。' +
+   '同じ項目が物件ごとに違う位置に出るのは、家族が覚えられない。' +
+   '位置を固定して大きさだけ変えるべきかもしれない'],
+  ['カギの出し方',
+   '玄関のクリックでポップアップ、とした。実装はまだ。' +
+   '玄関の土間として描くか、玄関そのものを押せるようにするか'],
+  ['リビングの中身',
+   '「家族がすること」＝連絡／引継ぎ／確認／手続きの4種。' +
+   'この4つをリビングの中にどう並べるかは未着手']
+];
+document.getElementById('open').innerHTML =
+  '<tr><th>論点</th><th>中身</th></tr>' +
+  OPEN.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td></tr>`).join('');
+</script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産｜中身の実測</title>
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);
+    padding:28px 20px 60px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);margin:0 0 24px;line-height:1.85}
+  .lead b{color:var(--ink)}
+  h2{font-size:14px;margin:34px 0 4px}
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:18px;margin-top:10px}
+  .note{font-size:12px;color:var(--ink2);margin:12px 0 0;line-height:1.85}
+  .note b{color:var(--ink)}
+  table{border-collapse:collapse;font-size:11.5px;margin-top:10px;width:100%}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;
+    vertical-align:top;line-height:1.7}
+  th{background:var(--paper2);font-weight:600;color:var(--ink2)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+
+  /* ── 実測台 ────────────────────────────
+     部屋の幅を与えて中身を流し込み、高さを測る。
+     項目数から行数を決めない。文字が折り返した結果を測る。 */
+  .bench{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+  .room{background:#FDFCF8;border:1px solid var(--line);border-radius:4px;
+    padding:12px 14px 14px}
+  .room > h4{font-size:12px;margin:0 0 8px;color:var(--ink2);
+    font-weight:600;letter-spacing:.04em}
+  .w{font-size:10.5px;color:var(--ink3);margin:0 0 8px}
+
+  /* 中身の表現。ここが「1行」の実体。 */
+  .r{padding:6px 0;border-top:1px solid #EFEBE0;font-size:12px;line-height:1.75}
+  .r:first-of-type{border-top:0}
+  .r .lb{color:var(--ink3);font-size:11px}
+  .r .vl{color:var(--ink)}
+  .bdg{display:inline-block;font-size:10.5px;padding:0 6px;border-radius:3px;
+    border:1px solid var(--line);color:var(--ink2);background:var(--paper2);
+    margin-left:4px;white-space:nowrap}
+  .bdg.or{color:#9A6A2F;border-color:#E2CDA8;background:#FBF3E5}
+  .bdg.gr{color:#4E7A54;border-color:#C6DCC8;background:#F0F6F0}
+  .bdg.gy{color:var(--ink3)}
+  /* 「あり」の詳細。ラベルと値が横に並ぶ＝項目数＝行数ではない例 */
+  .dt{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:3px}
+  .dt span{font-size:11px;color:var(--ink2)}
+  .dt b{font-weight:400;color:var(--ink3)}
+  .memo{font-size:11.5px;color:var(--ink2);line-height:1.7;margin-top:2px}
+  .todo{padding:8px 0;font-size:12px;line-height:1.8;border-top:1px solid #EFEBE0}
+  .todo:first-of-type{border-top:0}
+  .todo .k{font-size:10.5px;color:var(--ink3);margin-right:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>不動産・住まい｜中身の実測</h1>
+<p class="lead">
+  これまでの誤り：<b>項目の数を、そのまま行数として数えていた</b>。
+  「事情は A/B/C の3問だから3行」「詳細が6項目だから6行」。<br>
+  項目の数と、画面で占める行数は別のもの。「書面：なし」は短く横に並ぶし、
+  文は折り返して2行にも3行にもなる。<b>幅が決まらなければ行数は決まらない</b>。
+  高さだけを項目数から計算していたのが、索引（書類）が主役級になり
+  中心（事情）が小部屋になる逆転の原因だった。<br>
+  ここでは<b>中身を実際に流し込んで、占める大きさを測る</b>。
+</p>
+
+<h2>1. 実測台 <span></span></h2>
+<div class="stage">
+  <div class="bench" id="bench"></div>
+  <p class="note">
+    同じ中身でも幅で高さが変わる。だから幅を数種ふって測る
+    （下の表）。ここで測った値が、部屋の大きさを決める根拠になる。
+  </p>
+</div>
+
+<h2>2. 実測値</h2>
+<div class="stage">
+  <table id="meas"></table>
+  <p class="note" id="sum"></p>
+</div>
+
+</div>
+
+<script src="../prototype/real-estate/state.js"></script>
+<script>
+const S = window.SeiZenRealEstate;
+const p = S.all()[0];                 /* 自宅（内容が多い方）で測る */
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* ══════════════════════════════════════════════════════════
+   各部屋の中身を、実際の表現で組む。
+   項目を並べただけの羅列ではなく、画面に出る形そのもの。     */
+
+/* 家族がすること。2〜5 の材料から出る4種。
+   1行が「誰に・何を」の文なので、最も重い。                 */
+function livHTML() {
+  const acts = [
+    ['連絡', '○○管理株式会社', '管理費の引き落とし口座を変更する', '045-123-4567'],
+    ['連絡', '○○銀行 青葉台支店', '団信の手続きを申し出る', ''],
+    ['連絡', '西隣の◇◇さん', '境界の話が途中のままになっている', ''],
+    ['引継', '建物管理の契約', '管理費・修繕積立金 月12,000円（毎月27日）', ''],
+    ['確認', '土地の名義', '父のまま。兄弟3人が相続人', ''],
+    ['確認', '北側の増築部分', '未登記。確認申請の有無も不明', ''],
+    ['手続', '相続登記', '土地の名義を本人へ', ''],
+    ['手続', 'ローンの完済', '団信により完済される見込み', '']
+  ];
+  return acts.map(a =>
+    `<div class="todo"><span class="k">${esc(a[0])}</span>` +
+    `<b>${esc(a[1])}</b>　${esc(a[2])}` +
+    (a[3] ? `<span class="bdg">${esc(a[3])}</span>` : '') + '</div>').join('');
+}
+
+/* 事情。A/B/C の3問。「あり」は詳細を持つが、
+   ラベルと値は横に並ぶ（項目数＝行数ではない実例）。        */
+function matterHTML() {
+  return Object.keys(p.matters).map(k => {
+    const m = p.matters[k], f = S.FINDINGS[m.find];
+    const tone = m.find === 'no' ? 'gy' : (m.find === 'yes' ? 'or' : 'or');
+    let h = `<div class="r"><span class="vl">${esc(S.MATTERS[k].label)}</span>` +
+            `<span class="bdg ${tone}">${esc(f.label)}</span>`;
+    if (m.memo) h += `<div class="memo">${esc(m.memo)}</div>`;
+    if (m.detail) {
+      const d = m.detail;
+      const pairs = [];
+      if (d.who)   pairs.push(['相手', d.who]);
+      if (d.deal)  pairs.push(['取り決め', d.deal]);
+      if (d.paper) pairs.push(['書面', d.paper]);
+      if (d.reg)   pairs.push(['登記', d.reg]);
+      if (d.state) pairs.push(['状況', d.state]);
+      h += '<div class="dt">' + pairs.map(x =>
+        `<span><b>${esc(x[0])}</b> ${esc(x[1])}</span>`).join('') + '</div>';
+    }
+    return h + '</div>';
+  }).join('');
+}
+
+function rightHTML() {
+  return ['land', 'bldg'].map(k => {
+    const r = p.rights[k], mt = S.MATCH[r.match];
+    return `<div class="r"><span class="lb">${k === 'land' ? '土地' : '建物'}</span> ` +
+      `<span class="vl">${esc(r.owner)}</span>` +
+      (r.shares ? `<span class="bdg gy">${esc(r.shares)}</span>` : '') +
+      `<span class="bdg ${mt.tone === 'gr' ? 'gr' : 'or'}">登記と${esc(mt.label)}</span>` +
+      (r.memo ? `<div class="memo">${esc(r.memo)}</div>` : '') + '</div>';
+  }).join('');
+}
+
+function dealHTML() {
+  return (p.deals || []).map(d =>
+    `<div class="r"><span class="bdg">${esc(S.DEALS[d.kind].label)}</span> ` +
+    `<span class="vl">${esc(d.who)}</span>` +
+    `<div class="memo">${esc(d.what)}</div>` +
+    `<div class="dt"><span><b>連絡先</b> ${esc(d.tel)}</span></div></div>`).join('');
+}
+
+function loanHTML() {
+  const l = p.loan;
+  if (!l.has) return '<div class="r"><span class="vl">借入なし</span>' +
+    '<span class="bdg gy">該当なし</span></div>';
+  return `<div class="r"><span class="lb">借入</span> <span class="vl">${esc(l.bank)}</span>` +
+    `<div class="dt"><span><b>種類</b> ${esc(l.type)}</span>` +
+    `<span><b>借りている人</b> ${esc(l.debtor)}</span></div></div>` +
+    `<div class="r"><span class="lb">団信</span> <span class="vl">${esc(l.gtee)}</span></div>` +
+    `<div class="r"><span class="lb">担保</span> <span class="vl">${esc(l.mortgage)}</span>` +
+    `<div class="dt"><span><b>他の借入の担保</b> ${esc(l.cross)}</span></div></div>`;
+}
+
+/* 書類。索引なのでラベル＋バッジだけ。1行が最も薄い。 */
+function docsHTML() {
+  return S.neededDocs(p).map(d => {
+    const st = S.ST[d.st];
+    const tone = d.st === 'done' ? 'gr' : (d.st === 'none' ? 'gy' : 'or');
+    return `<div class="r"><span class="vl">${esc(d.label)}</span>` +
+      `<span class="bdg ${tone}">${esc(st ? st.label : d.st)}</span></div>`;
+  }).join('');
+}
+
+const ROOMS = [
+  { id:'liv',    label:'家族がすること', html:livHTML },
+  { id:'matter', label:'事情',           html:matterHTML },
+  { id:'right',  label:'権利関係',       html:rightHTML },
+  { id:'deal',   label:'契約・やり取り', html:dealHTML },
+  { id:'loan',   label:'ローン・担保',   html:loanHTML },
+  { id:'docs',   label:'書類',           html:docsHTML }
+];
+
+/* 幅を数種ふって測る。幅が決まらなければ行数は決まらないので、
+   「この幅ならこの高さ」を対にして持つ。                     */
+const WIDTHS = [260, 340, 420, 520];
+
+const bench = document.getElementById('bench');
+const measured = {};
+ROOMS.forEach(r => {
+  measured[r.id] = {};
+  WIDTHS.forEach(w => {
+    const d = document.createElement('div');
+    d.className = 'room'; d.style.width = w + 'px';
+    d.innerHTML = `<h4>${esc(r.label)}</h4><div class="w">幅 ${w}px</div>` + r.html();
+    bench.appendChild(d);
+    measured[r.id][w] = d.getBoundingClientRect().height;
+  });
+});
+
+/* ── 実測表 ─────────────────────────────── */
+let t = '<tr><th>部屋</th>' + WIDTHS.map(w => `<th>幅 ${w}px</th>`).join('') +
+        '<th>中身</th></tr>';
+const WHAT = {
+  liv:    '連絡3・引継1・確認2・手続2。1行が「誰に・何を」の文',
+  matter: 'A/B/C の3問。「あり」2件は詳細を持つ（ラベルと値は横並び）',
+  right:  '土地・建物。名義＋持分＋登記との一致＋メモ',
+  deal:   '管理1件。相手・内容・連絡先',
+  loan:   '借入・団信・担保',
+  docs:   '8件。ラベル＋バッジだけ'
+};
+ROOMS.forEach(r => {
+  t += `<tr><td><b>${esc(r.label)}</b></td>` +
+    WIDTHS.map(w => `<td class="n">${Math.round(measured[r.id][w])}px</td>`).join('') +
+    `<td>${esc(WHAT[r.id])}</td></tr>`;
+});
+document.getElementById('meas').innerHTML = t;
+
+/* 幅420pxのときの順位。これが部屋の大小の根拠になる。 */
+const at = 420;
+const rank = ROOMS.slice().sort((a, b) => measured[b.id][at] - measured[a.id][at]);
+document.getElementById('sum').innerHTML =
+  `<b>幅${at}px での高さ順：</b>` +
+  rank.map(r => `${esc(r.label)} ${Math.round(measured[r.id][at])}`).join(' ／ ') +
+  '<br>項目数の順（書類8・家族がすること8・事情3…）とは一致しない。' +
+  '<b>これが「内容を踏まえる」ということ。</b>';
+</script>
+</body>
+</html>
