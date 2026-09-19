@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産｜「今のうち」「そのとき」の中身（v25）</title>
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);
+    padding:28px 20px 80px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);margin:0 0 26px;line-height:1.9}
+  .lead b{color:var(--ink)}
+  h2{font-size:14px;margin:34px 0 8px;display:flex;align-items:baseline;gap:10px}
+  h2 span{font-size:11.5px;font-weight:400;color:var(--ink3)}
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:22px;margin-top:10px}
+
+  .sec{margin-bottom:22px}
+  .sec:last-child{margin-bottom:0}
+  .sh{display:flex;align-items:baseline;gap:8px;margin:0 0 2px;
+    padding-bottom:5px;border-bottom:1px solid var(--line)}
+  .sh .st{font-size:11.5px;font-weight:600;color:var(--ink2);letter-spacing:.04em}
+  .sh .sn{font-size:11px;color:var(--ink3)}
+  .sh .cnt{margin-left:auto;font-size:11px;color:var(--ink3);
+    font-variant-numeric:tabular-nums}
+
+  .it{display:flex;align-items:flex-start;gap:12px;
+    padding:8px 0;border-bottom:1px solid #F1EEE5}
+  .it:last-child{border-bottom:0}
+  .it .tx{flex:1;min-width:0}
+  .it .nm{font-size:12.5px;line-height:1.55;font-weight:600}
+  .it .de{font-size:11.5px;color:var(--ink2);line-height:1.7;margin-top:1px}
+  .it .bd{flex:none;width:82px;text-align:right;padding-top:1px}
+
+  /* 手続きにぶら下がるもの（書類・契約）。独立項目にしない。 */
+  .sub{margin-top:5px;padding-left:10px;border-left:2px solid var(--line)}
+  .sub .sr{display:flex;gap:8px;align-items:baseline;
+    font-size:11px;line-height:1.75;color:var(--ink2)}
+  .sub .sr .sn2{flex:1;min-width:0}
+  .sub .sr .sv{flex:none;color:var(--ink3);font-size:10.5px}
+  .sub .sh2{font-size:10.5px;color:var(--ink3);margin-bottom:1px}
+
+  .bdg{display:inline-block;font-size:10.5px;line-height:1.7;
+    padding:0 7px;border-radius:3px;border:1px solid var(--line2);
+    color:var(--ink2);background:var(--paper2);white-space:nowrap}
+  .bdg.or{color:var(--or);border-color:var(--or-ln);background:var(--or-bg)}
+  .bdg.gr{color:var(--gr);border-color:#C6DCC8;background:var(--gr-bg)}
+  .bdg.gy{color:var(--ink3);background:transparent;border-color:var(--line)}
+  .bdg.bl{color:var(--bl);border-color:#C3D2E0;background:#F1F5F9}
+
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+  .pane{min-width:0}
+  .ph{font-size:13.5px;font-weight:600;margin:0 0 3px}
+  .pn{font-size:11.5px;color:var(--ink3);margin:0 0 14px;line-height:1.7}
+  .none{font-size:11.5px;color:var(--ink3);padding:8px 0;line-height:1.7}
+
+  .note{font-size:11.5px;color:var(--ink2);line-height:1.9;
+    margin-top:20px;padding-top:14px;border-top:1px solid var(--line)}
+  .note b{color:var(--ink)}
+  @media(max-width:900px){ .two{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>不動産・住まい｜「今のうち」「そのとき」の中身（v25）</h1>
+<p class="lead">
+  <b>固定項目をたくさん用意する発想をやめた。</b>
+  固定するのは「今のうち／そのとき」と、そのときの2トリガーだけ。
+  中に何が立つかは<b>下エリアの入力が決める</b>
+  ―― ローンが無ければ引き落としの行は出ないし、境界が確認済みなら
+  「本人に確認」には出ない。<br>
+  <b>「そのとき」は、そのとき画面を見る人が動けることが基準。</b>
+  「〜を決める」だけの Todo にしない。決まっていることは決まった内容を、
+  決まっていないことは何を判断すればよいかを出す。
+</p>
+
+<div id="out"></div>
+
+</div>
+
+<script src="../prototype/real-estate/state.js"></script>
+<script>
+const S = window.SeiZenRealEstate;
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* ══════════════════════════════════════════════════════
+   ② 本人の意向 ―― この面で唯一、入力を持つ。
+
+   v24 は4項目あったが、2つに絞った。
+
+   ・「本人にしか決められないものの扱い」（仏壇・形見）を外した
+     ―― 不動産ではなく **本人の希望カテゴリ** が持つもの。§8（二度
+     書きしない）§13（領域をまたいで形を持ち出さない）。引き継ぎ書の
+     「落としたもの」にも最初から書いてあった
+   ・「当面の管理を誰に頼みたいか」を外した ―― **本人にしか決められ
+     ない事項ではない**。相手の引受や、その時点の家族の事情で変わる。
+     基準(a)を満たさない。そのとき側に一度だけ出す
+
+   残るのは「この家そのものをどうしたいか」。                    */
+const WILL = {
+  p1: {
+    plan:   { st:'undecided',
+              v:'「子どもたちで決めてほしい」とのこと。まだ決めていない' },
+    back:   { st:'unasked' }
+  },
+  p2: {
+    plan:   { st:'unasked' },
+    back:   { st:'asked', v:'戻る予定はない。本人の意思で施設へ移った' }
+  }
+};
+const WQ = {
+  plan: { nm:'住まなくなったら、この家をどうしたいか',
+          ask:'売る・貸す・家族が使う・残す' },
+  back: { nm:'施設等へ移ったら、戻る前提か',
+          ask:'戻るつもりなら、家財も契約もそのままにする' }
+};
+const WST = {
+  asked:     { label:'聞いてある',   tone:'gr' },
+  undecided: { label:'決めていない', tone:'gy' },
+  unasked:   { label:'聞いていない', tone:'or' }
+};
+function willRows(p) {
+  const w = WILL[p.id] || {};
+  return Object.keys(WQ).map(k => {
+    const x = w[k] || { st:'unasked' };
+    return { nm:WQ[k].nm, de:x.v || WQ[k].ask, w:x.st };
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   ① 本人に確認すること ―― 導出枠。固定の5項目ではない。
+
+   下エリア（事情・書類・住まい情報）から、**本人に確認しないと
+   分からないもの**だけが立つ。確認が済んだものは、ここには出ない
+   （済んだ事実は下エリアが持っている）。ただし確認の結果として
+   処理が要るなら、③に出る。                                    */
+function askRows(p) {
+  const out = [];
+  Object.keys(p.matters || {}).forEach(k => {
+    const m = p.matters[k];
+    if (m.reach !== 'onlyself') return;
+    if (m.find === 'unasked')
+      out.push({ nm:S.MATTERS[k].label, de:S.MATTERS[k].ask,
+                 lbl:'本人に確認', tone:'bl' });
+    else if (m.find === 'unknown')
+      out.push({ nm:S.MATTERS[k].label,
+                 de:m.memo || '本人にも分からない。調べる先を決める',
+                 lbl:'確認中', tone:'bl' });
+  });
+  if (!p.docs || !p.docs.place)
+    out.push({ nm:'書類のありか', de:'権利証・契約書・図面がどこにあるか',
+               lbl:'本人に確認', tone:'bl' });
+  if (p.kind !== 'land' && (!p.access || !p.access.who))
+    out.push({ nm:'家に入る方法', de:'鍵を誰が持っているか、暗証や立ち会い',
+               lbl:'本人に確認', tone:'bl' });
+  return out;
+}
+
+/* ③ 今のうちに対応すること ―― 導出。確認した結果、処理が要るもの。
+   本人が動けるうちなら本人の手で終わる。放っておくと、そのとき
+   家族が重い形で背負う（それは右側に、家族の行動として出る）。 */
+function actRows(p) {
+  const out = [];
+  ['land','bldg'].forEach(k => {
+    const r = p.rights[k]; if (!r) return;
+    if (r.match === 'differ' || r.match === 'unknown')
+      out.push({ nm:(k === 'land' ? '土地' : '建物') + 'の名義が実態と違う',
+        de:(r.memo || '') + ' 本人が動けるうちなら、相続登記はここで終わる',
+        lbl:'対応が必要', tone:'or' });
+  });
+  const c = (p.matters || {}).changed;
+  if (c && c.detail && c.detail.reg && c.detail.reg !== '済')
+    out.push({ nm:'増築が登記に反映されていない',
+      de:(c.memo || '') + ' 売るときも相続のときも、必ず表に出る',
+      lbl:'対応が必要', tone:'or' });
+  Object.keys(p.matters || {}).forEach(k => {
+    const m = p.matters[k];
+    if (m.find === 'yes' && m.detail && m.detail.paper === 'なし')
+      out.push({ nm:S.MATTERS[k].label + 'の取り決めが書面にない',
+        de:(m.detail.who ? m.detail.who + 'と口頭のまま。' : '') +
+           '相手も高齢。代が変わると確認できなくなる',
+        lbl:'対応が必要', tone:'or' });
+  });
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════
+   そのとき ―― 固定するのはトリガー2つだけ。
+
+   中の「型」は3つ程度。契約・支払いはトップレベルに置かず、
+   **登録されているものだけ**が型の下にぶら下がる。
+   （v24 は「電気・水道・ガス」をトップレベルの固定項目にしていた） */
+
+/* 決めてあること。本来は下エリアかこの面の入力が持つ。 */
+const DECIDED = {
+  p1: { manage:'長男が月1回見に行く。鍵は長男が持っている',
+        elec:'止めない（見回りの灯り）', water:null, gas:'止める',
+        fire:'空き家特約へ切り替える（○○火災に確認済み）',
+        loanPay:'引き落とし口座は本人のまま。残高は長男が入れる',
+        keep:'管理委託はそのまま続ける' },
+  p2: { manage:'近所の□□さんが月1回。謝礼なし',
+        elec:'止めない（見回りの灯り）', water:'止めた', gas:'止めた',
+        fire:null, keep:null }
+};
+
+/* A 本人が住まなくなったとき */
+function liveBlocks(p) {
+  const D = DECIDED[p.id] || {}, w = WILL[p.id] || {};
+  const bl = [];
+
+  /* 型1｜家をどうするか。②の意向をそのまま出す。 */
+  const plan = w.plan || { st:'unasked' }, back = w.back || { st:'unasked' };
+  bl.push({ nm:'この家をどうするか',
+    de: plan.v || (plan.st === 'unasked'
+      ? '本人に聞けていない。まず家族で方針を決める'
+      : 'まだ決まっていない'),
+    lbl: plan.st === 'asked' ? '本人の意向' :
+         plan.st === 'undecided' ? '家族で決める' : '聞けていない',
+    tone: plan.st === 'asked' ? 'gr' : plan.st === 'undecided' ? 'bl' : 'or',
+    sub: back.v ? [{ h:'戻る前提か', rows:[[back.v, '']] }]
+       : [{ h:'戻る前提か', rows:[['本人に聞けていない', '']] }] });
+
+  /* 型2｜当面どう管理するか。空き家になる場合だけ立つ。 */
+  bl.push({ nm:'当面どう管理するか',
+    de: D.manage || '誰が見に行くか、鍵を誰が持つかを決める',
+    lbl: D.manage ? '決めてある' : 'まだ決めていない',
+    tone: D.manage ? 'gr' : 'bl' });
+
+  /* 型3｜契約・支払いをどうするか。登録されているものだけ。 */
+  const rows = [];
+  if (p.loan && p.loan.has)
+    rows.push([p.loan.bank + '（ローン）',
+      D.loanPay || '返済は続く。引き落としをどうするか']);
+  (p.deals || []).forEach(d =>
+    rows.push([d.who + '（' + S.DEALS[d.kind].label + '）',
+      D.keep || '続けるか、頼み直すか']));
+  if (p.kind !== 'land') {
+    rows.push(['火災保険', D.fire || '空き家だと条件が変わることがある']);
+    rows.push(['電気', D.elec || '戻る予定と管理方法を見て判断']);
+    rows.push(['水道', D.water || '戻る予定と管理方法を見て判断']);
+    rows.push(['ガス', D.gas || '長期不在なら停止を確認']);
+  }
+  const undone = rows.filter(r => !r[1] || r[1].indexOf('判断') >= 0 ||
+    r[1].indexOf('か、') >= 0 || r[1].indexOf('ことがある') >= 0).length;
+  bl.push({ nm:'契約・支払いをどうするか',
+    de: undone ? ('未決 ' + undone + '／' + rows.length + '件')
+               : (rows.length + '件すべて決めてある'),
+    lbl: undone ? '未決あり' : '決めてある', tone: undone ? 'bl' : 'gr',
+    sub:[{ h:'', rows }] });
+  return bl;
+}
+
+/* B 本人が亡くなったとき */
+function goneBlocks(p) {
+  const bl = [];
+  const bad = ['land','bldg'].filter(k =>
+    p.rights[k] && p.rights[k].match !== 'same');
+
+  /* 型1｜権利・名義を引き継ぐ。書類はここに従属させる（独立項目にしない）。 */
+  const need = S.neededDocs(p), miss = need.filter(d => d.st !== 'done');
+  bl.push({
+    nm:'権利・名義を引き継ぐ',
+    de: bad.length
+      ? '本人の代の相続が済んでいないので、先代から二段で遡る。' +
+        '相続人全員の同意と、先代分の戸籍が要る'
+      : '相続登記を申請する。取得を知ってから3年以内（義務）',
+    lbl: bad.length ? '先に名義を解く' : '相続登記',
+    tone: bad.length ? 'or' : 'bl',
+    sub:[{ h:'必要な資料　手元にある ' + (need.length - miss.length) +
+             '／' + need.length + '件',
+           rows: need.map(d => [d.label,
+             d.st === 'done' ? (p.docs && p.docs.place ? p.docs.place : 'あり')
+                             : '未確認']) }] });
+
+  /* 型2｜契約・支払い・関係を処理する。登録されているものだけ。 */
+  const rows = [];
+  if (p.loan && p.loan.has)
+    rows.push([p.loan.bank + '（ローン）',
+      '団信' + (p.loan.gtee || '') + '。完済されるか確認する']);
+  (p.deals || []).forEach(d =>
+    rows.push([d.who + '（' + S.DEALS[d.kind].label + '）',
+      '引き継ぐか、終わらせるか']));
+  if (p.kind !== 'land')
+    rows.push(['火災保険・ライフライン', '名義を変えるか、止める']);
+  if (rows.length) bl.push({
+    nm:'契約・支払い・関係を処理する',
+    de: rows.length + '件。相手と連絡先は下の「ローン・契約」にある',
+    lbl:'処理する', tone:'bl', sub:[{ h:'', rows }] });
+  return bl;
+}
+
+/* ── 描く ──────────────────────────────────────────── */
+function rowHTML(x) {
+  let h = '<div class="it"><div class="tx">' +
+    '<div class="nm">' + esc(x.nm) + '</div>' +
+    (x.de ? '<div class="de">' + esc(x.de) + '</div>' : '');
+  (x.sub || []).forEach(s => {
+    h += '<div class="sub">' +
+      (s.h ? '<div class="sh2">' + esc(s.h) + '</div>' : '') +
+      s.rows.map(r => '<div class="sr"><span class="sn2">' + esc(r[0]) +
+        '</span><span class="sv">' + esc(r[1]) + '</span></div>').join('') +
+      '</div>';
+  });
+  return h + '</div><div class="bd"><span class="bdg ' + (x.tone || 'gy') +
+    '">' + esc(x.lbl) + '</span></div></div>';
+}
+function sec(title, note, xs, empty) {
+  const body = xs.length ? xs.map(rowHTML).join('')
+    : '<div class="none">' + esc(empty) + '</div>';
+  return '<div class="sec"><div class="sh">' +
+    '<span class="st">' + esc(title) + '</span>' +
+    (note ? '<span class="sn">' + esc(note) + '</span>' : '') +
+    (xs.length ? '<span class="cnt">' + xs.length + '</span>' : '') +
+    '</div>' + body + '</div>';
+}
+
+const out = document.getElementById('out');
+S.all().forEach(p => {
+  const h2 = document.createElement('h2');
+  h2.innerHTML = esc(p.name) + ' <span>' + esc(S.USES[p.use].label) +
+    '・' + esc(S.KINDS[p.kind].label) + '</span>';
+  out.appendChild(h2);
+
+  const wr = willRows(p).map(x => ({ nm:x.nm, de:x.de,
+    lbl:WST[x.w].label, tone:WST[x.w].tone }));
+
+  const st = document.createElement('div');
+  st.className = 'stage';
+  st.innerHTML = '<div class="two">' +
+    '<div class="pane">' +
+      '<div class="ph">今のうち</div>' +
+      '<div class="pn">本人がまだ自分で判断し、意思を伝えられるうちにしか、' +
+        '確認・対応できないこと。</div>' +
+      sec('本人に確認すること', '聞かないと分からない', askRows(p),
+          '本人に確認することは残っていない') +
+      sec('本人の意向', 'ここだけ入力を持つ', wr, '') +
+      sec('今のうちに対応すること', '確認した結果、処理が要る', actRows(p),
+          'いまのところ、対応が要ることは出ていない') +
+    '</div>' +
+    '<div class="pane">' +
+      '<div class="ph">そのとき</div>' +
+      '<div class="pn">登録済みの情報から、そのとき家族がすることを出す。</div>' +
+      sec('本人が住まなくなったとき', '名義は本人のまま', liveBlocks(p), '') +
+      sec('本人が亡くなったとき', '相続登記が出てくる', goneBlocks(p), '') +
+    '</div>' +
+  '</div>';
+  out.appendChild(st);
+});
+
+const n = document.createElement('div');
+n.className = 'note';
+n.innerHTML = '<b>v24 からの直し</b><br>' +
+  '・<b>②を2項目に絞った。</b>仏壇・形見は本人の希望カテゴリが持つ' +
+    '（§8・§13、引き継ぎ書の「落としたもの」）。' +
+    '「当面の管理を誰に頼みたいか」は本人にしか決められない事項ではない' +
+    'ので外し、そのとき側に一度だけ出す<br>' +
+  '・<b>①③を固定項目にしない。</b>v24 は①を5項目固定にしたが、' +
+    '境界が無関係な物件でも境界が出る＝「項目があるから埋める画面」。' +
+    '下エリアの入力から、必要なものだけ立てる<br>' +
+  '・<b>「そのとき」の固定はトリガー2つだけ。</b>中は型3つ程度で、' +
+    '契約類はその下にぶら下がる。電気・水道・ガスをトップレベルの' +
+    '項目にしない<br>' +
+  '・<b>書類を独立項目にせず、相続登記に従属させた。</b>' +
+    '項目設計 §6「書類を入力する場所ではなく、必要な資料が揃っているかを' +
+    '見るインデックス」<br>' +
+  '・<b>空になる節は消さず、そう書く。</b>「対応が要ることは出ていない」' +
+    'も成立した状態（§11・§12）';
+document.querySelector('.wrap').appendChild(n);
+</script>
+</body>
+</html>

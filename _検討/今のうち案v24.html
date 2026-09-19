@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産｜「今のうち」「そのとき」の中身（v24）</title>
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);
+    padding:28px 20px 80px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);margin:0 0 26px;line-height:1.9}
+  .lead b{color:var(--ink)}
+  h2{font-size:14px;margin:34px 0 8px;display:flex;align-items:baseline;gap:10px}
+  h2 span{font-size:11.5px;font-weight:400;color:var(--ink3)}
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:22px;margin-top:10px}
+
+  /* ══ 一覧そのもの ══════════════════════════════════════
+     ここが主役。造形（器）は後で決める。字が読めることが先。
+
+     観点：
+       ・1行1件。左端を揃える
+       ・状態は右端の列に揃える（行ごとに踊らせない）
+       ・種別で色を分けない（橙は「対応が必要」限定の約束）
+       ・群の見出しは行より弱く
+       ・本文 12.5px を保つ。10px まで落とさない
+       ・地は無地。模様・罫を字の下に敷かない              */
+
+  .sec{margin-bottom:22px}
+  .sec:last-child{margin-bottom:0}
+
+  /* 群の見出し。行より弱くする（見出しが主役に見えないように） */
+  .sh{display:flex;align-items:baseline;gap:8px;margin:0 0 2px;
+    padding-bottom:5px;border-bottom:1px solid var(--line)}
+  .sh .st{font-size:11.5px;font-weight:600;color:var(--ink2);
+    letter-spacing:.04em}
+  .sh .sn{font-size:11px;color:var(--ink3)}
+  .sh .cnt{margin-left:auto;font-size:11px;color:var(--ink3);
+    font-variant-numeric:tabular-nums}
+
+  /* 1件＝1行。左：対象と一言／右：状態。右端で列が揃う。 */
+  .it{display:flex;align-items:flex-start;gap:12px;
+    padding:8px 0;border-bottom:1px solid #F1EEE5}
+  .it:last-child{border-bottom:0}
+  .it .tx{flex:1;min-width:0}
+  .it .nm{font-size:12.5px;line-height:1.55;font-weight:600}
+  .it .de{font-size:11.5px;color:var(--ink2);line-height:1.7;margin-top:1px}
+  .it .bd{flex:none;width:76px;text-align:right;padding-top:1px}
+
+  /* 状態。色は §11 の語彙に従う。分類色にしない。
+
+     ★橙は「対応が必要」だけ。v24 初稿では「未確認」も橙だったため、
+     11件中9件が橙になり、地の色になって本当に急ぐものが沈んでいた。
+     未確認＝まだ事実が分からない（→聞く）、対応が必要＝事実は分かって
+     処理が要る（→動く）。別の行為なので、色を分ける。             */
+  .bdg{display:inline-block;font-size:10.5px;line-height:1.7;
+    padding:0 7px;border-radius:3px;border:1px solid var(--line2);
+    color:var(--ink2);background:var(--paper2);white-space:nowrap}
+  .bdg.or{color:var(--or);border-color:var(--or-ln);background:var(--or-bg)}
+  .bdg.gr{color:var(--gr);border-color:#C6DCC8;background:var(--gr-bg)}
+  .bdg.gy{color:var(--ink3);background:transparent;border-color:var(--line)}
+  /* 未確認・確認中。橙を使わず、落ち着いた青で「これから聞く」を表す */
+  .bdg.bl{color:var(--bl);border-color:#C3D2E0;background:#F1F5F9}
+
+  /* 2値を上下に持つ欄（本人の希望／引受確認）。右端の列は保つ。 */
+  .it .bd.two-line{line-height:1.5}
+  .it .bd .sub{display:block;font-size:10px;color:var(--ink3);
+    margin-top:2px;white-space:nowrap}
+  .kv{display:flex;gap:7px;font-size:11.5px;color:var(--ink2);
+    line-height:1.7;margin-top:1px}
+  .kv i{font-style:normal;color:var(--ink3);flex:none}
+
+  /* 2面（今のうち｜そのとき）を並べて、密度を見る。 */
+  .two{display:grid;grid-template-columns:1.15fr 1fr;gap:26px;align-items:start}
+  .pane{min-width:0}
+  .ph{font-size:13.5px;font-weight:600;margin:0 0 3px}
+  .pn{font-size:11.5px;color:var(--ink3);margin:0 0 14px;line-height:1.7}
+
+  .note{font-size:11.5px;color:var(--ink2);line-height:1.9;
+    margin-top:20px;padding-top:14px;border-top:1px solid var(--line)}
+  .note b{color:var(--ink)}
+
+  @media(max-width:900px){ .two{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>不動産・住まい｜「今のうち」「そのとき」の中身（v24）</h1>
+<p class="lead">
+  v23 の3案（便箋・付箋・文箱）は破棄。あれは<b>物を描いてから字を載せた</b>ので、
+  物が字の背景ノイズになって読めなくなっていた。<br>
+  ここでは<b>造形を一切置かず、載る情報だけ</b>で組む。器（何の絵にするか）は、
+  この一覧が読める形に決まってから、それを差す器として決める
+  ―― 医療のカードホルダーで、主役がカードでポケットが器であるのと同じ順。
+</p>
+
+<div id="out"></div>
+
+</div>
+
+<script src="../prototype/real-estate/state.js"></script>
+<script>
+const S = window.SeiZenRealEstate;
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* ══════════════════════════════════════════════════════════
+   ■ 「今のうち」に並ぶもの
+
+   3つの出どころがある（①既存入力から ②本人の意向＝新規入力
+   ③SeiZen の判定）。ただし画面に並ぶのは、どれも「やること」。
+   出どころが違うだけで、別の物として描き分けない。           */
+
+/* ① 本人に確認すること。＝**残件リストではない。**
+
+   ★ここが v24 初稿の一番の間違いだった。未確認のものだけを拾って
+   並べたので、確認が済むと行が消え、全部済むと節ごと消えた。
+   「確認が残っていない」が見えなくなる ―― §11（空欄と該当なしを
+   同じにしない）§12（進捗は必要な状態がどこまで成立しているか）に
+   反する。分母が動くと、進捗は数えられない。
+
+   正しくは：**項目が立つ条件は下エリアの入力が決め、立った項目は
+   状態を持ち続ける。** 全物件一律の固定リストでもない。
+   `neededDocs()` が書類でやっているのと同じ構造。
+
+     ・境界／私道／建物の変更 … 項目設計 §5 が常に問うので常に立つ。
+       ただし建物の変更は建物があるときだけ
+     ・書類のありか … 常に立つ（権利証は必ずある）
+     ・家に入る方法 … §7「全物件必須ではない」。住まいとして
+       使う物件でだけ立つ                                        */
+function nowAsk(p) {
+  const out = [];
+  const hasBldg = p.kind !== 'land';
+
+  Object.keys(p.matters || {}).forEach(k => {
+    if (k === 'changed' && !hasBldg) return;   /* 建物が無ければ立たない */
+    const m = p.matters[k];
+    let st, de;
+    if (m.find === 'unasked')      { st = 'todo';   de = S.MATTERS[k].ask; }
+    else if (m.find === 'unknown') { st = 'doing';
+      de = m.memo || '本人にも分からない。調べる先を決める'; }
+    else if (m.find === 'no')      { st = 'none';
+      de = m.memo || '確認した結果、当てはまらなかった'; }
+    else                           { st = 'done';
+      de = m.memo || '確認できている'; }
+    out.push({ nm:S.MATTERS[k].label, de, st });
+  });
+
+  /* 書類のありか。権利証は必ずあるので、項目としては常に立つ。 */
+  out.push({ nm:'書類のありか',
+    st: p.docs && p.docs.place ? 'done' : (p.docs ? p.docs.st : 'todo'),
+    de: p.docs && p.docs.place ? p.docs.place
+      : '権利証・契約書・図面がどこにあるか' });
+
+  /* 家に入る方法。§7 は全物件必須としていない。土地では立たない。 */
+  if (hasBldg) out.push({ nm:'家に入る方法',
+    st: p.access ? p.access.st : 'todo',
+    de: p.access && p.access.who
+      ? (p.access.key || p.access.who) + (p.access.how ? '。' + p.access.how : '')
+      : '鍵を誰が持っているか、暗証や立ち会いが要るか' });
+
+  return out;
+}
+
+/* ② 本人の意向。ここだけ新規入力。状態の語彙が他と違う。
+      聞いてある／聞いたが決まっていない／聞いていない        */
+const WILL = {
+  p1: [
+    { nm:'住まなくなったら、この家をどうしたいか',
+      de:'売る・貸す・家族が使う・残す', w:'undecided',
+      memo:'「子どもたちで決めてほしい」とのこと。まだ決めていない' },
+    { nm:'施設等へ移ったら、戻る前提か',
+      de:'戻るつもりなら、家財も契約もそのままにする', w:'unasked' },
+    { nm:'本人にしか決められないものの扱い',
+      de:'仏壇、形見、特定の人へ渡したいもの', w:'asked',
+      memo:'仏壇は長男の家へ。母の指輪は長女へ' },
+    /* 他の2つと違い、相手がある。本人が指名した＝確定ではないので、
+       「本人の希望」と「引受確認」を分けて持つ（聞いてある だけを
+       見ると準備完了に見えてしまう）。                          */
+    { nm:'当面の管理を誰に頼みたいか',
+      de:'本人が住まなくなった後、見てくれる人', w:'asked',
+      hope:'長男', accept:'まだ確認していない' }
+  ],
+  p2: [
+    { nm:'住まなくなったら、この家をどうしたいか',
+      de:'売る・貸す・家族が使う・残す', w:'unasked' },
+    { nm:'施設等へ移ったら、戻る前提か',
+      de:'戻るつもりなら、家財も契約もそのままにする', w:'asked',
+      memo:'戻る予定はない。本人の意思で施設へ移った' },
+    { nm:'本人にしか決められないものの扱い',
+      de:'仏壇、形見、特定の人へ渡したいもの', w:'unasked' },
+    { nm:'当面の管理を誰に頼みたいか',
+      de:'本人が住まなくなった後、見てくれる人', w:'undecided',
+      memo:'近所の□□さんに見てもらっているが、頼み続けてよいか本人も迷っている' }
+  ]
+};
+/* 本人の希望と、相手の引受は別。希望だけで「決まった」にしない。 */
+const willHope = p => (WILL[p.id] || [])
+  .find(x => x.nm.indexOf('当面の管理') === 0) || null;
+const WST = {
+  asked:     { label:'聞いてある',   tone:'gr' },
+  undecided: { label:'決めていない', tone:'gy' },
+  unasked:   { label:'聞いていない', tone:'or' }
+};
+
+/* ③ 今のうちに対応した方がよいこと。入力させない。判定表で出す。 */
+function nowAct(p) {
+  const out = [];
+  ['land','bldg'].forEach(k => {
+    const r = p.rights[k]; if (!r) return;
+    if (r.match === 'differ' || r.match === 'unknown') {
+      out.push({ nm:(k === 'land' ? '土地' : '建物') + 'の名義が実態と違う',
+        de:r.memo || '登記の名義と、いま認識している権利関係が食い違っている',
+        st:'action' });
+    }
+  });
+  const c = (p.matters || {}).changed;
+  if (c && c.detail && c.detail.reg && c.detail.reg !== '済')
+    out.push({ nm:'増築が登記に反映されていない', de:c.memo, st:'action' });
+  Object.keys(p.matters || {}).forEach(k => {
+    const m = p.matters[k];
+    if (m.find === 'yes' && m.detail && m.detail.paper === 'なし')
+      out.push({ nm:S.MATTERS[k].label + 'の取り決めが書面にない',
+        de:(m.detail.who ? m.detail.who + 'と' : '') + '口頭のまま。相手も高齢',
+        st:'action' });
+  });
+  /* ★「本人に聞けていないことが N 件」は③に入れない。
+     ②の未入力を数えただけのもので、登記のズレ・未登記と同じ橙で
+     並ぶと「まだ聞いていない」と「増築が未登記」が同格に見える。
+     未入力は②の側にバッジとして出ているので、二度言わない。   */
+  return out;
+}
+
+/* ══ 「そのとき」に並ぶもの。
+
+   ★ここも v24 初稿・第2稿とも間違えた。
+
+   初稿：相手（○○管理株式会社）と行動（止める契約）が同階層に並び、
+         ただの一覧表だった
+   第2稿：全部「〜を決める／確認する」に揃えた ―― **ただの Todo**。
+         家族がそのとき見ても「どうするか決める」としか書いておらず、
+         何も分からない
+
+   正しくは、**決めた結果が載る**こと。そして①と同じ仕組みで動く：
+   **項目が立つ条件は下エリアの入力が決め、立った項目は状態を持ち
+   続ける。** 決まっていれば決めた内容、決まっていなければ
+   「まだ決めていない」。だから入力を完全に持たないわけではない
+   ―― 決めた結果を持つ場所は要る。                              */
+
+/* 決めた結果。本来は下エリアか、この面の入力が持つ。 */
+const DECIDED = {
+  p1: {
+    manage:  { v:'長男が月1回見に行く。鍵は長男が持っている' },
+    loanPay: { v:'引き落とし口座は本人のまま。残高は長男が入れる' },
+    utility: null,                       /* まだ決めていない */
+    fire:    { v:'空き家特約へ切り替える（○○火災に確認済み）' },
+    keep:    { v:'管理委託はそのまま続ける' }
+  },
+  p2: {
+    manage:  { v:'近所の□□さんが月1回。謝礼なし' },
+    utility: { v:'電気だけ残す（見回りの灯り）。水道・ガスは止めた' },
+    fire:    null,
+    keep:    null
+  }
+};
+
+function whenLive(p) {           /* A 生前に住まなくなったとき */
+  const out = [];
+  const D = DECIDED[p.id] || {};
+  const row = (nm, key, ask, hint) => {
+    const d = D[key];
+    out.push({ nm, de: d ? d.v : (hint || ask),
+      st: d ? 'done' : 'todo',
+      lbl: d ? '決めてある' : 'まだ決めていない' });
+  };
+
+  /* 当面の管理。②の本人の希望と、実際に決まったことは別。 */
+  const w = willHope(p);
+  const d = D.manage;
+  out.push({ nm:'当面この家を見る人',
+    de: d ? d.v
+      : (w && w.hope ? '本人の希望は ' + w.hope + '。引受の確認はこれから'
+                     : '本人に希望を聞けていない'),
+    st: d ? 'done' : (w && w.hope ? 'doing' : 'todo'),
+    lbl: d ? '決めてある' : (w && w.hope ? '確認中' : 'まだ決めていない') });
+
+  /* ローンがあるときだけ立つ。 */
+  if (p.loan && p.loan.has)
+    row('ローンの引き落とし', 'loanPay',
+        p.loan.bank + '｜返済は続く。本人の口座から落ち続けてよいか');
+
+  /* 建物があるときだけ立つ。 */
+  if (p.kind !== 'land') {
+    row('電気・水道・ガス', 'utility', '止めるか、見回りのために残すか');
+    row('火災保険', 'fire', '空き家になると条件が変わることがある');
+  }
+
+  /* 管理を頼んでいる相手がいるときだけ立つ。 */
+  if ((p.deals || []).some(x => x.kind === 'manage'))
+    row('いまの管理契約', 'keep',
+        p.deals.filter(x => x.kind === 'manage')
+          .map(x => x.who + '｜' + x.what).join('　'));
+  return out;
+}
+
+function whenGone(p) {           /* B 亡くなったとき */
+  const out = [];
+  const bad = ['land','bldg'].filter(k =>
+    p.rights[k] && p.rights[k].match !== 'same');
+
+  /* 相続登記は必ず立つ。状態は名義の一致・不一致で変わる。 */
+  out.push({ nm:'相続登記',
+    de: bad.length
+      ? '名義が実態と違う。先代の相続が済んでいないと、そこから遡る'
+      : '取得を知ってから3年以内。義務になっている',
+    st: bad.length ? 'action' : 'todo',
+    lbl: bad.length ? '先に対応が必要' : 'そのとき申請する' });
+
+  /* 書類は neededDocs が立てる（＝下エリアの入力で数が変わる）。 */
+  const need = S.neededDocs(p), miss = need.filter(d => d.st !== 'done');
+  out.push({ nm:'手続きに使う書類',
+    de: miss.length
+      ? '不足 ' + miss.length + '／' + need.length + '件｜' +
+        miss.slice(0,3).map(d => d.label).join('、') +
+        (miss.length > 3 ? ' ほか' : '')
+      : need.length + '件すべてそろっている' +
+        (p.docs && p.docs.place ? '（' + p.docs.place + '）' : ''),
+    st: miss.length ? 'action' : 'done',
+    lbl: miss.length ? '足りない' : 'そろっている' });
+
+  /* 続いている関係。相手がいるときだけ立つ。 */
+  (p.deals || []).forEach(x => out.push({
+    nm: x.who, de:S.DEALS[x.kind].label + '｜' + x.what,
+    st:'todo', lbl:'引き継ぐか決める' }));
+
+  if (p.loan && p.loan.has) out.push({ nm:'住宅ローン',
+    de: p.loan.bank + '｜団信' + (p.loan.gtee || ''),
+    st:'todo', lbl:'完済を確認' });
+  return out;
+}
+
+/* ── 描く ──────────────────────────────────────────── */
+/* ★橙は action（対応が必要）だけに絞る。todo/doing は青。
+   §11 の語彙はもともと分かれていて、色だけが潰していた。 */
+const tone = st => st === 'done' ? 'gr'
+  : st === 'none' ? 'gy'
+  : st === 'action' ? 'or'
+  : 'bl';
+
+function itemsHTML(xs, stOf) {
+  return xs.map(x => {
+    const b = stOf(x);
+    let body = '<div class="nm">' + esc(x.nm) + '</div>';
+    if (x.hope) {
+      /* 本人の希望と引受確認を分ける。希望だけで確定に見せない。 */
+      body += '<div class="kv"><i>本人の希望</i>' + esc(x.hope) + '</div>' +
+              '<div class="kv"><i>引受確認</i>' + esc(x.accept) + '</div>';
+    } else if (x.memo) body += '<div class="de">' + esc(x.memo) + '</div>';
+    else if (x.de)     body += '<div class="de">' + esc(x.de) + '</div>';
+    return '<div class="it"><div class="tx">' + body +
+      '</div><div class="bd"><span class="bdg ' + b.tone + '">' +
+      esc(b.label) + '</span></div></div>';
+  }).join('');
+}
+/* ①の語彙。「未確認」は状態の語で、何をすればよいか言っていない。
+   ③の「対応が必要」と対になるのは「本人に確認」。実装（state.js）に
+   足りない語彙なら、実装のほうを直す ―― 既にあるから正しい、ではない。 */
+const byAsk = x =>
+  x.st === 'done'  ? { label:'確認できている', tone:'gr' } :
+  x.st === 'none'  ? { label:'該当なし',       tone:'gy' } :
+  x.st === 'doing' ? { label:'確認中',         tone:'bl' } :
+                     { label:'本人に確認',     tone:'bl' };
+/* 右側は「決めた結果があるか」。lbl を各行が持つ。 */
+const byDone = x => ({ label:x.lbl, tone:tone(x.st) });
+const byST = x => { const s = S.ST[x.st] || { label:x.st };
+  return { label:s.label, tone:tone(x.st) }; };
+const byW  = x => WST[x.w];
+
+function sec(title, note, xs, stOf) {
+  if (!xs.length) return '';
+  return '<div class="sec"><div class="sh">' +
+    '<span class="st">' + esc(title) + '</span>' +
+    (note ? '<span class="sn">' + esc(note) + '</span>' : '') +
+    '<span class="cnt">' + xs.length + '</span></div>' +
+    itemsHTML(xs, stOf) + '</div>';
+}
+
+const out = document.getElementById('out');
+S.all().forEach(p => {
+  const h2 = document.createElement('h2');
+  h2.innerHTML = esc(p.name) + ' <span>' + esc(S.USES[p.use].label) +
+    '・' + esc(S.KINDS[p.kind].label) + '</span>';
+  out.appendChild(h2);
+
+  const st = document.createElement('div');
+  st.className = 'stage';
+  st.innerHTML = '<div class="two">' +
+    '<div class="pane">' +
+      '<div class="ph">今のうち</div>' +
+      '<div class="pn">本人がまだ自分で判断し、意思を伝えられるうちにしか、' +
+        '確認・対応できないこと。</div>' +
+      sec('本人に確認すること', 'この物件で押さえておく項目',
+          nowAsk(p), byAsk) +
+      sec('本人の意向', 'ここだけ本人が決める', WILL[p.id] || [], byW) +
+      sec('今のうちに対応した方がよい', '事実は分かった → 処理する',
+          nowAct(p), byST) +
+    '</div>' +
+    '<div class="pane">' +
+      '<div class="ph">そのとき</div>' +
+      '<div class="pn">登録済みの情報から、家族がすることを出す。' +
+        '入力欄は持たない。</div>' +
+      sec('本人が住まなくなったとき', '名義は本人のまま',
+          whenLive(p), byDone) +
+      sec('本人が亡くなったとき', '相続登記が出てくる',
+          whenGone(p), byDone) +
+      '<div class="pn" style="margin:14px 0 0">' +
+        '何が項目として立つかは、下エリアの入力が決める' +
+        '（ローンが無ければ引き落としの項目は出ない）。' +
+        '立った項目は、決まるまで消えない。</div>' +
+    '</div>' +
+  '</div>';
+  out.appendChild(st);
+});
+
+const n = document.createElement('div');
+n.className = 'note';
+n.innerHTML = '<b>この版で直したこと</b><br>' +
+  '・<b>残件リストをやめた。</b>①は未確認のものだけを拾っていたので、' +
+    '確認が済むと行が消え、全部済むと節ごと消えた。' +
+    '「確認が残っていない」が見えなくなるのは §11・§12 に反する' +
+    '（分母が動くと進捗が数えられない）<br>' +
+  '・<b>項目が立つ条件は、下エリアの入力が決める。</b>全物件一律の固定' +
+    'リストでもない。ローンが無ければ引き落としの項目は出ない。' +
+    '土地だけなら火災保険も家に入る方法も出ない。' +
+    '<b>立った項目は、決まるまで消えない</b><br>' +
+  '・<b>右側を Todo にしない。</b>前の版は全行「〜を決める」で、家族が' +
+    'そのとき見ても何も分からなかった。<b>決めた結果</b>が載る' +
+    '（「引き落としは本人の口座のまま。残高は長男が入れる」）。' +
+    'したがって「そのとき」も、決めた結果を持つ場所が要る<br>' +
+  '・<b>橙は「対応が必要」だけ。</b>未確認は青（＝これから聞く）<br>' +
+  '<br><b>2軒の差</b><br>' +
+  '・自宅＝①はすべて確認済み、③に3件、そのときも半分決めてある<br>' +
+  '・長岡の家＝①が未確認だらけ、③は空、そのときもほぼ決めていない<br>' +
+  '同じ仕組みで、進み方の違う2軒が別の顔になる。';
+document.querySelector('.wrap').appendChild(n);
+</script>
+</body>
+</html>
