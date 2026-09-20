@@ -60,8 +60,15 @@
 
 /* ══ 間取り図｜SVG（壁・建具・床）＋ 別レイヤーの div（中身）══
    render.js の draw() が組む。SVG は下地、.layer はその上に
-   絶対配置で重ねる（viewBox の比率とレイヤーの % 座標が対応）。  */
-.plan-stage{position:relative}
+   絶対配置で重ねる（viewBox の比率とレイヤーの % 座標が対応）。
+
+   ★間取りは横に広い建物の形なので、.inner の余白（左右44px）の
+   内側に収める幅では窮屈になる。見出し・住所・進捗（propHead）は
+   文章なので今のまま .inner 幅でよいが、間取りの器（.plan-stage）
+   だけは .inner の左右 padding を超えて作業面いっぱいまで広げる。
+   .work は overflow:clip で角丸を切るだけなので、はみ出しても
+   枠の外へは出ない。                                            */
+.plan-stage{position:relative;margin-left:-44px;margin-right:-44px}
 .plan-wrap{position:relative;width:100%}
 .plan{display:block;width:100%;height:auto;
   filter:drop-shadow(0 1px 3px rgba(50,50,46,.06))}
