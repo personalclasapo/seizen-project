@@ -399,7 +399,7 @@
     return roomHead4('今のうち') +
       '<div class="pn">本人がまだ判断し、意思を伝えられるうちにしか、' +
       '確認・対応できないこと。期限は死亡ではなく、判断力が落ちるまで。</div>' +
-      nowHTML(p);
+      '<div class="card">' + nowHTML(p) + '</div>';
   }
   function roomWhen(p) {
     return roomHead4('そのとき') +
