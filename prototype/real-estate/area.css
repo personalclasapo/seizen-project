@@ -31,32 +31,88 @@
 .card-r{color:var(--or);background:var(--or-bg);border:1px solid var(--or-ln);
   border-radius:20px;padding:2px 9px}
 
-/* ══ 物件の見出し ══════════════════════════════ */
+/* ══ 物件の見出し｜切妻屋根 ══════════════════════
+   2026-09-20、`_検討/不動産v29.html` から移植。
+
+   物件そのものを屋根のモチーフにする。造形（屋根の部材）は SVG が
+   持ち（render.js の roofSVG）、ここが受け持つのはその置かれ方。
+
+   ★幅は間取り図（.plan-stage）に揃える。屋根・軒下・間取り図で
+   幅が違うと縦に繋がって見えない（途中版がそうなっていた）。
+   なので .ph も .plan-stage と同じだけ左右へはみ出す。
+
+   ★屋根の下に壁のスラブを敷かない。矩形に色を敷いて「壁」と呼ぶ
+   のは CLAUDE.md の禁じる代用で、かつ上から見た間取り図と立面の
+   壁で視点が衝突する。
+
+   ★文字は屋根の「へ」の字の**内側（棟の下の窪み）に入る**。
+   屋根の下端より下へ押し出すと、屋根と文字が別のものとして縦に
+   並び、ぶつ切りに見える（移植直後がそうだった）。
+     ・棟の下の狭いところ … 物件名と用途バッジ（短いものだけ）
+     ・軒より下の広いところ … 住所、種別／築年
+   物件名を窪みへ入れるぶん、文字の塊を負のマージンで引き上げる。 */
 .prop{margin:0 0 42px}
-.ph{margin:0 0 14px;scroll-margin-top:20px}
-.ph-t{display:flex;align-items:center;gap:10px}
-.ph-ic{width:30px;height:30px;display:grid;place-items:center;flex:none;
-  border:1px solid var(--line2);border-radius:8px;background:var(--card)}
-.ph-ic svg{width:18px;color:var(--gr)}
-.ph-t h3{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
-.ph-use{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px}
-.ph-addr{display:flex;align-items:center;gap:5px;margin:7px 0 0 40px;
-  font-size:12.5px;color:var(--ink2)}
-.ph-addr svg{width:14px;flex:none;color:var(--ink3)}
+/* 見出し＝屋根＋その中の文字。下端で間取り図にそのまま続く。
 
-/* 「本人に聞けるうちに」――§13-1 の中心。進捗より先に出す。 */
-.pg-risk{display:flex;gap:9px;margin:12px 0 0 40px;padding:10px 13px;
-  background:var(--or-bg);border:1px solid var(--or-ln);border-radius:9px;
-  font-size:12px;line-height:1.65;color:#8a5410}
-.pg-risk svg{width:16px;flex:none;color:var(--or);margin-top:1px}
-.pg-risk b{display:block;font-size:12px;color:var(--or)}
+   ★間取り図の SVG は上下左右に敷地の余白（render.js の SITE=34
+   単位＝草地の縁）を持つ。屋根をその外側に置くと、屋根の下端と
+   間取り図の建物の間に、敷地ぶんの空白（実測 約29px）が残る。
+   敷地の余白と屋根SVG下端の余白を重ね、軒天を外壁に接続する。
+   render.js が縮尺から計算する。見出しは草地より手前に描く。 */
+.ph{position:relative;z-index:1;margin:0 -44px calc(var(--rf-site, 0px) * -1);
+  scroll-margin-top:20px}
+.rf-slot{position:relative;width:100%}
+.rf{display:block;width:100%;height:100%}
 
-/* 進捗。％は補助表示（正本§12）＝細く、小さく。 */
-.pg{display:flex;align-items:center;gap:10px;margin:10px 0 0 40px}
-.pg-bar{flex:1;max-width:260px;height:5px;border-radius:3px;background:var(--line);
-  overflow:hidden}
-.pg-bar i{display:block;height:100%;background:var(--gr2);border-radius:3px}
-.pg-n{font-size:11px;color:var(--ink3)}
+/* ★文字を屋根の中へ入れる。縦位置はここ一箇所で決める。
+   --rf-lift は、各行の実幅が屋根の内法に収まる高さから render.js が
+   計算して書き戻す（深さだけで決めると三角の狭いところで破風に被る）。
+   行ごとの margin で位置合わせをしないこと――引き上げと逆向きに
+   効いて、幅が変わったときに追従しなくなる。 */
+.rf-under{position:relative;text-align:center;
+  margin-top:calc(var(--rf-lift, 40px) * -1);
+  padding:0 44px;transform:translateY(calc(var(--rf-text-up, 0px) * -1))}
+/* ★各行は inline-flex／inline-block にして、幅が**中身の幅**に
+   なるようにする。ブロックのままだと幅が親いっぱい（600px）に
+   なり、render.js が引き上げ量を計算するとき「この行は600px
+   必要」と誤判定して、文字が屋根の中に入らなくなる。
+   （.rf-t だけ直して .rf-addr/.rf-kind を見落とした前例あり。）
+
+   ★縦位置は .rf-under が一括で持つ（上の margin-top）。
+   行ごとに margin を入れて位置合わせしない――同じ行の h3 と
+   バッジに別々の margin:90px を入れて合わせていた版があったが、
+   片方だけ直すとずれるし、--rf-lift（幅から計算する引き上げ）と
+   逆向きに効いて、幅が変わっても追従しなくなる。
+   ここでの margin は**行間**だけを持つ。                      */
+.rf-ln{display:block;line-height:1.5}
+.rf-t{display:inline-flex;align-items:center;gap:10px;justify-content:center}
+.rf-t h3{display:inline;margin:0;font-size:19px;font-weight:700;
+  letter-spacing:-.01em}
+.rf-use{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px}
+.rf-addr{display:inline-flex;align-items:center;gap:5px;
+  font-size:12.5px;color:var(--ink2);justify-content:center}
+.rf-addr svg{width:14px;flex:none;color:var(--ink3)}
+.rf-kind{display:inline-block;font-size:11.5px;color:var(--ink3)}
+/* 行間（縦の間隔）はここだけで決める。 */
+.rf-ln + .rf-ln{margin-top:6px}
+
+/* 屋根の部材。線は Leicester の実測立面図から読み取った階層
+   （輪郭 > 部材 > 下地 > 量産線）。値はこの縮尺に合わせたもの。 */
+.r-out {stroke:#6E6A60;stroke-width:2.6;fill:none;stroke-linejoin:round;
+  stroke-linecap:round}
+.r-mem {stroke:#8C8779;stroke-width:1.5;fill:none;stroke-linejoin:round}
+.r-sub {stroke:#A9A292;stroke-width:1;fill:none}
+.r-tex {stroke:#C7C0AE;stroke-width:.65;fill:none}   /* 量産線＝瓦の段 */
+.r-tile{fill:#E4E0D4}
+.r-hafu{fill:#F4F1E7}
+.r-mune{fill:#CFC7B2}
+.r-noki{fill:#EDE9DC}
+.r-toi {fill:#DCD6C8}
+/* 妻側の端部＝層ごとの小口。手前ほど明るく、奥ほど暗い。 */
+.r-end-d{fill:#C6BFAC}
+.r-end-f{fill:#E8E3D5}
+.r-end-t{fill:#CFC8B6}
+.r-sh  {fill:#000;opacity:.045}
 
 /* ══ 間取り図｜SVG（壁・建具・床）＋ 別レイヤーの div（中身）══
    render.js の draw() が組む。SVG は下地、.layer はその上に

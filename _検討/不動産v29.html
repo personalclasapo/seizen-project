@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>不動産 v29｜物件見出しに屋根を載せる</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&family=Noto+Serif+JP:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);
+    padding:36px 44px 120px}
+  h1{font-size:17px;margin:0 0 4px}
+  .note{font-size:12px;color:var(--ink2);line-height:1.9;max-width:860px;
+    margin:0 0 26px}
+  .note b{color:var(--ink)}
+  .note s{color:var(--ink3)}
+  .stagewrap{background:var(--paper);border:1px solid var(--line);
+    border-radius:12px;margin:0 0 30px;overflow:hidden}
+  .cap{font-size:11px;color:var(--ink3);padding:9px 14px;
+    border-bottom:1px solid var(--line);background:var(--paper2)}
+  .cap b{color:var(--ink2)}
+  .pad{padding:22px 0 26px}
+
+  /* ══════════════════════════════════════════════════════
+     ★幅は1本（v29-7）。
+
+     前の版は3つの要素が3つとも違う幅だった：
+       屋根＝帯いっぱい／壁＝そこから内側／間取り図＝作業面いっぱい
+     どの2つも揃っておらず、縦に繋がって見えなかった。
+     狭い壁の下から、それより広い床（間取り図）が出てもいた。
+
+     **基準は間取り図の幅**（`.plan-stage` ＝ 作業面いっぱい、
+     area.css で margin:0 -44px）。下に来る建物の平面がいちばん広く、
+     その建物の屋根なのだから、屋根も同じ幅で始まり同じ幅で終わる。
+     軒の出はその幅の中で処理する（屋根の端＝建物の端）。
+
+     検討ファイルではその -44px を再現する（本番は .plan-stage）。 */
+  .rf-wrap{position:relative;padding-top:var(--rfh);
+    margin:0 -44px}
+  .rf-slot{position:absolute;left:0;top:0;width:100%;height:var(--rfh)}
+  .rf{display:block;width:100%;height:100%}
+
+  /* 屋根の下＝軒下。壁のスラブは立てない（立てると、上から見た
+     間取り図と立面の壁で視点が衝突し、幅も合わなくなる）。
+     屋根の下端から落ちる陰の中に文字が置かれ、陰が消えたところで
+     間取り図が始まる。地の色は持たず、陰だけを持つ。 */
+  .rf-under{position:relative;padding:16px 44px 4px;
+    background:linear-gradient(to bottom,
+      rgba(107,98,86,.055) 0, rgba(107,98,86,.018) 26px, transparent 62px)}
+
+  .rf-body{padding:0;text-align:center}
+  .rf-t{display:flex;align-items:center;gap:10px;justify-content:center}
+  .rf-t h3{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .rf-use{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;
+    background:var(--gr-bg);color:var(--gr)}
+  .rf-addr{display:flex;align-items:center;gap:5px;margin:7px 0 0;
+    font-size:12.5px;color:var(--ink2);justify-content:center}
+  .rf-addr svg{width:14px;flex:none;color:var(--ink3)}
+  .rf-kind{font-size:11.5px;color:var(--ink3);margin:5px 0 0}
+
+  /* ══ 屋根の部材｜線は Leicester の実測立面図から読み取った階層
+     （輪郭 > 部材 > 下地 > 量産線）をこの縮尺に合わせて持つ ══ */
+  .r-out {stroke:#6E6A60;stroke-width:2.6;fill:none;stroke-linejoin:round;
+    stroke-linecap:round}
+  .r-mem {stroke:#8C8779;stroke-width:1.5;fill:none;stroke-linejoin:round}
+  .r-sub {stroke:#A9A292;stroke-width:1;fill:none}
+  .r-tex {stroke:#C7C0AE;stroke-width:.65;fill:none}   /* 量産線＝瓦の段 */
+  .r-tile{fill:#E4E0D4}
+  .r-hafu{fill:#F4F1E7}
+  .r-mune{fill:#CFC7B2}
+  .r-noki{fill:#EDE9DC}
+  .r-toi {fill:#DCD6C8}
+  /* 妻側の端部＝層ごとの小口。手前ほど明るく、奥ほど暗い。 */
+  .r-end-d{fill:#C6BFAC}         /* 瓦層の小口（奥） */
+  .r-end-f{fill:#E8E3D5}         /* 破風板の小口（手前） */
+  .r-end-t{fill:#CFC8B6}         /* 軒樋の小口 */
+  .r-sh  {fill:#000;opacity:.045}
+</style>
+</head>
+<body>
+
+<h1>不動産 v29｜物件見出しに屋根を載せる</h1>
+<p class="note">
+  <b>屋根だけ。</b>家を1軒描かない――<s>v29 の1〜3回目は壁・窓・玄関・基礎まで
+  描いてしまい、すぐ下の間取り図と同じ建物を二重に持っていた。</s><br>
+  屋根は<b>帯</b>として見出しの上に載り、その下端から下は情報が載る面（＝軒下）。
+  高さは見出し1つぶん。<br>
+  寸法は実寸から（1 単位 ＝ 10mm）：勾配 4/10・軒の出 600・破風板 180・
+  棟包み 120・瓦の働き幅 235・軒樋 φ105。<br>
+  線の階層は Leicester の実測立面図（CC BY-SA）から読み取った
+  <b>輪郭 &gt; 部材 &gt; 下地 &gt; 量産線</b>。瓦の段は最細で等ピッチ。
+</p>
+
+<div class="stagewrap">
+  <div class="cap"><b>B</b>｜採用｜帯いっぱいに渡し、屋根を深くする（棟が上がる）</div>
+  <div class="pad"><div id="b"></div></div>
+</div>
+
+<div class="stagewrap">
+  <div class="cap"><b>C</b>｜実際の並び｜見出しの下には必ず間取り図が入る
+    （見出しが2つ続くことはない）</div>
+  <div class="pad"><div id="c"></div></div>
+</div>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+const el=(n,a,t)=>{const e=document.createElementNS(NS,n);
+  for(const k in a)e.setAttribute(k,a[k]); if(t!=null)e.textContent=t; return e;};
+
+const PIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+  'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+  '<path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/>'+
+  '<circle cx="12" cy="10" r="2.6"/></svg>';
+
+/* ══════════════════════════════════════════════════════════
+   屋根の帯｜実寸 mm から引く。1 単位 = 10mm。
+
+   帯なので「家の幅」は持たない。**表示幅 W に対して勾配を保つ**。
+   棟は中央。軒先は左右の端で切れる（帯の外へ出る）。
+
+     PITCH  勾配 4/10（日本瓦の標準）
+     HAFU   破風板 180
+     MUNE   棟包み 120
+     KAWARA 瓦の働き幅 235
+     TOI    軒樋 φ105
+     DEPTH  見下ろしの量（屋根の面を見せるための視点量。実寸ではない）
+
+   ■ ★勾配は実寸から引かない（v29-4 の判断。例外として記録する）
+
+   帯の幅は約 1170px。ここへ実寸の 4/10 を渡すと棟が 234px 上がり、
+   見出しの高さ（86px）の約3倍になる。**帯に実寸の切妻は入らない。**
+
+   1回目は preserveAspectRatio:none で潰し、2回目は slice で切った。
+   どちらも破綻した（潰すと勾配が 1/30 になり、切ると軒先が画面外へ
+   出て縞模様に見える）。これは数値の詰めではなく、**両立しない要求**
+   だった。
+
+   そこで**勾配を寝かせる**ことにした（ユーザー判断 2026-09-20）。
+   この造形では勾配を実寸から引かない。帯の高さに入る勾配を使う。
+
+   CLAUDE.md は「寸法は実物の実寸比から引く」と定めているので、
+   これはその例外にあたる。例外とする理由：**帯という器の形が先に
+   決まっており、そこに実寸の屋根が物理的に入らない**から。
+   勘で決めているのではなく、器から逆算している。
+
+   代わりに、勾配で稼げなくなった密度は**部材の厚み**で持たせる
+   （破風板・軒樋・棟包み・瓦の段は実寸比のまま）。屋根が浅くても、
+   部材が厚ければ「屋根の下端」には見える。
+   ══════════════════════════════════════════════════════════ */
+function roof(opt){
+  const o=opt||{};
+  const HAFU=18, MUNE=12, KAWARA=23.5, TOI=10.5;
+  const DEPTH=o.depth!=null?o.depth:38;  /* 見下ろしの量 */
+
+  /* 帯の寸法（SVG 単位）を先に置く。幅は表示に合わせて後で伸びる。 */
+  const W = o.w || 1170;
+  const H = o.hu || 150;
+
+  /* 勾配は「帯の高さに棟が収まる」ように逆算する。
+     棟の立ち上がり = H - (部材のぶん) に収める。 */
+  const fixed = DEPTH + MUNE*.6 + HAFU*1.08 + TOI*.55 + 3;
+  const rise  = Math.max(8, H - fixed);   /* 棟の立ち上がり */
+  const PITCH = rise / (W/2);             /* ← 実寸ではなく器から出す */
+  const vt=d=>d*Math.sqrt(1+PITCH*PITCH);
+
+  const cx=W/2;
+  const yRidge=DEPTH+MUNE*.6;            /* 手前の棟（棟包みのぶん下げる） */
+  const yEave=yRidge+rise;               /* 端での軒先 */
+  const yE2=yEave+vt(HAFU);              /* 破風の下端 */
+
+  /* ★左右端の収め。屋根を帯の端で切りっぱなしにしない。
+     実物の切妻は妻側で終わり、そこに **破風板の小口** と、瓦層の
+     切り口が見える。屋根を END だけ内側で止め、端部を作る。
+
+     ただし屋根の幅＝建物の幅＝間取り図の幅なので、END は
+     「端部の見付け」ぶんだけ。帯の端から大きく引っ込めない。 */
+  const END = o.end!=null ? o.end : 14;  /* 端部の見付け幅 */
+  const xL = END, xR = W - END;          /* 屋根の左右端 */
+  const yL = yRidge + (cx-xL)*PITCH;     /* 端での軒先の高さ */
+
+  const g=el('svg',{viewBox:'0 0 '+W+' '+H, class:'rf', xmlns:NS,
+    preserveAspectRatio:'none', role:'img','aria-label':'切妻屋根'});
+  const add=(n,a)=>g.appendChild(el(n,a));
+
+  /* ── 0. 影。屋根の下に薄く落とす ── */
+  add('path',{class:'r-sh',
+    d:`M ${cx} ${yRidge+5} L ${xR} ${yL+5} L ${xR} ${yL+vt(HAFU)+6}
+       L ${xL} ${yL+vt(HAFU)+6} L ${xL} ${yL+5} Z`});
+
+  /* ── 1. 軒天（軒の出の裏）。屋根の下端に沿う細い面 ── */
+  add('path',{class:'r-noki',
+    d:`M ${xL} ${yL+vt(HAFU)} L ${cx} ${yRidge+vt(HAFU)} L ${xR} ${yL+vt(HAFU)}
+       L ${xR} ${yL+vt(HAFU)+5} L ${xL} ${yL+vt(HAFU)+5} Z`});
+
+  /* ── 2. 屋根の面。手前の稜線と DEPTH だけ奥の稜線で挟む帯 ── */
+  add('path',{class:'r-tile',
+    d:`M ${xL} ${yL} L ${cx} ${yRidge} L ${xR} ${yL}
+       L ${xR} ${yL-DEPTH} L ${cx} ${yRidge-DEPTH} L ${xL} ${yL-DEPTH} Z`});
+
+  /* ── 3. 瓦の段。量産線（最細・等ピッチ）。軒先と平行に走る ── */
+  const tg=el('g',{class:'r-tex'});
+  const n=Math.max(2,Math.round(DEPTH/(KAWARA/Math.sqrt(1+PITCH*PITCH))));
+  for(let i=1;i<=n;i++){
+    const dy=i*(DEPTH/(n+1));
+    tg.appendChild(el('path',{
+      d:`M ${xL} ${yL-dy} L ${cx} ${yRidge-dy} L ${xR} ${yL-dy}`}));
+  }
+  g.appendChild(tg);
+
+  /* ── 4. 棟（奥の稜線） ── */
+  add('path',{class:'r-sub',
+    d:`M ${xL} ${yL-DEPTH} L ${cx} ${yRidge-DEPTH} L ${xR} ${yL-DEPTH}`});
+
+  /* ── 5. 破風板。勾配に沿う幅 180 の板。妻側で終わる ── */
+  add('path',{class:'r-hafu',
+    d:`M ${xL} ${yL} L ${cx} ${yRidge} L ${xR} ${yL}
+       L ${xR} ${yL+vt(HAFU)} L ${cx} ${yRidge+vt(HAFU)} L ${xL} ${yL+vt(HAFU)} Z`});
+  add('path',{class:'r-mem',
+    d:`M ${xL} ${yL+vt(HAFU)} L ${cx} ${yRidge+vt(HAFU)} L ${xR} ${yL+vt(HAFU)}`});
+
+  /* ── ★5b. 妻側の端部（v29-6 で作り直し）。
+
+     1回目は平行四辺形を1枚貼っただけで、瓦・破風・樋が全部その
+     1枚に塗り潰された。**層が端で消えるから安く見えていた。**
+
+     実物の妻端は、層がそれぞれ小口を見せて終わる：
+       ・瓦層の小口（いちばん奥・DEPTH ぶんの厚み）
+       ・破風板の小口（手前・板厚 180 の見付け）
+       ・軒樋の小口（いちばん下）
+     手前ほど明るく、奥ほど暗い。奥行き順に3枚描く。          */
+  const EW = END*.5;                      /* 端部の見付けの張り出し */
+  [[xL,-1],[xR,1]].forEach(([x,s])=>{
+    const dx = s*EW, dy = EW*.30;         /* 奥へ引く量（見下ろしぶん） */
+
+    /* (a) 瓦層の小口＝屋根面の厚み。いちばん奥なので濃い。 */
+    add('path',{class:'r-end-d',
+      d:`M ${x} ${yL-DEPTH} L ${x+dx} ${yL-DEPTH+dy}
+         L ${x+dx} ${yL+dy} L ${x} ${yL} Z`});
+
+    /* (b) 破風板の小口＝板の見付け。手前なので明るい。 */
+    add('path',{class:'r-end-f',
+      d:`M ${x} ${yL} L ${x+dx} ${yL+dy}
+         L ${x+dx} ${yL+vt(HAFU)+dy} L ${x} ${yL+vt(HAFU)} Z`});
+
+    /* (c) 軒樋の小口。 */
+    add('path',{class:'r-end-t',
+      d:`M ${x} ${yL+vt(HAFU)} L ${x+dx} ${yL+vt(HAFU)+dy}
+         L ${x+dx} ${yL+vt(HAFU)+TOI*.55+dy} L ${x} ${yL+vt(HAFU)+TOI*.55} Z`});
+
+    /* 層の境目を線で締める（層が3枚あることを見せる） */
+    add('path',{class:'r-sub',d:`M ${x} ${yL} L ${x+dx} ${yL+dy}`});
+    add('path',{class:'r-sub',
+      d:`M ${x} ${yL+vt(HAFU)} L ${x+dx} ${yL+vt(HAFU)+dy}`});
+    /* 端部の外形（手前の稜） */
+    add('path',{class:'r-mem',
+      d:`M ${x+dx} ${yL-DEPTH+dy} L ${x+dx} ${yL+vt(HAFU)+TOI*.55+dy}`});
+  });
+
+  /* ── 6. 棟包み。頂点にかぶせる笠木 ── */
+  const mw=MUNE*1.8;
+  add('path',{class:'r-mune',
+    d:`M ${cx-mw} ${yRidge-DEPTH+mw*PITCH} L ${cx-mw} ${yRidge+mw*PITCH}
+       L ${cx} ${yRidge-MUNE*.45} L ${cx+mw} ${yRidge+mw*PITCH}
+       L ${cx+mw} ${yRidge-DEPTH+mw*PITCH} L ${cx} ${yRidge-DEPTH-MUNE*.45} Z`});
+  add('path',{class:'r-sub',
+    d:`M ${cx-mw} ${yRidge+mw*PITCH} L ${cx} ${yRidge-MUNE*.45}
+       L ${cx+mw} ${yRidge+mw*PITCH}`});
+
+  /* ── 7. 軒樋。破風の下に沿って左右に走る。
+     実物は軒先（平側）に付くもので、妻側の端で切れる。
+
+     ★破風の下端（r-mem）のすぐ下に、もう1本濃い線（r-sub）を
+     引いていたので、意味のない二重線に見えていた（v29-7 で修正）。
+     樋は破風の**内側に隠れて**付くものなので、下端の線は引かず、
+     面の陰だけで厚みを出す。 */
+  const yT=yL+vt(HAFU), yTc=yRidge+vt(HAFU);
+  add('path',{class:'r-toi',
+    d:`M ${xL} ${yT} L ${cx} ${yTc} L ${xR} ${yT}
+       L ${xR} ${yT+TOI*.55} L ${cx} ${yTc+TOI*.55} L ${xL} ${yT+TOI*.55} Z`});
+
+  /* ── 8. 輪郭（いちばん太い線）。最後に上から通す。
+     妻側の端で折り返し、屋根が閉じた形であることを示す。 ── */
+  add('path',{class:'r-out',
+    d:`M ${xL} ${yL+vt(HAFU)} L ${xL} ${yL} L ${cx} ${yRidge} L ${xR} ${yL}
+       L ${xR} ${yL+vt(HAFU)}`});
+
+  /* 壁の位置を決めるため、屋根の端と軒の出を返す。
+     eave＝軒の出の見付け（壁はこのぶん内側に入る）。 */
+  return {svg:g, H, W, xL, xR, eave:Math.round(W*0.055)};
+}
+
+/* 屋根を載せた見出し。屋根の高さぶん padding を空け、そこへ貼る。
+
+   ★ viewBox の 1単位 ＝ 1px にする。
+   preserveAspectRatio:none で伸ばすと**部材の厚みまで歪む**
+   （破風板が横に伸びて薄くなる）。そうならないよう、屋根は
+   **実際の表示幅で組み直す**。幅が変わったら組み直す＝レスポンシブ。 */
+function head(p, ropt){
+  const o=ropt||{};
+  const px=o.px||86;
+  const wrap=document.createElement('div');
+  wrap.className='rf-wrap';
+  wrap.style.setProperty('--rfh', px+'px');
+  const slot=document.createElement('div');
+  slot.className='rf-slot';
+  wrap.appendChild(slot);
+  /* 屋根の下＝軒下。陰の中に文字を置く（壁は立てない）。 */
+  const under=document.createElement('div');
+  under.className='rf-under';
+  const b=document.createElement('div');
+  b.className='rf-body';
+  b.innerHTML=
+    '<div class="rf-t"><h3>'+p.name+'</h3>'+
+      '<span class="rf-use">'+p.use+'</span></div>'+
+    '<div class="rf-addr">'+PIN+p.addr+'</div>'+
+    '<div class="rf-kind">'+p.kind+'</div>';
+  under.appendChild(b);
+  wrap.appendChild(under);
+
+  /* 実幅が決まってから屋根を組む（1単位＝1px）。
+     o.cap を渡すと屋根の幅をそこで止める（帯いっぱいに渡さない）。
+
+     ★壁の左右は、屋根の端（xL/xR）に揃える。数値を別々に持つと
+     ずれるので、屋根が返した実際の端位置から CSS 変数に書き戻す。 */
+  if(o.cap) slot.style.width=o.cap+'px';
+  const build=()=>{
+    const w=Math.round((o.cap?slot:wrap).getBoundingClientRect().width);
+    if(!w) return;
+    slot.innerHTML='';
+    const r=roof(Object.assign({},o,{w:w, hu:px}));
+    slot.appendChild(r.svg);
+    /* 軒の出のぶん、壁を内側へ。屋根の端＋軒の出の見え方で決める。 */
+    wrap.style.setProperty('--rf-inset', (r.xL + r.eave) + 'px');
+  };
+  requestAnimationFrame(build);
+  addEventListener('resize', build);
+  return wrap;
+}
+
+const P1={name:'自宅',use:'本人が住んでいる',
+  addr:'神奈川県横浜市青葉区あざみ野1丁目12-34',
+  kind:'戸建て住宅　｜　築20年（2004年築）'};
+const P2={name:'長岡の家',use:'空き家',
+  addr:'新潟県長岡市○○町2-5-1',
+  kind:'戸建て住宅　｜　築53年（1971年築）'};
+
+/* B を採用（2026-09-20）。帯いっぱいに渡し、勾配は器から逆算する。
+   幅を止める案（旧 D・E）は、屋根としては立つが見出しと軸が
+   揃わず、帯の左に屋根が浮いて見えたので採らなかった。 */
+const BOPT={px:112, depth:34};
+
+document.getElementById('b').appendChild(head(P1,BOPT));
+
+/* C：実際の並びを示す。見出しの下には必ず間取り図が入るので、
+   見出しが2つ続く絵は起こらない（旧 C はそれを描いていて誤り）。
+   間取り図は本番にあるので、ここでは場所だけを示す。 */
+const c=document.getElementById('c');
+c.appendChild(head(P1,BOPT));
+const ph=document.createElement('div');
+ph.style.cssText='height:150px;margin:14px 0 0;border:1px dashed #D8D2C2;'+
+  'border-radius:8px;display:grid;place-items:center;color:#9B988E;'+
+  'font-size:12px;background:#FBFAF6';
+ph.textContent='（ここに間取り図が入る）';
+c.appendChild(ph);
+</script>
+</body>
+</html>

@@ -519,6 +519,9 @@
 
   const W_ = 1170, TO = 15, TI = 10, GK = 140;
   const MINR = 137, MAXR = 2400;
+  /* 敷地の余白（SVG 単位）。間取り図の草地の縁。見出しの屋根を
+     建物に接させるため、propHead 側もこの値を使う。 */
+  const SITE_U = 34;
 
   function sharedEdge(a, b) {
     if (!a || !b) return null;
@@ -668,8 +671,10 @@
     }
 
     /* 敷地の余白。方位マークを建物の右下の外に置くため、壁の外余白
-       （旧 render.js は 34）を確保する。                          */
-    const SITE = 34;
+       （旧 render.js は 34）を確保する。
+       ★この値は見出しの屋根の位置にも効く（屋根が建物に接するよう、
+       見出しをこのぶん下げる）ので、SITE_U として外に出してある。 */
+    const SITE = SITE_U;
     const svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('class', 'plan');
     svg.setAttribute('viewBox', -SITE + ' ' + -SITE + ' ' +
@@ -845,28 +850,297 @@
       '</div>';
   }
 
-  /* 物件の見出し（間取りの上）。所在地と進捗。 */
-  function propHead(p) {
-    const g = S.gauge(p);
-    const k = KINDS[p.kind] || KINDS.other;
-    const u = USES[p.use] || USES.self;
-    const risk = g.risk.length
-      ? '<div class="pg-risk">' + ICONS.matter +
-        '<span><b>本人に聞けるうちに確認したいこと</b>' +
-        esc(g.risk.slice(0, 4).join('・')) +
-        (g.risk.length > 4 ? ' ほか' + (g.risk.length - 4) + '件' : '') +
-        '</span></div>'
-      : '';
-    return '<div class="ph" id="p-' + p.id + '">' +
-      '<div class="ph-t"><span class="ph-ic">' + (ICONS[k.icon] || ICONS.house) +
-        '</span><h3>' + esc(p.name) + '</h3>' +
-        '<span class="ph-use t-' + u.tone + '">' + esc(u.label) + '</span></div>' +
-      '<div class="ph-addr">' + ICONS.pin + esc(p.addr) + '</div>' +
-      risk +
-      '<div class="pg"><div class="pg-bar"><i style="width:' + g.pct + '%"></i></div>' +
-        '<span class="pg-n">受け渡せている事実 ' + g.pct + '%</span></div>' +
-      '</div>';
+  /* ══════════════════════════════════════════════════════════
+     ■ 物件の見出し｜切妻屋根（2026-09-20、`_検討/不動産v29.html`）
+
+     物件そのものを屋根のモチーフにする。参考画像からは**構造だけ**
+     を取り（切妻の下に物件名・住所が載る）、線と面は間取り図と同じ
+     製図的な手つきで描く。
+
+     ★載せるもの＝物件名・用途・住所・種別／築年まで。
+     以前ここにあった「本人に聞けるうちに確認したいこと」の橙の帯と
+     進捗バー（受け渡せている事実 N%）は**落とした**：
+       ・橙の帯＝すぐ下の「今のうち」の部屋に本文がある二重表示。
+         一覧の札（shelf-card）の「要確認 N」が索引の役を果たす
+       ・進捗バー＝家族に渡す事実ではなく本人の作業の消化率。
+         §12「進捗は入力率で数えない」とも合わない
+     （gauge() 自体は shelf() が使うので残す。）
+
+     ★幅は間取り図（.plan-stage ＝作業面いっぱい）に揃える。
+     屋根・その下の面・間取り図で幅が違うと、縦に繋がって見えない
+     （v29 の途中版がそうなっていた。狭い壁の下から広い床が出た）。
+
+     ★屋根の下に壁のスラブは立てない。矩形に色を敷いて「壁」と呼ぶ
+     のは CLAUDE.md が禁じている代用そのもので、かつ上から見た
+     間取り図と立面の壁で視点が衝突する。屋根の下端から落ちる陰の
+     中に文字を置き、陰が消えたところで間取り図が始まる。
+
+     ★勾配は実寸から引かない（この造形だけの例外）。帯の幅に実寸の
+     4/10 を渡すと棟が帯の高さの3倍になり、物理的に入らない。器の
+     高さから逆算する。代わりに部材（破風板180・棟包み120・瓦の
+     働き幅235・軒樋φ105）は実寸比のまま持ち、そちらで密度を出す。
+
+     線の階層は Leicester の実測立面図（CC BY-SA 3.0）から読み取った
+     「輪郭 > 部材 > 下地 > 量産線」。詳細と素材探しの記録は
+     `prototype/assets/不動産-物件見出し.RESEARCH.md`。
+     ══════════════════════════════════════════════════════════ */
+
+  /* 屋根1枚。幅 w・高さ h（px）で組む。1単位＝1px。 */
+  function roofSVG(w, h, opt) {
+    const o = opt || {};
+    const HAFU = 18, MUNE = 12, KAWARA = 23.5, TOI = 10.5;
+    const DEPTH = o.depth != null ? o.depth : 34;
+    const W = w, H = h;
+
+    /* 勾配は器（帯の高さ）から逆算する。 */
+    const fixed = DEPTH + MUNE * .6 + HAFU * 1.08 + TOI * .55 + 3;
+    const rise = Math.max(8, H - fixed);
+    const PITCH = rise / (W / 2);
+    const vt = d => d * Math.sqrt(1 + PITCH * PITCH);
+
+    const cx = W / 2;
+    const yRidge = DEPTH + MUNE * .6;
+    const END = o.end != null ? o.end : 14;
+    const xL = END, xR = W - END;
+    const yL = yRidge + (cx - xL) * PITCH;
+    const yH = yL + vt(HAFU);              /* 破風の下端 */
+
+    const g = el('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'rf',
+      preserveAspectRatio: 'none', role: 'img', 'aria-label': '切妻屋根' });
+    const add = (n, a) => g.appendChild(el(n, a));
+
+    /* 影 */
+    add('path', { class: 'r-sh',
+      d: 'M ' + cx + ' ' + (yRidge + 5) + ' L ' + xR + ' ' + (yL + 5) +
+         ' L ' + xR + ' ' + (yH + 6) + ' L ' + xL + ' ' + (yH + 6) +
+         ' L ' + xL + ' ' + (yL + 5) + ' Z' });
+
+    /* 軒天 */
+    add('path', { class: 'r-noki',
+      d: 'M ' + xL + ' ' + yH + ' L ' + cx + ' ' + (yRidge + vt(HAFU)) +
+         ' L ' + xR + ' ' + yH + ' L ' + xR + ' ' + (yH + 5) +
+         ' L ' + xL + ' ' + (yH + 5) + ' Z' });
+
+    /* 屋根の面 */
+    add('path', { class: 'r-tile',
+      d: 'M ' + xL + ' ' + yL + ' L ' + cx + ' ' + yRidge + ' L ' + xR + ' ' + yL +
+         ' L ' + xR + ' ' + (yL - DEPTH) + ' L ' + cx + ' ' + (yRidge - DEPTH) +
+         ' L ' + xL + ' ' + (yL - DEPTH) + ' Z' });
+
+    /* 瓦の段（量産線） */
+    const tg = el('g', { class: 'r-tex' });
+    const n = Math.max(2, Math.round(DEPTH / (KAWARA / Math.sqrt(1 + PITCH * PITCH))));
+    for (let i = 1; i <= n; i++) {
+      const dy = i * (DEPTH / (n + 1));
+      tg.appendChild(el('path', { d: 'M ' + xL + ' ' + (yL - dy) +
+        ' L ' + cx + ' ' + (yRidge - dy) + ' L ' + xR + ' ' + (yL - dy) }));
+    }
+    g.appendChild(tg);
+
+    /* 棟（奥の稜線） */
+    add('path', { class: 'r-sub',
+      d: 'M ' + xL + ' ' + (yL - DEPTH) + ' L ' + cx + ' ' + (yRidge - DEPTH) +
+         ' L ' + xR + ' ' + (yL - DEPTH) });
+
+    /* 破風板 */
+    add('path', { class: 'r-hafu',
+      d: 'M ' + xL + ' ' + yL + ' L ' + cx + ' ' + yRidge + ' L ' + xR + ' ' + yL +
+         ' L ' + xR + ' ' + yH + ' L ' + cx + ' ' + (yRidge + vt(HAFU)) +
+         ' L ' + xL + ' ' + yH + ' Z' });
+    add('path', { class: 'r-mem',
+      d: 'M ' + xL + ' ' + yH + ' L ' + cx + ' ' + (yRidge + vt(HAFU)) +
+         ' L ' + xR + ' ' + yH });
+
+    /* 妻側の端部。層ごとに小口を見せて終わる（1枚で塗り潰さない）。 */
+    const EW = END * .5;
+    [[xL, -1], [xR, 1]].forEach(function (e) {
+      const x = e[0], dx = e[1] * EW, dy = EW * .30;
+      add('path', { class: 'r-end-d',      /* 瓦層の小口（奥） */
+        d: 'M ' + x + ' ' + (yL - DEPTH) + ' L ' + (x + dx) + ' ' + (yL - DEPTH + dy) +
+           ' L ' + (x + dx) + ' ' + (yL + dy) + ' L ' + x + ' ' + yL + ' Z' });
+      add('path', { class: 'r-end-f',      /* 破風板の小口（手前） */
+        d: 'M ' + x + ' ' + yL + ' L ' + (x + dx) + ' ' + (yL + dy) +
+           ' L ' + (x + dx) + ' ' + (yH + dy) + ' L ' + x + ' ' + yH + ' Z' });
+      add('path', { class: 'r-end-t',      /* 軒樋の小口 */
+        d: 'M ' + x + ' ' + yH + ' L ' + (x + dx) + ' ' + (yH + dy) +
+           ' L ' + (x + dx) + ' ' + (yH + TOI * .55 + dy) +
+           ' L ' + x + ' ' + (yH + TOI * .55) + ' Z' });
+      add('path', { class: 'r-sub',
+        d: 'M ' + x + ' ' + yL + ' L ' + (x + dx) + ' ' + (yL + dy) });
+      add('path', { class: 'r-sub',
+        d: 'M ' + x + ' ' + yH + ' L ' + (x + dx) + ' ' + (yH + dy) });
+      add('path', { class: 'r-mem',
+        d: 'M ' + (x + dx) + ' ' + (yL - DEPTH + dy) +
+           ' L ' + (x + dx) + ' ' + (yH + TOI * .55 + dy) });
+    });
+
+    /* 棟包み */
+    const mw = MUNE * 1.8;
+    add('path', { class: 'r-mune',
+      d: 'M ' + (cx - mw) + ' ' + (yRidge - DEPTH + mw * PITCH) +
+         ' L ' + (cx - mw) + ' ' + (yRidge + mw * PITCH) +
+         ' L ' + cx + ' ' + (yRidge - MUNE * .45) +
+         ' L ' + (cx + mw) + ' ' + (yRidge + mw * PITCH) +
+         ' L ' + (cx + mw) + ' ' + (yRidge - DEPTH + mw * PITCH) +
+         ' L ' + cx + ' ' + (yRidge - DEPTH - MUNE * .45) + ' Z' });
+    add('path', { class: 'r-sub',
+      d: 'M ' + (cx - mw) + ' ' + (yRidge + mw * PITCH) +
+         ' L ' + cx + ' ' + (yRidge - MUNE * .45) +
+         ' L ' + (cx + mw) + ' ' + (yRidge + mw * PITCH) });
+
+    /* 軒樋。破風の内側に隠れて付くので、下端の線は引かない
+       （引くと破風の下端と二重線になる）。 */
+    add('path', { class: 'r-toi',
+      d: 'M ' + xL + ' ' + yH + ' L ' + cx + ' ' + (yRidge + vt(HAFU)) +
+         ' L ' + xR + ' ' + yH + ' L ' + xR + ' ' + (yH + TOI * .55) +
+         ' L ' + cx + ' ' + (yRidge + vt(HAFU) + TOI * .55) +
+         ' L ' + xL + ' ' + (yH + TOI * .55) + ' Z' });
+
+    /* 輪郭（いちばん太い線）。妻側の端で折り返して閉じる。 */
+    add('path', { class: 'r-out',
+      d: 'M ' + xL + ' ' + yH + ' L ' + xL + ' ' + yL + ' L ' + cx + ' ' + yRidge +
+         ' L ' + xR + ' ' + yL + ' L ' + xR + ' ' + yH });
+
+    /* 文字を入れる窪みを測る。
+
+       ★深さだけで決めてはいけない。三角形は上ほど狭いので、
+       置きたい文字の**幅**が、その高さでの内法に収まるかを見る。
+       深さだけで引き上げて、文字が破風に被った前例がある。
+
+       fitY(wNeed) = 幅 wNeed が収まる、いちばん上の y。
+       屋根の内法は、その y における左右の破風の内側の距離。
+       内側の縁は、棟から降りる破風の下端の線（勾配 PITCH）。 */
+    const y0 = yRidge + vt(HAFU) + TOI * .55;     /* 棟の直下＝内法 0 */
+    const GAP = 18;                                /* 破風との逃げ（左右） */
+    /* y における屋根の内法（左右の破風の内側の距離）。 */
+    g._spanAt = function (y) {
+      return Math.max(0, (y - y0) / PITCH * 2 - GAP * 2);
+    };
+    /* 幅 wNeed が収まる、いちばん上の y。 */
+    g._fitY = function (wNeed) {
+      return y0 + (Math.max(0, wNeed) / 2 + GAP) * PITCH;
+    };
+    g._bottom = H;
+    return g;
   }
+
+  /* 屋根の帯の高さ（px）。
+     文字は「へ」の字の内側（棟の下の窪み）に入るので、窪みが
+     物件名の高さぶん確保できるところまで棟を上げる。112px では
+     窪みがほぼ無く、物件名が破風に重なっていた。 */
+  const ROOF_H = 186;
+
+  /* 物件の見出し。屋根＋その下の軒下（文字）。 */
+  function propHead(p) {
+    const u = USES[p.use] || USES.self;
+    const k = KINDS[p.kind] || KINDS.other;
+    return '<div class="ph" id="p-' + p.id + '">' +
+      '<div class="rf-slot" style="height:' + ROOF_H + 'px"></div>' +
+      '<div class="rf-under">' +
+        '<div class="rf-ln"><span class="rf-t"><h3>' + esc(p.name) + '</h3>' +
+          '<span class="rf-use t-' + u.tone + '">' + esc(u.label) +
+          '</span></span></div>' +
+        '<div class="rf-ln"><span class="rf-addr">' + ICONS.pin +
+          esc(p.addr) + '</span></div>' +
+        '<div class="rf-ln"><span class="rf-kind">' + esc(k.label) +
+          (p.built ? '　｜　' + esc(p.built) + '築' : '') + '</span></div>' +
+      '</div></div>';
+  }
+
+  /* 見出しの屋根を、実幅が決まってから組む（1単位＝1px）。
+
+     引き上げ量は、物件名の行（.rf-t）の**実測幅**が屋根の内法に
+     収まる高さから決める。数値を CSS 側に持つとずれるので、
+     屋根の形から出して CSS 変数へ書き戻す。 */
+  function drawRoofs() {
+    document.querySelectorAll('.ph').forEach(function (ph) {
+      const slot = ph.querySelector('.rf-slot');
+      if (!slot) return;
+      const w = Math.round(slot.getBoundingClientRect().width);
+      if (!w) return;
+      slot.innerHTML = '';
+      const svg = roofSVG(w, ROOF_H);
+      slot.appendChild(svg);
+
+      /* 各行の実幅を測り、**その行がその高さで屋根の内法に収まるか**
+         を全行について見る。いちばん厳しい行が引き上げ量を決める。
+
+         ★幅は中身の幅を測ること。.rf-t などをブロックのままにすると
+         親いっぱい（例：600px）が返り、引き上げ量がほぼ0になって
+         文字が屋根の外に出る（前例）。CSS 側を inline-flex に
+         してある。 */
+      const rows = [];
+      const t = ph.querySelector('.rf-t');
+      const a = ph.querySelector('.rf-addr');
+      const k = ph.querySelector('.rf-kind');
+      [t, a, k].forEach(function (e) {
+        if (!e) return;
+        const r = e.getBoundingClientRect();
+        rows.push({ w: r.width, h: r.height });
+      });
+
+      /* ★引き上げ量は「全行が収まる**最大**の値」を探す。
+         上へ行くほど三角は狭いので、上げすぎると行が破風に被る。
+         文字の塊の上端 y を上から順に下げていき、全行が内法に
+         収まった最初の位置を採る（＝いちばん深く入る位置）。
+
+         前版は初期値から減らす向きにしか探索せず、正しい値
+         （より大きい引き上げ）に到達できなかった。 */
+      const fits = function (top) {
+        let y = top;
+        for (let i = 0; i < rows.length; i++) {
+          y += rows[i].h;                       /* 行の下端で判定 */
+          if (svg._spanAt(y) < rows[i].w) return false;
+        }
+        return true;
+      };
+      let top = 0, lift = 0;
+      for (; top <= svg._bottom; top += 2) {
+        if (fits(top)) { lift = svg._bottom - top; break; }
+      }
+
+      /* ★文字の塊の**下端を屋根の下端にそろえる**。
+
+         --rf-lift は .rf-under の負の margin-top なので
+           文字の上端 = 屋根の下端 − lift
+           文字の下端 = 文字の上端 + 塊の高さ uh
+         下端を屋根の下端に一致させるには lift = uh。
+
+         ここで min(lift, uh) を採ると、破風の逃げ（lift）のほうが
+         小さいときに塊が屋根より下へはみ出し、屋根の下に文字が
+         載らない帯が残る（＝間取り図との間に隙間が空く）。
+         **合わせるべきは常に uh** で、破風に被るなら屋根を高くして
+         解決する（下の ROOF_H の自動調整）。                     */
+      const under = ph.querySelector('.rf-under');
+      const uh = under ? under.getBoundingClientRect().height : 0;
+      ph.style.setProperty('--rf-lift', Math.max(0, uh) + 'px');
+
+      /* SVG の枠ではなく、軒天の下端と外壁の上端を接続する。
+         敷地は間取り図の内部余白なので、文字との距離で制限しない。
+         前回のマージンに依存しない寸法から求め、再描画でも安定させる。 */
+      const eave = svg.querySelector('.r-noki').getBBox();
+      const shadow = svg.querySelector('.r-sh').getBBox();
+      const eaveBottom = Math.max(eave.y + eave.height, shadow.y + shadow.height);
+      const roofInset = ROOF_H - eaveBottom;
+      ph.style.setProperty('--rf-text-up', (roofInset + 8) + 'px');
+      ph.style.setProperty('--rf-site', '0px');
+      const prop = ph.closest('.prop');
+      const plan = prop && prop.querySelector('.plan-stage svg.plan');
+      if (plan) {
+        const vb = plan.viewBox.baseVal;
+        const pw = plan.getBoundingClientRect().width;
+        if (vb.width && pw) {
+          // 壁の中心線 y=0 ではなく、壁厚と輪郭線を含む最上端。
+          const wallTop = Math.min(...Array.from(plan.querySelectorAll('.pl-w-line'), line =>
+            Math.min(Number(line.getAttribute('y1')), Number(line.getAttribute('y2'))) -
+            Number(line.getAttribute('stroke-width')) / 2));
+          const site = (wallTop - vb.y) / vb.width * pw;
+          ph.style.setProperty('--rf-site', (site + roofInset) + 'px');
+        }
+      }
+    });
+  }
+  addEventListener('resize', drawRoofs);
 
   /* ── 一覧（上段）───────────────────────────────── */
   function shelf() {
@@ -917,6 +1191,7 @@
         stage.innerHTML = '';
         stage.appendChild(planOf(p, w));
       });
+      drawRoofs();
       wire();
     });
     wire();
