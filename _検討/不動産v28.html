@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>不動産｜間取り（中身入り）v23</title>
+<title>不動産｜今のうち・そのとき／間取り v28</title>
 <link rel="stylesheet" href="../prototype/shared/tokens.css">
 <style>
   body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);
@@ -207,7 +207,7 @@
 <body>
 <div class="wrap">
 
-<h1>不動産・住まい｜間取り（中身入り）v23</h1>
+<h1>不動産・住まい｜今のうち・そのとき／間取り v28</h1>
 <p class="lead">
   <b>v27 の器を、そのまま上段2部屋に入れた。</b>v22 は「今のうち」が
   手書き8行（<code>ACTS</code>）、「そのとき」が暫定リストだった。
@@ -215,13 +215,19 @@
   <code>nowRows()</code> / <code>goneRows()</code> / 造形（書面のグリフ）を
   <b>そのまま移植</b>している。項目・文言・ロジックには触っていない。<br>
   <b>v27 の3段の階層を、間取りの層に対応させた。</b>
-  v27 は 地（緑／砂）→ 白いカード → その中のブロック。間取りでは
-  <b>部屋の床がその「地」</b>に当たるので、床を緑／砂に塗り
+  v27 は 地 → 白いカード → その中のブロック。間取りでは
+  <b>部屋の床がその「地」</b>に当たるので、床を塗り
   （<code>FLOOR</code>）、その上に白いカードを載せる。
   <code>.cell</code> は壁から内側に入っているので、そちらに背景を敷くと
   壁際に地の無い縁が残る ―― 塗るのは SVG の床のほう。<br>
-  <b>部屋名が v27 の大見出しの役をする。</b>明朝で、今のうち＝緑、
-  そのとき＝臙脂。製図の部屋名と二重に立てない。<br>
+  <b>部屋名が v27 の大見出しの役をする。</b>明朝。製図の部屋名と
+  二重に立てない。<br>
+  <b>色は契約・デジタルの束に合わせた。</b>あちらは
+  <b>いまのうち＝橙／そのとき＝グレーグリーン</b>で、v27 の緑／臙脂とは
+  逆だった。領域をまたいで状態の語彙を揃える（正本 §13）ので、
+  あとから入れたこちらを寄せた。値は
+  <code>contract-digital/area.css</code> の
+  <code>.ib-pre</code> / <code>.ib-post</code> から引いている。<br>
   <b>上段を 6：4 → 5：5 にした。</b>v27 が中身を入れて実測した結果、
   今のうちの深さは そのとき の 0.57〜0.82 倍で、広いほうの下に
   空床が残っていた。<br>
