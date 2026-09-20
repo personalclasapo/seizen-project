@@ -107,25 +107,48 @@
   .tile .tv b{color:var(--or)}
   .tile .tn{font-size:10.5px;color:var(--ink3);line-height:1.65;margin-top:2px}
 
-  /* 第2段の2枚目｜ほかの手続き。別プレートに分ける（画像の形）。 */
-  .card.rest{margin-top:13px;flex:none;padding-top:15px}
-  .rhd{display:flex;align-items:baseline;gap:10px;margin:0 0 12px}
-  .rhd .rt{font-size:14px;font-weight:600;color:var(--ink)}
+  /* 第2段の2枚目｜ほかの手続き。
+     ★主役と同じ密度で組まない。ここは**一覧**の密度。
+     期限を本文の下のタイルにしていたら、1件あたり 70〜80px 積み上がり、
+     2件で 150px 伸びていた。期限は見出しの右肩へ移す（参考画像の形）。
+     分離したのに密度が同じだと、分けた意味が出ない。            */
+  .card.rest{margin-top:13px;padding:16px 18px 18px}
+  .rhd{display:flex;align-items:baseline;gap:10px;margin:0 0 4px;
+    padding-bottom:10px;border-bottom:1px solid #EDE7DC}
+  .rhd .rt{font-size:14px;font-weight:600;color:#8C4A52}
   .rhd .rn{flex:1;text-align:right;font-size:10.5px;color:var(--ink3)}
-  .sub{padding:12px 0 0;margin-top:12px;border-top:1px solid #F1EEE5}
-  .sub:first-of-type{padding-top:0;margin-top:0;border-top:0}
-  .sh{display:flex;align-items:flex-start;gap:11px}
-  .sub .nm{flex:1;min-width:0;font-size:13px;font-weight:600;line-height:1.55;
-    padding-left:9px;border-left:2px solid #DCC9C4}
-  .sub .de{font-size:11.5px;color:var(--ink2);line-height:1.8;margin-top:4px;
+  .sub{padding:11px 0 0;margin-top:11px;border-top:1px solid #F1EEE5}
+  .sub:first-of-type{padding-top:11px;margin-top:0;border-top:0}
+  .sdoc{grid-column:1}
+  /* ★右肩（バッジ＋期限）は本文の**横**に置く。
+     縦に積む列にしたら、本文がその下まで送られて左に空きが出た
+     ―― 高さは縮まず、隙間だけ増える。参考画像では本文が右肩の
+     隣に回り込んでいる。グリッドで2列にして、本文を左列に通す。 */
+  .sub{display:grid;grid-template-columns:1fr auto;column-gap:14px;
+    align-items:start}
+  .sub .nm{font-size:13px;font-weight:600;line-height:1.55;
+    padding-left:9px;border-left:2px solid #DCC9C4;grid-column:1}
+  .sub .de{font-size:11.5px;color:var(--ink2);line-height:1.78;margin-top:3px;
+    padding-left:11px;grid-column:1}
+  /* 右列。バッジと期限が縦に並ぶが、本文とは横並びのまま。 */
+  .srt{grid-column:2;grid-row:1 / span 3;display:flex;flex-direction:column;
+    align-items:flex-end;gap:7px;width:142px;text-align:right}
+  .slim{display:flex;gap:6px;align-items:flex-start;justify-content:flex-end}
+  .slim svg{flex:none;margin-top:1px}
+  .slim .sv{font-size:11px;line-height:1.6;color:var(--or);font-weight:600}
+  .slim .sn{font-size:10px;line-height:1.55;color:var(--ink3);font-weight:400}
+
+  /* 資料の件数は、別プレートでは1行で添える（タイルにしない）。 */
+  .sdoc{font-size:10.5px;color:var(--ink2);line-height:1.7;margin-top:5px;
     padding-left:11px}
-  .sub .bd{flex:none;padding-top:1px}
-  .sub .tiles{margin-left:11px}
+  .sdoc b{color:var(--or)}
 
   /* 締めの注記。青＝参照（tokens の --bl）。 */
-  .foot{display:flex;gap:10px;margin-top:13px;padding:11px 14px;
-    background:#F1F5F9;border-radius:6px;
-    font-size:10.5px;color:var(--ink2);line-height:1.8}
+  /* 締めの注記。参考画像ではプレートの**内側**に入っている。
+     外に離すと、プレートと同格の第2段に見えてしまう。 */
+  .foot{display:flex;gap:9px;margin-top:14px;padding:10px 12px;
+    background:#F1F5F9;border-radius:5px;
+    font-size:10.5px;color:var(--ink2);line-height:1.75}
   .foot svg{flex:none;margin-top:2px}
 
   .bdg{display:inline-block;font-size:10.5px;line-height:1.75;
@@ -170,6 +193,14 @@
   バッジは既存の語彙・既存の色のまま（橙＝対応が必要）。<br>
   <b>主役の書面を 54px に上げた。</b>30px では朱印と目隠しシールの内側が
   潰れて読めなかった（`不動産-そのとき書面.README.md` の案①）。<br>
+  <b>別プレートは一覧の密度にした。</b>期限を本文の下のタイルにしていたら
+  1件あたり 70〜80px 積み上がり、主役と同じ密度になって「分けた意味」が
+  出ていなかった ―― <b>期限は見出しの右肩へ</b>（暦の印＋赤字だけ。枠を
+  持たない）、資料の件数は1行で添える。締めの注記もプレートの内側へ入れた。
+  そのとき側は 1086px → 943px（自宅）。<br>
+  なお右肩は<b>本文の横</b>に置く。最初これを縦に積む列にしたら、本文が
+  右肩の下まで送られて左に空きが出た ―― 高さは縮まず隙間だけ増える。
+  グリッドで2列にして本文を左列に通している。<br>
   <b>幅は 5：5。</b>この段階では間取りに入れていない。下に出る実測値を
   `間取り中身入りv23` の部屋深さに食わせる。
 </p>
@@ -467,6 +498,16 @@ const T_DOC = '<svg viewBox="0 0 14 14" width="14" height="14" xmlns="' + NS + '
   '<path d="M5.2 7.6h4M5.2 10h2.6" stroke="#B9B2A0" stroke-width="1.1" ' +
     'stroke-linecap="round"/></svg>';
 
+/* 右肩の期限に添える小さい暦。枠付きタイルの T_CAL より一回り小さい。 */
+const T_CAL_S = '<svg viewBox="0 0 14 14" width="12" height="12" xmlns="' + NS + '">' +
+  '<rect x=".7" y="2.4" width="12.6" height="11" rx="1.4" fill="none" ' +
+    'stroke="#D9A96B" stroke-width="1.2"/>' +
+  '<line x1=".7" y1="5.8" x2="13.3" y2="5.8" stroke="#D9A96B" stroke-width="1.2"/>' +
+  '<line x1="4.2" y1=".7" x2="4.2" y2="3.5" stroke="#D9A96B" stroke-width="1.4" ' +
+    'stroke-linecap="round"/>' +
+  '<line x1="9.8" y1=".7" x2="9.8" y2="3.5" stroke="#D9A96B" stroke-width="1.4" ' +
+    'stroke-linecap="round"/></svg>';
+
 /* 締めの注記に添える印。参照＝青（--bl）。 */
 const T_INFO = '<svg viewBox="0 0 14 14" width="14" height="14" xmlns="' + NS + '">' +
   '<circle cx="7" cy="7" r="6.1" fill="none" stroke="#8FA8BF" stroke-width="1.1"/>' +
@@ -537,25 +578,34 @@ function whenHTML(p) {
     '</div></div>';
 
   if (rest.length) {
+    /* ★別プレートは一覧の密度。期限はタイルにせず右肩へ置く。
+       タイルのままだと1件 70〜80px 積み上がり、主役と同じ密度に
+       なって「分けた意味」が出ない（参考画像もここは一覧）。   */
     h += '<div class="card rest">' +
       '<div class="rhd"><div class="rt">この物件では、ほかに次の手続きが' +
         '発生します</div>' +
         '<div class="rn">該当するものだけが表示されます</div></div>' +
       rest.map(x => '<div class="sub">' +
-        '<div class="sh"><div class="nm">' + esc(x.nm) + '</div>' +
-        '<div class="bd"><span class="bdg ' + x.tone + '">' + esc(x.lbl) +
-          '</span></div></div>' +
+        '<div class="nm">' + esc(x.nm) + '</div>' +
+        '<div class="srt">' +
+          '<span class="bdg ' + x.tone + '">' + esc(x.lbl) + '</span>' +
+          (x.lim ? '<div class="slim">' + T_CAL_S +
+            '<div><div class="sv">' + esc(x.lim) + '</div>' +
+            (x.limn ? '<div class="sn">' + esc(x.limn) + '</div>' : '') +
+            '</div></div>' : '') +
+        '</div>' +
         '<div class="de">' + esc(x.de) + '</div>' +
-        tilesHTML(x) +
+        (x.docs ? '<div class="sdoc">必要な資料　<b>' + x.docs.have + ' / ' +
+          x.docs.need + '件</b>が手元にあります</div>' : '') +
       '</div>').join('') +
+      /* 締めはプレートの内側。外に出すと第2段と同格に見える。 */
+      '<div class="foot">' + T_INFO + '<div>' +
+        'この物件に当てはまらない手続きは表示されません。' +
+        '条件が分からないものは、「今のうち」に確認事項として' +
+        '出ることがあります。</div></div>' +
       '</div>';
   }
 
-  /* 締め。表示条件の説明は項目ではないので、青（参照）で外に置く。 */
-  h += '<div class="foot">' + T_INFO + '<div>' +
-    'この物件に当てはまらない手続きは表示されません。' +
-    '条件が分からないものは、「今のうち」に確認事項として出ることがあります。' +
-    '</div></div>';
   return h;
 }
 
