@@ -15,90 +15,118 @@
   h2{font-size:14px;margin:34px 0 8px;display:flex;align-items:baseline;gap:10px}
   h2 span{font-size:11.5px;font-weight:400;color:var(--ink3)}
 
-  /* 上段は間取りの2部屋になる。ここでは実寸を測るための素の器。
-     角丸・影・カードは付けない ―― 部屋の床に直接書くため（v22）。 */
-  .stage{background:var(--card);border:1px solid var(--line);border-radius:10px;
-    padding:0;margin-top:10px;overflow:hidden}
-  /* ★幅は 4：6。間取り v22 の上段は 今のうち6：そのとき4 だったが、
-     中身を入れて実測すると逆だった ―― 今のうちの深さは そのとき の
-     0.48〜0.61 倍にしかならず、広いほうの下に 320〜380px の空床が残る。
+  /* ══ 3段の階層 ══════════════════════════════════════
+     地（緑／砂）→ 白いカード → その中のブロック。
+     v27 初版はこれを1段で作ったので、面が平らになっていた。   */
+  .stage{background:transparent;border:0;border-radius:0;padding:0;margin-top:10px}
+  /* ★幅は 5：5（指示）。間取り v22 の上段は 6：4 だが、中身を入れて
+     実測すると 今のうち の深さは そのとき の 0.5〜0.6 倍で、
+     広いほうの下に空床が残っていた。 */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
 
-     今のうちの項目は「事実1行＋対応1段」で終わる。そのときの項目は
-     説明があって、期限と資料のタイルが足元に付く。1件あたりの嵩が
-     違うので、件数が同じでも深さは揃わない。
+  /* 第1段｜地。左＝緑、右＝砂。桃は使わず全体の色に合わせる。 */
+  .pane{min-width:0;border-radius:12px;padding:20px 18px 20px;
+    display:flex;flex-direction:column}
+  .pane.now{background:var(--gr-bg2)}
+  .pane.when{background:#F0EBE0}
 
-     4：6 に振ると差は 55px（自宅）まで落ちる。比を動かした根拠は
-     配分の感覚ではなく、この実測。                                */
-  .two{display:grid;grid-template-columns:4fr 6fr;align-items:stretch}
-  .pane{min-width:0;padding:22px 24px 26px}
-  /* 左＝緑地。右＝紙地。左右差は色ではなく構成が担う。 */
-  .pane.now{background:var(--gr-bg)}
-  .pane.when{background:var(--paper);border-left:1px solid var(--line2)}
-
-  .ph{font-size:15px;font-weight:600;margin:0 0 4px;letter-spacing:.02em}
-  .pane.now .ph{color:var(--gr)}
-  .pn{font-size:11.5px;color:var(--ink2);margin:0 0 4px;line-height:1.8}
-  .phd{display:flex;align-items:flex-start;gap:14px;
-    padding-bottom:14px;margin-bottom:4px}
+  /* 見出しは大きく、対で立てる。明朝＝記録物の見出し。 */
+  .phd{display:flex;align-items:flex-start;gap:14px;margin:0 0 16px;padding:0 4px}
   .phd > div:first-child{flex:1;min-width:0}
-  /* 見出し脇の注記。画像にある「すべての項目が対応が必要になるわけでは
-     ありません」。状態の読み方の説明なので、項目の外に置く。 */
-  .aside{flex:none;width:132px;font-size:10.5px;line-height:1.72;
-    color:var(--ink2);padding-left:9px;border-left:2px solid #C8DBCC}
-  .pane.when .aside{border-left-color:var(--line2);color:var(--ink3)}
+  .ph{font-family:var(--font-serif);font-size:30px;line-height:1.25;
+    margin:0 0 7px;letter-spacing:.04em}
+  .pane.now .ph{color:var(--gr)}
+  .pane.when .ph{color:#8C4A52}
+  .pn{font-size:11.5px;color:var(--ink2);line-height:1.85}
+  /* 見出し脇の注記。状態の読み方なので、項目の外に置く。 */
+  .aside{flex:none;width:126px;font-size:10.5px;line-height:1.7;
+    color:var(--ink2);padding-left:9px;border-left:2px solid #BCD0C0;
+    background:#F4F8F4;border-radius:0 3px 3px 0;padding:7px 8px 7px 9px}
+  .pane.when .aside{border-left-color:#DCC9C4;background:#FAF4F2;color:var(--ink2)}
 
-  /* ══ 左｜縦のレール ════════════════════════════════
-     項目は時系列ではないが、一本の線に通っていることで
-     「これで全部」が見える。節で割らない（v26）。           */
-  .rail{position:relative;padding-left:26px}
-  .rail::before{content:'';position:absolute;left:5px;top:10px;bottom:14px;
-    width:0;border-left:1px dashed #BFCFC2}
-  .rw{position:relative;padding:0 0 16px}
-  .rw:last-child{padding-bottom:0}
-  /* ノード。状態で見た目が変わる。「該当なし」だけ中が抜ける。 */
-  .nd{position:absolute;left:-26px;top:3px;width:11px;height:11px}
-  .rw .nm{font-size:13px;font-weight:600;line-height:1.55}
-  .rw .de{font-size:11.5px;color:var(--ink2);line-height:1.78;margin-top:3px}
-  /* 対応は一段下がる。確認の事実（de）と併存させる（v26）。 */
-  .act{display:flex;gap:7px;font-size:11.5px;line-height:1.75;margin-top:7px;
-    padding:7px 10px 7px 9px;background:#FCF7EE;
-    border-left:2px solid var(--or-ln);border-radius:0 3px 3px 0}
+  /* 第2段｜白いカード。地の上に載る記録物。
+     ★flex:1 で伸ばさない。伸ばすと中身が終わったあとの白が
+     そのまま残り、カードの下半分が空く（長岡の家で顕著だった）。
+     カードは中身のぶんで終わり、余りは地（緑／砂）が受ける ――
+     間取りの「部屋は中身のぶんの深さで終わる」と同じ扱い。 */
+  .card{background:var(--card);border-radius:9px;padding:18px 18px 20px}
+
+  /* ══ 左｜縦のレール ════════════════════════════════ */
+  .rail{position:relative;padding-left:24px}
+  .rail::before{content:'';position:absolute;left:5px;top:10px;bottom:16px;
+    width:0;border-left:1px dashed #CFC8B6}
+  .rw{position:relative;padding:0 0 15px;border-bottom:1px solid #F1EEE5;
+    margin-bottom:15px}
+  .rw:last-child{padding-bottom:0;border-bottom:0;margin-bottom:0}
+  .nd{position:absolute;left:-24px;top:3px;width:11px;height:11px}
+  /* 見出し行。名前とバッジが同じ行に乗る（画像の形）。 */
+  .rh{display:flex;align-items:flex-start;gap:10px}
+  .rh .nm{flex:1;min-width:0;font-size:13.5px;font-weight:600;line-height:1.55}
+  .rh .bd{flex:none;padding-top:1px}
+  .rw .de{font-size:11.5px;color:var(--ink2);line-height:1.8;margin-top:4px}
+  .act{display:flex;gap:8px;font-size:11.5px;line-height:1.78;margin-top:8px;
+    padding:8px 11px 8px 10px;background:#FCF6EC;
+    border-left:2px solid var(--or-ln);border-radius:0 4px 4px 0}
   .act .ar{flex:none;color:var(--or);font-weight:700}
   .lim{display:inline-block;font-size:10.5px;color:var(--or);
     background:var(--or-bg);border:1px solid var(--or-ln);border-radius:3px;
-    padding:1px 7px;margin-top:8px;line-height:1.7}
+    padding:2px 8px;margin-top:9px;line-height:1.7}
 
-  /* ══ 右｜並列。相続登記だけが固有事情を持つので厚くなる ══
-     主従ではない。現所有者申告は3か月で登記より先に来るし、
-     団信は放置すると3年で時効。どれも「ついで」ではない。   */
-  .gw{padding:14px 0 0;border-top:1px solid var(--line)}
-  .gw:first-of-type{border-top:0;padding-top:4px}
-  .gh{display:flex;align-items:flex-start;gap:10px}
-  .gh .gi{flex:none;width:30px;height:38px;margin-top:1px}
-  .gh .gt{flex:1;min-width:0}
-  .gw .nm{font-size:13.5px;font-weight:600;line-height:1.5}
-  .gw .de{font-size:11.5px;color:var(--ink2);line-height:1.78;margin-top:3px}
-  .gw .bd{flex:none;padding-top:2px}
+  /* ══ 右｜主役が大きく立つ ══════════════════════════
+     格が上なのではない。この物件に固有の事情が付くので厚くなる。 */
+  .lead-item{padding-bottom:4px}
+  .lh{display:flex;align-items:flex-start;gap:14px}
+  .lh .gi{flex:none;margin-top:2px}
+  .lh .lt{flex:1;min-width:0}
+  .ltag{display:inline-block;font-size:10.5px;line-height:1.7;padding:1px 9px;
+    border-radius:3px;margin-bottom:6px;
+    color:#8C4A52;background:#F7EDEC;border:1px solid #E2CBC7}
+  .lead-item .nm{font-size:19px;font-weight:600;line-height:1.5;
+    letter-spacing:.02em}
+  .lead-item .de{font-size:11.5px;color:var(--ink2);line-height:1.85;
+    margin-top:5px}
+  /* 主役の右肩。バッジは既存語彙のまま。 */
+  .lbd{flex:none;padding-top:2px;text-align:right}
+  .lnote{font-size:10.5px;color:var(--ink3);line-height:1.6;margin-top:5px;
+    max-width:150px}
 
-  /* この物件では ―― 汎用の説明から、固有の事情を分ける。 */
-  .only{margin-top:9px;padding:9px 12px;background:var(--gr-bg);
-    border-left:2px solid #C8DBCC;border-radius:0 3px 3px 0}
-  .only .ol{font-size:10px;color:var(--gr);letter-spacing:.08em;
-    font-weight:600;margin-bottom:3px}
-  .only .ot{font-size:11.5px;line-height:1.78;color:var(--ink)}
+  /* この物件では ―― 一般論と固有事情を分ける。 */
+  .only{margin-top:12px;padding:11px 14px;background:#FAF3F2;
+    border-left:2px solid #DCC9C4;border-radius:0 4px 4px 0}
+  .only .ol{font-size:10px;color:#8C4A52;letter-spacing:.08em;
+    font-weight:600;margin-bottom:4px}
+  .only .ot{font-size:11.5px;line-height:1.85;color:var(--ink)}
 
-  /* 期限／必要な資料の2タイル。足元に並べる。 */
-  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
-  .tile{border:1px solid var(--line);background:var(--card);border-radius:4px;
-    padding:8px 10px;display:flex;gap:8px;align-items:flex-start}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .tiles.one{grid-template-columns:1fr}
+  .tile{border:1px solid var(--line);background:var(--paper);border-radius:5px;
+    padding:9px 11px;display:flex;gap:9px;align-items:flex-start}
   .tile svg{flex:none;margin-top:1px}
-  .tile .tl{font-size:10px;color:var(--ink3);letter-spacing:.06em;
-    margin-bottom:2px}
+  .tile .tl{font-size:10px;color:#8C4A52;letter-spacing:.06em;margin-bottom:3px}
   .tile .tv{font-size:11.5px;line-height:1.7;color:var(--ink)}
   .tile .tv b{color:var(--or)}
-  .tile .tn{font-size:10.5px;color:var(--ink3);line-height:1.65;margin-top:1px}
-  /* 1つしか無いときは幅いっぱい。 */
-  .tiles.one{grid-template-columns:1fr}
+  .tile .tn{font-size:10.5px;color:var(--ink3);line-height:1.65;margin-top:2px}
+
+  /* 第2段の2枚目｜ほかの手続き。別プレートに分ける（画像の形）。 */
+  .card.rest{margin-top:13px;flex:none;padding-top:15px}
+  .rhd{display:flex;align-items:baseline;gap:10px;margin:0 0 12px}
+  .rhd .rt{font-size:14px;font-weight:600;color:var(--ink)}
+  .rhd .rn{flex:1;text-align:right;font-size:10.5px;color:var(--ink3)}
+  .sub{padding:12px 0 0;margin-top:12px;border-top:1px solid #F1EEE5}
+  .sub:first-of-type{padding-top:0;margin-top:0;border-top:0}
+  .sh{display:flex;align-items:flex-start;gap:11px}
+  .sub .nm{flex:1;min-width:0;font-size:13px;font-weight:600;line-height:1.55;
+    padding-left:9px;border-left:2px solid #DCC9C4}
+  .sub .de{font-size:11.5px;color:var(--ink2);line-height:1.8;margin-top:4px;
+    padding-left:11px}
+  .sub .bd{flex:none;padding-top:1px}
+  .sub .tiles{margin-left:11px}
+
+  /* 締めの注記。青＝参照（tokens の --bl）。 */
+  .foot{display:flex;gap:10px;margin-top:13px;padding:11px 14px;
+    background:#F1F5F9;border-radius:6px;
+    font-size:10.5px;color:var(--ink2);line-height:1.8}
+  .foot svg{flex:none;margin-top:2px}
 
   .bdg{display:inline-block;font-size:10.5px;line-height:1.75;
     padding:1px 8px;border-radius:3px;border:1px solid var(--line2);
@@ -115,10 +143,9 @@
     font-variant-numeric:tabular-nums}
   @media(max-width:900px){
     .two{grid-template-columns:1fr}
-    .pane.when{border-left:0;border-top:1px solid var(--line2)}
     .phd{display:block}
-    .aside{width:auto;margin-top:8px;border-left:0;padding-left:0;
-      padding-top:7px;border-top:1px solid #C8DBCC}
+    .ph{font-size:25px}
+    .aside{width:auto;margin-top:9px}
   }
 </style>
 </head>
@@ -130,16 +157,20 @@
   <b>項目・文言・ロジックは v26 のまま。器だけ作り替えた。</b>
   文章は別途調整するので、ここでは `nowRows()` / `goneRows()` の出力を
   そのまま流している。<br>
-  <b>左＝縦のレール。</b>項目を節で割らず一本に通す（v26 の判断）。
-  状態はノードの見た目が持ち、対応は一段下がって橙で付く。<br>
-  <b>右＝並列。</b>主従にはしない ―― 現所有者申告は3か月で登記より先に
-  来るし、団信は放置すると3年で時効になる。「ついで」の手続きは無い。
-  相続登記だけが厚く見えるのは、<b>この物件に固有の事情（前の代の名義が
-  残っている）が付いているから</b>で、格が上だからではない。<br>
-  <b>色は左だけ。</b>右面を桃地にはしなかった ―― トークンに桃系が無く、
-  足すと橙（「今のうちだけ・対応が必要」限定）の隣に色が増える。
-  左右の差は地色ではなく構成（レール／並列）が担っている。<br>
-  <b>この段階では間取りに入れていない。</b>下に出る実測値を
+  <b>階層を3段にした。</b>初版はこれを1段で作ったので、面が平らで
+  参考画像と別物になっていた ―― <b>地（緑／砂）→ 白いカード →
+  その中のブロック</b>。見出しは明朝で大きく、対で立てる。<br>
+  <b>右は主役1つ＋別プレート。</b>相続登記を大きく立て、ほかの手続きは
+  「この物件では、ほかに次の手続きが発生します」の別プレートへ回した。
+  格が上だからではない ―― <b>この物件で中心になる手続き</b>で、
+  固有の事情（前の代の名義）も付く。申告は3か月で登記より先に来るので、
+  別プレート側も「ついで」ではない。<br>
+  <b>桃は使わず、全体の色に合わせた。</b>右の地は砂（<code>#F0EBE0</code>）、
+  見出しと「この物件では」は臙脂（<code>#8C4A52</code>）。
+  バッジは既存の語彙・既存の色のまま（橙＝対応が必要）。<br>
+  <b>主役の書面を 54px に上げた。</b>30px では朱印と目隠しシールの内側が
+  潰れて読めなかった（`不動産-そのとき書面.README.md` の案①）。<br>
+  <b>幅は 5：5。</b>この段階では間取りに入れていない。下に出る実測値を
   `間取り中身入りv23` の部屋深さに食わせる。
 </p>
 
@@ -314,7 +345,10 @@ const NS = 'http://www.w3.org/2000/svg';
 /* 1枚の用紙。折り角は付けない ―― 4種で同じ形になる元凶だった。 */
 function sheet(extra, opt) {
   const o = opt || {};
-  return '<svg class="gi" viewBox="0 0 30 42.4" width="30" height="42.4" ' +
+  /* ★大きさは呼び出し側が決める。主役は大きく（README の案①）、
+     従属は小さく。30px では朱印の内側が潰れて読めなかった。     */
+  const w = o.w || 30, h = (w * 42.4 / 30).toFixed(1);
+  return '<svg class="gi" viewBox="0 0 30 42.4" width="' + w + '" height="' + h + '" ' +
     'xmlns="' + NS + '" aria-hidden="true">' +
     (o.stack
       /* 綴り。下に2枚覗かせる（団信は一式で出す） */
@@ -333,7 +367,7 @@ const rule = (y, x1, x2) => '<line x1="' + x1 + '" y1="' + y + '" x2="' + x2 +
 const GLYPH = {
   /* 届出書。役所の窓口に出す1枚。右上に受理印の枠（空＝まだ出していない）。
      表題は中央に短く、下に記入欄の罫。 */
-  todoke: () => sheet(
+  todoke: o => sheet(
     '<rect x="8.4" y="5.4" width="10" height="2.2" rx=".5" fill="#CFC7B2"/>' +
     /* 受理印の枠。角印なので四角。空のままなのが「これから出す」の意 */
     '<rect x="19.6" y="4.6" width="4.4" height="4.4" rx=".5" fill="none" ' +
@@ -343,12 +377,12 @@ const GLYPH = {
     /* 記入欄（囲み）。届出書は枠に書き込む形 */
     '<rect x="4.2" y="28.4" width="18.4" height="6" rx=".6" fill="none" ' +
       'stroke="#D8D2C2" stroke-width=".8"/>' +
-    rule(31.4, 6, 14)),
+    rule(31.4, 6, 14), o),
 
   /* 登記識別情報通知。申請の結果として返ってくる1枚で、下半分に
      **12桁の符号を隠す目隠しシール**が貼られている ―― これが
      他の書面と決定的に違うところ。朱印は法務局の角印。 */
-  toki: () => sheet(
+  toki: o => sheet(
     '<rect x="4.2" y="5.4" width="13" height="2.4" rx=".5" fill="#BFB49A"/>' +
     rule(11.4, 4.2, 22.6) + rule(15.4, 4.2, 22.6) + rule(19.4, 4.2, 17) +
     /* 目隠しシール。グレーの帯に斜線。剥がすと符号が出る */
@@ -363,12 +397,12 @@ const GLYPH = {
     '<rect x="18" y="30.4" width="5.6" height="5.6" rx=".6" fill="none" ' +
       'stroke="#C0574E" stroke-width="1" opacity=".85"/>' +
     '<path d="M19.4 32.2h2.8M19.4 33.8h2.8M19.4 35.4h2.8" stroke="#C0574E" ' +
-      'stroke-width=".7" opacity=".6" stroke-linecap="round"/>'),
+      'stroke-width=".7" opacity=".6" stroke-linecap="round"/>', o),
 
   /* 団信の弁済手続き。金融機関へ出す一式なので**綴り**。
      先頭は死亡診断書 ―― 右上に医師の署名欄、本文は罫。
      他と違うのは「重なっていること」。 */
-  tsushin: () => sheet(
+  tsushin: o => sheet(
     '<rect x="4" y="5.4" width="11" height="2.2" rx=".5" fill="#CFC7B2"/>' +
     rule(11.4, 4, 21) + rule(15.4, 4, 21) + rule(19.4, 4, 21) +
     rule(23.4, 4, 14) +
@@ -377,11 +411,11 @@ const GLYPH = {
       'stroke-width=".9" stroke-linecap="round"/>' +
     '<path d="M6 30.4c1.4-2 2.4 1 3.8-.8 1-1.2 1.8 1.4 3 .2" fill="none" ' +
       'stroke="#A79E86" stroke-width=".9" stroke-linecap="round"/>',
-    { stack:true }),
+    Object.assign({ stack:true }, o)),
 
   /* 契約の引き継ぎ。賃貸借契約書 ―― 2者が記名押印する見開き。
      下端に朱の丸印が2つ並ぶのが、他と違うところ。 */
-  keiyaku: () => sheet(
+  keiyaku: o => sheet(
     '<rect x="4.2" y="5.4" width="12" height="2.2" rx=".5" fill="#CFC7B2"/>' +
     rule(11.4, 4.2, 22.6) + rule(15.4, 4.2, 22.6) + rule(19.4, 4.2, 22.6) +
     rule(23.4, 4.2, 18) +
@@ -391,7 +425,7 @@ const GLYPH = {
     '<circle cx="20.4" cy="28.6" r="2.6" fill="none" stroke="#C0574E" ' +
       'stroke-width=".9" opacity=".75"/>' +
     '<circle cx="20.4" cy="33.2" r="2.6" fill="none" stroke="#C0574E" ' +
-      'stroke-width=".9" opacity=".55"/>')
+      'stroke-width=".9" opacity=".55"/>', o)
 };
 
 /* ノード。状態で描き分ける。矩形の代用ではなく、印そのもの。 */
@@ -433,6 +467,13 @@ const T_DOC = '<svg viewBox="0 0 14 14" width="14" height="14" xmlns="' + NS + '
   '<path d="M5.2 7.6h4M5.2 10h2.6" stroke="#B9B2A0" stroke-width="1.1" ' +
     'stroke-linecap="round"/></svg>';
 
+/* 締めの注記に添える印。参照＝青（--bl）。 */
+const T_INFO = '<svg viewBox="0 0 14 14" width="14" height="14" xmlns="' + NS + '">' +
+  '<circle cx="7" cy="7" r="6.1" fill="none" stroke="#8FA8BF" stroke-width="1.1"/>' +
+  '<line x1="7" y1="6.2" x2="7" y2="10.2" stroke="#8FA8BF" stroke-width="1.3" ' +
+    'stroke-linecap="round"/>' +
+  '<circle cx="7" cy="3.9" r=".85" fill="#8FA8BF"/></svg>';
+
 /* ── 描く ────────────────────────────────────────── */
 
 function nowHTML(p) {
@@ -440,7 +481,9 @@ function nowHTML(p) {
   if (!rows.length) return '<div class="de">該当する項目がありません。</div>';
   return '<div class="rail">' + rows.map(x =>
     '<div class="rw">' + nodeSVG(x.tone) +
-      '<div class="nm">' + esc(x.nm) + '</div>' +
+      '<div class="rh"><div class="nm">' + esc(x.nm) + '</div>' +
+      '<div class="bd"><span class="bdg ' + x.tone + '">' + esc(x.lbl) +
+        '</span></div></div>' +
       (x.de ? '<div class="de">' + esc(x.de) + '</div>' : '') +
       (x.act ? '<div class="act"><span class="ar">→</span><span>' +
         esc(x.act) + '</span></div>' : '') +
@@ -448,34 +491,72 @@ function nowHTML(p) {
     '</div>').join('') + '</div>';
 }
 
-function whenHTML(p) {
-  return goneRows(p).map(x => {
-    const tiles = [];
-    if (x.lim) tiles.push('<div class="tile">' + T_CAL + '<div>' +
-      '<div class="tl">手続きの期限</div>' +
-      '<div class="tv">' + esc(x.lim) + '</div>' +
-      (x.limn ? '<div class="tn">' + esc(x.limn) + '</div>' : '') +
-      '</div></div>');
-    if (x.docs) tiles.push('<div class="tile">' + T_DOC + '<div>' +
-      '<div class="tl">必要な資料</div>' +
-      '<div class="tv"><b>' + x.docs.have + ' / ' + x.docs.need + '件</b>' +
-        'が手元にあります</div>' +
-      '<div class="tn">' + (x.docs.have < x.docs.need
-        ? '足りないものは「関係書類」で見る' : '所在は「関係書類」にある') +
-      '</div></div></div>');
+/* 期限／必要な資料のタイル。主役にも従にも同じものを出す。 */
+function tilesHTML(x) {
+  const t = [];
+  if (x.lim) t.push('<div class="tile">' + T_CAL + '<div>' +
+    '<div class="tl">手続きの期限</div>' +
+    '<div class="tv">' + esc(x.lim) + '</div>' +
+    (x.limn ? '<div class="tn">' + esc(x.limn) + '</div>' : '') +
+    '</div></div>');
+  if (x.docs) t.push('<div class="tile">' + T_DOC + '<div>' +
+    '<div class="tl">必要な資料</div>' +
+    '<div class="tv"><b>' + x.docs.have + ' / ' + x.docs.need + '件</b>' +
+      'が手元にあります</div>' +
+    '<div class="tn">' + (x.docs.have < x.docs.need
+      ? '足りないものは「関係書類」で見る' : '所在は「関係書類」にある') +
+    '</div></div></div>');
+  return t.length ? '<div class="tiles' + (t.length === 1 ? ' one' : '') +
+    '">' + t.join('') + '</div>' : '';
+}
 
-    return '<div class="gw"><div class="gh">' +
-      (GLYPH[x.icon] ? GLYPH[x.icon]() : '') +
-      '<div class="gt"><div class="nm">' + esc(x.nm) + '</div>' +
-      '<div class="de">' + esc(x.de) + '</div></div>' +
-      '<div class="bd"><span class="bdg ' + x.tone + '">' + esc(x.lbl) +
-        '</span></div></div>' +
-      (x.only ? '<div class="only"><div class="ol">この物件では</div>' +
-        '<div class="ot">' + esc(x.only) + '</div></div>' : '') +
-      (tiles.length ? '<div class="tiles' + (tiles.length === 1 ? ' one' : '') +
-        '">' + tiles.join('') + '</div>' : '') +
+/* ══ 右｜主役1つ＋別プレートの「ほかの手続き」 ════════════
+   ★主役に選ぶのは相続登記。格が上だからではなく、
+   **この物件で中心になる手続き**だから（前の代の名義が残っていれば
+   そこに固有の事情も付く）。ほかは別プレートへ回すが、
+   「ついで」ではない ―― 申告は3か月で登記より先に来る。      */
+function whenHTML(p) {
+  const rows = goneRows(p);
+  const lead = rows.find(r => r.icon === 'toki') || rows[0];
+  const rest = rows.filter(r => r !== lead);
+
+  let h = '<div class="card">' +
+    '<div class="lead-item"><div class="lh">' +
+      (GLYPH[lead.icon] ? GLYPH[lead.icon]({ w:54 }) : '') +
+      '<div class="lt">' +
+        '<div class="ltag">この物件で中心となる手続き</div>' +
+        '<div class="nm">' + esc(lead.nm) + '</div>' +
+        '<div class="de">' + esc(lead.de) + '</div>' +
+      '</div>' +
+      '<div class="lbd"><span class="bdg ' + lead.tone + '">' +
+        esc(lead.lbl) + '</span></div>' +
+    '</div>' +
+    (lead.only ? '<div class="only"><div class="ol">この物件では</div>' +
+      '<div class="ot">' + esc(lead.only) + '</div></div>' : '') +
+    tilesHTML(lead) +
+    '</div></div>';
+
+  if (rest.length) {
+    h += '<div class="card rest">' +
+      '<div class="rhd"><div class="rt">この物件では、ほかに次の手続きが' +
+        '発生します</div>' +
+        '<div class="rn">該当するものだけが表示されます</div></div>' +
+      rest.map(x => '<div class="sub">' +
+        '<div class="sh"><div class="nm">' + esc(x.nm) + '</div>' +
+        '<div class="bd"><span class="bdg ' + x.tone + '">' + esc(x.lbl) +
+          '</span></div></div>' +
+        '<div class="de">' + esc(x.de) + '</div>' +
+        tilesHTML(x) +
+      '</div>').join('') +
       '</div>';
-  }).join('');
+  }
+
+  /* 締め。表示条件の説明は項目ではないので、青（参照）で外に置く。 */
+  h += '<div class="foot">' + T_INFO + '<div>' +
+    'この物件に当てはまらない手続きは表示されません。' +
+    '条件が分からないものは、「今のうち」に確認事項として出ることがあります。' +
+    '</div></div>';
+  return h;
 }
 
 const out = document.getElementById('out');
@@ -495,34 +576,34 @@ S.all().forEach(p => {
           '確認・対応できないこと。期限は死亡ではなく、判断力が落ちるまで。</div>' +
       '</div><div class="aside">すべての項目が対応が必要になる' +
         'わけではありません</div></div>' +
-      nowHTML(p) +
+      '<div class="card">' + nowHTML(p) + '</div>' +
     '</div>' +
     '<div class="pane when">' +
       '<div class="phd"><div>' +
         '<div class="ph">そのとき</div>' +
         '<div class="pn">本人が亡くなったとき、家族が何をすることになるかを、' +
-          '今のうちに把握しておく。そのときに開いて読む面ではない。</div>' +
-      '</div><div class="aside">この物件で該当するものだけが' +
-        '出ています</div></div>' +
+          '今のうちに把握しておく。そのときに読むだけのものではない。</div>' +
+      '</div></div>' +
       whenHTML(p) +
     '</div>' +
   '</div>';
   out.appendChild(st);
 
-  /* 間取りへ食わせる実測値。ここを見て部屋の深さを決める。 */
   const m = document.createElement('div');
   m.className = 'meas';
   out.appendChild(m);
   requestAnimationFrame(() => {
     /* ★ペインの高さを測ってはいけない。grid が align:stretch で
        両方を高いほうに揃えるので、必ず 1.00:1 になる。
-       測るのは**中身の最後の要素の下端**。そこから上が実際に
-       埋まっている深さで、それ以下は空床。                     */
+       測るのは中身の最後の要素の下端。                          */
     const depth = pane => {
-      const last = pane.lastElementChild;
-      if (!last) return 0;
-      return last.getBoundingClientRect().bottom
-           - pane.getBoundingClientRect().top
+      /* 最後の**中身**の下端。pane 自体は grid の align:stretch で
+         高いほうに揃うので、pane の高さを測ると必ず 1.00:1 になる。
+         .card を flex:1 で伸ばしていたときも同じ罠にはまった。     */
+      const kids = [...pane.children];
+      if (!kids.length) return 0;
+      const bottom = Math.max(...kids.map(k => k.getBoundingClientRect().bottom));
+      return bottom - pane.getBoundingClientRect().top
            + parseFloat(getComputedStyle(pane).paddingBottom);
     };
     const a = st.querySelector('.pane.now'), b = st.querySelector('.pane.when');
