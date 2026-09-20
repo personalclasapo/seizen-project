@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産｜「今のうち」「そのとき」（v27・器）</title>
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);
+    padding:28px 20px 80px}
+  .wrap{max-width:1140px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);margin:0 0 26px;line-height:1.9}
+  .lead b{color:var(--ink)}
+  h2{font-size:14px;margin:34px 0 8px;display:flex;align-items:baseline;gap:10px}
+  h2 span{font-size:11.5px;font-weight:400;color:var(--ink3)}
+
+  /* 上段は間取りの2部屋になる。ここでは実寸を測るための素の器。
+     角丸・影・カードは付けない ―― 部屋の床に直接書くため（v22）。 */
+  .stage{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:0;margin-top:10px;overflow:hidden}
+  /* ★幅は 4：6。間取り v22 の上段は 今のうち6：そのとき4 だったが、
+     中身を入れて実測すると逆だった ―― 今のうちの深さは そのとき の
+     0.48〜0.61 倍にしかならず、広いほうの下に 320〜380px の空床が残る。
+
+     今のうちの項目は「事実1行＋対応1段」で終わる。そのときの項目は
+     説明があって、期限と資料のタイルが足元に付く。1件あたりの嵩が
+     違うので、件数が同じでも深さは揃わない。
+
+     4：6 に振ると差は 55px（自宅）まで落ちる。比を動かした根拠は
+     配分の感覚ではなく、この実測。                                */
+  .two{display:grid;grid-template-columns:4fr 6fr;align-items:stretch}
+  .pane{min-width:0;padding:22px 24px 26px}
+  /* 左＝緑地。右＝紙地。左右差は色ではなく構成が担う。 */
+  .pane.now{background:var(--gr-bg)}
+  .pane.when{background:var(--paper);border-left:1px solid var(--line2)}
+
+  .ph{font-size:15px;font-weight:600;margin:0 0 4px;letter-spacing:.02em}
+  .pane.now .ph{color:var(--gr)}
+  .pn{font-size:11.5px;color:var(--ink2);margin:0 0 4px;line-height:1.8}
+  .phd{display:flex;align-items:flex-start;gap:14px;
+    padding-bottom:14px;margin-bottom:4px}
+  .phd > div:first-child{flex:1;min-width:0}
+  /* 見出し脇の注記。画像にある「すべての項目が対応が必要になるわけでは
+     ありません」。状態の読み方の説明なので、項目の外に置く。 */
+  .aside{flex:none;width:132px;font-size:10.5px;line-height:1.72;
+    color:var(--ink2);padding-left:9px;border-left:2px solid #C8DBCC}
+  .pane.when .aside{border-left-color:var(--line2);color:var(--ink3)}
+
+  /* ══ 左｜縦のレール ════════════════════════════════
+     項目は時系列ではないが、一本の線に通っていることで
+     「これで全部」が見える。節で割らない（v26）。           */
+  .rail{position:relative;padding-left:26px}
+  .rail::before{content:'';position:absolute;left:5px;top:10px;bottom:14px;
+    width:0;border-left:1px dashed #BFCFC2}
+  .rw{position:relative;padding:0 0 16px}
+  .rw:last-child{padding-bottom:0}
+  /* ノード。状態で見た目が変わる。「該当なし」だけ中が抜ける。 */
+  .nd{position:absolute;left:-26px;top:3px;width:11px;height:11px}
+  .rw .nm{font-size:13px;font-weight:600;line-height:1.55}
+  .rw .de{font-size:11.5px;color:var(--ink2);line-height:1.78;margin-top:3px}
+  /* 対応は一段下がる。確認の事実（de）と併存させる（v26）。 */
+  .act{display:flex;gap:7px;font-size:11.5px;line-height:1.75;margin-top:7px;
+    padding:7px 10px 7px 9px;background:#FCF7EE;
+    border-left:2px solid var(--or-ln);border-radius:0 3px 3px 0}
+  .act .ar{flex:none;color:var(--or);font-weight:700}
+  .lim{display:inline-block;font-size:10.5px;color:var(--or);
+    background:var(--or-bg);border:1px solid var(--or-ln);border-radius:3px;
+    padding:1px 7px;margin-top:8px;line-height:1.7}
+
+  /* ══ 右｜並列。相続登記だけが固有事情を持つので厚くなる ══
+     主従ではない。現所有者申告は3か月で登記より先に来るし、
+     団信は放置すると3年で時効。どれも「ついで」ではない。   */
+  .gw{padding:14px 0 0;border-top:1px solid var(--line)}
+  .gw:first-of-type{border-top:0;padding-top:4px}
+  .gh{display:flex;align-items:flex-start;gap:10px}
+  .gh .gi{flex:none;width:30px;height:38px;margin-top:1px}
+  .gh .gt{flex:1;min-width:0}
+  .gw .nm{font-size:13.5px;font-weight:600;line-height:1.5}
+  .gw .de{font-size:11.5px;color:var(--ink2);line-height:1.78;margin-top:3px}
+  .gw .bd{flex:none;padding-top:2px}
+
+  /* この物件では ―― 汎用の説明から、固有の事情を分ける。 */
+  .only{margin-top:9px;padding:9px 12px;background:var(--gr-bg);
+    border-left:2px solid #C8DBCC;border-radius:0 3px 3px 0}
+  .only .ol{font-size:10px;color:var(--gr);letter-spacing:.08em;
+    font-weight:600;margin-bottom:3px}
+  .only .ot{font-size:11.5px;line-height:1.78;color:var(--ink)}
+
+  /* 期限／必要な資料の2タイル。足元に並べる。 */
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+  .tile{border:1px solid var(--line);background:var(--card);border-radius:4px;
+    padding:8px 10px;display:flex;gap:8px;align-items:flex-start}
+  .tile svg{flex:none;margin-top:1px}
+  .tile .tl{font-size:10px;color:var(--ink3);letter-spacing:.06em;
+    margin-bottom:2px}
+  .tile .tv{font-size:11.5px;line-height:1.7;color:var(--ink)}
+  .tile .tv b{color:var(--or)}
+  .tile .tn{font-size:10.5px;color:var(--ink3);line-height:1.65;margin-top:1px}
+  /* 1つしか無いときは幅いっぱい。 */
+  .tiles.one{grid-template-columns:1fr}
+
+  .bdg{display:inline-block;font-size:10.5px;line-height:1.75;
+    padding:1px 8px;border-radius:3px;border:1px solid var(--line2);
+    color:var(--ink2);background:var(--paper2);white-space:nowrap}
+  .bdg.or{color:var(--or);border-color:var(--or-ln);background:var(--or-bg)}
+  .bdg.gr{color:var(--gr);border-color:#C6DCC8;background:var(--gr-bg)}
+  .bdg.gy{color:var(--ink3);background:transparent;border-color:var(--line)}
+  .bdg.bl{color:var(--bl);border-color:#C3D2E0;background:#F1F5F9}
+
+  .note{font-size:11.5px;color:var(--ink2);line-height:1.9;
+    margin-top:22px;padding-top:14px;border-top:1px solid var(--line)}
+  .note b{color:var(--ink)}
+  .meas{font-size:11px;color:var(--ink3);margin-top:8px;
+    font-variant-numeric:tabular-nums}
+  @media(max-width:900px){
+    .two{grid-template-columns:1fr}
+    .pane.when{border-left:0;border-top:1px solid var(--line2)}
+    .phd{display:block}
+    .aside{width:auto;margin-top:8px;border-left:0;padding-left:0;
+      padding-top:7px;border-top:1px solid #C8DBCC}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>不動産・住まい｜「今のうち」「そのとき」（v27・器）</h1>
+<p class="lead">
+  <b>項目・文言・ロジックは v26 のまま。器だけ作り替えた。</b>
+  文章は別途調整するので、ここでは `nowRows()` / `goneRows()` の出力を
+  そのまま流している。<br>
+  <b>左＝縦のレール。</b>項目を節で割らず一本に通す（v26 の判断）。
+  状態はノードの見た目が持ち、対応は一段下がって橙で付く。<br>
+  <b>右＝並列。</b>主従にはしない ―― 現所有者申告は3か月で登記より先に
+  来るし、団信は放置すると3年で時効になる。「ついで」の手続きは無い。
+  相続登記だけが厚く見えるのは、<b>この物件に固有の事情（前の代の名義が
+  残っている）が付いているから</b>で、格が上だからではない。<br>
+  <b>色は左だけ。</b>右面を桃地にはしなかった ―― トークンに桃系が無く、
+  足すと橙（「今のうちだけ・対応が必要」限定）の隣に色が増える。
+  左右の差は地色ではなく構成（レール／並列）が担っている。<br>
+  <b>この段階では間取りに入れていない。</b>下に出る実測値を
+  `間取り中身入りv23` の部屋深さに食わせる。
+</p>
+
+<div id="out"></div>
+
+</div>
+
+<script src="../prototype/real-estate/state.js"></script>
+<script>
+const S = window.SeiZenRealEstate;
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* ══════════════════════════════════════════════════════
+   ■ 項目（v26 から変更なし）                                 */
+
+function nowRows(p) {
+  const out = [];
+  const hasBldg = p.kind !== 'land';
+
+  const subject = (k, nm, actOf) => {
+    const m = (p.matters || {})[k]; if (!m) return;
+    const st = stateOfMatter(m, S.MATTERS[k].ask);
+    const act = actOf && actOf(m);
+    out.push({ nm, de:st.de, act,
+      lbl: act ? '対応が必要' : st.lbl,
+      tone: act ? 'or' : st.tone });
+  };
+
+  subject('boundary', '境界と、隣との取り決め', m =>
+    (m.find === 'yes' && m.detail && m.detail.paper === 'なし')
+      ? '書面にする。当事者が二人とも健在な今なら、何を決めたかを確かめて' +
+        '書き残せる。双方がいなくなると、何を合意したのかを知る人が' +
+        'いなくなり、ゼロから話し合うことになる'
+      : null);
+
+  subject('road', '私道・通行・配管の、書面にない取り決め', m =>
+    (m.find === 'yes' && m.detail && m.detail.paper === 'なし')
+      ? '書面にする。維持費を誰が負担するか、掘削に誰の承諾が要るかは' +
+        '登記に出ない。相手が所在不明になると、承諾が取れず売買が止まる'
+      : null);
+
+  if (hasBldg) subject('changed', '増改築と、その登記', m =>
+    (m.detail && m.detail.reg === '未対応')
+      ? '表題登記をしておく。いつ・誰が建てたかを本人から聞けるうちなら、' +
+        '所有を示す資料が揃う。聞けなくなると、確認そのものに手間がかかる'
+      : null);
+
+  ['land','bldg'].forEach(k => {
+    const r = p.rights[k]; if (!r) return;
+    if (r.match !== 'differ' && r.match !== 'unknown') return;
+    out.push({
+      nm:(k === 'land' ? '土地' : '建物') + 'の名義が、前の代のままになっている',
+      de:(r.memo || '') + ' 本人は相続人の一人。',
+      act:'本人が遺産分割協議に加わって名義を決める。判断能力を欠くと' +
+          '協議は無効になるので後見人を立てることになり、本人の取り分を' +
+          '法定相続分より減らす分け方はできなくなる。後見人が兄弟だと' +
+          '利益相反で、さらに特別代理人が要る',
+      lim:'令和6年4月より前の相続なら 令和9年3月31日まで',
+      lbl:'対応が必要', tone:'or' });
+  });
+
+  return out;
+}
+
+function stateOfMatter(m, ask) {
+  if (m.find === 'unasked')
+    return { de:ask, lbl:'本人に確認', tone:'bl' };
+  if (m.find === 'unknown')
+    return { de:m.memo || '本人にも分からない。調べる先を決める',
+             lbl:'確認中', tone:'bl' };
+  if (m.find === 'no')
+    return { de:m.memo || '確認した結果、当てはまらなかった',
+             lbl:'該当なし', tone:'gy' };
+  return { de:m.memo || '確認できている', lbl:'確認できている', tone:'gr' };
+}
+
+const st2 = k => {
+  const s = S.ST[k];
+  return { lbl:s.label, tone: k === 'done' ? 'gr'
+    : k === 'none' ? 'gy' : k === 'action' ? 'or' : 'bl' };
+};
+
+function goneRows(p) {
+  const out = [];
+
+  /* ★v27：de（誰でも同じ説明）と only（この物件でだけ起きること）を
+     分けた。v26 は de の中で三項演算子で切り替えていたので、
+     一般論と固有事情が地続きになっていた。                      */
+  out.push({ icon:'todoke',
+    nm:'市町村へ「現所有者の申告」を出す',
+    de:'不動産のある市町村の税務課へ、現所有者申告書（相続人代表者の' +
+       '届出を兼ねる自治体が多い）を出す。相続登記とは別の手続きで、' +
+       '登記が済むまでは必要。出さないと市町村が相続人の代表を指定して、' +
+       'その人に納税通知書が届く。登記されていない建物も、この届出で扱う',
+    lim:'現所有者と知った日の翌日から 3か月以内',
+    limn:'過料10万円以下',
+    lbl:st2('action').lbl, tone:st2('action').tone });
+
+  const bad = ['land','bldg'].filter(k =>
+    p.rights[k] && p.rights[k].match !== 'same');
+  const need = S.neededDocs(p), have = need.filter(d => d.st === 'done');
+  out.push({ icon:'toki',
+    nm:'法務局へ相続登記を申請する',
+    de:'不動産のある場所を管轄する法務局へ申請する。間に合わないときは' +
+       '相続人申告登記（単独で出せて、戸籍も少なく済む）で義務は果たせる。' +
+       'ただしそれだけでは売ったり抵当権を付けたりはできない',
+    only: bad.length
+      ? 'この物件は前の代の名義が残っているので、そちらの遺産分割から' +
+        '先に片付けることになる。前の代の相続人全員の同意と、' +
+        '前の代の分の戸籍集めが加わる'
+      : null,
+    lim:'3年以内', limn:'過料10万円以下',
+    lbl:st2('action').lbl, tone:st2('action').tone,
+    docs:{ have:have.length, need:need.length } });
+
+  if (p.loan && p.loan.has)
+    out.push({ icon:'tsushin',
+      nm:'金融機関へ死亡を連絡し、団信の弁済手続きをする',
+      de:p.loan.bank + '｜団信' + (p.loan.gtee || '') +
+         '。付いていれば保険金がローンの弁済に充てられるが、黙っていても' +
+         '消えるわけではない。金融機関へ連絡し、死亡診断書などを出す。' +
+         '手続きをしないまま3年が過ぎると、時効で権利が消える',
+      lim:'死亡日の翌日から 3年以内', limn:'保険法95条',
+      lbl:st2('action').lbl, tone:st2('action').tone });
+
+  (p.deals || []).filter(d => d.kind === 'lend' || d.kind === 'borrow')
+    .forEach(d => out.push(Object.assign({ icon:'keiyaku' },
+      d.kind === 'lend'
+      ? { nm:'貸主の立場を、誰が引き継ぐかを決める',
+          de:d.who + '｜賃貸借契約はそのまま続く。賃料の振込先を' +
+             '変えてもらい、預かっている敷金を返す義務も引き継ぐ' }
+      : { nm:'借りている権利を、誰が引き継ぐかを決める',
+          de:d.who + '｜地代の支払いが止まると契約を解除されることが' +
+             'ある。名義の書き換えに地主の承諾が要ることが多い' },
+      st2('action'))));
+
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════
+   ■ 造形
+
+   ここに置けるのは「書面」だけ。相続登記・現所有者申告・団信の
+   手続きに共通するのは、**家族が窓口へ紙を出す**こと。
+   CLAUDE.md の振り分け1（矩形・線・円で、寸法を数個決めれば済むか）
+   に照らして Yes ―― 用紙は矩形、罫は線、朱印は円。
+   人体のような「それらしさに説得力が要るもの」ではない。
+
+   紙のサイズは実寸比から引く：A4 ＝ 210×297mm ＝ 1:1.414。
+   viewBox 30×42.4 はその比（30 × 1.414 ＝ 42.4）。勘で置かない。 */
+const NS = 'http://www.w3.org/2000/svg';
+
+/* ★最初は4種すべてを「書面」にしたが、破棄した。
+   大きく出して並べると**4枚とも同じ紙**で、「これは何の絵か」に
+   「書類」としか答えられない。区別が付かないなら描けていない
+   （CLAUDE.md「迷ったとき」）。
+
+   医療の先例（`medical-right-motifs.RESEARCH.md`）を見ると、
+   区別は**相手の実物**で付けていた ―― 病院＝建物、薬局＝乳鉢。
+   ここでも同じ筋で考えたが、この3つの相手は 市町村・法務局・
+   金融機関で**どれも建物**なので、同じ轍になる。
+
+   区別が付くのは**差し出す物のほう**：
+     届出   … 窓口に出す届出書（綴じない1枚。受理印は相手が押す）
+     登記   … 申請して返ってくる登記識別情報通知（目隠しシールが
+              貼られた1枚。これが「登記の証」の実物）
+     団信   … 金融機関に出す一式（死亡診断書を含む綴り。封筒で出す）
+   いずれも幾何プリミティブで組める（CLAUDE.md ケース1）。
+   A4 の実寸比 1:1.414 から viewBox を取る（30 × 1.414 ＝ 42.4）。 */
+
+/* 1枚の用紙。折り角は付けない ―― 4種で同じ形になる元凶だった。 */
+function sheet(extra, opt) {
+  const o = opt || {};
+  return '<svg class="gi" viewBox="0 0 30 42.4" width="30" height="42.4" ' +
+    'xmlns="' + NS + '" aria-hidden="true">' +
+    (o.stack
+      /* 綴り。下に2枚覗かせる（団信は一式で出す） */
+      ? '<rect x="5" y="5" width="24" height="36" rx="1" fill="#F2EEE3" ' +
+          'stroke="#D8D2C2" stroke-width=".7"/>' +
+        '<rect x="3.2" y="3" width="24" height="36" rx="1" fill="#F8F5EC" ' +
+          'stroke="#D2CCBA" stroke-width=".7"/>'
+      : '') +
+    '<rect x="1.4" y="1" width="24" height="36" rx="1" fill="#FFFFFF" ' +
+      'stroke="#BDB5A0" stroke-width=".9"/>' +
+    extra + '</svg>';
+}
+const rule = (y, x1, x2) => '<line x1="' + x1 + '" y1="' + y + '" x2="' + x2 +
+  '" y2="' + y + '" stroke="#DDD7C7" stroke-width=".9" stroke-linecap="round"/>';
+
+const GLYPH = {
+  /* 届出書。役所の窓口に出す1枚。右上に受理印の枠（空＝まだ出していない）。
+     表題は中央に短く、下に記入欄の罫。 */
+  todoke: () => sheet(
+    '<rect x="8.4" y="5.4" width="10" height="2.2" rx=".5" fill="#CFC7B2"/>' +
+    /* 受理印の枠。角印なので四角。空のままなのが「これから出す」の意 */
+    '<rect x="19.6" y="4.6" width="4.4" height="4.4" rx=".5" fill="none" ' +
+      'stroke="#D8D2C2" stroke-width=".8"/>' +
+    rule(13.4, 4.2, 22.6) + rule(17.4, 4.2, 22.6) +
+    rule(21.4, 4.2, 22.6) + rule(25.4, 4.2, 15) +
+    /* 記入欄（囲み）。届出書は枠に書き込む形 */
+    '<rect x="4.2" y="28.4" width="18.4" height="6" rx=".6" fill="none" ' +
+      'stroke="#D8D2C2" stroke-width=".8"/>' +
+    rule(31.4, 6, 14)),
+
+  /* 登記識別情報通知。申請の結果として返ってくる1枚で、下半分に
+     **12桁の符号を隠す目隠しシール**が貼られている ―― これが
+     他の書面と決定的に違うところ。朱印は法務局の角印。 */
+  toki: () => sheet(
+    '<rect x="4.2" y="5.4" width="13" height="2.4" rx=".5" fill="#BFB49A"/>' +
+    rule(11.4, 4.2, 22.6) + rule(15.4, 4.2, 22.6) + rule(19.4, 4.2, 17) +
+    /* 目隠しシール。グレーの帯に斜線。剥がすと符号が出る */
+    '<rect x="4.2" y="23" width="18.4" height="8.4" rx=".6" fill="#E4E0D4" ' +
+      'stroke="#C4BCA6" stroke-width=".8"/>' +
+    '<path d="M6 31l4-8M11 31l4-8M16 31l4-8" stroke="#C9C1AC" ' +
+      'stroke-width=".8" stroke-linecap="round"/>' +
+    /* 法務局の角印。実物の公印は角。
+       ★用紙は x:1.4→25.4 / y:1→37。印は必ずその内側で閉じること
+       （最初 x=17.2 w=6 y=32.4 h=6 と置いて、右と下の両方へはみ出した）。
+       中の線は文字に見せようとすると十字になるので、横3本にする。 */
+    '<rect x="18" y="30.4" width="5.6" height="5.6" rx=".6" fill="none" ' +
+      'stroke="#C0574E" stroke-width="1" opacity=".85"/>' +
+    '<path d="M19.4 32.2h2.8M19.4 33.8h2.8M19.4 35.4h2.8" stroke="#C0574E" ' +
+      'stroke-width=".7" opacity=".6" stroke-linecap="round"/>'),
+
+  /* 団信の弁済手続き。金融機関へ出す一式なので**綴り**。
+     先頭は死亡診断書 ―― 右上に医師の署名欄、本文は罫。
+     他と違うのは「重なっていること」。 */
+  tsushin: () => sheet(
+    '<rect x="4" y="5.4" width="11" height="2.2" rx=".5" fill="#CFC7B2"/>' +
+    rule(11.4, 4, 21) + rule(15.4, 4, 21) + rule(19.4, 4, 21) +
+    rule(23.4, 4, 14) +
+    /* 署名欄。線の上に手書きらしい波 */
+    '<line x1="4" y1="31.4" x2="21" y2="31.4" stroke="#C4BCA6" ' +
+      'stroke-width=".9" stroke-linecap="round"/>' +
+    '<path d="M6 30.4c1.4-2 2.4 1 3.8-.8 1-1.2 1.8 1.4 3 .2" fill="none" ' +
+      'stroke="#A79E86" stroke-width=".9" stroke-linecap="round"/>',
+    { stack:true }),
+
+  /* 契約の引き継ぎ。賃貸借契約書 ―― 2者が記名押印する見開き。
+     下端に朱の丸印が2つ並ぶのが、他と違うところ。 */
+  keiyaku: () => sheet(
+    '<rect x="4.2" y="5.4" width="12" height="2.2" rx=".5" fill="#CFC7B2"/>' +
+    rule(11.4, 4.2, 22.6) + rule(15.4, 4.2, 22.6) + rule(19.4, 4.2, 22.6) +
+    rule(23.4, 4.2, 18) +
+    /* 甲・乙の記名欄と、それぞれの丸印。
+       ★印は用紙の内側（x < 25.4）で閉じる。r=2.6 なら cx ≤ 22.4。 */
+    rule(29.4, 4.2, 15) + rule(34, 4.2, 15) +
+    '<circle cx="20.4" cy="28.6" r="2.6" fill="none" stroke="#C0574E" ' +
+      'stroke-width=".9" opacity=".75"/>' +
+    '<circle cx="20.4" cy="33.2" r="2.6" fill="none" stroke="#C0574E" ' +
+      'stroke-width=".9" opacity=".55"/>')
+};
+
+/* ノード。状態で描き分ける。矩形の代用ではなく、印そのもの。 */
+function nodeSVG(tone) {
+  const c = tone === 'or' ? 'var(--or)' : tone === 'gr' ? 'var(--gr)'
+          : tone === 'bl' ? 'var(--bl)' : 'var(--ink3)';
+  if (tone === 'gy')
+    /* 該当なし＝中が抜ける。埋まっていないのではなく、埋める必要がない */
+    return '<svg class="nd" viewBox="0 0 11 11" xmlns="' + NS + '">' +
+      '<circle cx="5.5" cy="5.5" r="4.6" fill="var(--card)" ' +
+        'stroke="' + c + '" stroke-width="1.1"/>' +
+      '<line x1="3.2" y1="5.5" x2="7.8" y2="5.5" stroke="' + c +
+        '" stroke-width="1.3" stroke-linecap="round"/></svg>';
+  if (tone === 'gr')
+    return '<svg class="nd" viewBox="0 0 11 11" xmlns="' + NS + '">' +
+      '<circle cx="5.5" cy="5.5" r="4.6" fill="' + c + '"/>' +
+      '<path d="M3.4 5.6l1.6 1.6 3-3.2" fill="none" stroke="#fff" ' +
+        'stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  /* 対応が必要／確認中＝塗りつぶし。線の上で一番強い */
+  return '<svg class="nd" viewBox="0 0 11 11" xmlns="' + NS + '">' +
+    '<circle cx="5.5" cy="5.5" r="4.6" fill="' + c + '"/>' +
+    '<circle cx="5.5" cy="5.5" r="1.7" fill="#fff" opacity=".55"/></svg>';
+}
+
+/* タイルの小さな絵。暦と、紙束。 */
+const T_CAL = '<svg viewBox="0 0 14 14" width="14" height="14" xmlns="' + NS + '">' +
+  '<rect x=".7" y="2.4" width="12.6" height="11" rx="1.4" fill="none" ' +
+    'stroke="#B9B2A0" stroke-width="1.1"/>' +
+  '<line x1=".7" y1="5.8" x2="13.3" y2="5.8" stroke="#B9B2A0" stroke-width="1.1"/>' +
+  '<line x1="4.2" y1=".7" x2="4.2" y2="3.5" stroke="#B9B2A0" stroke-width="1.3" ' +
+    'stroke-linecap="round"/>' +
+  '<line x1="9.8" y1=".7" x2="9.8" y2="3.5" stroke="#B9B2A0" stroke-width="1.3" ' +
+    'stroke-linecap="round"/></svg>';
+const T_DOC = '<svg viewBox="0 0 14 14" width="14" height="14" xmlns="' + NS + '">' +
+  '<path d="M3.2 1.2h5L11.4 4.4v8.4H3.2z" fill="none" stroke="#B9B2A0" ' +
+    'stroke-width="1.1" stroke-linejoin="round"/>' +
+  '<path d="M8.2 1.2v3.2h3.2" fill="none" stroke="#B9B2A0" stroke-width="1.1" ' +
+    'stroke-linejoin="round"/>' +
+  '<path d="M5.2 7.6h4M5.2 10h2.6" stroke="#B9B2A0" stroke-width="1.1" ' +
+    'stroke-linecap="round"/></svg>';
+
+/* ── 描く ────────────────────────────────────────── */
+
+function nowHTML(p) {
+  const rows = nowRows(p);
+  if (!rows.length) return '<div class="de">該当する項目がありません。</div>';
+  return '<div class="rail">' + rows.map(x =>
+    '<div class="rw">' + nodeSVG(x.tone) +
+      '<div class="nm">' + esc(x.nm) + '</div>' +
+      (x.de ? '<div class="de">' + esc(x.de) + '</div>' : '') +
+      (x.act ? '<div class="act"><span class="ar">→</span><span>' +
+        esc(x.act) + '</span></div>' : '') +
+      (x.lim ? '<div class="lim">' + esc(x.lim) + '</div>' : '') +
+    '</div>').join('') + '</div>';
+}
+
+function whenHTML(p) {
+  return goneRows(p).map(x => {
+    const tiles = [];
+    if (x.lim) tiles.push('<div class="tile">' + T_CAL + '<div>' +
+      '<div class="tl">手続きの期限</div>' +
+      '<div class="tv">' + esc(x.lim) + '</div>' +
+      (x.limn ? '<div class="tn">' + esc(x.limn) + '</div>' : '') +
+      '</div></div>');
+    if (x.docs) tiles.push('<div class="tile">' + T_DOC + '<div>' +
+      '<div class="tl">必要な資料</div>' +
+      '<div class="tv"><b>' + x.docs.have + ' / ' + x.docs.need + '件</b>' +
+        'が手元にあります</div>' +
+      '<div class="tn">' + (x.docs.have < x.docs.need
+        ? '足りないものは「関係書類」で見る' : '所在は「関係書類」にある') +
+      '</div></div></div>');
+
+    return '<div class="gw"><div class="gh">' +
+      (GLYPH[x.icon] ? GLYPH[x.icon]() : '') +
+      '<div class="gt"><div class="nm">' + esc(x.nm) + '</div>' +
+      '<div class="de">' + esc(x.de) + '</div></div>' +
+      '<div class="bd"><span class="bdg ' + x.tone + '">' + esc(x.lbl) +
+        '</span></div></div>' +
+      (x.only ? '<div class="only"><div class="ol">この物件では</div>' +
+        '<div class="ot">' + esc(x.only) + '</div></div>' : '') +
+      (tiles.length ? '<div class="tiles' + (tiles.length === 1 ? ' one' : '') +
+        '">' + tiles.join('') + '</div>' : '') +
+      '</div>';
+  }).join('');
+}
+
+const out = document.getElementById('out');
+S.all().forEach(p => {
+  const h2 = document.createElement('h2');
+  h2.innerHTML = esc(p.name) + ' <span>' + esc(S.USES[p.use].label) +
+    '・' + esc(S.KINDS[p.kind].label) + '</span>';
+  out.appendChild(h2);
+
+  const st = document.createElement('div');
+  st.className = 'stage';
+  st.innerHTML = '<div class="two">' +
+    '<div class="pane now">' +
+      '<div class="phd"><div>' +
+        '<div class="ph">今のうち</div>' +
+        '<div class="pn">本人がまだ判断し、意思を伝えられるうちにしか、' +
+          '確認・対応できないこと。期限は死亡ではなく、判断力が落ちるまで。</div>' +
+      '</div><div class="aside">すべての項目が対応が必要になる' +
+        'わけではありません</div></div>' +
+      nowHTML(p) +
+    '</div>' +
+    '<div class="pane when">' +
+      '<div class="phd"><div>' +
+        '<div class="ph">そのとき</div>' +
+        '<div class="pn">本人が亡くなったとき、家族が何をすることになるかを、' +
+          '今のうちに把握しておく。そのときに開いて読む面ではない。</div>' +
+      '</div><div class="aside">この物件で該当するものだけが' +
+        '出ています</div></div>' +
+      whenHTML(p) +
+    '</div>' +
+  '</div>';
+  out.appendChild(st);
+
+  /* 間取りへ食わせる実測値。ここを見て部屋の深さを決める。 */
+  const m = document.createElement('div');
+  m.className = 'meas';
+  out.appendChild(m);
+  requestAnimationFrame(() => {
+    /* ★ペインの高さを測ってはいけない。grid が align:stretch で
+       両方を高いほうに揃えるので、必ず 1.00:1 になる。
+       測るのは**中身の最後の要素の下端**。そこから上が実際に
+       埋まっている深さで、それ以下は空床。                     */
+    const depth = pane => {
+      const last = pane.lastElementChild;
+      if (!last) return 0;
+      return last.getBoundingClientRect().bottom
+           - pane.getBoundingClientRect().top
+           + parseFloat(getComputedStyle(pane).paddingBottom);
+    };
+    const a = st.querySelector('.pane.now'), b = st.querySelector('.pane.when');
+    const da = depth(a), db = depth(b);
+    m.textContent = '実測｜今のうち ' + Math.round(da) + 'px（' +
+      nowRows(p).length + '件・幅 ' + Math.round(a.clientWidth) + 'px）' +
+      '　そのとき ' + Math.round(db) + 'px（' + goneRows(p).length +
+      '件・幅 ' + Math.round(b.clientWidth) + 'px）' +
+      '　深さの比 ' + (da / db).toFixed(2) + ' : 1' +
+      '　空床 ' + Math.round(Math.abs(da - db)) + 'px（' +
+      (da > db ? 'そのとき側' : '今のうち側') + '）';
+  });
+});
+
+const n = document.createElement('div');
+n.className = 'note';
+n.innerHTML = '<b>v26 から変えたところ（器だけ）</b><br>' +
+  '・<b>左を縦のレールにした。</b>状態をバッジからノードへ移した ―― ' +
+    '一本の線に通すことで「これで全部」が見える。' +
+    '「該当なし」だけノードの中が抜ける（埋まっていないのではなく、' +
+    '埋める必要がない）<br>' +
+  '・<b>対応を橙の帯にした。</b>v26 は左罫だけだったので、確認の事実と' +
+    '対応が同じ重さに見えていた<br>' +
+  '・<b>右に「この物件では」を立てた。</b>v26 は de の中で三項演算子で' +
+    '切り替えていたので、誰にでも当てはまる説明と、この物件に固有の事情が' +
+    '地続きになっていた。分けた<br>' +
+  '・<b>期限と必要な資料を2タイルにした。</b>v26 は期限がチップ、資料が' +
+    '本文の参照で、粒度が揃っていなかった<br>' +
+  '・<b>造形は書面。</b>3つの手続きに共通するのは「家族が窓口へ紙を出す」' +
+    'こと。A4 の実寸比 1:1.414 から viewBox を取った（30×42.4）。' +
+    '登記だけ朱印が付く<br>' +
+  '<br><b>やっていないこと</b>｜文章の調整（別途）、家の輪郭・パンくず、' +
+    '間取りへの流し込み（上の実測値を v23 で使う）';
+document.querySelector('.wrap').appendChild(n);
+</script>
+</body>
+</html>
