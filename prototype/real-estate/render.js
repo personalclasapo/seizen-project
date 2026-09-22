@@ -41,7 +41,7 @@
   'use strict';
 
   const S = window.SeiZenRealEstate;
-  const { ST, MATCH, KINDS, USES, MATTERS, FINDINGS, DEALS } = S;
+  const { ST, NOW_STATUS, MATCH, KINDS, USES, MATTERS, FINDINGS, DEALS } = S;
 
   const esc = s => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -70,121 +70,146 @@
 
   function nowRows(p) {
     const out = [];
-    const hasBldg = p.kind !== 'land';
-
-    const subject = (k, nm, actOf) => {
-      const m = (p.matters || {})[k]; if (!m) return;
-      const st = stateOfMatter(m, MATTERS[k].ask);
-      const act = actOf && actOf(m);
-      out.push({ nm, de: st.de, act,
-        lbl: act ? '対応が必要' : st.lbl,
-        tone: act ? 'or' : st.tone });
+    const defaultDescriptions = {
+      boundary: {
+        problem: '境界標を確認済み。隣地との個別の取り決めなし。',
+        done: '西側の境界について隣家との合意書あり。境界標も確認済み。',
+        ask: '西側の境界について、書類だけでは経緯が分からない。',
+        check: '境界標と、隣地との取り決めの有無を確認できていない。',
+        action: '西側の境界は、隣家と口頭で「ブロック塀の中心」と決めたまま。境界標なし。'
+      },
+      road: {
+        none: '前面道路は市道。私道持分なし。通行・配管について隣地との個別の取り決めなし。',
+        done: '前面道路は私道。持分あり。通行・配管に必要な権利は書類で確認済み。',
+        check: '前面道路は私道。持分と、給排水管の経路が確認できていない。',
+        action: '給水管が隣地を通っている。使用について隣家と口頭の了承のみ。'
+      },
+      changed: {
+        none: '取得後の増築・取り壊しなど、登記に影響する変更なし。',
+        done: '2008年に2階部分を増築。登記への反映を確認済み。',
+        ask: '北側に増築部分あり。時期・施工者・登記状況が分からない。',
+        check: '増改築の有無と、現在の建物が登記内容に反映されているかを確認できていない。',
+        action: '北側に約6畳の増築あり（1998年ごろ）。登記には未反映。確認申請の有無は工務店に照会中。'
+      }
+    };
+    const addMatter = (key, name, choices, actions) => {
+      const m = (p.matters || {})[key];
+      const status = m ? m.uiStatus : (key === 'boundary' ? 'check' : 'none');
+      const sm = NOW_STATUS[status] || NOW_STATUS.check;
+      out.push({ key, choices, nm: name,
+        de: (m && m.memo) || (defaultDescriptions[key] && defaultDescriptions[key][status]),
+        act: actions[status] || null, lbl: sm.label, tone: sm.tone });
     };
 
-    subject('boundary', '境界と、隣との取り決め', m =>
-      (m.find === 'yes' && m.detail && m.detail.paper === 'なし')
-        ? '書面にする。当事者が二人とも健在な今なら、何を決めたかを確かめて' +
-          '書き残せる。双方がいなくなると、何を合意したのかを知る人が' +
-          'いなくなり、ゼロから話し合うことになる'
-        : null);
+    addMatter('boundary', '境界・隣地との取り決め',
+      ['problem', 'done', 'ask', 'check', 'action'], {
+        ask: '本人に、隣家との取り決めや過去の境界確認について聞いておく。',
+        check: '境界標と、隣地との取り決めが残っていないかを確認する。',
+        action: '当時の取り決めを双方で確認し、必要なら書面や図面に残しておく。' +
+          '代替わりすると、当時の合意内容を確認できなくなる。'
+      });
 
-    subject('road', '私道・通行・配管の、書面にない取り決め', m =>
-      (m.find === 'yes' && m.detail && m.detail.paper === 'なし')
-        ? '書面にする。維持費を誰が負担するか、掘削に誰の承諾が要るかは' +
-          '登記に出ない。相手が所在不明になると、承諾が取れず売買が止まる'
-        : null);
+    addMatter('road', '私道・通行・配管の取り決め',
+      ['none', 'done', 'check', 'action'], {
+        check: '権利関係と現在の利用条件を確認する。',
+        action: '現在の当事者同士で内容を確認し、必要なら書面に残しておく。'
+      });
 
-    if (hasBldg) subject('changed', '増改築と、その登記', m =>
-      (m.detail && m.detail.reg === '未対応')
-        ? '表題登記をしておく。いつ・誰が建てたかを本人から聞けるうちなら、' +
-          '所有を示す資料が揃う。聞けなくなると、確認そのものに手間がかかる'
-        : null);
+    if (p.kind === 'land') {
+      out.push({ key: null, choices: [], nm: '増改築・登記',
+        de: '建物のない土地のため、増改築については該当しない。',
+        act: null, lbl: NOW_STATUS.none.label, tone: NOW_STATUS.none.tone });
+    } else {
+      addMatter('changed', '増改築・登記',
+        ['none', 'done', 'ask', 'check', 'action'], {
+          ask: 'いつ、誰に依頼して工事したかを本人に確認し、残っている資料を探す。',
+          check: '増改築の有無と、現在の建物が登記内容に反映されているかを確認する。',
+          action: '工事時期・施工者・図面・確認申請書類などを確認し、' +
+            '増築部分を登記に反映するための資料をそろえる。'
+        });
+    }
 
-    ['land', 'bldg'].forEach(k => {
-      const r = p.rights[k]; if (!r) return;
-      if (r.match !== 'differ' && r.match !== 'unknown') return;
-      out.push({
-        nm: (k === 'land' ? '土地' : '建物') + 'の名義が、前の代のままになっている',
-        de: (r.memo || '') + ' 本人は相続人の一人。',
-        act: '本人が遺産分割協議に加わって名義を決める。判断能力を欠くと' +
-          '協議は無効になるので後見人を立てることになり、本人の取り分を' +
-          '法定相続分より減らす分け方はできなくなる。後見人が兄弟だと' +
-          '利益相反で、さらに特別代理人が要る',
-        lim: '令和6年4月より前の相続なら 令和9年3月31日まで',
-        lbl: '対応が必要', tone: 'or' });
-    });
+    const priorStatus = (p.priorInheritance && p.priorInheritance.status) || 'none';
+    const pm = NOW_STATUS[priorStatus] || NOW_STATUS.none;
+    const mismatched = ['land', 'bldg'].map(k => ({ k, r: p.rights && p.rights[k] }))
+      .find(x => x.r && x.r.match !== 'same');
+    let priorDe = '現在の登記名義は本人。未了の相続なし。';
+    let priorAct = null;
+    if (priorStatus === 'done') priorDe = '本人名義への相続登記を確認済み。';
+    if (priorStatus === 'doing') {
+      priorDe = '前の代の相続関係を整理し、相続登記を申請中。';
+    }
+    if (priorStatus === 'action') {
+      priorDe = mismatched
+        ? (mismatched.k === 'land' ? '土地' : '建物') + 'は' +
+          (mismatched.r.owner || '前の代の名義') + '。' +
+          (mismatched.r.memo || '相続登記は未了。')
+        : '前の代の名義が残っており、相続登記は未了。';
+      priorAct = '本人が自分で判断できるうちに、前の代の相続関係を整理する。' +
+        '判断能力が失われると、本人に代わって遺産分割等を進めるための手続きが増える。';
+    }
+    out.push({ key: 'prior', choices: ['none', 'done', 'doing', 'action'],
+      nm: '前の代の相続登記', de: priorDe, act: priorAct,
+      lbl: pm.label, tone: pm.tone });
+
+    if (p.loan && p.loan.has && p.loan.gteeStatus === 'unknown') {
+      out.push({ key: null, choices: [], nm: '住宅ローンの団信加入状況',
+        de: (p.loan.bank || '金融機関') + '｜住宅ローンあり。' +
+          '団信加入の有無が確認できていない。',
+        act: '契約書類または金融機関で、団信加入の有無と保障内容を確認する。',
+        lbl: NOW_STATUS.check.label, tone: NOW_STATUS.check.tone });
+    }
 
     return out;
   }
 
-  function stateOfMatter(m, ask) {
-    if (m.find === 'unasked')
-      return { de: ask, lbl: '本人に確認', tone: 'bl' };
-    if (m.find === 'unknown')
-      return { de: m.memo || '本人にも分からない。調べる先を決める',
-               lbl: '確認中', tone: 'bl' };
-    if (m.find === 'no')
-      return { de: m.memo || '確認した結果、当てはまらなかった',
-               lbl: '該当なし', tone: 'gy' };
-    return { de: m.memo || '確認できている', lbl: '確認できている', tone: 'gr' };
-  }
-
-  const st2 = k => {
-    const s = ST[k];
-    return { lbl: s.label, tone: k === 'done' ? 'gr'
-      : k === 'none' ? 'gy' : k === 'action' ? 'or' : 'bl' };
-  };
-
   function goneRows(p) {
     const out = [];
+    const owns = ['land', 'bldg'].some(k => {
+      const r = p.rights && p.rights[k];
+      return r && /本人/.test(r.owner || '');
+    });
 
-    out.push({ icon: 'todoke',
-      nm: '市町村へ「現所有者の申告」を出す',
-      de: '不動産のある市町村の税務課へ、現所有者申告書（相続人代表者の' +
-        '届出を兼ねる自治体が多い）を出す。相続登記とは別の手続きで、' +
-        '登記が済むまでは必要。出さないと市町村が相続人の代表を指定して、' +
-        'その人に納税通知書が届く。登記されていない建物も、この届出で扱う',
-      lim: '現所有者と知った日の翌日から 3か月以内',
-      limn: '過料10万円以下',
-      lbl: st2('action').lbl, tone: st2('action').tone });
+    if (owns && p.ownerReport && p.ownerReport.state !== 'hidden') {
+      if (p.ownerReport.state === 'not_needed') {
+        out.push({ icon: 'todoke', nm: '固定資産税の現所有者申告',
+          de: '相続登記が申告期限内に完了すれば、この申告は不要。',
+          lbl: '相続登記が先なら不要', tone: 'gr' });
+      } else {
+        out.push({ icon: 'todoke', nm: '固定資産税の現所有者を申告する',
+          de: '本人名義の不動産について、相続登記が期限内に完了しない場合は、' +
+            '市町村へ現所有者を申告する。相続登記とは別の、固定資産税のための手続き。',
+          lim: p.ownerReport.deadline || '自治体の期限を確認',
+          lbl: '対応が必要', tone: 'or' });
+      }
+    }
 
     const bad = ['land', 'bldg'].filter(k =>
       p.rights[k] && p.rights[k].match !== 'same');
     const need = S.neededDocs(p), have = need.filter(d => d.st === 'done');
-    out.push({ icon: 'toki',
-      nm: '法務局へ相続登記を申請する',
-      de: '不動産のある場所を管轄する法務局へ申請する。間に合わないときは' +
-        '相続人申告登記（単独で出せて、戸籍も少なく済む）で義務は果たせる。' +
-        'ただしそれだけでは売ったり抵当権を付けたりはできない',
-      only: bad.length
-        ? 'この物件は前の代の名義が残っているので、そちらの遺産分割から' +
-          '先に片付けることになる。前の代の相続人全員の同意と、' +
-          '前の代の分の戸籍集めが加わる'
-        : null,
-      lim: '3年以内', limn: '過料10万円以下',
-      lbl: st2('action').lbl, tone: st2('action').tone,
-      docs: { have: have.length, need: need.length } });
+    if (owns) {
+      out.push({ icon: 'toki', nm: '相続登記をする',
+        de: bad.length
+          ? 'この物件は、前の代の相続登記も未了。前の代からの相続関係を' +
+            '整理したうえで、今回の相続登記を進める必要がある。'
+          : '本人名義の不動産について、相続した人への名義変更が必要。',
+        lim: '不動産を相続したことを知った日から3年以内',
+        lbl: '対応が必要', tone: 'or', docs: { have: have.length, need: need.length } });
+    }
 
-    if (p.loan && p.loan.has)
-      out.push({ icon: 'tsushin',
-        nm: '金融機関へ死亡を連絡し、団信の弁済手続きをする',
-        de: p.loan.bank + '｜団信' + (p.loan.gtee || '') +
-          '。付いていれば保険金がローンの弁済に充てられるが、黙っていても' +
-          '消えるわけではない。金融機関へ連絡し、死亡診断書などを出す。' +
-          '手続きをしないまま3年が過ぎると、時効で権利が消える',
-        lim: '死亡日の翌日から 3年以内', limn: '保険法95条',
-        lbl: st2('action').lbl, tone: st2('action').tone });
-
-    (p.deals || []).filter(d => d.kind === 'lend' || d.kind === 'borrow')
-      .forEach(d => out.push(Object.assign({ icon: 'keiyaku' },
-        d.kind === 'lend'
-          ? { nm: '貸主の立場を、誰が引き継ぐかを決める',
-              de: d.who + '｜賃貸借契約はそのまま続く。賃料の振込先を' +
-                '変えてもらい、預かっている敷金を返す義務も引き継ぐ' }
-          : { nm: '借りている権利を、誰が引き継ぐかを決める',
-              de: d.who + '｜地代の支払いが止まると契約を解除されることが' +
-                'ある。名義の書き換えに地主の承諾が要ることが多い' },
-        st2('action'))));
+    if (p.loan && p.loan.has && p.loan.gteeStatus === 'yes') {
+      out.push({ icon: 'tsushin', nm: '団信による住宅ローンの弁済手続きをする',
+        de: (p.loan.bank || '金融機関') + '｜住宅ローン残高 ' +
+          (p.loan.balance || '要確認') + '｜団信加入あり。' +
+          '取扱金融機関へ連絡し、必要書類を提出する。保険金の支払対象になれば、' +
+          '残りの住宅ローンが弁済される。', lbl: '対応が必要', tone: 'or' });
+    } else if (p.loan && p.loan.has && p.loan.gteeStatus === 'no') {
+      out.push({ icon: 'tsushin', nm: '住宅ローンの残債を確認する',
+        de: (p.loan.bank || '金融機関') + '｜住宅ローン残高 ' +
+          (p.loan.balance || '要確認') + '｜団信なし。' +
+          '残っている住宅ローンも相続の対象になるため、金融機関へ連絡して' +
+          '今後の返済方法を確認する。', lbl: '対応が必要', tone: 'or' });
+    }
 
     return out;
   }
@@ -308,14 +333,26 @@
     '<circle cx="7" cy="3.9" r=".85" fill="#8FA8BF"/></svg>';
 
   /* ── 描く：今のうち ──────────────────────────────── */
+  function statusControl(p, x) {
+    if (!x.key || !x.choices || !x.choices.length)
+      return '<span class="bdg ' + x.tone + '">' + esc(x.lbl) + '</span>';
+    return '<select class="bdg status-pick ' + x.tone + '" ' +
+      'data-status-p="' + esc(p.id) + '" data-status-key="' + esc(x.key) + '" ' +
+      'aria-label="' + esc(x.nm) + 'の状態">' +
+      x.choices.map(k => {
+        const s = NOW_STATUS[k];
+        return '<option value="' + esc(k) + '"' + (s.label === x.lbl ? ' selected' : '') +
+          '>' + esc(s.label) + '</option>';
+      }).join('') + '</select>';
+  }
+
   function nowHTML(p) {
     const rows = nowRows(p);
     if (!rows.length) return '<div class="de">該当する項目がありません。</div>';
     return '<div class="rail">' + rows.map(x =>
       '<div class="rw">' + nodeSVG(x.tone) +
         '<div class="rh"><div class="nm">' + esc(x.nm) + '</div>' +
-        '<div class="bd"><span class="bdg ' + x.tone + '">' + esc(x.lbl) +
-          '</span></div></div>' +
+        '<div class="bd">' + statusControl(p, x) + '</div></div>' +
         (x.de ? '<div class="de">' + esc(x.de) + '</div>' : '') +
         (x.act ? '<div class="act"><span class="ar">→</span><span>' +
           esc(x.act) + '</span></div>' : '') +
@@ -344,6 +381,8 @@
   /* ── 描く：そのとき ─────────────────────────────── */
   function whenHTML(p) {
     const rows = goneRows(p);
+    if (!rows.length) return '<div class="card"><div class="de">' +
+      '登録内容から該当する手続きはありません。</div></div>';
     const lead = rows.find(r => r.icon === 'toki') || rows[0];
     const rest = rows.filter(r => r !== lead);
 
@@ -351,12 +390,11 @@
       '<div class="lead-item"><div class="lh">' +
         (GLYPH[lead.icon] ? GLYPH[lead.icon]({ w: 54 }) : '') +
         '<div class="lt">' +
-          '<div class="ltag">この物件で中心となる手続き</div>' +
           '<div class="nm">' + esc(lead.nm) + '</div>' +
           '<div class="de">' + esc(lead.de) + '</div>' +
         '</div>' +
-        '<div class="lbd"><span class="bdg ' + lead.tone + '">' +
-          esc(lead.lbl) + '</span></div>' +
+        (lead.lbl ? '<div class="lbd"><span class="bdg ' + lead.tone + '">' +
+          esc(lead.lbl) + '</span></div>' : '') +
       '</div>' +
       (lead.only ? '<div class="only"><div class="ol">この物件では</div>' +
         '<div class="ot">' + esc(lead.only) + '</div></div>' : '') +
@@ -366,17 +404,15 @@
     if (rest.length) {
       h += '<div class="card rest">' +
         '<div class="rhd"><div class="rt">この物件では、ほかに次の手続きが' +
-          '発生します</div>' +
-          '<div class="rn">該当するものだけが表示されます</div></div>' +
+          '発生します</div></div>' +
         rest.map(x => '<div class="sub">' +
           '<div class="nm">' + esc(x.nm) + '</div>' +
-          '<div class="srt">' +
-            '<span class="bdg ' + x.tone + '">' + esc(x.lbl) + '</span>' +
+          ((x.lbl || x.lim) ? '<div class="srt">' +
+            (x.lbl ? '<span class="bdg ' + x.tone + '">' + esc(x.lbl) + '</span>' : '') +
             (x.lim ? '<div class="slim">' + T_CAL_S +
               '<div><div class="sv">' + esc(x.lim) + '</div>' +
               (x.limn ? '<div class="sn">' + esc(x.limn) + '</div>' : '') +
-              '</div></div>' : '') +
-          '</div>' +
+              '</div></div>' : '') + '</div>' : '') +
           '<div class="de">' + esc(x.de) + '</div>' +
           (x.docs ? '<div class="sdoc">必要な資料　<b>' + x.docs.have + ' / ' +
             x.docs.need + '件</b>が手元にあります</div>' : '') +
@@ -393,22 +429,79 @@
 
   /* ── 部屋へ渡す入口 ──────────────────────────────
      v27 の .pane は「地」を背景に持つ div だったが、間取りでは
-     部屋の床そのものが地なので、.pane は作らない。部屋名（h4）が
+     部屋の床そのものが地なので、.pane は作らない。室名札が
      大見出しの役をし、その下に説明、白いカードが載る。            */
   function roomLiv(p) {
-    return roomHead4('今のうち') +
+    return roomTag('liv', '今のうち', tagCounts(nowRows(p))) +
       '<div class="pn">本人がまだ判断し、意思を伝えられるうちにしか、' +
-      '確認・対応できないこと。期限は死亡ではなく、判断力が落ちるまで。</div>' +
+      '確認・対応できないこと。</div>' +
       '<div class="card">' + nowHTML(p) + '</div>';
   }
   function roomWhen(p) {
-    return roomHead4('そのとき') +
-      '<div class="pn">本人が亡くなったとき、家族が何をすることに' +
-      'なるかを、今のうちに把握しておく。そのときに読むだけのものではない。' +
-      '</div>' + whenHTML(p);
+    return roomTag('when', 'そのとき', tagCounts(goneRows(p))) +
+      '<div class="pn">必要になったときに、家族が何をすることに' +
+      'なるかを、今のうちに把握しておく。</div>' + whenHTML(p);
   }
-  function roomHead4(title) {
-    return '<h4>' + esc(title) + '</h4>';
+
+  /* ══ 造形｜表札（ルームタグ）════════════════════════════
+     部屋の名前を出すものを、玄関の表札として描く。前の版は
+     引き出し線＋下罫（図面の室名記入）だったが、線が2本ある
+     だけで札に見えなかった。表札は線ではなく**板**で、板には
+     厚みがあり、壁から浮いて影を落とす ―― そこが物の形。
+
+     CLAUDE.md の振り分け：PD/CC0 素材を探したが、表札の立面と
+     して使えるものは無かった（`不動産-表札.RESEARCH.md`）。
+     幾何プリミティブ（矩形・線・影）数個で寸法を数個決めれば
+     済む形なので、振り分け1に該当し自作する。
+
+     寸法は実物の実寸比から引く（勘で置かない）：
+       ・板＝関東型 198×83mm ≒ 2.39:1 の横長。角は糸面取り
+       ・板厚 20mm ―― 小口が見えるので、下辺に板厚ぶんの面
+       ・壁との浮き＝スペーサー。板の落とす影で表す
+       ・文字は切り文字（浮き彫り）。板より手前にあるので、
+         文字自身も薄い影を持つ
+     板と影は SVG、文字は HTML（選択・読み上げ・折り返しのため。
+     切り文字の影は CSS の text-shadow が受け持つ）。           */
+
+  /* 要対応の件数だけを数える。合計は中身を見れば分かるので出さない。 */
+  function tagCounts(rows) {
+    return { act: rows.filter(r => r.tone === 'or').length };
+  }
+
+  function roomTag(kind, title, c) {
+    /* 板。文字の長さで横幅が変わるので、板を1枚の SVG に描いて
+       引き伸ばすと、角の面取りも板厚も一緒に歪む（実寸比が
+       崩れる）。そこで**縦だけ実寸**にして、横は伸ばす：
+       viewBox の高さ 83 を板の高さに固定し、幅は伸縮させる。
+       角丸・小口・面取りはすべて高さ側の数値なので歪まない。
+
+       正面から見た表札の層（奥→手前）：
+         壁に落ちる影 → 板の正面 → 板厚の小口 → 面取り       */
+    const plate = '<svg class="rt-plate" viewBox="0 0 198 89" ' +
+      'preserveAspectRatio="none" xmlns="' + NS + '" aria-hidden="true">' +
+      /* 壁に落ちる影＝スペーサーで浮かせている証拠。板の下と
+         右へ、板厚ぶん（20mm）ずれる。                      */
+      '<rect class="rt-shadow" x="5" y="6" width="193" height="83" rx="3"/>' +
+      /* 板の正面。198×83mm。角は糸面取り r=3mm。 */
+      '<rect class="rt-face" x="0" y="0" width="193" height="83" rx="3"/>' +
+      /* 板厚 20mm の小口。下端に見える面。正面との境は、実物では
+         面取りで光が回り込むので、境に明るい線を1本入れて段差を
+         作る ―― 塗り分けただけだと別の帯に見え、板に見えない。 */
+      '<path class="rt-edge" d="M0 66h193v14a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3Z"/>' +
+      '<line class="rt-edge-lit" x1="0.5" y1="66" x2="192.5" y2="66"/>' +
+      /* 面取りのハイライト。光は左上から ―― 上辺と左辺に1本。 */
+      '<path class="rt-bevel" d="M3.5 1.4h186M1.4 3.5v60"/>' +
+      '</svg>';
+    /* 要対応の件数。板の右に打つ小さな金物の札（副表札）。
+       0件のときは付けない ―― 何も無いことを札で言わない。    */
+    const cnt = c && c.act
+      ? '<span class="rt-n">要対応 <b>' + c.act + '</b></span>'
+      : '';
+    return '<div class="rtag rt-' + kind + '">' +
+      '<div class="rt-plate-w">' + plate +
+        '<h4 class="rt-nm">' + esc(title) + '</h4>' +
+      '</div>' + cnt +
+      '</div>';
   }
 
   /* 事情：問いと答え。SeiZen 側が問いを持つ（正本 §9）ので、
@@ -567,8 +660,9 @@
     const PADIN = 13;
     const HEADPX = { liv: 28, when: 28 }, HEADPX_D = 23;
     const headOf = k => HEADPX[k] != null ? HEADPX[k] : HEADPX_D;
-    const u2px = u => u / (W_ + 20) * stageW;
-    const px2u = x => x * (W_ + 20) / stageW;
+    const viewW = W_ + SITE_U * 2;
+    const u2px = u => u / viewW * stageW;
+    const px2u = x => x * viewW / stageW;
     const toPx = u => u2px(u - PADIN * 2);
 
     const wallY = { liv: [TO, TI], when: [TO, TI], docs: [TI, TO],
@@ -1202,6 +1296,11 @@
       b.onclick = () => {
         const el = document.getElementById(b.dataset.go);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+    });
+    document.querySelectorAll('[data-status-p][data-status-key]').forEach(sel => {
+      sel.onchange = () => {
+        if (S.setNowStatus(sel.dataset.statusP, sel.dataset.statusKey, sel.value)) draw_();
       };
     });
   }

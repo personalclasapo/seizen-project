@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産v30｜表札の素材くらべ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<!--
+  「今のうち」「そのとき」の見出しを表札にする。素材を決めるための
+  くらべ。実寸は 関東型 198×83mm（≒2.39:1）・板厚20mm で全案共通。
+  変えているのは素材の見え方（地・文字の彫り方・縁・影）だけ。
+
+  床の色は本番と同じ（liv #F7EAD6／when #E9EFE9）。表札は床の上に
+  載るので、地の色との関係込みで見ないと判断できない。
+-->
+<style>
+  body{margin:0;padding:34px 30px 60px;background:var(--page);
+    font-family:"Noto Sans JP",sans-serif;color:var(--ink)}
+  h1{font-size:17px;margin:0 0 4px;letter-spacing:.02em}
+  .sub{font-size:12px;color:var(--ink2);margin:0 0 26px;line-height:1.8}
+  .sub b{color:var(--ink)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));
+    gap:20px;max-width:1500px}
+  .case{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    overflow:hidden}
+  .ch{padding:13px 16px 11px;border-bottom:1px solid var(--line)}
+  .ct{font-size:13.5px;font-weight:700;letter-spacing:.02em}
+  .cd{font-size:11px;color:var(--ink2);line-height:1.75;margin-top:4px}
+  .cd b{color:#9a5b0c}
+  /* 床＝本番の部屋の地。ここに表札を載せて見る。 */
+  .floor{padding:26px 24px}
+  .floor.liv{background:#F7EAD6}
+  .floor.when{background:#E9EFE9}
+  .row{display:flex;align-items:center;gap:12px}
+  .row + .row{margin-top:18px}
+  .pn{font-size:10.5px;color:var(--ink2);line-height:1.75;margin:10px 0 0}
+
+  /* ══ 共通の骨格 ══════════════════════════════════════
+     板は文字を包む器。SVG を背面に敷き、文字は HTML。
+     板の高さ方向だけ実寸を保ち、横は字数で伸びる。        */
+  .plate{position:relative;display:inline-flex;align-items:center;
+    padding:8px 18px 12px;flex:none}
+  .plate svg{position:absolute;inset:0;width:100%;height:100%}
+  .nm{position:relative;z-index:1;font-family:var(--font-serif);
+    font-size:19px;line-height:1.3;letter-spacing:.06em;margin:0;
+    font-weight:600;white-space:nowrap}
+  .badge{flex:none;font-size:10.5px;line-height:1.6;white-space:nowrap;
+    color:var(--or);background:var(--or-bg);border:1px solid var(--or-ln);
+    border-radius:3px;padding:2px 9px}
+  .badge b{font-size:12.5px;font-weight:700}
+
+  /* ── A｜御影石＋彫り込み ───────────────────────
+     石は面が均一ではない。粒子（フィルタ）で地を作り、文字は
+     彫った凹みなので、内側に影・下に明るい縁が出る。      */
+  .a-face{fill:#EFEAE0}
+  .a-grain{opacity:.5}
+  .a-edge{fill:#CFC6B6}
+  .a-lit{stroke:#FFFDF8;stroke-width:1;opacity:.6;vector-effect:non-scaling-stroke}
+  .a-sh{fill:#32322E;opacity:.1}
+  .case-a .nm{color:#4A4034;
+    text-shadow:0 1px 0 rgba(255,255,255,.9),0 -1px 1px rgba(60,50,38,.5)}
+  .case-a.w .nm{color:#39493E;
+    text-shadow:0 1px 0 rgba(255,255,255,.9),0 -1px 1px rgba(40,60,48,.5)}
+
+  /* ── B｜ステンレス切り文字 ─────────────────────
+     板は薄く明るい金属。文字は板から浮いて手前にあるので、
+     文字自身が下へ影を落とす（凸）。                      */
+  .b-face{fill:#FBFBFA}
+  .b-edge{fill:#D8D8D4}
+  .b-lit{stroke:#FFFFFF;stroke-width:1;opacity:.9;vector-effect:non-scaling-stroke}
+  .b-sh{fill:#32322E;opacity:.1}
+  .case-b .nm{color:#7C7A74;
+    text-shadow:1px 2px 1px rgba(50,50,46,.28),0 -1px 0 rgba(255,255,255,.7)}
+  .case-b.w .nm{color:#6E7C73;
+    text-shadow:1px 2px 1px rgba(45,58,50,.28),0 -1px 0 rgba(255,255,255,.7)}
+
+  /* ── C｜木（銘木）＋彫り込み ───────────────────
+     木目は縦に流れる。年輪の線を数本、太さと間隔を変えて引く
+     （等間隔だと布に見える）。角は大きめの面取り。        */
+  .c-face{fill:#E4D2B4}
+  .c-grain{stroke:#C4AA83;fill:none;stroke-linecap:round}
+  .c-edge{fill:#C2A67D}
+  .c-lit{stroke:#F6ECD9;stroke-width:1;opacity:.75;vector-effect:non-scaling-stroke}
+  .c-sh{fill:#32322E;opacity:.12}
+  .case-c .nm{color:#4A3A22;
+    text-shadow:0 1px 0 rgba(255,250,238,.85),0 -1px 1px rgba(74,58,34,.45)}
+
+  /* ── D｜陶板 ─────────────────────────────────
+     釉薬は縁に溜まって濃くなり、面の中はムラが出る。輪郭は
+     わずかに歪む（手仕事）ので、矩形ではなく path で描く。  */
+  .d-face{fill:#F3EDE2}
+  .d-glaze{opacity:.55}
+  .d-rim{fill:none;stroke:#D3C3A8;stroke-width:2.5;opacity:.65}
+  .d-edge{fill:#DCCFB8}
+  .d-sh{fill:#32322E;opacity:.1}
+  .case-d .nm{color:#5A4A38;
+    text-shadow:0 1px 0 rgba(255,252,246,.8),0 -1px 1px rgba(90,74,56,.4)}
+</style>
+</head>
+<body>
+
+<h1>不動産v30｜「今のうち」「そのとき」の見出しを表札にする ― 素材くらべ</h1>
+<p class="sub">
+  寸法は全案共通で<b>関東型 198×83mm（≒2.39:1）・板厚20mm</b>。変えているのは
+  素材の見え方だけ。床の色は本番の部屋の地（今のうち＝砂／そのとき＝グレーグリーン）。<br>
+  PD/CC0 の表札素材は探したが見つからなかったので、4案とも自作。
+</p>
+
+<div class="grid">
+
+  <!-- ══ A｜御影石＋彫り込み ══ -->
+  <div class="case case-a">
+    <div class="ch">
+      <div class="ct">A｜御影石 ＋ 彫り込み文字</div>
+      <div class="cd">最も一般的な戸建ての表札。石の粒子が地にあり、文字は
+        <b>彫った凹み</b>（上に影・下に明るい縁）。重さと落ち着きが出る。</div>
+    </div>
+    <div class="floor liv">
+      <div class="row">
+        <span class="plate">
+          <svg viewBox="0 0 198 89" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <filter id="gA"><feTurbulence type="fractalNoise" baseFrequency="0.9"
+                numOctaves="4"/><feColorMatrix type="saturate" values="0"/>
+                <feComponentTransfer><feFuncA type="linear" slope=".22"/></feComponentTransfer>
+              </filter>
+            </defs>
+            <rect class="a-sh" x="5" y="6" width="193" height="83" rx="3"/>
+            <rect class="a-face" x="0" y="0" width="193" height="83" rx="3"/>
+            <rect class="a-grain" x="0" y="0" width="193" height="83" rx="3" filter="url(#gA)"/>
+            <path class="a-edge" d="M0 66h193v14a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3Z"/>
+            <line class="a-lit" x1="0.5" y1="66" x2="192.5" y2="66"/>
+            <path class="a-lit" fill="none" d="M3.5 1.4h186M1.4 3.5v60"/>
+          </svg>
+          <span class="nm">今のうち</span>
+        </span>
+        <span class="badge">要対応 <b>3</b></span>
+      </div>
+      <p class="pn">本人がまだ判断し、意思を伝えられるうちにしか、確認・対応できないこと。</p>
+    </div>
+    <div class="floor when case-a w">
+      <div class="row">
+        <span class="plate">
+          <svg viewBox="0 0 198 89" preserveAspectRatio="none" aria-hidden="true">
+            <rect class="a-sh" x="5" y="6" width="193" height="83" rx="3"/>
+            <rect class="a-face" x="0" y="0" width="193" height="83" rx="3" fill="#E8EDE7"/>
+            <rect class="a-grain" x="0" y="0" width="193" height="83" rx="3" filter="url(#gA)"/>
+            <path class="a-edge" d="M0 66h193v14a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3Z" fill="#C4CFC3"/>
+            <line class="a-lit" x1="0.5" y1="66" x2="192.5" y2="66"/>
+            <path class="a-lit" fill="none" d="M3.5 1.4h186M1.4 3.5v60"/>
+          </svg>
+          <span class="nm">そのとき</span>
+        </span>
+        <span class="badge">要対応 <b>3</b></span>
+      </div>
+      <p class="pn">本人が亡くなったとき、家族が何をすることになるかを、今のうちに把握しておく。</p>
+    </div>
+  </div>
+
+  <!-- ══ B｜ステンレス切り文字 ══ -->
+  <div class="case case-b">
+    <div class="ch">
+      <div class="ct">B｜ステンレス ＋ 切り文字（いまの実装）</div>
+      <div class="cd">板から切り出した文字をスペーサーで浮かせる。文字は
+        <b>板より手前</b>にあり、自分の影を落とす（凸）。現代的で軽い。</div>
+    </div>
+    <div class="floor liv">
+      <div class="row">
+        <span class="plate">
+          <svg viewBox="0 0 198 89" preserveAspectRatio="none" aria-hidden="true">
+            <rect class="b-sh" x="5" y="6" width="193" height="83" rx="3"/>
+            <rect class="b-face" x="0" y="0" width="193" height="83" rx="3"/>
+            <path class="b-edge" d="M0 66h193v14a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3Z"/>
+            <line class="b-lit" x1="0.5" y1="66" x2="192.5" y2="66"/>
+            <path class="b-lit" fill="none" d="M3.5 1.4h186M1.4 3.5v60"/>
+          </svg>
+          <span class="nm">今のうち</span>
+        </span>
+        <span class="badge">要対応 <b>3</b></span>
+      </div>
+      <p class="pn">本人がまだ判断し、意思を伝えられるうちにしか、確認・対応できないこと。</p>
+    </div>
+    <div class="floor when case-b w">
+      <div class="row">
+        <span class="plate">
+          <svg viewBox="0 0 198 89" preserveAspectRatio="none" aria-hidden="true">
+            <rect class="b-sh" x="5" y="6" width="193" height="83" rx="3"/>
+            <rect class="b-face" x="0" y="0" width="193" height="83" rx="3"/>
+            <path class="b-edge" d="M0 66h193v14a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3Z"/>
+            <line class="b-lit" x1="0.5" y1="66" x2="192.5" y2="66"/>
+            <path class="b-lit" fill="none" d="M3.5 1.4h186M1.4 3.5v60"/>
+          </svg>
+          <span class="nm">そのとき</span>
+        </span>
+        <span class="badge">要対応 <b>3</b></span>
+      </div>
+      <p class="pn">本人が亡くなったとき、家族が何をすることになるかを、今のうちに把握しておく。</p>
+    </div>
+  </div>
+
+  <!-- ══ C｜木（銘木）＋彫り込み ══ -->
+  <div class="case case-c">
+    <div class="ch">
+      <div class="ct">C｜木（銘木） ＋ 彫り込み文字</div>
+      <div class="cd">玄関脇の木の表札。<b>木目が縦に流れ</b>、角に大きめの面取り。
+        SeiZen の紙・木のトーンに最も近い。木目が弱いと茶色い矩形になる。</div>
+    </div>
+    <div class="floor liv">
+      <div class="row">
+        <span class="plate">
+          <svg viewBox="0 0 198 89" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <clipPath id="cC"><rect x="0" y="0" width="193" height="83" rx="5"/></clipPath>
+            </defs>
+            <rect class="c-sh" x="5" y="6" width="193" height="83" rx="5"/>
+            <rect class="c-face" x="0" y="0" width="193" height="83" rx="5"/>
+            <g clip-path="url(#cC)" class="c-grain">
+              <!-- 年輪。間隔と太さを変える（等間隔だと布になる） -->
+              <path d="M14 -4C10 22 17 48 12 87" stroke-width="1.1" opacity=".55"/>
+              <path d="M31 -4C36 26 28 52 33 87" stroke-width=".7" opacity=".4"/>
+              <path d="M58 -4C54 20 60 54 56 87" stroke-width="1.5" opacity=".5"/>
+              <path d="M77 -4C81 30 74 56 79 87" stroke-width=".6" opacity=".35"/>
+              <path d="M104 -4C100 24 107 50 102 87" stroke-width="1.2" opacity=".5"/>
+              <path d="M126 -4C130 28 123 54 128 87" stroke-width=".8" opacity=".4"/>
+              <path d="M152 -4C148 22 155 52 150 87" stroke-width="1.4" opacity=".5"/>
+              <path d="M174 -4C178 26 171 50 176 87" stroke-width=".7" opacity=".35"/>
+            </g>
+            <path class="c-edge" d="M0 66h193v12a5 5 0 0 1-5 5H5a5 5 0 0 1-5-5Z"/>
+            <line class="c-lit" x1="1" y1="66" x2="192" y2="66"/>
+            <path class="c-lit" fill="none" d="M5 1.6h183M1.6 5v58"/>
+          </svg>
+          <span class="nm">今のうち</span>
+        </span>
+        <span class="badge">要対応 <b>3</b></span>
+      </div>
+      <p class="pn">本人がまだ判断し、意思を伝えられるうちにしか、確認・対応できないこと。</p>
+    </div>
+    <div class="floor when">
+      <div class="row">
+        <span class="plate">
+          <svg viewBox="0 0 198 89" preserveAspectRatio="none" aria-hidden="true">
+            <rect class="c-sh" x="5" y="6" width="193" height="83" rx="5"/>
+            <rect class="c-face" x="0" y="0" width="193" height="83" rx="5"/>
+            <g clip-path="url(#cC)" class="c-grain">
+              <path d="M14 -4C10 22 17 48 12 87" stroke-width="1.1" opacity=".55"/>
+              <path d="M31 -4C36 26 28 52 33 87" stroke-width=".7" opacity=".4"/>
+              <path d="M58 -4C54 20 60 54 56 87" stroke-width="1.5" opacity=".5"/>
+              <path d="M77 -4C81 30 74 56 79 87" stroke-width=".6" opacity=".35"/>
+              <path d="M104 -4C100 24 107 50 102 87" stroke-width="1.2" opacity=".5"/>
+              <path d="M126 -4C130 28 123 54 128 87" stroke-width=".8" opacity=".4"/>
+              <path d="M152 -4C148 22 155 52 150 87" stroke-width="1.4" opacity=".5"/>
+              <path d="M174 -4C178 26 171 50 176 87" stroke-width=".7" opacity=".35"/>
+            </g>
+            <path class="c-edge" d="M0 66h193v12a5 5 0 0 1-5 5H5a5 5 0 0 1-5-5Z"/>
+            <line class="c-lit" x1="1" y1="66" x2="192" y2="66"/>
+            <path class="c-lit" fill="none" d="M5 1.6h183M1.6 5v58"/>
+          </svg>
+          <span class="nm">そのとき</span>
+        </span>
+        <span class="badge">要対応 <b>3</b></span>
+      </div>
+      <p class="pn">本人が亡くなったとき、家族が何をすることになるかを、今のうちに把握しておく。</p>
+    </div>
+  </div>
+
+  <!-- ══ D｜陶板 ══ -->
+  <div class="case case-d">
+    <div class="ch">
+      <div class="ct">D｜陶板（焼き物）</div>
+      <div class="cd">釉薬が<b>縁に溜まって濃くなり</b>、面にムラが出る。輪郭は
+        わずかに歪む（手仕事）。手仕事の温かさが出る。</div>
+    </div>
+    <div class="floor liv">
+      <div class="row">
+        <span class="plate">
+          <svg viewBox="0 0 198 89" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <filter id="gD"><feTurbulence type="fractalNoise" baseFrequency="0.035"
+                numOctaves="3"/><feColorMatrix type="saturate" values="0"/>
+                <feComponentTransfer><feFuncA type="linear" slope=".3"/></feComponentTransfer>
+              </filter>
+              <clipPath id="cD"><path d="M4 2Q99 0 190 2Q193 42 190 80Q99 83 4 80Q1 42 4 2Z"/></clipPath>
+            </defs>
+            <path class="d-sh" d="M9 8Q104 6 195 8Q198 48 195 86Q104 89 9 86Q6 48 9 8Z"/>
+            <!-- 輪郭は矩形ではなく、わずかに歪んだ path（手仕事） -->
+            <path class="d-face" d="M4 2Q99 0 190 2Q193 42 190 80Q99 83 4 80Q1 42 4 2Z"/>
+            <rect class="d-glaze" x="0" y="0" width="198" height="89" filter="url(#gD)"
+              clip-path="url(#cD)"/>
+            <path class="d-edge" d="M4 68Q99 66 190 68Q191 74 190 80Q99 83 4 80Q3 74 4 68Z"/>
+            <!-- 釉薬だまり＝縁が濃い -->
+            <path class="d-rim" d="M4 2Q99 0 190 2Q193 42 190 80Q99 83 4 80Q1 42 4 2Z"/>
+          </svg>
+          <span class="nm">今のうち</span>
+        </span>
+        <span class="badge">要対応 <b>3</b></span>
+      </div>
+      <p class="pn">本人がまだ判断し、意思を伝えられるうちにしか、確認・対応できないこと。</p>
+    </div>
+    <div class="floor when">
+      <div class="row">
+        <span class="plate">
+          <svg viewBox="0 0 198 89" preserveAspectRatio="none" aria-hidden="true">
+            <path class="d-sh" d="M9 8Q104 6 195 8Q198 48 195 86Q104 89 9 86Q6 48 9 8Z"/>
+            <path class="d-face" d="M4 2Q99 0 190 2Q193 42 190 80Q99 83 4 80Q1 42 4 2Z"
+              fill="#EAF0E8"/>
+            <rect class="d-glaze" x="0" y="0" width="198" height="89" filter="url(#gD)"
+              clip-path="url(#cD)"/>
+            <path class="d-edge" d="M4 68Q99 66 190 68Q191 74 190 80Q99 83 4 80Q3 74 4 68Z"
+              fill="#CEDBCD"/>
+            <path class="d-rim" d="M4 2Q99 0 190 2Q193 42 190 80Q99 83 4 80Q1 42 4 2Z"
+              stroke="#B9CCB8"/>
+          </svg>
+          <span class="nm">そのとき</span>
+        </span>
+        <span class="badge">要対応 <b>3</b></span>
+      </div>
+      <p class="pn">本人が亡くなったとき、家族が何をすることになるかを、今のうちに把握しておく。</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

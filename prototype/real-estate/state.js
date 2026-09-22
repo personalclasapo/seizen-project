@@ -73,6 +73,19 @@
                about: '条件が変わったら確認しなおす必要があります。' }
   };
 
+  /* 「今のうち」に表示する判定結果。項目ごとに使える値は異なるため、
+     render.js 側で候補を絞る。バッジは単なる装飾ではなく、この値を
+     選び直す入口として使う。 */
+  const NOW_STATUS = {
+    problem: { label: '問題なし',   tone: 'gr' },
+    done:    { label: '確認済み',   tone: 'gr' },
+    none:    { label: '該当なし',   tone: 'gy' },
+    ask:     { label: '本人に確認', tone: 'bl' },
+    check:   { label: '要確認',     tone: 'bl' },
+    doing:   { label: '対応中',     tone: 'bl' },
+    action:  { label: '対応が必要', tone: 'or' }
+  };
+
   /* 「本人しか知らない度」。§13-1 の基準を状態と別の軸で持つ。
      家族が後から調べられるものと、本人が失われると消えるものを
      画面で区別するため。進捗（§12）はこちらを重く数える。      */
@@ -231,7 +244,8 @@
       /* 4. ローン・担保 */
       loan: {
         has: true, bank: '○○銀行 青葉台支店', type: '住宅ローン',
-        debtor: '本人単独', gtee: 'あり（団体信用生命保険）',
+        debtor: '本人単独', gtee: 'あり（団体信用生命保険）', gteeStatus: 'yes',
+        balance: '約1,240万円',
         mortgage: '第1順位・○○銀行', cross: 'なし',
         st: 'done', reach: 'askable',
         memo: '返済は2044年3月まで。残債は銀行に照会すれば分かる。'
@@ -245,18 +259,28 @@
          それぞれ C の結果・2 権利関係・各詳細の中へ移した。      */
       matters: {
         boundary: { find: 'yes', st: 'action', reach: 'onlyself',
+          uiStatus: 'action',
           memo: '西側の境界は、隣家と口頭で「ブロック塀の中心」と' +
-                '決めたまま。境界標なし。先方も高齢。',
+                '決めたまま。境界標なし。',
           detail: { what: '境界標がなく、位置が口約束のまま',
                     who: '西隣の◇◇さん', deal: '口頭のみ',
                     paper: 'なし', state: '未解決' } },
         road:     { find: 'no', st: 'done', reach: 'public',
-          memo: '前面道路は市道。', detail: null },
+          uiStatus: 'none',
+          memo: '前面道路は市道。私道持分なし。通行・配管について隣地との個別の取り決めなし。',
+          detail: null },
         changed:  { find: 'yes', st: 'action', reach: 'onlyself',
-          memo: '北側の増築部分（約6畳、1998年ごろ）。登記は未対応。' +
+          uiStatus: 'action',
+          memo: '北側に約6畳の増築あり（1998年ごろ）。登記には未反映。' +
                 '確認申請の有無は工務店に照会中。',
           detail: { what: '北側に約6畳を増築',
                     reg: '未対応', state: '確認申請の有無を照会中' } }
+      },
+
+      priorInheritance: { status: 'action' },
+      ownerReport: {
+        state: 'needed',
+        deadline: 'この自治体では、現所有者であることを知った日の翌日から3か月以内'
       },
 
       /* 6. 家族が入る方法 */
@@ -301,17 +325,25 @@
           what: '見回り・郵便物の確認。月1回ほど様子を見てもらっている',
           tel: '0258-00-0000', st: 'doing' }
       ],
-      loan: { has: false, st: 'none', reach: 'public', memo: '完済済み。' },
+      loan: { has: false, gteeStatus: 'none', st: 'none', reach: 'public', memo: '完済済み。' },
       matters: {
         boundary: { find: 'unasked', st: 'todo', reach: 'onlyself',
-          memo: '', detail: null },
-        road:     { find: 'unknown', st: 'action', reach: 'onlyself',
-          memo: '前面が私道。持分の有無が不明。近隣3軒との共有かもしれない。',
+          uiStatus: 'ask',
+          memo: '西側の境界について、書類だけでは経緯が分からない。', detail: null },
+        road:     { find: 'unknown', st: 'todo', reach: 'onlyself',
+          uiStatus: 'check',
+          memo: '前面道路は私道。持分と、給排水管の経路が確認できていない。',
           detail: { what: '前面道路が私道。持分の有無が不明',
                     who: '近隣3軒（未確認）', deal: '不明',
                     paper: '不明', state: '未解決' } },
         changed:  { find: 'unasked', st: 'todo', reach: 'onlyself',
-          memo: '', detail: null }
+          uiStatus: 'ask',
+          memo: '北側に増築部分あり。時期・施工者・登記状況が分からない。', detail: null }
+      },
+      priorInheritance: { status: 'none' },
+      ownerReport: {
+        state: 'needed',
+        deadline: 'この自治体では、現所有者であることを知った日の翌日から3か月以内'
       },
       access: {
         who: '', key: '', keyKind: '', code: '', how: '',
@@ -321,7 +353,128 @@
     }
   ];
 
-  let props = loadSaved() || JSON.parse(JSON.stringify(SEED));
+  function inferredMatterStatus(key, m) {
+    if (m && NOW_STATUS[m.uiStatus]) return m.uiStatus;
+    if (!m || m.find === 'unasked') return 'ask';
+    if (m.find === 'unknown') return 'check';
+    if (m.find === 'no') return key === 'boundary' ? 'problem' : 'none';
+    if (m.st === 'action') return 'action';
+    if (m.st === 'doing') return 'doing';
+    return 'done';
+  }
+
+  /* 旧 localStorage を読み込んだ場合も、新しい判定項目を補う。 */
+  function normalize(p) {
+    p.matters = p.matters || {};
+    ['boundary', 'road', 'changed'].forEach(k => {
+      if (p.matters[k]) {
+        const status = inferredMatterStatus(k, p.matters[k]);
+        p.matters[k].uiStatus = status;
+        p.matters[k].st = status === 'action' ? 'action'
+          : status === 'doing' ? 'doing'
+          : status === 'none' ? 'none'
+          : (status === 'done' || status === 'problem') ? 'done' : 'todo';
+        if (k === 'road' && status === 'none' &&
+            p.matters[k].memo === '前面道路は市道。') {
+          p.matters[k].memo = '前面道路は市道。私道持分なし。' +
+            '通行・配管について隣地との個別の取り決めなし。';
+        }
+      }
+    });
+    if (!p.priorInheritance) {
+      const unfinished = ['land', 'bldg'].some(k =>
+        p.rights && p.rights[k] && p.rights[k].match !== 'same');
+      p.priorInheritance = { status: unfinished ? 'action' : 'none' };
+    }
+    if (!p.ownerReport) {
+      p.ownerReport = {
+        state: 'needed',
+        deadline: 'この自治体では、現所有者であることを知った日の翌日から3か月以内'
+      };
+    }
+    p.loan = p.loan || { has: false, st: 'none', reach: 'public' };
+    if (!p.loan.gteeStatus) {
+      if (!p.loan.has) p.loan.gteeStatus = 'none';
+      else if (/不明|未確認/.test(p.loan.gtee || '')) p.loan.gteeStatus = 'unknown';
+      else if (/なし/.test(p.loan.gtee || '')) p.loan.gteeStatus = 'no';
+      else p.loan.gteeStatus = 'yes';
+    }
+    if (p.id === 'p1' && p.loan.has && !p.loan.balance) p.loan.balance = '約1,240万円';
+    return p;
+  }
+
+  let props = (loadSaved() || JSON.parse(JSON.stringify(SEED))).map(normalize);
+
+  const MATTER_STATUS_PATCH = {
+    boundary: {
+      problem: { find: 'no', st: 'done', reach: 'public',
+        memo: '境界標を確認済み。隣地との個別の取り決めなし。', detail: null },
+      done: { find: 'yes', st: 'done', reach: 'public',
+        memo: '西側の境界について隣家との合意書あり。境界標も確認済み。',
+        detail: { what: '西側の境界', who: '西隣', deal: '合意済み', paper: 'あり', state: '解決済み' } },
+      ask: { find: 'unasked', st: 'todo', reach: 'onlyself',
+        memo: '西側の境界について、書類だけでは経緯が分からない。', detail: null },
+      check: { find: 'unknown', st: 'todo', reach: 'askable',
+        memo: '境界標と、隣地との取り決めの有無を確認できていない。', detail: null },
+      action: { find: 'yes', st: 'action', reach: 'onlyself',
+        memo: '西側の境界は、隣家と口頭で「ブロック塀の中心」と決めたまま。境界標なし。',
+        detail: { what: '境界標がなく、位置が口約束のまま', who: '西隣', deal: '口頭のみ', paper: 'なし', state: '未解決' } }
+    },
+    road: {
+      none: { find: 'no', st: 'none', reach: 'public',
+        memo: '前面道路は市道。私道持分なし。通行・配管について隣地との個別の取り決めなし。', detail: null },
+      done: { find: 'yes', st: 'done', reach: 'public',
+        memo: '前面道路は私道。持分あり。通行・配管に必要な権利は書類で確認済み。',
+        detail: { what: '私道・通行・配管', who: '私道共有者', deal: '権利を確認済み', paper: 'あり', state: '解決済み' } },
+      check: { find: 'unknown', st: 'todo', reach: 'askable',
+        memo: '前面道路は私道。持分と、給排水管の経路が確認できていない。', detail: null },
+      action: { find: 'yes', st: 'action', reach: 'onlyself',
+        memo: '給水管が隣地を通っている。使用について隣家と口頭の了承のみ。',
+        detail: { what: '給水管が隣地を通る', who: '隣家', deal: '口頭の了承のみ', paper: 'なし', state: '未解決' } }
+    },
+    changed: {
+      none: { find: 'no', st: 'none', reach: 'public',
+        memo: '取得後の増築・取り壊しなど、登記に影響する変更なし。', detail: null },
+      done: { find: 'yes', st: 'done', reach: 'public',
+        memo: '2008年に2階部分を増築。登記への反映を確認済み。',
+        detail: { what: '2階部分を増築', reg: '対応済み', state: '登記への反映を確認済み' } },
+      ask: { find: 'unasked', st: 'todo', reach: 'onlyself',
+        memo: '北側に増築部分あり。時期・施工者・登記状況が分からない。', detail: null },
+      check: { find: 'unknown', st: 'todo', reach: 'askable',
+        memo: '増改築の有無と、現在の建物が登記内容に反映されているかを確認できていない。', detail: null },
+      action: { find: 'yes', st: 'action', reach: 'onlyself',
+        memo: '北側に約6畳の増築あり（1998年ごろ）。登記には未反映。確認申請の有無は工務店に照会中。',
+        detail: { what: '北側に約6畳を増築', reg: '未対応', state: '確認申請の有無を照会中' } }
+    }
+  };
+
+  function setNowStatus(id, key, status) {
+    const p = props.find(x => x.id === id);
+    if (!p || !NOW_STATUS[status]) return false;
+    if (key === 'prior') {
+      p.priorInheritance.status = status;
+      const rights = ['land', 'bldg'].map(k => p.rights && p.rights[k]).filter(Boolean);
+      const r = rights.find(x => x.match !== 'same') || rights[0];
+      if (r && (status === 'action' || status === 'doing')) {
+        r.match = 'differ'; r.st = status === 'doing' ? 'doing' : 'action';
+        if (!r.owner || r.owner === '本人') r.owner = '前の代の名義';
+        r.memo = status === 'doing' ? '前の代の相続登記を申請中。' : '前の代の相続登記が未了。';
+      } else if (rights.length) {
+        rights.forEach(x => {
+          x.match = 'same'; x.st = 'done'; x.owner = '本人';
+          x.shares = x.shares || '単独';
+          x.memo = status === 'done' ? '本人名義への相続登記を確認済み。' : '未了の相続なし。';
+        });
+      }
+    } else {
+      const patch = MATTER_STATUS_PATCH[key] && MATTER_STATUS_PATCH[key][status];
+      const m = p.matters && p.matters[key];
+      if (!patch || !m) return false;
+      Object.assign(m, JSON.parse(JSON.stringify(patch)), { uiStatus: status });
+    }
+    save();
+    return true;
+  }
 
   /* ── 進捗（正本 §12）──────────────────────────────
      入力率ではなく「必要な状態がどこまで成立しているか」。
@@ -392,11 +545,12 @@
   }
 
   global.SeiZenRealEstate = {
-    ST, REACH, MATCH, KINDS, USES, MATTERS, FINDINGS, DEALS, FLOWS, DOC_KINDS,
+    ST, NOW_STATUS, REACH, MATCH, KINDS, USES, MATTERS, FINDINGS, DEALS, FLOWS, DOC_KINDS,
     all: () => props,
     find: id => props.filter(p => p.id === id)[0] || null,
     gauge,
     neededDocs,
+    setNowStatus,
     save
   };
 })(window);

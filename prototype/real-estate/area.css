@@ -149,20 +149,60 @@
 .body{flex:1;overflow-y:auto;min-height:0}
 .body::-webkit-scrollbar{width:4px}
 .body::-webkit-scrollbar-thumb{background:#DCD6C8;border-radius:2px}
+.cell.c-when .body{overflow-y:visible}
 
 /* ══ 今のうち／そのとき｜v27 の器（2026-09-20 移植）══════
    地（緑／砂）→ 白いカード → その中のブロック、の3段。
    部屋の床がその「地」に当たる（SVG の FLOOR が塗る）ので、
    .cell 自体には背景を敷かない。                              */
 
-/* 見出し。部屋名（h4）が v27 の大見出しの役をする。明朝。
+/* 見出し＝表札。板そのもの（面・小口・面取り・影）は render.js の
+   roomTag が SVG で描く。ここは置かれ方だけを持つ ―― 板の大きさは
+   室名の字数で決まるので、文字を器にして SVG を敷く。
    色は contract-digital の .ib-ttl b と同じ値（束の色を揃える）。 */
-.cell.c-liv > h4, .cell.c-when > h4{font-family:var(--font-serif);
-  font-size:19px;line-height:1.3;letter-spacing:.04em;margin:0 0 3px}
-.cell.c-liv > h4{color:#a4650f}
-.cell.c-when > h4{color:#3d6b52}
-/* 見出しの下の説明。部屋名の直後に置く。 */
-.pn{font-size:10.5px;color:var(--ink2);line-height:1.75;margin:0 0 9px;flex:none}
+/* 板は影を右下へ落とすので、部屋の縁に触れさせない（.cell は
+   overflow:hidden ―― 縁まで寄せると影と面取りが切れる）。
+   表札は部屋の幅の中心に置く ―― 玄関表札の実際の付き方と同じで、
+   部屋名を指す引き出しではなく「この部屋の顔」として据える。 */
+.rtag{display:flex;align-items:center;justify-content:center;gap:11px;
+  margin:2px 0 9px;flex:none}
+/* 板。文字を包む器で、SVG は背面に敷く。padding が彫り代＝
+   文字と板の縁のあき（実物の表札も文字は縁いっぱいには来ない）。
+   下の padding が大きいのは、板厚の小口に文字を載せないため。 */
+.rt-plate-w{position:relative;display:inline-flex;align-items:center;
+  padding:8px 18px 12px;flex:none}
+.rt-plate{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+.rt-face{fill:var(--plate)}
+.rt-edge{fill:var(--plate-edge)}
+/* 正面と小口の境。面取りに光が回り込む線（ここが無いと、
+   小口が別の帯に見えて板の厚みにならない）。 */
+.rt-edge-lit{stroke:var(--plate-bevel);stroke-width:1;opacity:.7;
+  vector-effect:non-scaling-stroke}
+.rt-shadow{fill:#32322E;opacity:.1}
+/* 面取りは線。横に伸ばしても太さが変わらないよう実寸で描く。 */
+.rt-bevel{fill:none;stroke:var(--plate-bevel);stroke-width:1.5;
+  stroke-linecap:round;vector-effect:non-scaling-stroke}
+/* 室名＝切り文字。板より手前にあるので、自身も薄い影を落とす。 */
+.rt-nm{position:relative;z-index:1;font-family:var(--font-serif);
+  font-size:19px;line-height:1.3;letter-spacing:.06em;margin:0;
+  font-weight:600;color:currentColor;white-space:nowrap;
+  text-shadow:0 1px 0 rgba(255,255,255,.55),0 -1px 1px rgba(50,50,46,.18)}
+/* 要対応＝板の脇に打つ小さな金物。0件なら出さない（render.js）。 */
+.rt-n{flex:none;font-size:10.5px;line-height:1.6;letter-spacing:.02em;
+  white-space:nowrap;color:var(--or);background:var(--or-bg);
+  border:1px solid var(--or-ln);border-radius:3px;padding:2px 9px}
+.rt-n b{font-size:12.5px;font-weight:700}
+/* 板の地。部屋の床（liv #F7EAD6／when #E9EFE9）より明るい石に
+   して、壁から浮いた板に見せる。小口は正面より暗く、面取りは
+   明るく（光は左上から）。 */
+.rtag.rt-liv{color:#8f5709;
+  --plate:#FDFAF3;--plate-edge:#E3D3B4;--plate-bevel:#FFFFFF}
+.rtag.rt-when{color:#35604a;
+  --plate:#FBFDFA;--plate-edge:#CBDBCB;--plate-bevel:#FFFFFF}
+/* 見出しの下の説明。表札が中央寄せなので、説明も中央に揃える
+   （左だけ字が出ていると、表札に対して非対称になる）。 */
+.pn{font-size:10.5px;color:var(--ink2);line-height:1.75;margin:0 0 9px;
+  flex:none;text-align:center}
 
 /* 第2段｜白いカード。地の上に載る記録物。flex で伸ばさない
    ――中身のぶんで終わり、余りは床（地）が受ける。            */
@@ -170,8 +210,6 @@
 
 /* ── 今のうち｜左の縦レール ── */
 .rail{position:relative;padding-left:24px}
-.rail::before{content:'';position:absolute;left:5px;top:10px;bottom:16px;
-  width:0;border-left:1px dashed #CFC8B6}
 .rw{position:relative;padding:0 0 15px;border-bottom:1px solid #F1EEE5;
   margin-bottom:15px}
 .rw:last-child{padding-bottom:0;border-bottom:0;margin-bottom:0}
@@ -259,11 +297,17 @@
 /* 状態バッジ（§11） */
 .bdg{display:inline-flex;align-items:center;gap:4px;flex:none;
   font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
-  border:1px solid;white-space:nowrap}
+  border:1px solid;white-space:nowrap;justify-content:center;text-align:center}
 .bdg.or{color:var(--or);background:var(--or-bg);border-color:var(--or-ln)}
 .bdg.gr{color:var(--gr);background:var(--gr-bg);border-color:#c7dbcb}
 .bdg.gy{color:var(--ink3);background:#F1EFE9;border-color:var(--line2)}
 .bdg.bl{color:var(--bl);background:#EDF1F6;border-color:#C6D3E0}
+.status-pick{appearance:none;-webkit-appearance:none;cursor:pointer;font-family:var(--font);
+  line-height:1.35;padding-right:22px;padding-left:22px;text-align-last:center;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='m2 2 4 4 4-4' fill='none' stroke='%23756f63' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-size:9px 6px;background-position:right 7px center}
+.status-pick:hover{filter:brightness(.98)}
+.status-pick:focus-visible{outline:2px solid rgba(55,111,79,.28);outline-offset:2px}
 .t-gr{color:var(--gr);background:var(--gr-bg);border-color:#c7dbcb}
 .t-or{color:var(--or);background:var(--or-bg);border-color:var(--or-ln)}
 .t-gy{color:var(--gy);background:#F1EFE9;border-color:var(--line2)}
@@ -333,8 +377,7 @@
   .stack .rm-when{border-color:#CCD9CE}
   /* 縦積みでは「事情」を先に出す。この領域の中心だから。 */
   .stack .rm-matters{order:-1;border-color:var(--or-ln);background:#FEFBF6}
-  .stack .rm-liv > h4, .stack .rm-when > h4{font-family:var(--font-serif);
-    font-size:17px}
-  .stack .rm-liv > h4{color:#a4650f}
-  .stack .rm-when > h4{color:#3d6b52}
+  /* 縦積みでは室名札を一回り小さく。引き出し線も詰める。 */
+  .stack .rt-nm{font-size:17px}
+  .stack .pn{padding-left:18px}
 }
