@@ -367,20 +367,60 @@
     return out;
   }
 
-  /* そのとき（父の死亡）に、前の代の名義がどう効くか。 */
+  /* 父の相続に、この物件の前の代の名義が入らない理由（そのときの頭に出す）。
+     父の分がないときだけ使う。 */
   function priorGone(p, pr) {
-    if (pr.remains === 'unknown' || !pr.remains) return '前の代の名義が残っていないか、登記で確かめます。残っていれば、先にそちらを片付けます。';
     if (pr.remains !== 'yes' || pr.stage === 'registered') return '';
     const c = priorCase(p), where = c.where;
-    /* 当事者が母、または特定できないときは、父の相続とは別の話になる。 */
     if (c.P !== WHO) return where + 'は前の代の名義のままです。' + WHO + 'の相続とは別に、前の代の相続人で名義を移します。';
     if (!c.mine && (c.route === 'will' || c.st === 'signed'))
       return where + 'は' + c.t + 'が取得すると決まっているので、' + WHO + 'の相続登記には入りません。' +
         (c.st === 'signed' && c.pr.seal !== 'given' ? WHO + 'の印鑑証明書はまだ渡していないので、家族全員で、協議書が真正に作られた旨の証明書に実印を押すことになります。' : '');
-    if (c.route === 'sole' || c.route === 'will' || c.st === 'signed')
-      return where + 'は前の代の名義のままです。前の代から' + WHO + 'へ、' + WHO + 'から家族へ、2回分の相続登記が要ります。' +
-        (c.route === 'will' ? '前の代の遺言書を使います。' : c.route === 'split' ? '署名済みの遺産分割協議書を使います（期限はありません）。' : '');
-    return where + 'は前の代の名義のままです。家族が' + WHO + 'に代わって前の代の遺産分割に加わり、先にそちらを片付けます。';
+    return '';
+  }
+
+  /* ■ そのときの相続登記「この物件では」（2026-09-24 作り直し）
+     そのときは、父が亡くなった後に家族が開く面。ここに書くのは、この
+     物件で実際にすることと、そのとき気をつけること。「確かめます」の
+     ような今のうちの確認は書かない（以前は、前の代の名義が未確認だと
+     「残っていないか登記で確かめます」と出していた）。
+     記録から言えることだけを項目にする：前の代の名義が残っているか・
+     どう移すか、使う書類がどこにあるか、父の持分。                    */
+  function inheritHere(p) {
+    const out = [];
+    const pr = p.priorInheritance || {};
+    const docAt = key => { const d = (p.docs.at || {})[key] || {}; return d.st === 'have' && d.place ? d.place : ''; };
+    if (pr.remains === 'yes' && pr.stage !== 'registered') {
+      const c = priorCase(p);
+      if (c.P === WHO && (c.mine || c.route === 'unknown' || (c.route === 'split' && ['none', 'agreed'].includes(c.st)))) {
+        /* 名義人は最初の一度だけ「（故人）」まで書き、あとは名前だけにする。 */
+        const full = S.priorOwner(p) || '前の代';
+        const owner = full.replace(/（故人）$/, '');
+        out.push(c.where + 'は' + full + 'の名義のままです。');
+        if (c.route === 'split' && c.st === 'signed') {
+          out.push(WHO + 'が取得する遺産分割協議書があります。これと相続人全員の印鑑証明書で、' + owner + 'から' + WHO + '、' + WHO + 'から家族へと名義を移します。' +
+            WHO + 'が1人で取得すると決まっているので、1回の申請で家族へ移せることがあります（司法書士に確認）。');
+          out.push('協議書の場所：' + (docAt('prior') || 'まだ記録されていません（書類のありか）'));
+        } else if (c.route === 'will') {
+          out.push(owner + 'の遺言で' + WHO + 'が取得すると決まっています。遺言書を使って、' + owner + 'から' + WHO + '、' + WHO + 'から家族へと名義を移します。' +
+            '自筆の遺言書は、先に家庭裁判所の検認が要ります（法務局に預けてあったものを除く）。');
+          out.push('遺言書の場所：' + (docAt('priorWill') || 'まだ記録されていません（書類のありか）'));
+        } else if (c.route === 'sole') {
+          out.push(owner + 'の相続人は' + WHO + 'だけなので、話し合いは要りません。' + owner + 'から' + WHO + '、' + WHO + 'から家族へと名義を移します。1回の申請で家族へ移せることがあります（司法書士に確認）。');
+        } else {
+          out.push('先に' + owner + 'の相続を片付けます。' + (c.route === 'unknown' ? '遺言がなければ、' : '') +
+            owner + 'の遺産分割には、' + owner + 'のほかの相続人と、' + WHO + 'の相続人（家族）全員が加わります。2人分の相続を1通の協議書にまとめられます。');
+          if (c.st === 'agreed') out.push(WHO + 'が取得すると口頭で決まっていましたが、書面はありません。協議書にするには、相続人全員の署名・実印と印鑑証明書が要ります。');
+        }
+        out.push('戸籍は、' + WHO + 'の分に加えて、' + owner + 'の出生から死亡までの分も要ります。');
+      }
+    }
+    ['land', 'bldg'].forEach(k => {
+      const r = (p.rights || {})[k];
+      if (r && r.owner === WHO && r.hold === 'share' && r.shares && r.shares !== '単独')
+        out.push((k === 'land' ? '土地' : p.kind === 'condo' ? '専有部分' : '建物') + 'は共有です。相続するのは' + WHO + 'の持分（' + r.shares + '）だけです。');
+    });
+    return out;
   }
 
   /* 父が亡くなったとき、この物件に父の分があるか。
@@ -411,14 +451,20 @@
       out.push({ icon: 'toki', nm: '相続登記',
         de: '不動産の名義を、相続した人へ変更する。',
         whereLabel: '申請先', where: '物件所在地を管轄する法務局',
-        first: '司法書士に依頼するか、自分で申請するかを選ぶ。',
+        first: inheritHere(p).length && (pr.remains === 'yes' && pr.stage !== 'registered' && S.priorParty(pr) === WHO && pr.taker !== 'other')
+          ? '司法書士に、' + (S.priorOwner(p) || '前の代') + 'の名義が残っていることを伝えて相談する。'
+          : '司法書士に依頼するか、自分で申請するかを選ぶ。',
         lim: '取得を知った日から3年以内',
         limNote: '相続によって、この不動産を取得したことを知った日が起点。',
-        only: priorGone(p, pr),
-        steps: ['遺言の有無や、相続人間の話合いの状況を確認する。',
-          '依頼する場合は、司法書士へ対象の不動産と相続の状況を伝え、必要書類・費用を確認する。',
-          '自分で申請する場合は、法務局の案内に沿って申請書と添付書類をそろえ、管轄の法務局へ申請する。'],
-        note: '書類の作成方法は、法務局の登記手続案内（予約制）で確認できます。期限内に遺産分割が難しい場合は、相続人申告登記も確認します。',
+        only: inheritHere(p),
+        steps: ['遺言があるかを確かめる。公正証書の遺言は公証役場で、法務局に預けた自筆の遺言は法務局で調べられる。',
+          WHO + 'の出生から死亡までの戸籍と、相続人全員の戸籍を集める。' + WHO + 'や祖父母の戸籍は、最寄りの市区町村の窓口でまとめて請求できる（広域交付。請求する人が窓口へ行く。きょうだいの戸籍は対象外）。',
+          '遺言がなければ、相続人全員で遺産分割協議をする。協議書に全員が署名・実印を押し、印鑑証明書を添える。',
+          '登記事項証明書と固定資産評価証明書を取り、申請書と添付書類をそろえて法務局へ申請する。司法書士にまとめて頼める。'],
+        cautions: ['権利証（登記識別情報）が見つからなくても、相続登記はできます。',
+          '登録免許税は固定資産税評価額の0.4%です。評価額は固定資産評価証明書か、毎年届く課税明細書で分かります。',
+          '3年以内に遺産分割がまとまらなければ、相続人申告登記で義務だけ先に果たせます。名義は移らず、売ることはできません。'],
+        note: '申請書の書き方は、法務局の登記手続案内（予約制）で相談できます。',
         link: 'https://www.moj.go.jp/MINJI/minji05_00599.html', linkLabel: '法務省｜相続登記の案内' });
     }
     if (owns && p.ownerReport && p.ownerReport.state !== 'hidden') {
@@ -631,9 +677,10 @@
         '" aria-expanded="' + expanded + '"><span>' + (expanded ? '手順・補足を閉じる' : '手順・補足を見る') +
         '</span><span aria-hidden="true">' + (expanded ? '−' : '＋') + '</span></button>' +
         (expanded ? '<div class="procedure-detail">' +
-          (x.only ? '<p class="procedure-context"><b>この物件では</b>' + esc(x.only) + '</p>' : '') +
+          (x.only && x.only.length ? '<div class="procedure-context"><b>この物件では</b><ul>' + x.only.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' : '') +
           '<ol>' + x.steps.map(step => '<li>' + esc(step) + '</li>').join('') + '</ol>' +
           (x.limNote ? '<p class="procedure-note">' + esc(x.limNote) + '</p>' : '') +
+          (x.cautions ? '<div class="procedure-cautions"><b>気をつけること</b><ul>' + x.cautions.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' : '') +
           '<p class="procedure-note">' + esc(x.note) + '</p>' +
           (x.link ? '<a class="procedure-source" href="' + esc(x.link) + '" target="_blank" rel="noopener noreferrer">' +
             esc(x.linkLabel) + ' ↗</a>' : '') + '</div>' : '') + '</article>';

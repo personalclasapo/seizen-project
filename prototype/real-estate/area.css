@@ -352,12 +352,19 @@
 .procedure-toggle > span:last-child{font-size:17px;font-weight:400}
 .procedure-detail{border-top:1px solid #e8eee7;padding:13px 0 17px;font-size:12px;line-height:1.8}
 .procedure-detail ol{list-style:none;counter-reset:procedure;margin:0;padding:0}
-.procedure-detail li{counter-increment:procedure;position:relative;padding-left:27px;margin-bottom:11px}
-.procedure-detail li:before{content:counter(procedure);position:absolute;left:0;top:2px;
+.procedure-detail ol>li{counter-increment:procedure;position:relative;padding-left:27px;margin-bottom:11px}
+.procedure-detail ol>li:before{content:counter(procedure);position:absolute;left:0;top:2px;
   width:18px;height:18px;border-radius:50%;background:#eaf0e8;color:#41624c;
   text-align:center;font-size:10px;line-height:18px;font-weight:700}
 .procedure-context{margin:0 0 13px;padding:9px 11px;background:#f3f6ef;color:#3d5b44}
 .procedure-context b{display:block;font-size:10px;margin-bottom:3px}
+/* この物件では／気をつけること：短い箇条。手順の番号付きとは見た目を分ける。 */
+.procedure-context ul,.procedure-cautions ul{margin:0;padding:0;list-style:none}
+.procedure-context li,.procedure-cautions li{position:relative;padding-left:12px;margin:0}
+.procedure-context li+li,.procedure-cautions li+li{margin-top:5px}
+.procedure-context li:before,.procedure-cautions li:before{content:"";position:absolute;left:1px;top:.78em;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.55}
+.procedure-cautions{margin:13px 0 0;font-size:11.5px;color:var(--ink2)}
+.procedure-cautions b{display:block;font-size:10px;color:#6E6A60;margin-bottom:4px}
 .procedure-note{font-size:11px;line-height:1.8;color:var(--ink2);margin:11px 0 0}
 .procedure-source{display:inline-block;margin-top:11px;color:#42674e;font-size:11px;
   text-decoration:underline;text-underline-offset:3px}
