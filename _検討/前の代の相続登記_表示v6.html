@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>前の代の相続登記｜表示v6</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<link rel="stylesheet" href="../prototype/real-estate/area.css">
+<!--
+  前の代の相続登記｜今のうちの行の表示案 v6
+
+  ■ v5 の問題（2026-09-24 見直し）
+  ・「なぜ」の一文が理由を2つ（義務／動かせない）詰めた法律の説明で、
+    この項目が「今のうち」にある理由 ―― 太郎さんが話し合えるうちに
+    決めないと、家族が代わりに入ることになる ―― が、くわしくの最後の
+    一文に埋もれていた
+  ・「相続で移すこともできない」は不正確（相続そのものは起きる。起きた
+    あとに家族が前の代の話し合いへ入ることになる、が実際）
+  ・義務であることは「次にすること」の期限が既に示している（重複）
+  ・くわしくの図（前の代 → 太郎さん → 家族）は、名義の図と同じことを
+    言い直していた
+  ・くわしくを開くと、次にすること（主）がカードの下へ押し出された
+  ・段階が変わっても理由が同じ文だった。協議書まで済めば、残る問題は
+    「話し合い」ではなく「申請が本人の名前で出るもの」に変わる
+
+  ■ v6 の組み方
+  ・一文は「今のうち」の理由だけを、段階ごとに言う（ラベルなし）
+  ・くわしくは カードの一番下の行。開いても主の位置は動かない。
+    閉じたままでも中に何があるかが見出しで分かる
+  ・くわしくの中身（それぞれ家族が新しく知ること）
+      1 あとになると、誰が入るか … 今／判断が難しくなると／先に亡くなると
+                                   で、席に着く人がどう変わるか（図）
+      2 期限まで、あとどれくらいか … 今日から期限までの残り（図）と過料
+      3 間に合わないとき・売るとき … 相続人申告登記で過料は避けられる
+                                   が、売るには相続登記が要る
+  ・名義の図（前の代 → 移す先）は v5 のまま
+-->
+<style>
+body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);padding:28px}
+h1{font-size:16px;margin:0 0 4px}
+.lead{font-size:12px;color:var(--ink2);margin:0 0 24px}
+.cols{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col>h2{font-size:11px;color:var(--ink3);font-weight:600;margin:0 0 8px}
+.col .stackw{display:flex;flex-direction:column;gap:14px}
+.w451{width:451px}.w568{width:568px}.w348{width:348px}
+.cap{font-size:10px;color:var(--ink3);margin:0 0 -8px}
+.rw{padding:18px}
+.w348 .rw{padding:14px}
+p,li,h5{text-wrap:pretty}
+/* 日本語は文節で折り返す（語の途中で割らない） */
+.rw{word-break:auto-phrase}
+
+/* 控え：今のうちの理由。ラベルも枠もない1〜2文。 */
+.why{margin:10px 0 0;font-size:12px;line-height:1.8;color:var(--ink2)}
+.why b{font-weight:600;color:#4A453C}
+
+/* 従：今の名義。前の代 → 移す先。v5 のまま。 */
+.nm{margin-top:14px;display:grid;grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr);align-items:stretch;column-gap:4px}
+.nm-b{border-radius:6px;padding:7px 10px 8px;min-width:0}
+.nm-b small{display:block;font-size:10px;color:var(--ink3);letter-spacing:.04em;margin-bottom:2px}
+.nm-b span{display:block;font-size:13px;font-weight:600;line-height:1.45;overflow-wrap:anywhere}
+.nm-now{background:#F4F1EA;border:1px solid #E2DCCF}
+.nm-now span{color:#4A453C}
+.nm-to{background:#fff;border:1px dashed #C9BFA8}
+.nm-to span{color:#8F887A;font-weight:500}
+.nm-to.done{border:1px solid #BFD3C4;background:var(--gr-bg)}
+.nm-to.done span{color:var(--gr);font-weight:600}
+.nm-ar{display:grid;place-items:center}
+.nm-ar svg{width:30px;height:12px}
+.nm-st{grid-column:1/-1;margin:6px 0 0;font-size:11px;color:var(--ink2);line-height:1.6;display:flex;align-items:center;gap:5px}
+.nm-st svg{width:13px;height:13px;flex:none;color:#9B8B6E}
+
+/* 主：次にすること＋期限 */
+.act{margin-top:14px;padding-top:12px;border-top:1px solid #EBE3D5}
+.act-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.act-lb{font-size:10.5px;font-weight:600;color:var(--ink3);letter-spacing:.04em}
+.act-lim{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--or);white-space:nowrap}
+.act-lim svg{width:13px;height:13px;flex:none}
+.act-lim.unk{color:var(--ink2);font-weight:500}
+.act p{margin:5px 0 0;font-size:14.5px;font-weight:700;line-height:1.6;color:var(--ink)}
+.act p small{display:block;font-size:11px;font-weight:400;color:var(--ink2);margin-top:2px}
+.quiet{margin:12px 0 0;font-size:11.5px;color:#777064;line-height:1.7}
+
+/* くわしく：カードの最下行。開いても上の並びは動かない。 */
+.dt{margin:14px -18px -18px;border-top:1px solid #EFE8DB;border-radius:0 0 8px 8px}
+.w348 .dt{margin:14px -14px -14px}
+.dt-t{display:flex;align-items:center;gap:8px;width:100%;padding:10px 18px 11px;border:0;background:none;
+  font:inherit;text-align:left;cursor:pointer;color:var(--ink2)}
+.w348 .dt-t{padding:10px 14px 11px}
+.dt-t:hover{background:#FBF9F4}
+.dt-t:focus-visible{outline:2px solid #9DB3C9;outline-offset:-2px}
+.dt-k{flex:none;font-size:11.5px;font-weight:600;color:var(--bl)}
+.dt-s{flex:1;min-width:0;font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dt-t svg{flex:none;width:11px;height:11px;color:var(--bl);transition:transform .15s}
+.dt.open .dt-t svg{transform:rotate(180deg)}
+.dt.open .dt-s{visibility:hidden}
+.dt-b{display:none;padding:2px 18px 18px;background:linear-gradient(#FBF9F4,#FBF9F4) no-repeat;border-radius:0 0 8px 8px}
+.w348 .dt-b{padding:2px 14px 14px}
+.dt.open{background:#FBF9F4}
+.dt.open .dt-b{display:block}
+.dt-b section{padding-top:14px}
+.dt-b section+section{margin-top:14px;border-top:1px solid #EDE6D8}
+.dt-b h5{display:flex;align-items:baseline;gap:7px;margin:0 0 8px;font-size:12.5px;font-weight:700;color:#3F3B34}
+.dt-b h5 i{font-style:normal;flex:none;width:17px;height:17px;border-radius:50%;background:#EDE6D6;color:#7A6F59;
+  font-size:10px;font-weight:700;display:grid;place-items:center;transform:translateY(-1px)}
+.dt-b p{margin:0;font-size:11.5px;line-height:1.8;color:#5E584D}
+.dt-b p+p{margin-top:5px}
+.dt-b p b{font-weight:600;color:#3F3B34}
+
+/* 1 席に着く人：段ごとに「いつ」と「誰が」 */
+.seat{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;align-items:start;margin:0 0 10px}
+.seat dt{font-size:10.5px;font-weight:600;color:var(--ink3);line-height:1.3;padding-top:7px;white-space:nowrap}
+.seat dd{margin:0;display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-width:0}
+.seat dd small{flex-basis:100%;font-size:10.5px;color:var(--ink2);line-height:1.55;margin-top:1px}
+.pp{display:inline-flex;align-items:center;gap:4px;padding:4px 9px 4px 6px;border-radius:999px;font-size:11.5px;font-weight:600;line-height:1.3;white-space:nowrap;
+  border:1px solid #DDD5C4;background:#fff;color:#4A453C}
+.pp svg{height:13px;width:auto;flex:none}
+.pp.me{border-color:#B9AE97;background:#F4F1EA}
+.pp.fam{border-color:#C6D3E0;background:#EDF1F6;color:var(--bl)}
+.pp.pro{border-style:dashed;border-color:#C4BCAE;background:#fff;color:#6B6963}
+.pp.sib{border-color:#E6E0D3;background:transparent;color:#9B988E;font-weight:500}
+
+/* 2 期限までの残り */
+.tl{display:block;width:100%;max-width:420px;height:auto;margin:4px 0 8px}
+.dt-b .left b{color:var(--or);font-size:13px;font-weight:700}
+
+/* 3 */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px}
+.w348 .two{grid-template-columns:1fr}
+.two div{border:1px solid #E6DFD0;border-radius:6px;background:#fff;padding:8px 10px 9px}
+.two small{display:block;font-size:10.5px;font-weight:600;color:var(--ink3);margin-bottom:3px}
+.two p{font-size:11.5px;line-height:1.65}
+.ok{color:var(--gr)!important;font-weight:600}
+.ng{color:var(--rd)!important;font-weight:600}
+</style>
+</head>
+<body>
+<h1>前の代の相続登記｜今のうちの行 表示案 v6</h1>
+<p class="lead">一文は「今のうち」の理由だけを段階ごとに。くわしくはカードの一番下で開き、次にすることの位置を動かしません。3幅（ウィンドウ1440／900／420 のときのカード幅）。</p>
+<div class="cols" id="cols"></div>
+
+<script>
+const ICON='<svg class="matter-icon" viewBox="0 0 44 48" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h22v29H5z" fill="#EEE8DC" stroke="#B1A48B"/><path d="M17 13h22v29H17z" fill="#FFFEFA" stroke="#9C8C70"/><path d="M22 20h12m-12 5h12m-12 5h7" stroke="#C8BDA6"/><path d="M5 23h9m-3-3 3 3-3 3" fill="none" stroke="#A87937"/><path d="M30 34h5v5h-5z" fill="#EAC8B9" stroke="#B97762"/></svg>';
+const CARET='<svg class="caret" viewBox="0 0 12 8"><path d="m2 2 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const DOWN='<svg viewBox="0 0 10 10" aria-hidden="true"><path d="m2 3.5 3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const G_CAL='<svg viewBox="0 0 14 14"><rect x=".7" y="2.4" width="12.6" height="11" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.1"/><line x1=".7" y1="5.8" x2="13.3" y2="5.8" stroke="currentColor" stroke-width="1.1"/><line x1="4.2" y1=".7" x2="4.2" y2="3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="9.8" y1=".7" x2="9.8" y2="3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+const G_ORAL='<svg viewBox="0 0 14 14"><path d="M2 3.2C2 2.5 2.5 2 3.2 2h7.6c.7 0 1.2.5 1.2 1.2v5c0 .7-.5 1.2-1.2 1.2H6.4L3.8 11.8V9.4h-.6C2.5 9.4 2 8.9 2 8.2z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>';
+const G_PAPER='<svg viewBox="0 0 14 14"><path d="M3 1.2h6.2L11 3v9.8H3z" fill="#fff" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/><path d="M4.8 4.4h4.4M4.8 6.4h4.4" stroke="currentColor" stroke-width=".9" stroke-linecap="round" opacity=".6"/><circle cx="8.6" cy="10" r="1.7" fill="none" stroke="#C0574E" stroke-width="1"/></svg>';
+const G_NONE='<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="2 1.6"/></svg>';
+const ARROW=done=>'<svg viewBox="0 0 30 12"><path d="M1 6h24" stroke="'+(done?'#6C9A7A':'#B5AB95')+'" stroke-width="1.5"'+(done?'':' stroke-dasharray="3 2.5"')+'/><path d="m22 2 5 4-5 4" fill="none" stroke="'+(done?'#6C9A7A':'#B5AB95')+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+/* 人のしるし：頭（円）＋肩（弧）。n 人ぶん少しずつ重ねる。 */
+const PERSON=(n=1)=>{let g='';for(let i=0;i<n;i++){const x=6+i*6.5;
+  g+='<circle cx="'+x+'" cy="4.6" r="2.6" fill="currentColor" opacity=".8"/><path d="M'+(x-4.6)+' 13c0-3 2-4.8 4.6-4.8s4.6 1.8 4.6 4.8" fill="currentColor" opacity=".8"/>';}
+  return '<svg viewBox="0 0 '+(12+(n-1)*6.5)+' 14" aria-hidden="true">'+g+'</svg>';};
+const pp=(cls,label,n)=>'<span class="pp '+cls+'">'+PERSON(n)+label+'</span>';
+
+const badge=(label,tone)=>'<button type="button" class="bdg status-pick '+tone+'">'+label+CARET+'</button>';
+const head=b=>'<div class="rh">'+ICON+'<div class="uh"><div class="uh-t"><span class="uh-nm">前の代の相続登記</span></div><div class="uh-r">'+b+'</div></div></div>';
+
+/* ── 今のうちの理由：段階ごとに1〜2文 ── */
+const WHY={
+  none:  '今なら太郎さんが<b>自分で</b>話し合いに加われます。先に亡くなると、<b>家族が代わりに</b>、太郎さんのきょうだいたちと話し合うことになります。',
+  agreed:'口頭で決めた内容は、書面にしないと太郎さんたちの記憶にしか残りません。太郎さんが先に亡くなると、<b>家族が代わりに</b>話し合い直すことになります。',
+  signed:'話し合いは済みました。残る申請は<b>太郎さんの名前で</b>出すもので、判断が難しくなると、後見人を立てるまで進められません。',
+  unchecked:'前の代の名義が残っていたら、太郎さんが<b>自分で話し合えるうちに</b>片づけておくものです。'
+};
+const why=st=>'<p class="why">'+WHY[st]+'</p>';
+
+/* ── くわしく ── */
+/* 1 席に着く人 */
+function seats(st){
+  if(st==='signed') return '<section><h5><i>1</i>あとになると、誰が申請するか</h5><dl class="seat">'+
+    '<dt>今</dt><dd>'+pp('me','太郎さん')+'</dd>'+
+    '<dt>判断が難しく<br>なると</dt><dd>'+pp('pro','後見人')+'<small>家庭裁判所に選んでもらってから。8割は司法書士など家族以外で、一度つくと太郎さんが亡くなるまで続きます</small></dd>'+
+    '<dt>先に亡くなると</dt><dd>'+pp('fam','家族',3)+'<small>協議書があるので、話し合い直しは要りません。登記は2回分（前の代→太郎さん→家族）になります</small></dd>'+
+    '</dl></section>';
+  return '<section><h5><i>1</i>あとになると、誰が話し合うか</h5><dl class="seat">'+
+    '<dt>今</dt><dd>'+pp('me','太郎さん')+pp('sib','きょうだい',2)+'</dd>'+
+    '<dt>判断が難しく<br>なると</dt><dd>'+pp('pro','後見人')+pp('sib','きょうだい',2)+'<small>後見人は家庭裁判所が選び、8割は司法書士など家族以外。一度つくと太郎さんが亡くなるまで続きます</small></dd>'+
+    '<dt>先に亡くなると</dt><dd>'+pp('fam','家族 全員',3)+pp('sib','きょうだい',2)+'<small>太郎さんの席に、家族が全員で入ります。全員の署名・実印と印鑑証明書が要ります</small></dd>'+
+    '</dl>'+
+    '</section>';
+}
+/* 2 期限までの残り。今日の日付から出す。 */
+const TODAY=new Date(), DUE=new Date(2027,2,31), START=new Date(2024,3,1);
+const LEFT_M=Math.max(0,Math.round((DUE-TODAY)/86400000/30.44));
+function timeline(){
+  const W=330,x0=8,x1=W-8, f=(TODAY-START)/(DUE-START), xn=x0+(x1-x0)*Math.min(1,Math.max(0,f));
+  return '<svg class="tl" viewBox="0 0 '+W+' 58" font-family="Noto Sans JP" aria-label="2024年4月の義務化から2027年3月31日の期限まで。今日は残り約'+LEFT_M+'か月">'+
+    '<line x1="'+x0+'" y1="30" x2="'+x1+'" y2="30" stroke="#E4DDCE" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="'+x0+'" y1="30" x2="'+xn+'" y2="30" stroke="#CBBF9F" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="'+xn+'" y1="30" x2="'+x1+'" y2="30" stroke="#BE7017" stroke-width="4" stroke-linecap="round"/>'+
+    '<circle cx="'+x0+'" cy="30" r="4" fill="#fff" stroke="#B5A98E" stroke-width="1.5"/>'+
+    '<text x="'+x0+'" y="50" font-size="10" fill="#8C8472">2024年4月 義務に</text>'+
+    '<text x="'+x1+'" y="50" text-anchor="end" font-size="10" fill="#8C8472">2027年3月31日</text>'+
+    '<circle cx="'+xn+'" cy="30" r="5.5" fill="#fff" stroke="#4A453C" stroke-width="2"/>'+
+    '<text x="'+xn+'" y="14" text-anchor="middle" font-size="10.5" font-weight="700" fill="#4A453C">今</text>'+
+    '<path d="M'+x1+' 22v16" stroke="#BE7017" stroke-width="2" stroke-linecap="round"/>'+
+    '</svg>';
+}
+function deadline(died){
+  const fine='<p>正当な理由なく過ぎると、<b>10万円以下の過料</b>の対象になります。</p>';
+  if(died==='before') return '<section><h5><i>2</i>期限まで、あとどれくらいか</h5><p class="left">今日から期限まで、<b>残り約'+LEFT_M+'か月</b>です。</p>'+timeline()+
+    '<p>2024年4月から相続登記は義務になり、それより前の相続も対象になりました。前の代の分は<b>2027年3月31日</b>までです。</p>'+fine+'</section>';
+  if(died==='after') return '<section><h5><i>2</i>期限はいつか</h5><p>前の代が2024年4月以後に亡くなっているので、太郎さんが相続を<b>知った日から3年以内</b>です。</p>'+fine+'</section>';
+  return '<section><h5><i>2</i>期限はいつか</h5><p>前の代が亡くなった時期で決まります。</p>'+
+    '<div class="two"><div><small>2024年4月より前</small><p><b>2027年3月31日</b>まで<br>（残り約'+LEFT_M+'か月）</p></div><div><small>2024年4月以後</small><p>相続を<b>知った日から3年以内</b></p></div></div>'+
+    '<p>亡くなった日は、前の代の除籍謄本（戸籍）で分かります。</p>'+fine+'</section>';
+}
+/* 3 間に合わないとき・売るとき */
+const fallback=st=>st==='signed'
+  ? '<section><h5><i>3</i>売るときに</h5><p>名義が前の代のままでは、売ることも、土地を担保に借りることもできません。協議書がそろっているので、登記を済ませれば動かせます。</p></section>'
+  : '<section><h5><i>3</i>間に合わないとき・売るとき</h5>'+
+    '<p>期限までに話がまとまらないときのために、<b>相続人申告登記</b>という届け出があります。太郎さん1人で出せて、登録免許税もかかりません。</p>'+
+    '<div class="two"><div><small>相続人申告登記</small><p><span class="ok">期限の義務</span>は果たせる<br><span class="ng">売れない</span>・担保にできない</p></div>'+
+    '<div><small>相続登記</small><p><span class="ok">期限の義務</span>を果たせる<br><span class="ok">売れる</span>・担保にできる</p></div></div>'+
+    '<p>申告は時間を稼ぐだけです。話がまとまったら、その日から3年以内に相続登記をします。</p></section>';
+
+function detail(st,died,open){
+  const toc = st==='signed' ? 'あとで誰が申請するか・期限・売るとき' : 'あとで誰が話し合うか・期限・間に合わないとき';
+  return '<div class="dt'+(open?' open':'')+'"><button type="button" class="dt-t" aria-expanded="'+(!!open)+'" onclick="const d=this.parentNode;d.classList.toggle(\'open\');this.setAttribute(\'aria-expanded\',d.classList.contains(\'open\'))">'+
+    '<span class="dt-k">くわしく</span><span class="dt-s">'+toc+'</span>'+DOWN+'</button>'+
+    '<div class="dt-b">'+seats(st)+deadline(died)+fallback(st)+'</div></div>';
+}
+
+function names(parcel, to, st){
+  const done = st==='registered';
+  const STAGE = { none:[G_NONE,'誰が取得するか、まだ話がついていない'], agreed:[G_ORAL,'取得する人は口頭で決まっている。協議書はまだない'],
+    signed:[G_PAPER,'協議書は全員が署名済み。登記はまだ'], registered:['','相続登記まで済んでいる'] };
+  const s = STAGE[st];
+  return '<div class="nm"><div class="nm-b nm-now"><small>'+parcel+'の名義（今）</small><span>太郎さんの父（故人）</span></div>'+
+    '<div class="nm-ar">'+ARROW(done)+'</div>'+
+    '<div class="nm-b nm-to'+(done?' done':'')+'"><small>'+(done?'移った先':'移す先')+'</small><span>'+to+'</span></div>'+
+    '<p class="nm-st">'+s[0]+s[1]+'</p></div>';
+}
+const act=(t,died,sub)=>'<div class="act"><div class="act-h"><span class="act-lb">次にすること</span>'+
+  (died==='before'?'<span class="act-lim">'+G_CAL+'2027年3月31日まで</span>':died==='after'?'<span class="act-lim">'+G_CAL+'知った日から3年以内</span>':died==='unknown'?'<span class="act-lim unk">'+G_CAL+'期限は亡くなった時期で決まる</span>':'')+
+  '</div><p>'+t+(sub?'<small>'+sub+'</small>':'')+'</p></div>';
+
+const OR=badge('対応が必要','or');
+const CASES=[
+  ['取得は太郎さんと口頭で決定（初期データ）', ()=>head(OR)+why('agreed')+names('土地','太郎さん','agreed')+act('遺産分割協議書にして、相続人全員が署名・実印を押す','before')+detail('agreed','before')],
+  ['同じ行で「くわしく」を開いた状態', ()=>head(OR)+why('agreed')+names('土地','太郎さん','agreed')+act('遺産分割協議書にして、相続人全員が署名・実印を押す','before')+detail('agreed','before',true)],
+  ['まだ話がついていない・亡くなった時期は不明', ()=>head(OR)+why('none')+names('土地','未定','none')+act('相続人全員で、誰が取得するかを決める','unknown')+detail('none','unknown')],
+  ['同じ行で「くわしく」を開いた状態', ()=>head(OR)+why('none')+names('土地','未定','none')+act('相続人全員で、誰が取得するかを決める','unknown')+detail('none','unknown',true)],
+  ['協議書あり・取得は太郎さん（登記がまだ）', ()=>head(OR)+why('signed')+names('土地','太郎さん','signed')+act('太郎さんが相続登記を申請する','before','司法書士に頼めます。協議書と印鑑証明書に期限はありません')+detail('signed','before')],
+  ['同じ行で「くわしく」を開いた状態', ()=>head(OR)+why('signed')+names('土地','太郎さん','signed')+act('太郎さんが相続登記を申請する','before','司法書士に頼めます。協議書と印鑑証明書に期限はありません')+detail('signed','before',true)],
+  ['協議書あり・取得は太郎さんの兄', ()=>head(badge('本人の分は済み','gr'))+names('土地','太郎さんの兄','signed')+'<p class="quiet">太郎さんの署名は済んでいます。登記は太郎さんの兄が申請します。</p>'],
+  ['登記まで済んだ', ()=>head(badge('登記済み','gr'))+names('土地','太郎さん','registered')],
+  ['まだ確かめていない', ()=>head(badge('未確認','bl'))+why('unchecked')+
+     '<div class="nm" style="grid-template-columns:1fr"><div class="nm-b nm-to"><small>土地・建物の名義</small><span>まだ確かめていない</span></div></div>'+
+     act('登記事項証明書で、名義が前の代のままか見る','', '家族でも取れます')],
+  ['残っていない', ()=>head(badge('該当なし','gy'))+'<p class="quiet">前の代の名義は残っていません。</p>']
+];
+document.getElementById('cols').innerHTML=[['w451','ウィンドウ 1024〜1920（451px）'],['w568','ウィンドウ 768〜900（568px）'],['w348','ウィンドウ 420（348px）']].map(([c,t])=>
+  '<div class="col '+c+'"><h2>'+t+'</h2><div class="stackw">'+CASES.map(([cap,f])=>'<p class="cap">'+cap+'</p><section class="rw">'+f()+'</section>').join('')+'</div></div>').join('');
+</script>
+</body>
+</html>

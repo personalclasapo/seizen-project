@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産v31｜下エリアの割りと造形</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!--
+  不動産v31｜下エリア（判断材料）の割りと造形
+
+  項目は `設計/不動産・住まい/下エリア_調査と項目.md` §7・§10 で確定済み。
+  ここで決めるのは、その項目をどう割り、何の絵に見せるか。
+
+  ■ 造形の振り分け（`prototype/assets/不動産-下エリア造形.RESEARCH.md`）
+    権利関係 → 登記事項証明書の紙（A4 1:1.414）。土地と建物で別々の紙
+    契約     → 相手ごとの札。綴じ穴と左端の色帯
+    事情     → 付箋（75×75mm 1:1）。書面になっていないことを形で示す
+    書類     → 封筒（長形3号 120×235mm 1:1.958）。所在を示す
+
+  上段の `sheet()` と同じ手つきを使う（A4 実寸比の紙に罫と印を重ねる）。
+
+  ■ 比較する割り
+    A 現状の割り（書類=左の縦長／右に権利・契約・事情）
+    B 事情を主役にする（事情=左の縦長／右に権利・契約・書類）
+    C 上下2段（上=権利・契約／下=事情・書類）
+-->
+<style>
+:root{
+  --bg:#FAF8F3; --card:#FFFFFF; --ink:#2F2B24; --ink2:#5A5347; --ink3:#8A8272;
+  --line:#E6E0D2; --line2:#D9D2C0;
+  --gr:#376F4F; --gr-bg:#EDF3EE; --or:#B4762A; --or-bg:#FBF3E6; --or-ln:#EBD9B8;
+  --bl:#3F6188; --gy:#8A8272;
+  --paper:#FDFCF8; --floor-room:#FDFCF8;
+  --font:'Noto Sans JP',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);
+  font-feature-settings:"palt";-webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px;margin:0 auto;padding:28px 24px 80px}
+h1{font-size:19px;margin:0 0 4px}
+.lead{font-size:12.5px;color:var(--ink2);line-height:1.8;margin:0 0 22px}
+.lead b{color:var(--ink)}
+h2{font-size:15px;margin:38px 0 3px;padding-top:20px;border-top:2px solid var(--line)}
+.h2sub{font-size:11.5px;color:var(--ink3);line-height:1.75;margin:0 0 14px}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:8px;
+  padding:16px;position:relative}
+
+/* ══ 間取りの地 ══ */
+.plan{position:relative}
+.plan svg.pl{display:block;width:100%;height:auto}
+.layer{position:absolute;inset:0;pointer-events:none}
+.cell{position:absolute;overflow:hidden;pointer-events:auto;
+  display:flex;flex-direction:column}
+
+/* ══ 室名（表札）══ */
+.rm-h{display:flex;align-items:center;gap:7px;margin:0 0 9px;flex:none}
+.rm-ic{width:22px;height:22px;flex:none;display:grid;place-items:center;
+  background:var(--card);border:1px solid #c7dbcb;border-radius:6px}
+.rm-ic svg{width:13px;color:var(--gr)}
+.rm-h h4{margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em}
+
+.bdg{display:inline-flex;align-items:center;gap:4px;flex:none;
+  font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+  border:1px solid;white-space:nowrap}
+.bdg.or{color:var(--or);background:var(--or-bg);border-color:var(--or-ln)}
+.bdg.gr{color:var(--gr);background:var(--gr-bg);border-color:#c7dbcb}
+.bdg.gy{color:var(--ink3);background:#F1EFE9;border-color:var(--line2)}
+.bdg.bl{color:var(--bl);background:#EDF1F6;border-color:#C6D3E0}
+
+/* ══ 造形1｜権利関係＝登記事項証明書の紙 ══
+   土地と建物で別々の紙が発行される。これが造形の核心。
+   マンションは一体なので1枚。 */
+.deeds{display:flex;gap:11px;align-items:flex-start}
+.deed{flex:1;min-width:0;position:relative}
+.deed-paper{position:relative;background:#fff;border:1px solid #C9C1AC;
+  border-radius:1px;padding:9px 10px 10px;
+  box-shadow:1px 1.5px 0 rgba(120,110,88,.10)}
+/* 紙の上辺＝表題欄。登記の書式の「表題部」に当たる帯 */
+.deed-paper::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,#BFB49A 0 38%,#DDD7C7 38% 100%)}
+.deed-kind{font-size:9.5px;color:var(--ink3);letter-spacing:.09em;margin:3px 0 4px}
+.deed-main{display:flex;align-items:baseline;gap:5px;flex-wrap:wrap}
+.deed-nm{font-size:12.5px;font-weight:700;line-height:1.45}
+.deed-row{display:flex;align-items:baseline;gap:5px;margin-top:5px;
+  padding-top:5px;border-top:1px dotted #DDD7C7;font-size:10.5px;color:var(--ink2)}
+.deed-row i{font-style:normal;color:var(--ink3);flex:none;min-width:3.6em}
+.deed-memo{font-size:10.5px;color:var(--ink2);line-height:1.62;margin-top:5px}
+
+/* ══ 造形2｜契約＝相手ごとの札。左端の色帯と綴じ穴 ══ */
+.parties{display:flex;flex-direction:column;gap:8px}
+.party{position:relative;background:#fff;border:1px solid var(--line);
+  border-radius:3px;padding:8px 10px 9px 17px;
+  box-shadow:0 1px 0 rgba(120,110,88,.06)}
+.party::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:#BFCBBF;border-radius:3px 0 0 3px}
+.party.pt-loan::before{background:#C3CEDB}
+.party.pt-hoka::before{background:#E0CBA6}
+/* 綴じ穴＝紙を綴じてあることの印 */
+.party::after{content:"";position:absolute;left:8px;top:11px;width:3.4px;height:3.4px;
+  border-radius:50%;background:#EDE9DE;box-shadow:0 8px 0 #EDE9DE}
+.pt-h{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.pt-nm{font-size:12px;font-weight:700}
+.pt-kind{font-size:9.5px;color:var(--ink3)}
+.pt-d{font-size:10.5px;color:var(--ink2);line-height:1.66;margin-top:2px}
+.pt-tel{font-size:10.5px;color:var(--ink3);font-variant-numeric:tabular-nums;margin-top:1px}
+/* 周期（毎月27日）＝小さなカレンダー目盛り */
+.cyc{display:inline-flex;align-items:center;gap:3px;margin-left:2px;
+  font-size:9.5px;color:var(--ink3)}
+.cyc svg{width:11px;height:11px;flex:none}
+
+/* ══ 造形3｜事情＝付箋（75×75mm 1:1）══
+   書面になっていない口約束。だから書類の造形にしない。 */
+.notes{display:flex;flex-direction:column;gap:9px}
+.note{position:relative;background:#FDF6E3;border:1px solid #EADFC0;
+  border-radius:2px 2px 2px 0;padding:8px 10px 11px;
+  box-shadow:1px 1.5px 2px rgba(120,100,50,.10)}
+/* 下辺左のめくれ */
+.note::after{content:"";position:absolute;left:-1px;bottom:-1px;
+  border-width:0 9px 9px 0;border-style:solid;
+  border-color:transparent #F3EBD4 transparent transparent;
+  filter:drop-shadow(-1px -1px 1px rgba(120,100,50,.13))}
+.note.nt-none{background:#F7F5EF;border-color:#E4DFD1}
+.note.nt-none::after{border-right-color:#EFECE3}
+.nt-h{display:flex;align-items:baseline;gap:6px}
+.nt-q{font-size:12px;font-weight:700}
+/* 判定（A・調べれば分かる）＝印。経緯（B・本人に聞く）＝手書き */
+.nt-fact{font-size:10.5px;color:var(--ink2);line-height:1.6;margin-top:5px;
+  padding-left:9px;border-left:2px solid #E0D2AC}
+.nt-fact i{font-style:normal;color:var(--ink3);margin-right:3px}
+.nt-memo{font-size:11px;color:var(--ink2);line-height:1.7;margin-top:5px}
+.nt-lbl{display:block;font-size:9px;color:var(--ink3);letter-spacing:.07em;
+  margin-bottom:2px}
+
+/* ══ 造形4｜書類＝封筒（長形3号 1:1.958）══
+   所在を示すもの。索引ではない。 */
+.envs{display:flex;flex-direction:column;gap:9px}
+.env{display:flex;gap:10px;align-items:flex-start}
+.env-svg{flex:none;width:44px}
+.env-svg svg{display:block;width:100%;height:auto}
+.env-b{flex:1;min-width:0}
+.env-h{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.env-nm{font-size:11.5px;font-weight:700;line-height:1.45}
+.env-where{font-size:10.5px;color:var(--ink2);line-height:1.6;margin-top:3px}
+.env-where b{color:var(--ink);font-weight:600}
+.env-sub{font-size:10px;color:var(--ink3);line-height:1.62;margin-top:2px}
+.env-link{display:inline-flex;align-items:center;gap:3px;margin-top:9px;
+  font-size:11px;font-weight:600;color:var(--gr);text-decoration:none}
+.env-link svg{width:13px}
+
+.pn{font-size:11px;color:var(--ink2);line-height:1.7;margin:0 0 9px}
+
+/* 注記 */
+.memo{margin:10px 0 0;padding:11px 13px;background:#F4F6F4;
+  border-left:3px solid #C3D2C6;border-radius:0 5px 5px 0;
+  font-size:11.5px;color:var(--ink2);line-height:1.85}
+.memo b{color:var(--ink)}
+.memo.warn{background:#FBF6EC;border-left-color:#E3CDA0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>不動産v31｜下エリアの割りと造形</h1>
+<p class="lead">
+  項目は <b>下エリア_調査と項目.md §7・§10</b> で確定済み。ここで決めるのは
+  <b>どう割るか</b>と<b>何の絵に見せるか</b>。<br>
+  造形の振り分けは <b>不動産-下エリア造形.RESEARCH.md</b>（4つとも振り分け1＝自作可。
+  寸法は実寸比から引く）。
+</p>
+
+<!-- ══════════ 割り A ══════════ -->
+<h2>割り A｜現状の割り（書類＝左の縦長）</h2>
+<p class="h2sub">
+  左に書類の縦長1列、右に権利・契約を横並び、その下に事情。
+  <b>この割りは、書類が「揃い具合の索引」だった頃の形。</b>
+  §10 で書類は所在だけになったので、縦長1列を与える根拠が消えている。
+</p>
+<div class="stage"><div class="plan" id="planA"></div></div>
+<div class="memo warn">
+  <b>問題：</b>書類が持つのは権利証・取得時の資料の所在（＋書面ありのときだけ従属3件）。
+  左の縦長1列は、右3部屋の合計高さに引き伸ばされる（<code>CORR = max(docsH, rSum)</code>）。
+  <b>中身ではなく壁が高さを決めている。</b>
+</div>
+
+<!-- ══════════ 割り B ══════════ -->
+<h2>割り B｜事情を主役にする</h2>
+<p class="h2sub">
+  事情だけが<b>今のうち側の材料</b>（§2-1）。他3部屋はそのとき側。
+  性格が違うものを同じ大きさで並べず、<b>事情に左の1列を与える</b>。
+  右に権利・契約を積み、書類を足元に敷く。
+</p>
+<div class="stage"><div class="plan" id="planB"></div></div>
+<div class="memo">
+  <b>根拠：</b>事情は3論点×(判定+経緯)で最も嵩が出る。そして
+  <b>上段「今のうち」の項目を立てるのは事情</b>（§3-3）。
+  間取りの中で、上の「今のうち」と縦に繋がる位置に置ける。
+</div>
+
+<!-- ══════════ 割り C ══════════ -->
+<h2>割り C｜上下2段（そのとき側／今のうち側）</h2>
+<p class="h2sub">
+  <b>面の性格で上下に分ける。</b>上段＝そのとき側3部屋（権利・契約・書類）、
+  下段＝今のうち側1部屋（事情）。
+</p>
+<div class="stage"><div class="plan" id="planC"></div></div>
+<div class="memo warn">
+  <b>懸念：</b>上段が既に「今のうち／そのとき」で割れている。下段も同じ軸で割ると
+  <b>同じ軸で二重に割る</b>ことになる（§2-2b で退けた形）。
+</div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   間取りの生成（本番 render.js の buildPlan/draw を簡約して移植）
+   部屋定義 → 共有辺 → 壁と開口。輪郭は線分単位で描く。
+   ══════════════════════════════════════════════════ */
+const NS='http://www.w3.org/2000/svg';
+const W_=1170, TO=15, TI=10, SITE=34, PADIN=13;
+const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function sharedEdge(a,b){
+  if(!a||!b)return null;
+  if(a.x2===b.x1||b.x2===a.x1){const x=(a.x2===b.x1)?a.x2:b.x2;
+    const s=Math.max(a.y1,b.y1),e=Math.min(a.y2,b.y2);
+    if(e>s)return{dir:'v',pos:x,a:s,b:e};}
+  if(a.y2===b.y1||b.y2===a.y1){const y=(a.y2===b.y1)?a.y2:b.y2;
+    const s=Math.max(a.x1,b.x1),e=Math.min(a.x2,b.x2);
+    if(e>s)return{dir:'h',pos:y,a:s,b:e};}
+  return null;
+}
+
+function draw(host,rooms,H,html,links,uid){
+  const R=Object.fromEntries(rooms.map(r=>[r.id,r]));
+  const covers=(x,y)=>rooms.some(o=>o.x1<x-.01&&o.x2>x+.01&&o.y1<y-.01&&o.y2>y+.01);
+  const isOuter=(dir,pos,a,b)=>{const m=(a+b)/2,d=1;
+    return dir==='h'?!(covers(m,pos-d)&&covers(m,pos+d)):!(covers(pos-d,m)&&covers(pos+d,m));};
+  const segs=new Map();
+  const addSeg=(dir,pos,a,b)=>{const k=dir+':'+pos+':'+Math.min(a,b)+':'+Math.max(a,b);
+    if(!segs.has(k))segs.set(k,{dir,pos,a:Math.min(a,b),b:Math.max(a,b),outer:isOuter(dir,pos,a,b)});};
+  rooms.forEach(r=>{
+    addSeg('h',r.y1,r.x1,r.x2); addSeg('h',r.y2,r.x1,r.x2);
+    addSeg('v',r.x1,r.y1,r.y2); addSeg('v',r.x2,r.y1,r.y2);
+  });
+  const OPW=78;
+  const openings=(links||[]).map(([i,j])=>{
+    const e=sharedEdge(R[i],R[j]); if(!e)return null;
+    return [e.dir,e.pos,(e.a+e.b)/2,Math.min(OPW,(e.b-e.a)*0.7)];
+  }).filter(Boolean);
+
+  const svg=el('svg',{class:'pl',viewBox:(-SITE)+' '+(-SITE)+' '+(W_+SITE*2)+' '+(H+SITE*2)});
+  const defs=el('defs');
+  const pat=el('pattern',{id:'hw'+uid,width:6,height:6,patternTransform:'rotate(45)',patternUnits:'userSpaceOnUse'});
+  pat.appendChild(el('line',{x1:0,y1:0,x2:0,y2:6,stroke:'#CFC7B4','stroke-width':1.6}));
+  const grass=el('pattern',{id:'gr'+uid,width:15,height:15,patternUnits:'userSpaceOnUse'});
+  grass.appendChild(el('circle',{cx:4,cy:4,r:1.5,fill:'#E8E4D6'}));
+  grass.appendChild(el('circle',{cx:11,cy:11,r:1.2,fill:'#EDE9DC'}));
+  defs.appendChild(pat);defs.appendChild(grass);svg.appendChild(defs);
+
+  svg.appendChild(el('rect',{x:-SITE,y:-SITE,width:W_+SITE*2,height:H+SITE*2,fill:'url(#gr'+uid+')'}));
+  svg.appendChild(el('rect',{x:5,y:7,width:W_,height:H,fill:'rgba(120,110,88,.07)'}));
+
+  const FLOOR={room:'#FDFCF8',corr:'#F4F1E7',liv:'#F7EAD6',main2:'#E9EFE9'};
+  const th=(dir,pos,a,b)=>isOuter(dir,pos,a,b)?TO:TI;
+  rooms.forEach(r=>{
+    const x=r.x1+th('v',r.x1,r.y1,r.y2)/2, y=r.y1+th('h',r.y1,r.x1,r.x2)/2;
+    const x2=r.x2-th('v',r.x2,r.y1,r.y2)/2, y2=r.y2-th('h',r.y2,r.x1,r.x2)/2;
+    svg.appendChild(el('rect',{x,y,width:x2-x,height:y2-y,fill:FLOOR[r.kind]||'#FDFCF8'}));
+  });
+
+  const wallG=el('g');
+  const slabs=[];
+  segs.forEach(s=>{
+    const cuts=openings.filter(o=>o[0]===s.dir&&o[1]===s.pos)
+      .map(o=>[o[2]-o[3]/2,o[2]+o[3]/2])
+      .filter(o=>o[1]>s.a&&o[0]<s.b).sort((a,b)=>a[0]-b[0]);
+    let cur=s.a;const pieces=[];
+    cuts.forEach(o=>{if(o[0]>cur)pieces.push([cur,o[0]]);cur=Math.max(cur,o[1]);});
+    if(cur<s.b)pieces.push([cur,s.b]);
+    pieces.forEach(pc=>{const tw=s.outer?TO:TI;
+      if(s.dir==='h')slabs.push([pc[0],s.pos-tw/2,pc[1]-pc[0],tw,s.outer]);
+      else slabs.push([s.pos-tw/2,pc[0],tw,pc[1]-pc[0],s.outer]);});
+  });
+  slabs.forEach(([x,y,w,h])=>wallG.appendChild(el('rect',{x,y,width:w,height:h,fill:'#FDFCF8'})));
+  slabs.forEach(([x,y,w,h])=>wallG.appendChild(el('rect',{x,y,width:w,height:h,fill:'url(#hw'+uid+')'})));
+  const EPS=.01;
+  function subtract(a,b,ranges){let out=[[a,b]];
+    ranges.forEach(([c,d])=>{const nx=[];
+      out.forEach(([s0,s1])=>{if(d<=s0+EPS||c>=s1-EPS){nx.push([s0,s1]);return;}
+        if(c>s0+EPS)nx.push([s0,c]); if(d<s1-EPS)nx.push([d,s1]);});
+      out=nx;});
+    return out;}
+  slabs.forEach((sl,idx)=>{
+    const [x,y,w,h,outer]=sl, sw=outer?2:1.6;
+    const others=slabs.filter((_,k)=>k!==idx);
+    [y,y+h].forEach(yy=>{
+      const cov=others.filter(o=>o[1]<yy-EPS&&o[1]+o[3]>yy+EPS).map(o=>[o[0],o[0]+o[2]]);
+      subtract(x,x+w,cov).forEach(([s0,s1])=>{if(s1-s0>EPS)
+        wallG.appendChild(el('line',{x1:s0,y1:yy,x2:s1,y2:yy,stroke:'#8E8A7A','stroke-width':sw}));});
+    });
+    [x,x+w].forEach(xx=>{
+      const cov=others.filter(o=>o[0]<xx-EPS&&o[0]+o[2]>xx+EPS).map(o=>[o[1],o[1]+o[3]]);
+      subtract(y,y+h,cov).forEach(([s0,s1])=>{if(s1-s0>EPS)
+        wallG.appendChild(el('line',{x1:xx,y1:s0,x2:xx,y2:s1,stroke:'#8E8A7A','stroke-width':sw}));});
+    });
+  });
+  svg.appendChild(wallG);
+  host.appendChild(svg);
+
+  const layer=document.createElement('div');layer.className='layer';
+  const VBW=W_+SITE*2, VBH=H+SITE*2;
+  rooms.forEach(r=>{
+    if(!html[r.id])return;
+    const d=document.createElement('div');d.className='cell';
+    const x1=r.x1+th('v',r.x1,r.y1,r.y2)/2+PADIN, y1=r.y1+th('h',r.y1,r.x1,r.x2)/2+PADIN;
+    const x2=r.x2-th('v',r.x2,r.y1,r.y2)/2-PADIN, y2=r.y2-th('h',r.y2,r.x1,r.x2)/2-PADIN;
+    d.style.left=((x1+SITE)/VBW*100)+'%';
+    d.style.top=((y1+SITE)/VBH*100)+'%';
+    d.style.width=((x2-x1)/VBW*100)+'%';
+    d.style.height=((y2-y1)/VBH*100)+'%';
+    d.innerHTML=html[r.id];
+    layer.appendChild(d);
+  });
+  host.appendChild(layer);
+}
+
+/* ══════════════════════════════════════════════════
+   中身｜確定項目（§7・§10）を流し込む
+   ══════════════════════════════════════════════════ */
+const ic=d=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+d+'</svg>';
+const ICONS={
+  right: ic('<path d="M5 3.5h9l5 5V20a.5.5 0 0 1-.5.5h-13A.5.5 0 0 1 5 20Z"/><path d="M14 3.5V8a.5.5 0 0 0 .5.5H19"/><path d="M8 12.5h8M8 16h5"/>'),
+  party: ic('<path d="M3.5 7.5h17v12h-17Z"/><path d="M8.5 7.5V5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v2.5"/><path d="M3.5 12h17"/>'),
+  matter:ic('<path d="M12 3.6 21 19.4H3Z"/><path d="M12 9.6v4.2M12 16.6h.01"/>'),
+  doc:   ic('<path d="M3.5 6.5h17v12h-17Z"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/>'),
+  pin:   ic('<path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/>')
+};
+const head=(k,t)=>'<div class="rm-h"><span class="rm-ic">'+ICONS[k]+'</span><h4>'+esc(t)+'</h4></div>';
+
+/* ── 権利関係｜登記事項証明書の紙。土地と建物で別々 ── */
+function roomRights(){
+  const one=(kind,label,d)=>
+    '<div class="deed"><div class="deed-paper">'+
+      '<div class="deed-kind">'+esc(label)+'</div>'+
+      '<div class="deed-main"><span class="deed-nm">'+esc(d.nm)+'</span>'+
+        '<span class="bdg '+d.kt+'">'+esc(d.kind)+'</span></div>'+
+      (d.share?'<div class="deed-row"><i>持分</i>'+esc(d.share)+'</div>':'')+
+      '<div class="deed-row"><i>登記と</i><span class="bdg '+d.mt+'">'+esc(d.match)+'</span></div>'+
+      (d.memo?'<div class="deed-memo">'+esc(d.memo)+'</div>':'')+
+    '</div></div>';
+  return head('right','権利関係')+
+    '<div class="deeds">'+
+      one('land','土地',{nm:'△△さん（地主）',kind:'借地',kt:'bl',
+        match:'不一致',mt:'or',memo:'建物だけが本人名義。借地権は登記されていない。'})+
+      one('bldg','建物',{nm:'父（故人）名義',kind:'所有',kt:'gr',share:'兄弟3人が相続人',
+        match:'不一致',mt:'or',memo:'相続登記が済んでいない。'})+
+    '</div>';
+}
+
+/* ── 契約・やり取り｜相手ごとの札。続いている関係／借入／担保 ── */
+const CAL='<svg viewBox="0 0 14 14" xmlns="'+NS+'"><rect x=".7" y="2.4" width="12.6" height="11" rx="1.4" fill="none" stroke="#B9B2A0" stroke-width="1.1"/><line x1=".7" y1="5.8" x2="13.3" y2="5.8" stroke="#B9B2A0" stroke-width="1.1"/><line x1="4.2" y1=".7" x2="4.2" y2="3.5" stroke="#B9B2A0" stroke-width="1.3" stroke-linecap="round"/><line x1="9.8" y1=".7" x2="9.8" y2="3.5" stroke="#B9B2A0" stroke-width="1.3" stroke-linecap="round"/><circle cx="9.6" cy="9.6" r="1.5" fill="#C99F5E"/></svg>';
+function roomParty(){
+  const p=(cls,nm,kind,d,tel,cyc)=>
+    '<div class="party '+cls+'"><div class="pt-h"><span class="pt-nm">'+esc(nm)+'</span>'+
+    '<span class="pt-kind">'+esc(kind)+'</span>'+
+    (cyc?'<span class="cyc">'+CAL+esc(cyc)+'</span>':'')+'</div>'+
+    '<div class="pt-d">'+d+'</div>'+
+    (tel?'<div class="pt-tel">'+esc(tel)+'</div>':'')+'</div>';
+  return head('party','契約・やり取り')+
+    '<div class="parties">'+
+      p('','△△さん（地主）','借りる',
+        '土地を借りている。地代 月32,000円。契約書は書斎にある。','045-000-0000','毎月末')+
+      p('','○○管理株式会社','管理',
+        '建物管理。管理費・修繕積立金 月12,000円','045-123-4567','毎月27日')+
+      p('pt-loan','○○銀行 青葉台支店','借入',
+        '住宅ローン・本人単独。団信 <b>あり</b>（団体信用生命保険）<br>担保 第1順位・○○銀行','')+
+      p('pt-hoka','この土地が担保になっている','担保',
+        '<b>本人以外の借入</b>の担保。弟の事業資金・□□信用金庫','')+
+    '</div>';
+}
+
+/* ── 事情｜付箋。判定（調べれば分かる）と経緯（本人に聞く）を分ける ── */
+function roomMatter(){
+  const n=(cls,q,badge,bt,fact,memo)=>
+    '<div class="note '+cls+'"><div class="nt-h"><span class="nt-q">'+esc(q)+'</span>'+
+    '<span class="bdg '+bt+'">'+esc(badge)+'</span></div>'+
+    (fact?'<div class="nt-fact"><span class="nt-lbl">調べて分かること</span>'+fact+'</div>':'')+
+    (memo?'<div class="nt-memo"><span class="nt-lbl">本人に聞かないと分からないこと</span>'+esc(memo)+'</div>':'')+
+    '</div>';
+  return head('matter','後から分かりにくい事情')+
+    '<div class="notes">'+
+      n('','境界・越境','あり','or',
+        '<i>境界標</i>なし　<i>地積測量図</i>法務局に無し',
+        '西側の境界は、隣家と口頭で「ブロック塀の中心」と決めたまま。相手は西隣の◇◇さん。書面なし。')+
+      n('','私道・通行・配管','あり','or',
+        '<i>前面道路</i>私道　<i>持分</i>あり（公図で確認）',
+        '給水管が隣地を通っている。使用について隣家と口頭の了承のみ。掘削の承諾書はない。')+
+      n('','建物の変更・登記','あり','or',
+        '<i>登記の床面積</i>実際と相違　<i>課税明細</i>増築分が載っている',
+        '北側に約6畳の増築あり（1998年ごろ）。登記には未反映。施工した工務店に確認申請の有無を照会中。')+
+    '</div>';
+}
+
+/* ── 書類｜封筒。所在だけを持つ ── */
+function envSVG(open){
+  /* 長形3号 120×235mm ≒ 1:1.958。横向きに寝かせて描く（袋の正面）。
+     viewBox は 235×120 とし、フラップの三角で「封筒」を示す。 */
+  return '<svg viewBox="0 0 235 120" xmlns="'+NS+'" aria-hidden="true">'+
+    '<rect x="1" y="1" width="233" height="118" rx="3" fill="'+(open?'#FBF8F0':'#F3EFE4')+'" stroke="#C9C1AC" stroke-width="2"/>'+
+    (open
+      ? '<path d="M1 1 117.5 62 234 1" fill="none" stroke="#D5CDB8" stroke-width="2"/>'+
+        '<path d="M1 119 82 60M234 119 153 60" fill="none" stroke="#E3DCCB" stroke-width="1.6"/>'
+      : '<path d="M1 1 117.5 62 234 1Z" fill="#EAE4D6" stroke="#C9C1AC" stroke-width="2"/>')+
+    '</svg>';
+}
+function roomDocs(){
+  const e=(open,nm,badge,bt,where,sub)=>
+    '<div class="env"><div class="env-svg">'+envSVG(open)+'</div><div class="env-b">'+
+      '<div class="env-h"><span class="env-nm">'+esc(nm)+'</span>'+
+      '<span class="bdg '+bt+'">'+esc(badge)+'</span></div>'+
+      (where?'<div class="env-where">'+where+'</div>':'')+
+      (sub?'<div class="env-sub">'+sub+'</div>':'')+
+    '</div></div>';
+  return head('doc','書類のありか')+
+    '<p class="pn">家の中を探さないと出てこないものだけ。役所や相手から出るものは、そのときの手続きに付いている。</p>'+
+    '<div class="envs">'+
+      e(true,'権利証（登記済証）','ある','gr',
+        '<b>書斎のキャビネット上段</b>',
+        '2004年より前の取得なので、法務局の朱印が押された冊子。相続登記には使わない。')+
+      e(false,'取得時の資料','見つからない','or','',
+        '売買契約書が無いと、売るときの取得費が売却額の5%とみなされる。通帳の入金記録・分譲時のパンフレット・ローンの契約書でも代わりになる。')+
+      e(true,'借地契約書','ある','gr','<b>書斎のキャビネット上段</b>','') +
+    '</div>'+
+    '<a class="env-link" href="#">書類・資料でこの原本を扱う'+ICONS.pin+'</a>';
+}
+
+/* ══ 測る → 部屋を作る → 描く ══ */
+function measure(html,wpx){
+  const d=document.createElement('div');
+  d.style.cssText='position:absolute;visibility:hidden;left:-9999px;width:'+wpx+'px;font-family:'+getComputedStyle(document.body).fontFamily;
+  d.innerHTML=html;document.body.appendChild(d);
+  const h=d.getBoundingClientRect().height;d.remove();return h;
+}
+const HTML={right:roomRights(),party:roomParty(),matter:roomMatter(),docs:roomDocs()};
+
+function build(hostId,layout,uid){
+  const host=document.getElementById(hostId);
+  const stageW=host.parentElement.clientWidth-32;
+  const viewW=W_+SITE*2;
+  const u2px=u=>u/viewW*stageW, px2u=x=>x*viewW/stageW;
+  const need={};
+  Object.keys(layout.widths).forEach(k=>{
+    const wUnit=layout.widths[k];
+    const px=Math.max(60,u2px(wUnit-PADIN*2));
+    need[k]=Math.ceil(px2u(measure(HTML[k],px))+PADIN*2+TI);
+  });
+  const {rooms,H}=layout.make(need);
+  draw(host,rooms,H,HTML,layout.links,uid);
+}
+
+/* 割り A：書類＝左の縦長（現状） */
+const CW=110;
+const A={
+  widths:(()=>{const V2=Math.round((W_-CW)*0.4),V3=V2+CW,V4=V3+Math.round((W_-V3)*0.46);
+    return{docs:V2,right:V4-V3,party:W_-V4,matter:W_-V3};})(),
+  make(n){
+    const V2=Math.round((W_-CW)*0.4),V3=V2+CW,V4=V3+Math.round((W_-V3)*0.46);
+    const top=Math.max(n.right,n.party), H=Math.max(n.docs,top+n.matter);
+    return{rooms:[
+      {id:'corr',kind:'corr',x1:V2,y1:0,x2:V3,y2:H},
+      {id:'docs',kind:'room',x1:0,y1:0,x2:V2,y2:H},
+      {id:'right',kind:'room',x1:V3,y1:0,x2:V4,y2:top},
+      {id:'party',kind:'room',x1:V4,y1:0,x2:W_,y2:top},
+      {id:'matter',kind:'room',x1:V3,y1:top,x2:W_,y2:top+n.matter}
+    ],H};
+  },
+  links:[['corr','docs'],['corr','right'],['corr','matter'],['right','party']]
+};
+
+/* 割り B：事情＝左の縦長。右に権利・契約、足元に書類 */
+const B={
+  widths:(()=>{const V2=Math.round((W_-CW)*0.44),V3=V2+CW,V4=V3+Math.round((W_-V3)*0.47);
+    return{matter:V2,right:V4-V3,party:W_-V4,docs:W_-V3};})(),
+  make(n){
+    const V2=Math.round((W_-CW)*0.44),V3=V2+CW,V4=V3+Math.round((W_-V3)*0.47);
+    const top=Math.max(n.right,n.party), H=Math.max(n.matter,top+n.docs);
+    return{rooms:[
+      {id:'corr',kind:'corr',x1:V2,y1:0,x2:V3,y2:H},
+      {id:'matter',kind:'room',x1:0,y1:0,x2:V2,y2:H},
+      {id:'right',kind:'room',x1:V3,y1:0,x2:V4,y2:top},
+      {id:'party',kind:'room',x1:V4,y1:0,x2:W_,y2:top},
+      {id:'docs',kind:'room',x1:V3,y1:top,x2:W_,y2:top+n.docs}
+    ],H};
+  },
+  links:[['corr','matter'],['corr','right'],['corr','docs'],['right','party']]
+};
+
+/* 割り C：上下2段（そのとき側／今のうち側） */
+const C={
+  widths:(()=>{const a=Math.round(W_*0.34),b=Math.round(W_*0.36);
+    return{right:a,party:b,docs:W_-a-b,matter:W_};})(),
+  make(n){
+    const a=Math.round(W_*0.34),b=Math.round(W_*0.36);
+    const top=Math.max(n.right,n.party,n.docs), H=top+n.matter;
+    return{rooms:[
+      {id:'right',kind:'room',x1:0,y1:0,x2:a,y2:top},
+      {id:'party',kind:'room',x1:a,y1:0,x2:a+b,y2:top},
+      {id:'docs',kind:'room',x1:a+b,y1:0,x2:W_,y2:top},
+      {id:'matter',kind:'room',x1:0,y1:top,x2:W_,y2:H}
+    ],H};
+  },
+  links:[['right','party'],['party','docs'],['right','matter'],['party','matter'],['docs','matter']]
+};
+
+build('planA',A,'a');
+build('planB',B,'b');
+build('planC',C,'c');
+</script>
+</body>
+</html>

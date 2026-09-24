@@ -15,6 +15,10 @@
    平たい札にとどめる。家の造形は下の間取りが持つ。
    ★ .card は部屋の中（v27 由来の白いカード）と意味が違うので、
    一覧の札は .shelf-card に分けて名前の衝突を避ける。          */
+/* 先頭の見出しは作業面の上端から始める。shared の .sec-h は段どうしの
+   間として上に 34px を持つが、1つ目にそれが付くと他領域より下がって
+   始まる（他領域はいずれも同じ打ち消しを置いている）。 */
+.inner>.sec-h:first-child{margin-top:0}
 .shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px}
 .shelf-card{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;
   gap:2px 10px;text-align:left;padding:14px 15px;background:var(--card);
@@ -52,6 +56,10 @@
      ・軒より下の広いところ … 住所、種別／築年
    物件名を窪みへ入れるぶん、文字の塊を負のマージンで引き上げる。 */
 .prop{margin:0 0 42px}
+/* 物件の並びは棚（持っている不動産）の直後に、見出しを挟まず続く。
+   見出しが無いぶん、棚の索引と物件そのものの境を区切り線で示す
+   （空けただけでは棚のカードに屋根の棟が接して見える）。 */
+#plans{margin-top:30px;padding-top:30px;border-top:1px solid var(--line)}
 /* 見出し＝屋根＋その中の文字。下端で間取り図にそのまま続く。
 
    ★間取り図の SVG は上下左右に敷地の余白（render.js の SITE=34
@@ -206,84 +214,153 @@
 
 /* 第2段｜白いカード。地の上に載る記録物。flex で伸ばさない
    ――中身のぶんで終わり、余りは床（地）が受ける。            */
-.card{background:var(--card);border-radius:9px;padding:18px 18px 20px}
+.card{background:var(--card);border-radius:9px;padding:18px 20px 20px}
 
-/* ── 今のうち｜左の縦レール ── */
-.rail{position:relative;padding-left:24px}
-.rw{position:relative;padding:0 0 15px;border-bottom:1px solid #F1EEE5;
-  margin-bottom:15px}
-.rw:last-child{padding-bottom:0;border-bottom:0;margin-bottom:0}
-.nd{position:absolute;left:-24px;top:3px;width:11px;height:11px}
-.rh{display:flex;align-items:flex-start;gap:8px}
-.rh .nm{flex:1;min-width:0;font-size:13.5px;font-weight:600;line-height:1.55}
-.rh .bd{flex:none;padding-top:1px}
-.rw .de{font-size:11.5px;color:var(--ink2);line-height:1.8;margin-top:4px}
-.act{display:flex;gap:8px;font-size:11.5px;line-height:1.78;margin-top:8px;
-  padding:8px 11px 8px 10px;background:#FCF6EC;
-  border-left:2px solid var(--or-ln);border-radius:0 4px 4px 0}
-.act .ar{flex:none;color:var(--or);font-weight:700}
-.lim{display:inline-block;font-size:10.5px;color:var(--or);
-  background:var(--or-bg);border:1px solid var(--or-ln);border-radius:3px;
-  padding:2px 8px;margin-top:9px;line-height:1.7}
+/* ══ 記録の単位｜全部屋で揃えるのは2つだけ（2026-09-23）══════
+   ・状態バッジ … 単位の名前の直下
+   ・編集ボタン … 単位の頭の右端。枠線の小さなボタン、色は常に同じ
+   中身の形は部屋ごとに中身の構造から決める（下の各節）。       */
+.uh{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}
+.uh-t{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+/* 右端に状態バッジと入口を寄せる。名前の1行目の高さに中心を合わせる。 */
+.uh-r{display:flex;align-items:center;gap:8px;flex:none;margin:-6px 0}
+/* 負の margin は「記録」ボタン（32px）の分。選べるバッジだけの頭
+   （今のうち）は名前の1行と同じ高さなので、打ち消さない。 */
+.uh-r:has(> .status-pick:only-child){margin:0}
+.uh-k{font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--ink3);line-height:1.4}
+.uh-nm{font-size:13px;font-weight:650;line-height:1.5;color:var(--ink);overflow-wrap:anywhere}
+/* 入口「記録」。枠線なしの控えめな文字ボタン。枠はマウスを乗せた
+   とき・キーボードで選んだときだけ出す。押せる範囲は 32px を保つ。
+   右の padding ぶん外へ出し、文字の右端を単位の右端に揃える。 */
+.record-edit{display:inline-flex;align-items:center;gap:4px;flex:none;min-height:32px;
+  margin:0 -8px 0 0;padding:0 8px;border:1px solid transparent;border-radius:6px;
+  background:none;color:#6B7F6E;font:600 11px/1 var(--font);cursor:pointer;white-space:nowrap;
+  transition:background .15s,border-color .15s,color .15s}
+.record-edit .re-pen{width:13px;height:13px;flex:none}
+.record-edit:hover{background:#F3F7F2;border-color:#C9D3C7;color:#284C32}
+.record-edit:focus-visible,.record-add:focus-visible{outline:2px solid #64886B;outline-offset:2px}
+/* 追加＝空いている枠。既存を直すボタンと形を分ける（点線）。
+   全幅にしない ―― 最後の部屋の右下には方位マーク（SVG）が
+   あり、全幅だと重なる（ローン・契約の部屋で実測）。 */
+.record-add{display:inline-flex;align-items:center;gap:6px;
+  min-height:36px;margin-top:12px;padding:0 16px 0 13px;border:1px dashed #BFC9BC;border-radius:7px;background:none;
+  color:#4F6B56;font:600 11.5px/1.4 var(--font);cursor:pointer}
+.record-add span{font-size:14px;font-weight:400}
+.record-add:hover{background:#F5F8F3;border-color:#8EA88F;color:#284C32}
 
-/* ── そのとき｜主役が大きく立つ ── */
-.lead-item{padding-bottom:4px}
-.lh{display:flex;align-items:flex-start;gap:14px}
-.lh .gi{flex:none;margin-top:2px}
-.lh .lt{flex:1;min-width:0}
-.ltag{display:inline-block;font-size:10.5px;line-height:1.7;padding:1px 9px;
-  border-radius:3px;margin-bottom:6px;
-  color:#3d6b52;background:#EDF2ED;border:1px solid #CCD9CE}
-.lead-item .nm{font-size:19px;font-weight:600;line-height:1.5;letter-spacing:.02em}
-.lead-item .de{font-size:11.5px;color:var(--ink2);line-height:1.85;margin-top:5px}
-.lbd{flex:none;padding-top:2px;text-align:right}
+/* ── 今のうち｜小図＋名前・状態＋入口 → 記録 → 次にすること ── */
+.rail{display:flex;flex-direction:column;gap:12px}
+.rw{min-width:0;background:var(--card);border:1px solid #EEE5D6;border-radius:8px;
+  padding:16px 18px 17px;box-shadow:0 1px 2px #6a51200a}
+.rh{display:grid;grid-template-columns:36px minmax(0,1fr);align-items:start;gap:12px}
+.rh .matter-icon{width:36px;height:39px}
+.rh .uh-nm{font-size:14px}
+.rw-record{margin-top:12px}
+.rw-record p{margin:0;font-size:12.25px;line-height:1.85;color:#3F3B34;overflow-wrap:anywhere}
+.record-next{margin-top:11px;border-top:1px solid #EBE3D5;padding-top:10px}
+.record-next>span{font-size:10px;font-weight:600;letter-spacing:.04em;color:#81786A}
+.record-next p{margin:4px 0 0;font-size:12px;line-height:1.8;color:#514B42;overflow-wrap:anywhere}
+.record-next small{display:block;color:#777064;margin-top:5px;font-size:10px}
+/* 該当なし・確認済みは畳んで軽く。記録の字も一段落とす。 */
+.rw.is-none,.rw.is-done{padding-top:13px;padding-bottom:13px}
+.is-none .rw-record p,.is-done .rw-record p{color:#777064;font-size:11px;line-height:1.7}
 
-/* この物件では ―― 一般論と固有事情を分ける。 */
-.only{margin-top:12px;padding:11px 14px;background:#F1F5F1;
-  border-left:2px solid #BECDC1;border-radius:0 4px 4px 0}
-.only .ol{font-size:10px;color:#3d6b52;letter-spacing:.08em;
-  font-weight:600;margin-bottom:4px}
-.only .ot{font-size:11.5px;line-height:1.85;color:var(--ink)}
+/* ── 今のうち｜前の代の相続登記（`_検討/前の代の相続登記_表示v7.html`）──
+   主＝次にすること＋期限／従＝名義の図／控え＝一文。橙は期限と状態札だけ。
+   くわしくはカードの最下行。カードの左右・下の余白まで広げて敷く。 */
+.pr-why,.pr-nb span,.pr-act p,.pr-dt-b{word-break:auto-phrase}
+.pr-why{margin:10px 0 0;font-size:12px;line-height:1.8;color:var(--ink2);text-wrap:pretty}
+.pr-why b{font-weight:600;color:#4A453C}
+.pr-quiet{margin:10px 0 0;font-size:11.5px;color:#777064;line-height:1.7}
+.pr-nm{margin-top:14px;display:grid;grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr);align-items:stretch;column-gap:4px}
+.pr-nm.one{grid-template-columns:1fr}
+.pr-nb{border-radius:6px;padding:7px 10px 8px;min-width:0}
+.pr-nb small{display:block;font-size:10px;color:var(--ink3);letter-spacing:.04em;margin-bottom:2px}
+.pr-nb span{display:block;font-size:13px;font-weight:600;line-height:1.45;overflow-wrap:anywhere}
+.pr-now{background:#F4F1EA;border:1px solid #E2DCCF}
+.pr-now span{color:#4A453C}
+.pr-to{background:#fff;border:1px dashed #C9BFA8}
+.pr-to span{color:#8F887A;font-weight:500}
+.pr-to.done{border:1px solid #BFD3C4;background:var(--gr-bg)}
+.pr-to.done span{color:var(--gr);font-weight:600}
+.pr-ar{display:grid;place-items:center}
+.pr-ar svg{width:30px;height:12px}
+.pr-st{grid-column:1/-1;margin:6px 0 0;font-size:11px;color:var(--ink2);line-height:1.6;display:flex;align-items:center;gap:5px}
+.pr-st svg{width:13px;height:13px;flex:none;color:#9B8B6E}
+.pr-act{margin-top:14px;padding-top:12px;border-top:1px solid #EBE3D5}
+.pr-act-h{display:flex;align-items:baseline;justify-content:space-between;gap:4px 8px;flex-wrap:wrap}
+.pr-act-h>span:first-child{font-size:10.5px;font-weight:600;color:var(--ink3);letter-spacing:.04em}
+.pr-lim{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--or);white-space:nowrap}
+.pr-lim svg{width:13px;height:13px;flex:none}
+.pr-lim.unk{color:var(--ink2);font-weight:500}
+.pr-lim em{font-style:normal;font-weight:600;margin-left:6px;padding-left:7px;border-left:1px solid var(--or-ln)}
+.pr-act p{margin:5px 0 0;font-size:14.5px;font-weight:700;line-height:1.6;color:var(--ink);text-wrap:pretty}
+.pr-act p small{display:block;font-size:11px;font-weight:400;color:var(--ink2);margin-top:2px}
+.pr-dt{margin:14px -18px -17px;border-top:1px solid #EFE8DB;border-radius:0 0 8px 8px}
+.pr-dt.open{background:#FBF9F4}
+.pr-dt-t{display:flex;align-items:center;gap:8px;width:100%;padding:10px 18px 11px;border:0;background:none;
+  font:inherit;text-align:left;cursor:pointer;color:var(--ink2);border-radius:0 0 8px 8px}
+.pr-dt.open .pr-dt-t{border-radius:0}
+.pr-dt-t:hover{background:#FBF9F4}
+.pr-dt-t:focus-visible{outline:2px solid #9DB3C9;outline-offset:-2px}
+.pr-dt-k{flex:none;font-size:11.5px;font-weight:600;color:var(--bl)}
+.pr-dt-s{flex:1;min-width:0;font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr-dt-t svg{flex:none;width:11px;height:11px;color:var(--bl);transition:transform .15s}
+.pr-dt.open .pr-dt-t svg{transform:rotate(180deg)}
+.pr-dt.open .pr-dt-s{visibility:hidden}
+.pr-dt-b{padding:2px 18px 18px}
+.pr-dt-b section{padding-top:14px}
+.pr-dt-b section+section{margin-top:14px;border-top:1px solid #EDE6D8}
+.pr-dt-b h6{display:flex;align-items:baseline;gap:7px;margin:0 0 8px;font-size:12.5px;font-weight:700;color:#3F3B34}
+.pr-dt-b h6 i{font-style:normal;flex:none;width:17px;height:17px;border-radius:50%;background:#EDE6D6;color:#7A6F59;
+  font-size:10px;font-weight:700;display:grid;place-items:center;transform:translateY(-1px)}
+.pr-dt-b p{margin:0;font-size:11.5px;line-height:1.8;color:#5E584D;text-wrap:pretty}
+.pr-dt-b p+p,.pr-two+p{margin-top:5px}
+.pr-dt-b p b{font-weight:600;color:#3F3B34}
+/* 2つを並べて比べる。狭いと縦に積む。 */
+.pr-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:6px 0 0}
+.pr-two div{border:1px solid #E6DFD0;border-radius:6px;background:#fff;padding:8px 10px 9px}
+.pr-two small{display:block;font-size:10.5px;font-weight:600;color:var(--ink3);margin-bottom:3px}
+.pr-two p{font-size:11.5px;line-height:1.65}
+.pr-two .ok{color:var(--gr);font-weight:600}
+.pr-two .ng{color:var(--rd);font-weight:600}
 
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-.tiles.one{grid-template-columns:1fr}
-.tile{border:1px solid var(--line);background:var(--paper);border-radius:5px;
-  padding:9px 11px;display:flex;gap:9px;align-items:flex-start}
-.tile svg{flex:none;margin-top:1px}
-.tile .tl{font-size:10px;color:#3d6b52;letter-spacing:.06em;margin-bottom:3px}
-.tile .tv{font-size:11.5px;line-height:1.7;color:var(--ink)}
-.tile .tv b{color:var(--or)}
-.tile .tn{font-size:10.5px;color:var(--ink3);line-height:1.65;margin-top:2px}
-
-/* 第2段の2枚目｜ほかの手続き。一覧の密度。期限は見出しの右肩。 */
-.card.rest{margin-top:13px;padding:16px 18px 18px}
-.rhd{display:flex;align-items:baseline;gap:10px;margin:0 0 4px;
-  padding-bottom:10px;border-bottom:1px solid #EDE7DC}
-.rhd .rt{font-size:14px;font-weight:600;color:#3d6b52}
-.rhd .rn{flex:1;text-align:right;font-size:10.5px;color:var(--ink3)}
-.sub{padding:11px 0 0;margin-top:11px;border-top:1px solid #F1EEE5;
-  display:grid;grid-template-columns:1fr auto;column-gap:14px;align-items:start}
-.sub:first-of-type{padding-top:11px;margin-top:0;border-top:0}
-.sub .nm{font-size:13px;font-weight:600;line-height:1.55;
-  padding-left:9px;border-left:2px solid #BECDC1;grid-column:1}
-.sub .de{font-size:11.5px;color:var(--ink2);line-height:1.78;margin-top:3px;
-  padding-left:11px;grid-column:1}
-/* 右肩は本文の横。縦に積むと本文が下へ送られて左に空きが出る。 */
-.srt{grid-column:2;grid-row:1 / span 3;display:flex;flex-direction:column;
-  align-items:flex-end;gap:7px;width:142px;text-align:right}
-.slim{display:flex;gap:6px;align-items:flex-start;justify-content:flex-end}
-.slim svg{flex:none;margin-top:1px}
-.slim .sv{font-size:11px;line-height:1.6;color:var(--or);font-weight:600}
-.slim .sn{font-size:10px;line-height:1.55;color:var(--ink3);font-weight:400}
-.sdoc{font-size:10.5px;color:var(--ink2);line-height:1.7;margin-top:5px;
-  padding-left:11px;grid-column:1}
-.sdoc b{color:var(--or)}
-
-/* 締めの注記はプレートの内側。外に出すと第2段と同格に見える。 */
-.foot{display:flex;gap:9px;margin-top:14px;padding:10px 12px;
-  background:#F1F5F9;border-radius:5px;
-  font-size:10.5px;color:var(--ink2);line-height:1.75}
-.foot svg{flex:none;margin-top:2px}
+/* ── そのとき｜書面ごとに入口を揃え、詳細だけを開く ── */
+.procedure-sheets{display:flex;flex-direction:column;gap:12px}
+.procedure-sheet{background:var(--card);padding:16px 18px 0;border-radius:7px;
+  box-shadow:0 1px 1px #354d3c0a;min-width:0}
+.procedure-head{display:flex;align-items:center;gap:12px;min-height:36px}
+.procedure-head .gi{flex:none}
+.procedure-head h5{font-size:15px;font-weight:600;line-height:1.5;margin:0;color:var(--ink)}
+.procedure-sheet.primary .procedure-head h5{font-size:19px}
+.procedure-eyebrow{font-size:10px;line-height:1.5;color:var(--ink2);letter-spacing:.06em}
+.procedure-purpose{font-size:12px;line-height:1.75;color:var(--ink2);margin:8px 0 12px}
+.procedure-entry{display:grid;grid-template-columns:3em minmax(0,1fr);gap:6px 10px;
+  font-size:12px;line-height:1.75;margin:0;padding-top:10px;border-top:1px solid #e8eee7}
+.procedure-entry dt{color:#5c7562;font-size:10.5px;padding-top:1px}
+.procedure-entry dd{margin:0;overflow-wrap:anywhere}
+.procedure-entry dd:first-of-type{font-weight:600;color:#355640}
+.procedure-deadline{display:flex;align-items:flex-start;gap:7px;margin-top:11px;
+  font-size:11px;line-height:1.7;color:#8f6227}
+.procedure-deadline svg{flex:none;margin-top:2px}
+.procedure-deadline b{font-size:10px;font-weight:500;margin-right:5px}
+.procedure-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  width:100%;border:0;border-top:1px solid #e8eee7;background:none;
+  padding:10px 0;margin-top:12px;color:#41624c;font:600 11.5px/1.5 var(--font);cursor:pointer;text-align:left}
+.procedure-toggle:hover{color:#234c32;background:#f7faf5}
+.procedure-toggle:focus-visible{outline:2px solid #527b5b;outline-offset:3px}
+.procedure-toggle > span:last-child{font-size:17px;font-weight:400}
+.procedure-detail{border-top:1px solid #e8eee7;padding:13px 0 17px;font-size:12px;line-height:1.8}
+.procedure-detail ol{list-style:none;counter-reset:procedure;margin:0;padding:0}
+.procedure-detail li{counter-increment:procedure;position:relative;padding-left:27px;margin-bottom:11px}
+.procedure-detail li:before{content:counter(procedure);position:absolute;left:0;top:2px;
+  width:18px;height:18px;border-radius:50%;background:#eaf0e8;color:#41624c;
+  text-align:center;font-size:10px;line-height:18px;font-weight:700}
+.procedure-context{margin:0 0 13px;padding:9px 11px;background:#f3f6ef;color:#3d5b44}
+.procedure-context b{display:block;font-size:10px;margin-bottom:3px}
+.procedure-note{font-size:11px;line-height:1.8;color:var(--ink2);margin:11px 0 0}
+.procedure-source{display:inline-block;margin-top:11px;color:#42674e;font-size:11px;
+  text-decoration:underline;text-underline-offset:3px}
 
 /* ══ 部屋の中身（事情・権利関係・ローン契約・書類・玄関）══════
    foreignObject を使わない別レイヤーの div。文字は小さめ・
@@ -296,60 +373,53 @@
 
 /* 状態バッジ（§11） */
 .bdg{display:inline-flex;align-items:center;gap:4px;flex:none;
-  font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+  font-size:9.5px;font-weight:700;padding:2px 9px;border-radius:20px;
   border:1px solid;white-space:nowrap;justify-content:center;text-align:center}
 .bdg.or{color:var(--or);background:var(--or-bg);border-color:var(--or-ln)}
 .bdg.gr{color:var(--gr);background:var(--gr-bg);border-color:#c7dbcb}
 .bdg.gy{color:var(--ink3);background:#F1EFE9;border-color:var(--line2)}
 .bdg.bl{color:var(--bl);background:#EDF1F6;border-color:#C6D3E0}
-.status-pick{appearance:none;-webkit-appearance:none;cursor:pointer;font-family:var(--font);
-  line-height:1.35;padding-right:22px;padding-left:22px;text-align-last:center;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='m2 2 4 4 4-4' fill='none' stroke='%23756f63' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-size:9px 6px;background-position:right 7px center}
-.status-pick:hover{filter:brightness(.98)}
+.status-pick{cursor:pointer;font-family:var(--font);gap:5px;line-height:1.4}
+.status-pick .caret{width:9px;height:6px;flex:none;opacity:.7}
+.status-pick:hover{filter:brightness(.97)}
 .status-pick:focus-visible{outline:2px solid rgba(55,111,79,.28);outline-offset:2px}
 .t-gr{color:var(--gr);background:var(--gr-bg);border-color:#c7dbcb}
 .t-or{color:var(--or);background:var(--or-bg);border-color:var(--or-ln)}
 .t-gy{color:var(--gy);background:#F1EFE9;border-color:var(--line2)}
 .t-bl{color:var(--bl);background:#EDF1F6;border-color:#C6D3E0}
 
-/* ── 事情：問いと答え。答えが「あり」のときだけ話が続く。
-   3問は常に見えている（聞いていないことが見えている必要がある）。 */
-.q{padding:7px 0;border-top:1px solid #EAE4D6}
-.q:first-child{border-top:0}
-.qh{display:flex;align-items:baseline;gap:6px;font-size:12px}
-.qh .qt{font-weight:600}
-.qa{font-size:11.5px;color:var(--ink2);line-height:1.72;margin-top:3px}
-.qd{margin-top:3px;padding-left:10px;border-left:2px solid #E4DCC8;
-  font-size:11px;color:var(--ink2);line-height:1.7}
-.qd i{font-style:normal;color:var(--ink3);margin-right:4px}
+/* ── 下段の単位（書類・借入・契約の相手）。罫で区切る。 ── */
+.unit{padding:13px 0;border-top:1px solid #EAE4D6;min-width:0}
+.rm-h + .record-lead + .unit,.grp-h + .unit{border-top:0;padding-top:4px}
+/* 家族が使う1行（場所・連絡先）を太く、残りを従にする。 */
+.u-main{margin-top:8px;font-size:13px;font-weight:600;line-height:1.6;color:#2F4A37;
+  overflow-wrap:anywhere;white-space:pre-line}
+.u-tel{font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.u-sub{margin-top:5px;font-size:11px;line-height:1.7;color:var(--ink2);
+  overflow-wrap:anywhere;white-space:pre-line}
+.record-lead{font-size:10.5px;color:#81786A;margin:-2px 0 8px}
 
-/* ── 権利：土地と建物の対。2ブロック固定なので、対として置く。 ── */
-.own{display:flex;gap:10px}
-.own > div{flex:1;min-width:0}
-.ow{font-size:10px;color:var(--ink3);letter-spacing:.08em;margin-bottom:2px}
-.onm{font-size:12px;font-weight:600;line-height:1.5}
-.osub{font-size:10.5px;color:var(--ink2);line-height:1.6;margin-top:2px}
+/* ── 権利：見比べる表。項目名は左に1回、行を揃える。 ── */
+.deeds{display:grid;grid-template-columns:5.6em repeat(var(--n,2),minmax(0,1fr));
+  column-gap:16px;font-size:11.5px;line-height:1.65}
+.deeds > *{min-width:0;padding:8px 0;border-top:1px solid #EAE4D6}
+.deeds > .dg-corner,.deeds > .dg-head{border-top:0;padding-top:0;padding-bottom:10px}
+.dg-lb{font-size:10.5px;color:var(--ink3);letter-spacing:.02em}
+.dg-v{color:var(--ink);overflow-wrap:anywhere;white-space:pre-line}
+.dg-main{font-size:13px;font-weight:600}
+/* 登記と違う・相続登記が未了＝この表で気づかせたい値。 */
+.dg-warn{color:#9A5B12;font-weight:600}
+.dg-empty{color:var(--ink3)}
 
-/* ── ローン・契約：相手ごとの塊。相手の名前が頭に立つ。 ── */
-.who{padding:7px 0;border-top:1px solid #EAE4D6}
-.who:first-child{border-top:0}
-.wn{font-size:12px;font-weight:600}
-.wk{font-size:10px;color:var(--ink3);margin-left:5px}
-.wd{font-size:11px;color:var(--ink2);line-height:1.68;margin-top:1px}
-.wt{font-size:10.5px;color:var(--ink3);margin-top:1px;
-  font-variant-numeric:tabular-nums}
-
-/* ── 書類：索引。名前と状態だけの細い行。 ── */
-.doc{display:flex;align-items:baseline;gap:6px;padding:3px 0;
-  font-size:11px;line-height:1.6;border-top:1px solid #F0EBE0}
-.doc:first-child{border-top:0}
-.doc .nm{flex:1;min-width:0}
-.place{font-size:10.5px;color:var(--ink3);margin-top:6px;padding-top:5px;
-  border-top:1px solid #E4DFD1;line-height:1.6}
-.dc-link{display:inline-flex;align-items:center;gap:3px;margin-top:8px;flex:none;
-  font-size:11px;font-weight:600;color:var(--gr);text-decoration:none}
-.dc-link svg{width:13px}
+/* ── ローン・契約：借入・担保／契約している相手 の2つの塊 ── */
+.grp + .grp{margin-top:18px}
+.grp-h{margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid #DED5C4;
+  font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#8A7555}
+/* 担保は借入に従う1行。名前・状態・値・入口を横に並べる。 */
+.unit-line{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;
+  align-items:center;gap:8px;padding:10px 0}
+.unit-line .uh-nm{font-size:11.5px;font-weight:600;color:var(--ink2)}
+.ul-v{font-size:11px;line-height:1.6;color:var(--ink2);overflow-wrap:anywhere}
 
 /* ── 玄関（基本情報の表札）── */
 .gk{height:100%;display:flex;flex-direction:column;justify-content:center}
@@ -375,9 +445,135 @@
     border:1px solid var(--line);border-radius:10px}
   .stack .rm-liv{border-color:#E3CBA1;background:#FEFBF6}
   .stack .rm-when{border-color:#CCD9CE}
-  /* 縦積みでは「事情」を先に出す。この領域の中心だから。 */
-  .stack .rm-matters{order:-1;border-color:var(--or-ln);background:#FEFBF6}
   /* 縦積みでは室名札を一回り小さく。引き出し線も詰める。 */
   .stack .rt-nm{font-size:17px}
   .stack .pn{padding-left:18px}
+  .stack .card{padding:16px 16px 18px}
+}
+
+/* 狭い画面（ウィンドウ幅 900px 以下で縦積み、その中でも 430px 以下）。
+   ボタンは指で押す大きさに。入口は右端に留め、名前のほうを折り返す
+   （入口を名前の下へ回すと、カードごとに入口の位置が変わる）。
+   権利の表だけは列が狭いので、入口を列の頭の名前・状態の下に置く。 */
+@media (max-width:900px){
+  .record-edit{min-height:40px}
+  .uh-r{margin:-10px 0}
+}
+@media (max-width:430px){
+  .stack .rw{padding:14px}
+  .stack .rh{grid-template-columns:30px minmax(0,1fr);gap:10px}
+  .stack .rh .matter-icon{width:30px;height:33px}
+  .stack .pr-dt{margin:14px -14px -14px}
+  .stack .pr-dt-t{padding:10px 14px 11px}
+  .stack .pr-dt-b{padding:2px 14px 14px}
+  .stack .deeds{grid-template-columns:4.6em repeat(var(--n,2),minmax(0,1fr));column-gap:10px}
+  .stack .dg-head .uh{flex-direction:column;align-items:flex-start;gap:8px}
+  /* 列の頭では入口を名前の下に置くので、引き上げを外し、文字の左端を名前に揃える。 */
+  .stack .dg-head .record-edit{margin:0 0 0 -8px}
+  /* 担保の1行：1段目に名前と（右端に）状態・入口、2段目に値。 */
+  .stack .unit-line{grid-template-columns:minmax(0,1fr) auto auto;row-gap:4px}
+  .stack .unit-line .ul-v{grid-column:1 / -1;grid-row:2}
+}
+
+.re-editing{overflow:hidden}
+.re-dialog{width:min(660px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 48px);padding:0;
+  border:1px solid #d5c9b5;border-radius:12px;background:#fffdf8;color:#363c34;
+  box-shadow:0 20px 80px #1d291f40;font-family:var(--font)}
+.re-dialog::backdrop{background:#29392d80;backdrop-filter:blur(3px)}
+.re-dialog form{display:flex;flex-direction:column;max-height:calc(100dvh - 50px)}
+.re-dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:24px 28px 18px;border-bottom:1px solid #e5dfd3;flex:none}
+.re-eyebrow{font-size:11px;letter-spacing:.08em;color:#8d7653;margin:0 0 7px}
+.re-dialog h2{font-size:21px;font-weight:650;line-height:1.5;margin:0;outline:none}
+.re-close{border:0;background:#f0ece3;color:#6a6d60;border-radius:50%;width:34px;height:34px;flex:none;cursor:pointer;font:24px/1 sans-serif}
+.re-dialog-body{padding:20px 28px 26px;overflow:auto;overscroll-behavior:contain;min-height:0}
+/* 状態。どの入口から開いても、ポップアップの頭で選べる。選択肢は
+   バッジそのもので、選んでいないものは色を抜いて灰の枠だけにする。 */
+.re-status{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 20px;
+  padding:12px 14px;border-radius:8px;background:#F4F2EA}
+.re-status-lb{font-size:12px;font-weight:700;letter-spacing:.06em;color:#6C765D;margin-right:6px}
+.re-st-opt{position:relative;cursor:pointer}
+.re-st-opt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.re-st-opt .bdg{font-size:11.5px;padding:5px 13px;transition:background .15s,color .15s,border-color .15s}
+.re-st-opt input:not(:checked) + .bdg{background:#fff;color:#8A8C80;border-color:#D8D6CB}
+.re-st-opt:hover input:not(:checked) + .bdg{border-color:#A9AC9C;color:#5E6356}
+.re-st-opt input:focus-visible + .bdg{outline:2px solid #64886B;outline-offset:2px}
+.re-lead{font-size:14px;line-height:1.9;margin:0 0 24px;padding-left:13px;border-left:3px solid #c5a46f;color:#586050}
+.re-dialog fieldset{border:0;padding:0;margin:0 0 26px;min-width:0}
+.re-dialog fieldset:last-child{margin-bottom:0}
+.re-dialog legend{font-size:12px;font-weight:700;letter-spacing:.06em;color:#6c765d;width:100%;border-bottom:1px solid #e3e5d9;padding:0 0 9px;margin-bottom:13px}
+.re-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.re-field{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;color:#58604f}
+.re-field>span{line-height:1.6}
+.re-fields .wide{grid-column:1/-1}
+.re-field input,.re-field textarea,.re-field select{box-sizing:border-box;width:100%;min-width:0;max-width:100%;border:1px solid #cccfc0;background:white;
+  color:#333c32;border-radius:5px;padding:10px 11px;font:13px/1.65 var(--font)}
+.re-field textarea{resize:vertical;min-height:86px}
+.re-field small{font-size:10.5px;color:#858978;line-height:1.7}
+/* 選択肢の下に添える一言（その欄をどう確かめるか）。 */
+.re-field-note{margin:-8px 0 0;font-size:10.5px;color:#858978;line-height:1.7}
+/* 複数を選べる欄（前の代の名義のもの：土地／建物）。 */
+.re-checks{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;font-size:12px;color:#58604f}
+.re-checks>span{width:100%;line-height:1.6}
+.re-checks label{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#333c32}
+.re-checks input{width:16px;height:16px;margin:0;accent-color:#4f7358}
+.re-checks small{font-size:10.5px;color:#858978}
+.re-field :is(input,select,textarea):focus{outline:2px solid #8ca484;outline-offset:1px;border-color:#72886a}
+.re-doc-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.re-dialog [hidden]{display:none!important}
+.re-dialog-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 28px;border-top:1px solid #e5dfd3;background:#f7f5ee;flex:none}
+.re-dialog-foot>span{font-size:11px;color:#818473;margin-right:auto}
+.re-dialog-foot button,.re-discard button{font:600 12px/1.5 var(--font);padding:10px 15px;border:1px solid #cbd0bf;border-radius:5px;background:#fffef9;color:#55634d;cursor:pointer}
+.re-dialog-foot .re-save{background:#41654a;border-color:#41654a;color:white}
+.re-error:empty{display:none}
+.re-error{width:100%;margin:0;color:#a34333;font-size:12px;line-height:1.7}
+.re-discard{padding:12px 28px;background:#fff0db;border-top:1px solid #e7d1ac;font-size:12px;flex:none}
+.re-discard p{margin:0 0 8px}
+.re-discard button+button{margin-left:8px}
+@media(max-width:600px){
+  .re-dialog{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);border-radius:10px}
+  .re-dialog form{max-height:calc(100dvh - 18px)}
+  .re-dialog-head{padding:18px 18px 14px}.re-dialog h2{font-size:18px}
+  .re-dialog-body{padding:18px}.re-dialog-foot{padding:12px 18px;gap:8px}
+  .re-dialog-foot>span{width:100%;font-size:10px}
+  .re-dialog-foot button{flex:1}
+  .re-fields,.re-doc-fields{grid-template-columns:minmax(0,1fr)}
+  .re-field input,.re-field textarea,.re-field select{font-size:16px}
+  .re-discard{padding:12px 18px}
+}
+/* 担保の1行は縦中央で揃えるので、入口の引き上げを打ち消す。 */
+.unit-line .record-edit{margin-top:0}
+/* 選べるバッジ（今のうち）。押すとポップアップが開く入口を兼ねるので、
+   読むだけのバッジより一回り大きくする。 */
+button.bdg.status-pick{font-size:10.5px;padding:3px 9px 3px 10px}
+
+/* ── 確認と記録｜質問ひとつ＝問い＋並べた選択肢（前の代の相続登記）──
+   1列で上から答える。プルダウンにしない（開くまで選択肢が見えない）。
+   pill＝短い選択肢を横に、row＝説明の要る選択肢を縦に。 */
+.re-q{margin:0 0 22px}
+.re-q:last-child{margin-bottom:0}
+.re-q-t{margin:0 0 9px;font-size:13px;font-weight:600;line-height:1.6;color:#3C4437}
+.re-q-h{margin:7px 0 0;font-size:11px;color:#858978;line-height:1.65}
+.re-q-in{box-sizing:border-box;width:min(340px,100%);border:1px solid #cccfc0;background:#fff;border-radius:6px;
+  padding:10px 12px;font:14px/1.5 var(--font);color:#333c32}
+.re-q-in:focus{outline:2px solid #8ca484;outline-offset:1px;border-color:#72886a}
+.re-q-sub{margin-top:10px}
+.re-opts{display:flex;flex-wrap:wrap;gap:8px}
+.re-opts.row{flex-direction:column;gap:6px}
+.re-opt{position:relative;cursor:pointer;min-width:0}
+.re-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.re-opt>span{display:flex;flex-direction:column;gap:1px;border:1px solid #D6D3C6;background:#fff;border-radius:999px;
+  padding:8px 16px;font-size:13px;line-height:1.5;color:#434A3D;transition:border-color .15s,background .15s}
+.re-opt b{font-weight:500}
+.re-opt small{font-size:11px;color:#858978;line-height:1.5}
+.re-opts.row .re-opt>span{position:relative;border-radius:8px;padding:10px 14px 10px 40px}
+/* row の選択印（ラジオの丸）。1行目の字の高さに揃える。 */
+.re-opts.row .re-opt>span::before{content:"";position:absolute;left:14px;top:14px;width:14px;height:14px;box-sizing:border-box;
+  border-radius:50%;border:1.5px solid #B9B6A8;background:#fff}
+.re-opt:hover>span{border-color:#A9AC9C}
+.re-opt input:checked+span{border-color:#5E8466;background:#EFF4EE;color:#26402D;box-shadow:inset 0 0 0 1px #5E8466}
+.re-opt input:checked+span b{font-weight:650}
+.re-opts.row .re-opt input:checked+span::before{border:4px solid #4F7358}
+.re-opt input:focus-visible+span{outline:2px solid #64886B;outline-offset:2px}
+@media (max-width:620px){
+  .re-q-in{width:100%;font-size:16px}
 }

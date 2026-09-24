@@ -40,6 +40,10 @@
    localStorage.removeItem('SeiZenRealEstate.props') を実行する。  */
 (function (global) {
   'use strict';
+  /* 画面の文で対象の家族を呼ぶ続柄（既定「父」）。「本人」とは書かない
+     ―― 操作するのは基本的に家族で、読み手が迷う（2026-09-24）。 */
+  const WHO = (window.SeiZen && window.SeiZen.person && window.SeiZen.person.rel) || '父';
+  const SPOUSE = (window.SeiZen && window.SeiZen.person && window.SeiZen.person.spouse) || '母';
 
   const STORE_KEY = 'SeiZenRealEstate.props';
   function save() {
@@ -60,11 +64,11 @@
      前者は家族が後からでも取り返せるが、後者は取り返せない。 */
   const ST = {
     done:    { label: '確認済み',   tone: 'gr', sym: '○',
-               about: '本人に確認して、記録に残した状態です。' },
+               about: WHO + 'に確認して、記録に残した状態です。' },
     doing:   { label: '確認中',     tone: 'or', sym: '△',
                about: '調べている・問い合わせている途中です。' },
     todo:    { label: '未確認',     tone: 'or', sym: '△',
-               about: 'まだ確認していません。本人に聞けるうちに。' },
+               about: 'まだ確認していません。' + WHO + 'に聞けるうちに。' },
     action:  { label: '対応が必要', tone: 'or', sym: '!',
                about: '確認の結果、手続きや相談が要ると分かった状態です。' },
     none:    { label: '該当なし',   tone: 'gy', sym: '—',
@@ -77,21 +81,18 @@
      render.js 側で候補を絞る。バッジは単なる装飾ではなく、この値を
      選び直す入口として使う。 */
   const NOW_STATUS = {
-    problem: { label: '問題なし',   tone: 'gr' },
+    unknown: { label: '未確認',     tone: 'bl' },
     done:    { label: '確認済み',   tone: 'gr' },
-    none:    { label: '該当なし',   tone: 'gy' },
-    ask:     { label: '本人に確認', tone: 'bl' },
-    check:   { label: '要確認',     tone: 'bl' },
-    doing:   { label: '対応中',     tone: 'bl' },
-    action:  { label: '対応が必要', tone: 'or' }
+    action:  { label: '対応が必要', tone: 'or' },
+    none:    { label: '該当なし',   tone: 'gy' }
   };
 
   /* 「本人しか知らない度」。§13-1 の基準を状態と別の軸で持つ。
      家族が後から調べられるものと、本人が失われると消えるものを
      画面で区別するため。進捗（§12）はこちらを重く数える。      */
   const REACH = {
-    onlyself: { label: '本人しか知らない', tone: 'or',
-                about: '本人に聞けなくなると、調べる先がありません。' },
+    onlyself: { label: WHO + 'しか知らない', tone: 'or',
+                about: WHO + 'に聞けなくなると、調べる先がありません。' },
     askable:  { label: '相手に聞ける',     tone: 'bl',
                 about: '金融機関・管理会社など、聞ける先があります。' },
     public:   { label: '公的に調べられる', tone: 'gy',
@@ -125,7 +126,7 @@
 
   /* 利用状況。家族が次に取る行動が変わる分け方。 */
   const USES = {
-    self:   { label: '本人が住んでいる', tone: 'gr' },
+    self:   { label: WHO + 'が住んでいる', tone: 'gr' },
     family: { label: '家族が住んでいる', tone: 'gr' },
     rent:   { label: '貸している',       tone: 'bl' },
     empty:  { label: '空き家',           tone: 'or' },
@@ -160,7 +161,7 @@
       ask: '私道が関係しますか。他人の土地を通行している・させている、' +
            '水道やガスが他人の土地を通っていませんか。',
       why: '私道だと、水道・ガスの工事や再建築に承諾が要ります。' +
-           '誰の承諾が要るかは本人しか知らないことが多い項目です。',
+           '誰の承諾が要るかは' + WHO + 'しか知らないことが多い項目です。',
       detail: ['何についての関係か', '相手', '取り決め', '書面の有無'] },
     changed: {
       label: '建物の変更・登記', icon: 'build',
@@ -181,10 +182,10 @@
     yes:     { label: 'あり',       tone: 'or',
                about: '当てはまります。詳細を確認します。',     open: true  },
     unknown: { label: '分からない', tone: 'or',
-               about: '本人にも分からない・確認できていない状態です。',
+               about: WHO + 'にも分からない・確認できていない状態です。',
                open: true  },
     unasked: { label: '未確認',     tone: 'or',
-               about: 'まだ確認していません。本人に聞けるうちに。',
+               about: 'まだ確認していません。' + WHO + 'に聞けるうちに。',
                open: false }
   };
 
@@ -192,13 +193,13 @@
      「管理会社」「賃貸管理会社」などを別分類にはしない（§3-C）。 */
   const DEALS = {
     lend:   { label: '貸す・使わせる', tone: 'gr',
-              about: '本人側の不動産を、本人以外が使っている関係です。',
+              about: WHO + '側の不動産を、' + WHO + '以外が使っている関係です。',
               who: '誰が使っているか' },
     borrow: { label: '借りる',         tone: 'bl',
-              about: '本人が他人の土地・建物などを使っている関係です。',
+              about: WHO + 'が他人の土地・建物などを使っている関係です。',
               who: '誰から借りているか' },
     manage: { label: '管理',           tone: 'bl',
-              about: '本人以外が物件の管理に関わっている関係です。',
+              about: WHO + '以外が物件の管理に関わっている関係です。',
               who: '誰が管理しているか' }
   };
 
@@ -223,14 +224,21 @@
          match は「登記上の名義と、現在認識している権利関係」。
          登記の記載そのものは調べれば分かる。調べられないのは
          実態とのズレなので、そこを状態として持つ（§13-1）。 */
+      /* hold＝権利の種類（所有／共有／借地／その他）。項目設計 §2。
+         借地は登記されないことが多く、登記を見ても分からない。
+         地主（相手）は §3「借りる」が持つ（§2 の連動指示）。 */
       rights: {
-        land:  { owner: '父（故人）名義のまま', shares: '', match: 'differ',
-                 st: 'action', reach: 'onlyself',
-                 memo: '相続登記が済んでいない。兄弟3人が相続人。' },
-        bldg:  { owner: '本人', shares: '単独', match: 'same',
+        land:  { hold: 'own', owner: '祖父 一郎（故人）', shares: '', match: 'differ',
+                 st: 'action', reach: 'onlyself', memo: '' },
+        bldg:  { hold: 'own', owner: WHO, shares: '単独', match: 'same',
                  st: 'done', reach: 'public',
                  memo: '2004年6月に保存登記。' }
       },
+
+      /* 4. 担保。借入の有無に依らず持つ（物上保証があるため）。 */
+      security: { has: 'yes', whose: 'self',
+                  what: '住宅ローンの担保', bank: '○○銀行',
+                  order: '第1順位', st: 'done', reach: 'public' },
 
       /* 3. 契約・やり取り。本人以外との間で「現在も続いている関係」。
          公共料金（ガス・電気）はここに入れない。止める・名義を変える
@@ -244,7 +252,7 @@
       /* 4. ローン・担保 */
       loan: {
         has: true, bank: '○○銀行 青葉台支店', type: '住宅ローン',
-        debtor: '本人単独', gtee: 'あり（団体信用生命保険）', gteeStatus: 'yes',
+        debtor: WHO + '単独', gtee: 'あり（団体信用生命保険）', gteeStatus: 'yes',
         balance: '約1,240万円',
         mortgage: '第1順位・○○銀行', cross: 'なし',
         st: 'done', reach: 'askable',
@@ -277,7 +285,16 @@
                     reg: '未対応', state: '確認申請の有無を照会中' } }
       },
 
-      priorInheritance: { status: 'action' },
+      /* 前の代の相続登記。答えだけを持ち、状態・次の対応・期限は
+         priorStatus() と render.js が答えから出す（自由記入は持たない）。
+           remains … 前の代の名義が残っているか yes／no／unknown
+           parcels … どれが前の代の名義か（land・bldg）
+           died    … 前の代が亡くなった時期 before（2024年4月より前）／after／unknown
+           stage   … none 話がついていない／agreed 取得する人は決まった（書面なし）／
+                     signed 協議書に全員が署名した／registered 相続登記まで済んだ
+           taker   … 取得する人 self（本人）／other（takerName）             */
+      priorInheritance: { remains: 'yes', parcels: ['land'], owner: '祖父 一郎（故人）', rel: 'parent', route: 'split', died: 'before',
+        stage: 'agreed', taker: 'self', takerName: '' },
       ownerReport: {
         state: 'needed',
         deadline: 'この自治体では、現所有者であることを知った日の翌日から3か月以内'
@@ -296,12 +313,15 @@
          必要な資料が揃っているかを見るインデックス（項目設計 §6）。
          実体と保管場所は「書類・資料」カテゴリが持つ。
          need は 3〜5 の内容から出る（下の neededDocs）。       */
+      /* 持つのは**所在**だけ（項目設計 §6・調査 §10-3）。
+         揃い具合の管理はしない。中身と原本は「書類・資料」カテゴリ。 */
       docs: {
         place: '書斎のキャビネット上段',
-        /* 種類ごとの状態だけを持つ。'—' は連動先に記録が無い状態。 */
-        have: { deed: 'done', acquire: 'done', build: 'done',
-                manage: 'done', loan: 'done', gtee: 'done',
-                boundary: 'action', road: 'none', changed: 'action' },
+        at: {
+          deed:    { st: 'have', place: '書斎のキャビネット上段' },
+          acquire: { st: 'lost',  place: '' },
+          borrow:  { st: 'have', place: '書斎のキャビネット上段' }
+        },
         st: 'action'
       }
     },
@@ -312,13 +332,15 @@
          「実家」は本人から見れば自分の親の家であって、ここには並ばない。 */
       name: '長岡の家', kind: 'house', use: 'empty',
       addr: '新潟県長岡市○○町2-5-1',
-      built: '1971年', note: '本人が生まれ育った家。施設に移ってから空き家。',
+      built: '1971年', note: WHO + 'が生まれ育った家。施設に移ってから空き家。',
       rights: {
-        land: { owner: '本人', shares: '単独', match: 'same',
+        land: { hold: 'own', owner: WHO, shares: '単独', match: 'same',
                 st: 'done', reach: 'public', memo: '' },
-        bldg: { owner: '本人', shares: '単独', match: 'same',
+        bldg: { hold: 'own', owner: WHO, shares: '単独', match: 'same',
                 st: 'done', reach: 'public', memo: '' }
       },
+
+      security: { has: 'no', st: 'none', reach: 'public' },
       /* 見回りは「管理を頼んでいる親族等」（§3-C の対象例）。 */
       deals: [
         { kind: 'manage', who: '近所の□□さん', flow: 'none',
@@ -340,7 +362,7 @@
           uiStatus: 'ask',
           memo: '北側に増築部分あり。時期・施工者・登記状況が分からない。', detail: null }
       },
-      priorInheritance: { status: 'none' },
+      priorInheritance: { remains: 'no', parcels: [], died: 'unknown', stage: 'none', taker: '', takerName: '' },
       ownerReport: {
         state: 'needed',
         deadline: 'この自治体では、現所有者であることを知った日の翌日から3か月以内'
@@ -349,31 +371,59 @@
         who: '', key: '', keyKind: '', code: '', how: '',
         st: 'todo', reach: 'onlyself'
       },
-      docs: { place: '', have: {}, st: 'todo' }
+      docs: {
+        place: '',
+        at: {
+          deed:    { st: 'unknown', place: '' },
+          acquire: { st: 'unknown', place: '' }
+        },
+        st: 'todo'
+      }
     }
   ];
 
+  // 旧版の「誰に聞くか」「作業中か」を示す値は、事実の状態へ読み替える。
+  const LEGACY_NOW_STATUS = {
+    problem: 'none', ask: 'unknown', check: 'unknown', doing: 'action'
+  };
+  const canonicalNowStatus = status => LEGACY_NOW_STATUS[status] || status;
+
   function inferredMatterStatus(key, m) {
-    if (m && NOW_STATUS[m.uiStatus]) return m.uiStatus;
-    if (!m || m.find === 'unasked') return 'ask';
-    if (m.find === 'unknown') return 'check';
-    if (m.find === 'no') return key === 'boundary' ? 'problem' : 'none';
+    const stored = canonicalNowStatus(m && m.uiStatus);
+    if (NOW_STATUS[stored]) return stored;
+    if (!m || m.find === 'unasked' || m.find === 'unknown') return 'unknown';
+    if (m.find === 'no') return 'none';
     if (m.st === 'action') return 'action';
-    if (m.st === 'doing') return 'doing';
+    if (m.st === 'doing') return 'action';
     return 'done';
   }
 
   /* 旧 localStorage を読み込んだ場合も、新しい判定項目を補う。 */
   function normalize(p) {
     p.matters = p.matters || {};
+    p.docs = p.docs || {};
+    p.docs.at = p.docs.at || {};
+    p.deals = p.deals || [];
+    p.rights = p.rights || {};
+    /* 以前の保存では名義・債務者を「本人」と書いていた。続柄へ読み替える。 */
+    Object.values(p.rights).forEach(r => { if (r && r.owner === '本人') r.owner = WHO; });
+    if (p.loan && typeof p.loan.debtor === 'string') p.loan.debtor = p.loan.debtor.replace(/^本人/, WHO);
+
     ['boundary', 'road', 'changed'].forEach(k => {
       if (p.matters[k]) {
         const status = inferredMatterStatus(k, p.matters[k]);
         p.matters[k].uiStatus = status;
+        p.matters[k].statusRecords = p.matters[k].statusRecords || {};
+        if (!p.matters[k].statusRecords[status]) {
+          p.matters[k].statusRecords[status] = {
+            memo: p.matters[k].memo || '',
+            detail: p.matters[k].detail == null ? null
+              : JSON.parse(JSON.stringify(p.matters[k].detail))
+          };
+        }
         p.matters[k].st = status === 'action' ? 'action'
-          : status === 'doing' ? 'doing'
           : status === 'none' ? 'none'
-          : (status === 'done' || status === 'problem') ? 'done' : 'todo';
+          : status === 'done' ? 'done' : 'todo';
         if (k === 'road' && status === 'none' &&
             p.matters[k].memo === '前面道路は市道。') {
           p.matters[k].memo = '前面道路は市道。私道持分なし。' +
@@ -381,11 +431,7 @@
         }
       }
     });
-    if (!p.priorInheritance) {
-      const unfinished = ['land', 'bldg'].some(k =>
-        p.rights && p.rights[k] && p.rights[k].match !== 'same');
-      p.priorInheritance = { status: unfinished ? 'action' : 'none' };
-    }
+    p.priorInheritance = migratePrior(p);
     if (!p.ownerReport) {
       p.ownerReport = {
         state: 'needed',
@@ -399,80 +445,250 @@
       else if (/なし/.test(p.loan.gtee || '')) p.loan.gteeStatus = 'no';
       else p.loan.gteeStatus = 'yes';
     }
-    if (p.id === 'p1' && p.loan.has && !p.loan.balance) p.loan.balance = '約1,240万円';
     return p;
+  }
+
+  /* 旧版の前の代の相続（status と各権利の inheritance）を、答えの形へ読み替える。 */
+  function migratePrior(p) {
+    const pr = p.priorInheritance || {};
+    if (pr.remains) {
+      /* 道と続柄を持たなかった版は、話し合いの道・父の親として読む。 */
+      if (!pr.route) pr.route = 'split';
+      if (!pr.rel) pr.rel = 'parent';
+      if (pr.stage === 'ready') { pr.stage = 'signed'; pr.seal = 'given'; }
+      return pr;
+    }
+    const keys = Object.keys(p.rights || {});
+    const inh = k => (p.rights[k] || {}).inheritance;
+    const pending = keys.filter(k => inh(k) === 'pending' ||
+      (!inh(k) && pr.status === 'action' && p.rights[k].match === 'differ'));
+    const complete = keys.filter(k => inh(k) === 'complete');
+    keys.forEach(k => {
+      delete p.rights[k].inheritance;
+      p.rights[k].owner = String(p.rights[k].owner || '').replace(/名義のまま$/, '');
+    });
+    const base = { died: 'unknown', taker: '', takerName: '', route: 'split', rel: 'parent' };
+    if (pending.length) return { ...base, remains: 'yes', parcels: pending, stage: 'none' };
+    if (complete.length) return { ...base, remains: 'yes', parcels: complete, stage: 'registered' };
+    if (pr.status === 'none' || pr.status === 'problem') return { ...base, remains: 'no', parcels: [], stage: 'none' };
+    return { ...base, remains: 'unknown', parcels: [], stage: 'none' };
   }
 
   let props = (loadSaved() || JSON.parse(JSON.stringify(SEED))).map(normalize);
 
-  const MATTER_STATUS_PATCH = {
-    boundary: {
-      problem: { find: 'no', st: 'done', reach: 'public',
-        memo: '境界標を確認済み。隣地との個別の取り決めなし。', detail: null },
-      done: { find: 'yes', st: 'done', reach: 'public',
-        memo: '西側の境界について隣家との合意書あり。境界標も確認済み。',
-        detail: { what: '西側の境界', who: '西隣', deal: '合意済み', paper: 'あり', state: '解決済み' } },
-      ask: { find: 'unasked', st: 'todo', reach: 'onlyself',
-        memo: '西側の境界について、書類だけでは経緯が分からない。', detail: null },
-      check: { find: 'unknown', st: 'todo', reach: 'askable',
-        memo: '境界標と、隣地との取り決めの有無を確認できていない。', detail: null },
-      action: { find: 'yes', st: 'action', reach: 'onlyself',
-        memo: '西側の境界は、隣家と口頭で「ブロック塀の中心」と決めたまま。境界標なし。',
-        detail: { what: '境界標がなく、位置が口約束のまま', who: '西隣', deal: '口頭のみ', paper: 'なし', state: '未解決' } }
-    },
-    road: {
-      none: { find: 'no', st: 'none', reach: 'public',
-        memo: '前面道路は市道。私道持分なし。通行・配管について隣地との個別の取り決めなし。', detail: null },
-      done: { find: 'yes', st: 'done', reach: 'public',
-        memo: '前面道路は私道。持分あり。通行・配管に必要な権利は書類で確認済み。',
-        detail: { what: '私道・通行・配管', who: '私道共有者', deal: '権利を確認済み', paper: 'あり', state: '解決済み' } },
-      check: { find: 'unknown', st: 'todo', reach: 'askable',
-        memo: '前面道路は私道。持分と、給排水管の経路が確認できていない。', detail: null },
-      action: { find: 'yes', st: 'action', reach: 'onlyself',
-        memo: '給水管が隣地を通っている。使用について隣家と口頭の了承のみ。',
-        detail: { what: '給水管が隣地を通る', who: '隣家', deal: '口頭の了承のみ', paper: 'なし', state: '未解決' } }
-    },
-    changed: {
-      none: { find: 'no', st: 'none', reach: 'public',
-        memo: '取得後の増築・取り壊しなど、登記に影響する変更なし。', detail: null },
-      done: { find: 'yes', st: 'done', reach: 'public',
-        memo: '2008年に2階部分を増築。登記への反映を確認済み。',
-        detail: { what: '2階部分を増築', reg: '対応済み', state: '登記への反映を確認済み' } },
-      ask: { find: 'unasked', st: 'todo', reach: 'onlyself',
-        memo: '北側に増築部分あり。時期・施工者・登記状況が分からない。', detail: null },
-      check: { find: 'unknown', st: 'todo', reach: 'askable',
-        memo: '増改築の有無と、現在の建物が登記内容に反映されているかを確認できていない。', detail: null },
-      action: { find: 'yes', st: 'action', reach: 'onlyself',
-        memo: '北側に約6畳の増築あり（1998年ごろ）。登記には未反映。確認申請の有無は工務店に照会中。',
-        detail: { what: '北側に約6畳を増築', reg: '未対応', state: '確認申請の有無を照会中' } }
+  // 確認した事実だけを書き戻す。状態の変更から事実を生成しない。
+  function matterProgress(p, key) {
+    const m = p.matters[key] || {};
+    const d = m.detail || {};
+    const doc = (p.docs.at || {})[key] || {};
+    if (m.find === 'no') return { status: 'none', label: '該当なし', next: '' };
+    if (!m.interview && m.uiStatus === 'done') {
+      if (d.paper === 'あり' && (!doc.place || doc.st !== 'have'))
+        return { status: 'unknown', label: '書類の所在を確認', next: '合意書・資料の保管場所を確認し、家族が取り出せるようにする。' };
+      return { status: 'done', label: '記録あり', next: '' };
     }
-  };
+    if (m.interview !== 'heard' && !m.source) return {
+      status: 'unknown', label: m.interview === 'unavailable' ? '別の確認先を探す' : WHO + 'への確認',
+      next: m.next || (m.interview === 'unavailable' ? '関係する相手や、残っている資料に手掛かりがないか確認する。' : '')
+    };
+    if (m.find !== 'yes') return { status: 'unknown', label: '確認先を整理', next: m.next || WHO + 'にも分からなかった点を、資料や関係する相手に確認する。' };
+    if (m.next) return { status: 'action', label: '対応が残っています', next: m.next };
+    if (m.resolution !== 'resolved') return { status: m.resolution === 'pending' ? 'action' : 'unknown',
+      label: m.resolution === 'pending' ? '対応が残っています' : '資料・状況の確認',
+      next: m.next || (key === 'changed' ? '工事資料と登記への反映を確認する。' : '取り決めの内容と、残っている確認・相談を整理する。') };
+    if (d.paper === 'あり' && (doc.st !== 'have' || !doc.place)) return {
+      status: 'unknown', label: '書類の所在を確認', next: '書面の保管場所を確認し、家族が取り出せるようにする。' };
+    if (!m.memo || !m.source) return { status: 'unknown', label: '確認の記録を残す', next: '分かった内容と、誰・何で確認したかを記録する。' };
+    return { status: 'done', label: '確認・記録済み', next: '' };
+  }
 
-  function setNowStatus(id, key, status) {
-    const p = props.find(x => x.id === id);
-    if (!p || !NOW_STATUS[status]) return false;
-    if (key === 'prior') {
-      p.priorInheritance.status = status;
-      const rights = ['land', 'bldg'].map(k => p.rights && p.rights[k]).filter(Boolean);
-      const r = rights.find(x => x.match !== 'same') || rights[0];
-      if (r && (status === 'action' || status === 'doing')) {
-        r.match = 'differ'; r.st = status === 'doing' ? 'doing' : 'action';
-        if (!r.owner || r.owner === '本人') r.owner = '前の代の名義';
-        r.memo = status === 'doing' ? '前の代の相続登記を申請中。' : '前の代の相続登記が未了。';
-      } else if (rights.length) {
-        rights.forEach(x => {
-          x.match = 'same'; x.st = 'done'; x.owner = '本人';
-          x.shares = x.shares || '単独';
-          x.memo = status === 'done' ? '本人名義への相続登記を確認済み。' : '未了の相続なし。';
-        });
+  /* 前の代の相続登記の状態は、答えそのものから決まる。状態の欄を別に
+     置かない ―― 両方あると「該当なし」なのに「名義が残っている」が作れる。
+     取得する人が本人以外で協議書が済めば、本人の手でしかできない部分は
+     終わっている（協議書と印鑑証明書に相続登記での期限はない）。
+     取得する人が本人なら、登記の申請まで本人が要る。                */
+  /* ■ 名義を移す道と、協議の当事者（2026-09-24）
+     相続登記は遺産分割協議書を経るとは限らない。道は4つ：
+       split 相続人が複数で、話し合い（遺産分割協議）で決める
+       will  遺言がある（協議は要らない。取得した人が遺言書で申請）
+       sole  相続人が1人だけ（協議は要らない）
+       unknown まだ分からない（遺言の有無・相続人を確かめる）
+     法定相続分での共有登記は「移す道」ではなく、話し合いがまとまら
+     ないうちに義務を果たす手の一つとして、くわしくで扱う。
+     協議の当事者（party）は、名義人が父から見て誰かで決まる。父の親・
+     祖父母なら父、母の親なら母。その他なら特定しない。
+     話し合いの道の段階は4つ：none 話がついていない／agreed 口頭で
+     決まった／signed 協議書ができた（全員が署名・実印）／registered。
+     遺言・1人の道の段階は none（登記はまだ）と registered だけ。
+     seal … 取得するのが当事者以外で協議書ができたとき、当事者の印鑑
+     証明書を取得する人に渡したか（given／notyet）。登記には協議書と
+     全員の印鑑証明書が要り、亡くなった人の印鑑証明書は取れない。渡す
+     前に亡くなると、当事者の相続人全員が「協議書が真正に作られた」旨
+     の証明書に実印を押すことになる。当事者の手続きが終わるのは、渡した
+     とき。（以前は段階 ready として持っていた。読み込み時に読み替える）
+     取得するのが当事者なら、当事者の印鑑証明書は問わない。          */
+  const priorParty = pr => pr.rel === 'spouseParent' ? SPOUSE : pr.rel === 'other' ? '' : WHO;
+  const priorRoute = pr => ['split', 'will', 'sole', 'unknown'].includes(pr.route) ? pr.route : 'split';
+  /* 取得する人が当事者以外に決まり、当事者の手続きが残っていないか。 */
+  function priorPartyDone(pr) {
+    const route = priorRoute(pr);
+    if (pr.taker !== 'other') return false;
+    return (route === 'split' && pr.stage === 'signed' && pr.seal === 'given') || route === 'will';
+  }
+  function priorStatus(p) {
+    const pr = p.priorInheritance || {};
+    if (pr.remains === 'no') return 'none';
+    if (pr.remains !== 'yes') return 'unknown';
+    if (pr.stage === 'registered') return 'done';
+    if (priorPartyDone(pr)) return 'done';
+    return 'action';
+  }
+  /* 前の代の名義は、前の代の相続登記と権利関係の2つのフォームから
+     入力できる。どちらで直しても、もう一方に連動させる（2026-09-24）。
+     以前は本人名義のものを選べなくして「先に権利関係を直して」と止めて
+     いたが、不便すぎた。
+       前の代のフォームで保存 … 選んだ部分の権利関係の名義を、前の代の
+         名義人（pr.owner）にする。外した部分は、名義が前の代の名義人の
+         ままなら空ける。登記まで済んだら取得した人の名義にし、登記との
+         一致も「一致」にする
+       権利関係で保存 … 前の代の名義の部分を本人名義に直したら、その
+         部分を前の代の名義から外す（全部外れたら「残っていない」）。
+         別の名前に直したら、前の代の名義人をその名前にする。前の代の
+         名義でなかった部分を前の代の名義人と同じ名前にしたら、加える */
+  const selfOwned = owner => (owner === WHO || /本人/.test(owner || '')) && !/故人/.test(owner || '');
+  const priorTakerName = pr => pr.taker === 'other' ? (pr.takerName || 'ほかの相続人') : (priorParty(pr) || '相続人');
+  /* 前の代の名義人。記録がなければ、前の代の名義の部分の名義から取る。 */
+  function priorOwner(p) {
+    const pr = p.priorInheritance || {};
+    if (pr.owner) return pr.owner;
+    const k = (pr.parcels || []).find(k => p.rights[k] && p.rights[k].owner && !selfOwned(p.rights[k].owner));
+    return k ? p.rights[k].owner : '';
+  }
+  /* 前の代の答えを、権利関係の名義・登記との一致へ映す。 */
+  /* 前の代の名義に加えたとき、それまでの権利関係の記録（名義・一致）を
+     pr.was に取っておき、外したら戻す。取っておいたものがなければ空ける。 */
+  function syncPriorToRights(p, prevOwner, prevStage) {
+    const pr = p.priorInheritance || {};
+    const was = pr.was || (pr.was = {});
+    Object.keys(p.rights).forEach(k => {
+      const r = p.rights[k];
+      const on = pr.remains === 'yes' && (pr.parcels || []).includes(k);
+      if (on && pr.stage === 'registered') { r.owner = priorTakerName(pr); r.match = 'same'; }
+      else if (on) {
+        /* 登記済みから戻したときの名義は取得した人のもので、取っておかない。 */
+        if (!was[k] && prevStage !== 'registered' && r.owner && r.owner !== pr.owner && r.owner !== prevOwner) was[k] = { owner: r.owner, match: r.match };
+        if (pr.owner) r.owner = pr.owner;
+        r.match = 'differ';
       }
-    } else {
-      const patch = MATTER_STATUS_PATCH[key] && MATTER_STATUS_PATCH[key][status];
-      const m = p.matters && p.matters[key];
-      if (!patch || !m) return false;
-      Object.assign(m, JSON.parse(JSON.stringify(patch)), { uiStatus: status });
-    }
-    save();
+      /* まだ確かめていないなら、権利関係の記録には触れない。 */
+      else if (pr.remains !== 'unknown' && was[k]) { r.owner = was[k].owner; r.match = was[k].match; delete was[k]; }
+      else if (pr.remains !== 'unknown' && r.owner && (r.owner === prevOwner || r.owner === pr.owner)) { r.owner = ''; r.match = 'unknown'; }
+      r.st = rightSt(p, k, r);
+    });
+  }
+
+  /* この権利（land／bldg）に、前の代の名義が登記まで済まずに残っているか。 */
+  function priorPending(p, key) {
+    const pr = p.priorInheritance || {};
+    return pr.remains === 'yes' && pr.stage !== 'registered' && (pr.parcels || []).includes(key);
+  }
+  const rightSt = (p, key, r) => r.match === 'unknown' || !r.match ? 'todo'
+    : (r.match === 'differ' || priorPending(p, key)) ? 'action' : 'done';
+
+  function updateRecord(id, type, key, values) {
+    const next = JSON.parse(JSON.stringify(props));
+    const p = next.find(x => x.id === id);
+    if (!p) throw new Error('物件が見つかりません。');
+    const assign = (target, fields) => fields.forEach(k => {
+      if (Object.prototype.hasOwnProperty.call(values, k)) target[k] = String(values[k]).trim();
+    });
+    if (type === 'matter' && MATTERS[key]) {
+      const m = p.matters[key] || (p.matters[key] = {});
+      assign(m, ['find', 'interview', 'memo', 'source', 'resolution', 'next', 'assignee', 'timing']);
+      m.detail = m.detail || {};
+      ['what', 'who', 'deal', 'paper', 'state', 'reg', 'when'].forEach(k => {
+        if (Object.prototype.hasOwnProperty.call(values, k)) m.detail[k] = String(values[k]).trim();
+      });
+      if (values.docSt) {
+        p.docs.at[key] = { ...(p.docs.at[key] || {}), st: values.docSt, place: String(values.docPlace || '').trim() };
+      }
+      /* 状態は、ポップアップの状態欄で選んだ値（values.status）だけで
+         決める ―― フォームの答えから状態を推し量ると、選んだ状態を
+         次の保存で上書きしてしまう（2026-09-23）。                */
+      if (NOW_STATUS[values.status]) m.uiStatus = values.status;
+      else if (!NOW_STATUS[m.uiStatus]) m.uiStatus = matterProgress(p, key).status;
+      m.st = m.uiStatus === 'unknown' ? 'todo' : m.uiStatus;
+      m.updatedAt = new Date().toISOString();
+    } else if (type === 'prior') {
+      const pr = p.priorInheritance || (p.priorInheritance = {});
+      const prevOwner = priorOwner(p), prevStage = pr.stage;
+      assign(pr, ['remains', 'died', 'stage', 'taker', 'takerName', 'owner', 'rel', 'route', 'seal']);
+      /* 1人の道では、取得するのは当事者。分からない道では段階を持たない。 */
+      if (pr.route === 'sole') pr.taker = 'self';
+      if (pr.route === 'unknown') pr.stage = 'none';
+      if (pr.route !== 'split' && !['none', 'registered'].includes(pr.stage)) pr.stage = 'none';
+      if (!pr.owner) pr.owner = prevOwner;
+      pr.parcels = (values.parcels || []).filter(k => p.rights[k]);
+      if (pr.taker !== 'other') pr.takerName = '';
+      syncPriorToRights(p, prevOwner, prevStage);
+      pr.updatedAt = new Date().toISOString();
+    } else if (type === 'right' && ['land', 'bldg'].includes(key)) {
+      const r = p.rights[key] || (p.rights[key] = {});
+      const before = r.owner, beforeMatch = r.match;
+      assign(r, ['owner', 'hold', 'shares', 'match', 'memo', 'source', 'next', 'assignee', 'timing']);
+      /* 前の代の相続登記へ連動（上の syncPriorToRights の逆向き）。
+         登記まで済んだ後の名義は取得した人のものなので、連動しない。 */
+      const pr = p.priorInheritance || {};
+      if (pr.remains === 'yes' && pr.stage !== 'registered' && r.owner !== before) {
+        const parcels = pr.parcels || [];
+        if (parcels.includes(key)) {
+          if (!r.owner || selfOwned(r.owner)) {
+            pr.parcels = parcels.filter(k => k !== key);
+            if (!pr.parcels.length) pr.remains = 'no';
+            if (pr.was) delete pr.was[key];
+            /* 「違いがある」は前の代の名義のせいだったので、触っていなければ一致に戻す。 */
+            if (r.match === 'differ' && beforeMatch === 'differ') r.match = 'same';
+          } else {
+            pr.owner = r.owner;
+            syncPriorToRights(p, before);
+          }
+        } else if (r.owner && r.owner === priorOwner(p)) {
+          pr.parcels = parcels.concat(key);
+          (pr.was || (pr.was = {}))[key] = { owner: before, match: beforeMatch };
+          if (r.match === beforeMatch) r.match = 'differ';
+        }
+      }
+      Object.keys(p.rights).forEach(k => { p.rights[k].st = rightSt(p, k, p.rights[k]); });
+    } else if (type === 'loan') {
+      assign(p.loan, ['bank', 'type', 'debtor', 'gteeStatus', 'memo', 'tel', 'source']);
+      p.loan.has = values.has === 'yes' ? true : values.has === 'no' ? false : null;
+      p.loan.gtee = { yes: 'あり', no: 'なし', unknown: '不明', none: '該当なし' }[p.loan.gteeStatus] || '不明';
+      p.loan.st = p.loan.has === false ? 'none' : !p.loan.bank || !p.loan.debtor || p.loan.gteeStatus === 'unknown' ? 'todo' : 'done';
+    } else if (type === 'security') {
+      p.security = p.security || {};
+      assign(p.security, ['has', 'whose', 'what', 'bank', 'order']);
+    } else if (type === 'deal') {
+      const index = key === 'new' ? p.deals.length : Number(key);
+      if (!Number.isInteger(index) || index < 0 || index > p.deals.length) throw new Error('契約が見つかりません。');
+      const d = p.deals[index] || {};
+      assign(d, ['kind', 'who', 'what', 'tel', 'flow', 'source', 'next', 'assignee', 'timing']);
+      d.st = d.who && d.what && d.source && !d.next ? 'done' : 'doing';
+      p.deals[index] = d;
+    } else if (type === 'doc' && DOC_KINDS[key]) {
+      const d = p.docs.at[key] || {};
+      assign(d, ['st', 'place', 'note']);
+      p.docs.at[key] = d;
+      const m = p.matters[key];
+      if (m) {
+        m.detail = m.detail || {};
+        if (d.st === 'have') m.detail.paper = 'あり';
+        // 「見つからない」は「書面なし」と同義ではない。
+      }
+    } else throw new Error('編集する項目が見つかりません。');
+    // 保存失敗時は画面の事実も変更しない。
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(next)); }
+    catch (e) { throw new Error('保存できませんでした。ブラウザーの保存設定・空き容量を確認してください。入力はこの画面に残っています。'); }
+    props = next;
     return true;
   }
 
@@ -520,7 +736,10 @@
     gtee:     { label: '団信関係',     from: 'loan' },
     boundary: { label: '境界・測量、越境の合意', from: 'matter:boundary' },
     road:     { label: '私道・通行・配管の取り決め', from: 'matter:road' },
-    changed:  { label: '増改築・建物変更の資料',     from: 'matter:changed' }
+    changed:  { label: '増改築・建物変更の資料',     from: 'matter:changed' },
+    /* 前の代の協議書・遺言書は、当事者が取得する側で登記がまだのときだけ。 */
+    prior:    { label: '前の代の遺産分割協議書',     from: 'prior' },
+    priorWill: { label: '前の代の遺言書',            from: 'prior' }
   };
 
   function neededDocs(p) {
@@ -550,7 +769,7 @@
     find: id => props.filter(p => p.id === id)[0] || null,
     gauge,
     neededDocs,
-    setNowStatus,
+    updateRecord, matterProgress, priorStatus, priorPending, priorOwner, priorParty, priorRoute, priorPartyDone,
     save
   };
 })(window);

@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>前の代の相続登記｜表示v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<link rel="stylesheet" href="../prototype/real-estate/area.css">
+<!--
+  前の代の相続登記｜今のうちの行の表示案 v2
+
+  ■ v1 からの変更
+  ・続柄を太郎さん（本人）基準に直した。v1 は「所有者 父（故人）」と
+    太郎さん自身から見た書き方で、家族が読むと太郎さんが故人に読めた
+  ・なぜやらなければならないかの2点を、説明している事実の上に付けた
+      売れない・次の相続で移せない … 故人の名義の行（今の登記）に
+      登記の義務・期限・過料       … これから書く「相続」の行に
+    段落の説明文にしない。理由が指している場所を見れば分かるように
+
+  ■ 考え方
+  この項目の事実は「登記の所有者の欄が前の代で止まっていて、
+  次の行（本人への相続）がまだ書かれていない」こと。それを
+  登記事項証明書の権利部（甲区）の抜き書きとして見せる。
+    ・書かれている行（実線） … 今の登記。所有者＝前の代
+    ・書かれていない行（破線） … これから書く行。取得する人と、
+      いまどこまで来ているか（口頭／協議書）を札で付ける
+    ・期限 … その未記入の行を書く期限なので、その行に付ける
+  行の下に置くのは「次」の1行だけ。済んだ段階・先の段階は並べない。
+
+  ■ 幅（2026-09-23 実測）
+  今のうちのカード：ウィンドウ 1024〜1920 で 437〜451px／
+  768〜900 で 568px／420 で 348px。見本はこの3幅で並べる。
+
+  ■ 造形の振り分け（CLAUDE.md）
+  甲区は罫で区切った表そのもの（幾何プリミティブ）なので自作。
+  表は表として組む。印影・吹き出し・暦は専用の viewBox のグリフ。
+-->
+<style>
+body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink);padding:28px}
+h1{font-size:16px;margin:0 0 4px}
+.lead{font-size:12px;color:var(--ink2);margin:0 0 24px}
+.cols{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col>h2{font-size:11px;color:var(--ink3);font-weight:600;margin:0 0 8px}
+.col .stackw{display:flex;flex-direction:column;gap:14px}
+.w451{width:451px}.w568{width:568px}.w348{width:348px}
+.cap{font-size:10px;color:var(--ink3);margin:0 0 -8px}
+.rw{padding:18px}
+.w348 .rw{padding:14px}
+
+/* ── 甲区の抜き書き ───────────────────────────── */
+.kz{margin-top:13px;background:var(--paper);border:1px solid #D9D2C1;border-radius:2px;
+  font-family:var(--font-serif);color:#3A362F}
+.kz-h{display:flex;align-items:baseline;gap:8px;padding:5px 10px;border-bottom:1px solid #D9D2C1;
+  background:#F3EFE4;font-size:10px;letter-spacing:.06em;color:#6F695C}
+.kz-h b{font-weight:600;color:#4A453C;letter-spacing:.1em}
+.kz-r{display:grid;grid-template-columns:4.6em minmax(0,1fr) auto;align-items:center;column-gap:10px;
+  padding:8px 10px;min-height:22px}
+.kz-lb{font-size:10.5px;color:#7A7365;letter-spacing:.08em}
+.kz-v{font-size:14px;font-weight:600;letter-spacing:.04em;overflow-wrap:anywhere}
+/* これから書く行。破線で、字は薄い。 */
+.kz-r.todo{border-top:1px dashed #C9BFA8;background:repeating-linear-gradient(-45deg,transparent 0 7px,rgba(190,112,23,.035) 7px 8px)}
+.kz-r.todo .kz-v{color:#8F887A;font-weight:500}
+.kz-r.todo .kz-v.tbd{font-size:12px;letter-spacing:.02em}
+.kz-r.done{border-top:1px solid #D9D2C1}
+/* 札：いまどこまで来ているか */
+.tag{display:inline-flex;align-items:center;gap:4px;margin-left:8px;vertical-align:1px;
+  font:600 10px/1 var(--font);letter-spacing:0;padding:3px 7px 3px 5px;border-radius:3px;white-space:nowrap}
+.tag svg{width:13px;height:13px;flex:none}
+.tag.oral{color:#8A5A1C;background:#FBF1E1;border:1px solid #EACB97}
+.tag.paper{color:#4D5B47;background:#EEF3EC;border:1px solid #C9D6C4}
+.tag.none{color:#7D776B;background:#F1EFE9;border:1px solid #DDD8CC}
+/* 期限：未記入の行に付く */
+.lim{display:inline-flex;align-items:center;gap:5px;font:600 11px/1.2 var(--font);color:var(--or);white-space:nowrap}
+.lim svg{width:13px;height:13px;flex:none}
+.lim.unk{color:#8F887A;font-weight:500}
+/* 次の1行 */
+.nx{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:baseline;margin-top:11px}
+.nx b{font-size:10px;font-weight:700;color:#fff;background:var(--or);border-radius:3px;padding:2px 6px;line-height:1.4}
+.nx p{margin:0;font-size:12.5px;line-height:1.7;color:#3F3B34;overflow-wrap:anywhere}
+.nx.calm b{background:#8C8880}
+.quiet{margin:10px 0 0;font-size:11.5px;color:#777064;line-height:1.7}
+/* v2：理由を事実の行に付ける。2段目（.kz-why）は値の列に揃える */
+.kz-r{grid-template-columns:4.6em minmax(0,1fr)}
+.kz-why{grid-column:2;display:flex;flex-wrap:wrap;gap:5px 6px;margin-top:6px}
+.lock{display:inline-flex;align-items:center;gap:4px;font:500 10.5px/1.3 var(--font);color:#8C5A4E;
+  background:#FBF0EC;border:1px solid #EDCFC6;border-radius:3px;padding:3px 7px 3px 5px}
+.lock svg{width:12px;height:12px;flex:none}
+.duty{grid-column:2;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:7px;
+  font:500 10.5px/1.4 var(--font);color:#7A7365}
+.duty .dl{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:11.5px;color:var(--or)}
+.duty .dl svg{width:13px;height:13px;flex:none}
+.duty .dk{font-weight:700;color:#5E5648;background:#EFEADF;border-radius:3px;padding:1px 6px;letter-spacing:.04em}
+.duty.unk .dl{color:#8F887A}
+.reasons{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.w348 .kz-r{grid-template-columns:4.2em minmax(0,1fr)}
+</style>
+</head>
+<body>
+<h1>前の代の相続登記｜今のうちの行 表示案 v2</h1>
+<p class="lead">登記の甲区の抜き書き。やらなければならない理由（売れない・移せない／登記は義務）は、それが指す行に付けています。3幅（ウィンドウ1440／900／420 のときのカード幅）で状態ごとに並べています。</p>
+<div class="cols" id="cols"></div>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+const ICON='<svg class="matter-icon" viewBox="0 0 44 48" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h22v29H5z" fill="#EEE8DC" stroke="#B1A48B"/><path d="M17 13h22v29H17z" fill="#FFFEFA" stroke="#9C8C70"/><path d="M22 20h12m-12 5h12m-12 5h7" stroke="#C8BDA6"/><path d="M5 23h9m-3-3 3 3-3 3" fill="none" stroke="#A87937"/><path d="M30 34h5v5h-5z" fill="#EAC8B9" stroke="#B97762"/></svg>';
+/* グリフ：吹き出し（口頭）／印影つきの書面（協議書）／暦（期限） */
+const G_ORAL='<svg viewBox="0 0 14 14"><path d="M2 3.2C2 2.5 2.5 2 3.2 2h7.6c.7 0 1.2.5 1.2 1.2v5c0 .7-.5 1.2-1.2 1.2H6.4L3.8 11.8V9.4h-.6C2.5 9.4 2 8.9 2 8.2z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>';
+const G_PAPER='<svg viewBox="0 0 14 14"><path d="M3 1.2h6.2L11 3v9.8H3z" fill="#fff" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/><path d="M4.8 4.4h4.4M4.8 6.4h4.4" stroke="currentColor" stroke-width=".9" stroke-linecap="round" opacity=".6"/><circle cx="8.6" cy="10" r="1.7" fill="none" stroke="#C0574E" stroke-width="1"/></svg>';
+const G_NONE='<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="2 1.6"/></svg>';
+const G_CAL='<svg viewBox="0 0 14 14"><rect x=".7" y="2.4" width="12.6" height="11" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.1"/><line x1=".7" y1="5.8" x2="13.3" y2="5.8" stroke="currentColor" stroke-width="1.1"/><line x1="4.2" y1=".7" x2="4.2" y2="3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="9.8" y1=".7" x2="9.8" y2="3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+const G_LOCK='<svg viewBox="0 0 12 12"><rect x="2.2" y="5.2" width="7.6" height="5.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M3.9 5.2V3.8a2.1 2.1 0 0 1 4.2 0v1.4" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>';
+const CARET='<svg class="caret" viewBox="0 0 12 8"><path d="m2 2 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+const badge=(label,tone)=>'<button type="button" class="bdg status-pick '+tone+'">'+label+CARET+'</button>';
+const head=(b)=>'<div class="rh">'+ICON+'<div class="uh"><div class="uh-t"><span class="uh-nm">前の代の相続登記</span></div><div class="uh-r">'+b+'</div></div></div>';
+const LOCKS='<div class="kz-why"><span class="lock">'+G_LOCK+'売れない</span><span class="lock">'+G_LOCK+'次の相続で名義を移せない</span></div>';
+const duty=(died)=>died==='unknown'
+  ? '<div class="duty unk"><span class="dk">登記は義務・過料あり</span><span class="dl">'+G_CAL+'期限は亡くなった時期で決まる</span></div>'
+  : '<div class="duty"><span class="dk">登記は義務・過料あり</span><span class="dl">'+G_CAL+(died==='before'?'2027年3月31日まで':'知った日から3年以内')+'</span></div>';
+const TAG={none:'<span class="tag none">'+G_NONE+'話がついていない</span>',
+  agreed:'<span class="tag oral">'+G_ORAL+'口頭で決定</span>',
+  signed:'<span class="tag paper">'+G_PAPER+'協議書あり</span>'};
+
+/* s.mine … 太郎さんの手が残っているか（取得者が太郎さん／まだ決まっていない） */
+function kz(parcel, owner, s){
+  const frozen=s.stage!=='registered';
+  let h='<div class="kz"><div class="kz-h"><b>'+parcel+'</b>権利部（甲区）</div>'+
+    '<div class="kz-r"><span class="kz-lb">所有者</span><span class="kz-v">'+owner+'</span>'+(frozen&&s.mine?LOCKS:'')+'</div>';
+  if(s.stage==='registered') h+='<div class="kz-r done"><span class="kz-lb">相続</span><span class="kz-v">'+s.taker+'</span></div>';
+  else h+='<div class="kz-r todo"><span class="kz-lb">相続</span><span class="kz-v'+(s.stage==='none'?' tbd':'')+'">'+
+    (s.stage==='none'?'未定':s.taker)+TAG[s.stage]+'</span>'+(s.mine?duty(s.died):'')+'</div>';
+  return h+'</div>';
+}
+const nx=(t,calm)=>'<div class="nx'+(calm?' calm':'')+'"><b>次</b><p>'+t+'</p></div>';
+
+const OWNER='太郎さんの父（故人）';
+const CASES=[
+  ['取得は太郎さんと口頭で決定（初期データ）', ()=>head(badge('対応が必要','or'))+kz('土地',OWNER,{stage:'agreed',taker:'太郎さん',died:'before',mine:true})+nx('遺産分割協議書にし、全員が署名・実印を押す')],
+  ['まだ話がついていない・亡くなった時期は不明', ()=>head(badge('対応が必要','or'))+kz('土地',OWNER,{stage:'none',died:'unknown',mine:true})+nx('相続人全員で、取得する人を決める')],
+  ['協議書あり・取得は太郎さん（登記がまだ）', ()=>head(badge('対応が必要','or'))+kz('土地',OWNER,{stage:'signed',taker:'太郎さん',died:'before',mine:true})+nx('太郎さんが相続登記を申請する')],
+  ['協議書あり・取得は太郎さんの兄', ()=>head(badge('本人の分は済み','gr'))+kz('土地',OWNER,{stage:'signed',taker:'太郎さんの兄',died:'before',mine:false})+'<p class="quiet">登記は太郎さんの兄が申請します。</p>'],
+  ['登記まで済んだ', ()=>head(badge('登記済み','gr'))+kz('土地',OWNER,{stage:'registered',taker:'太郎さん'})],
+  ['まだ確かめていない', ()=>head(badge('未確認','bl'))+'<div class="kz"><div class="kz-h"><b>土地・建物</b>権利部（甲区）</div><div class="kz-r"><span class="kz-lb">所有者</span><span class="kz-v" style="color:#A59E8F;font-weight:500;font-size:12px">未確認</span>'+
+     '<div class="kz-why"><span class="lock" style="color:#7D776B;background:#F4F2EC;border-color:#DDD8CC">'+G_LOCK+'故人の名義なら、売れない・移せない</span></div></div></div>'+nx('登記事項証明書で名義を見る（家族でも取れる）',true)],
+  ['残っていない', ()=>head(badge('該当なし','gy'))+'<p class="quiet">前の代の名義は残っていません。</p>']
+];
+document.getElementById('cols').innerHTML=[['w451','ウィンドウ 1024〜1920（451px）'],['w568','ウィンドウ 768〜900（568px）'],['w348','ウィンドウ 420（348px）']].map(([c,t])=>
+  '<div class="col '+c+'"><h2>'+t+'</h2><div class="stackw">'+CASES.map(([cap,f])=>'<p class="cap">'+cap+'</p><section class="rw">'+f()+'</section>').join('')+'</div></div>').join('');
+</script>
+</body>
+</html>
