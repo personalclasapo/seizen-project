@@ -268,8 +268,9 @@
 /* ── 今のうち｜前の代の相続登記（`_検討/前の代の相続登記_表示v7.html`）──
    主＝次にすること＋期限／従＝名義の図／控え＝一文。橙は期限と状態札だけ。
    くわしくはカードの最下行。カードの左右・下の余白まで広げて敷く。 */
-.pr-why,.pr-nb span,.pr-act p,.pr-dt-b{word-break:auto-phrase}
-.pr-why{margin:10px 0 0;font-size:12px;line-height:1.8;color:var(--ink2);text-wrap:pretty}
+/* 文は文節で早めに折らず、そのまま流す（auto-phrase・pretty だと行末に余白を
+   残して「口頭の／取り決めは」と折れた）。 */
+.pr-why{margin:10px 0 0;font-size:12px;line-height:1.8;color:var(--ink2)}
 .pr-why b{font-weight:600;color:#4A453C}
 .pr-quiet{margin:10px 0 0;font-size:11.5px;color:#777064;line-height:1.7}
 .pr-nm{margin-top:14px;display:grid;grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr);align-items:stretch;column-gap:4px}
@@ -287,6 +288,49 @@
 .pr-ar svg{width:30px;height:12px}
 .pr-st{grid-column:1/-1;margin:6px 0 0;font-size:11px;color:var(--ink2);line-height:1.6;display:flex;align-items:center;gap:5px}
 .pr-st svg{width:13px;height:13px;flex:none;color:#9B8B6E}
+/* 境界の図：横から見た断面図（render.js の boundarySection）＋説明。
+   図は幅220pxで、説明は右へ。狭いときは説明が図の下へ回る。越境がなければ図は出さない。 */
+.bd-fig+.bd-fig{margin-top:12px;padding-top:12px;border-top:1px dashed #E6DECF}
+.bd-fig{margin-top:14px;display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 16px}
+.bd-figs{flex:none;width:220px;max-width:100%;display:flex;flex-direction:column;gap:6px}
+.bd-sec{width:100%;height:auto;display:block}
+/* 図は説明の行の高さに対して上下中央（越境が複数で説明が長いとき）。 */
+.bd-figs{align-self:center}
+/* 家の見出し：中央に置き、左右に細い線を引く。真ん中は枠で囲んだ札。
+   1軒は「〜との境界」（押せない）、2軒以上は家の切り替え（つながった札）。
+   今のうちの面なので緑にしない。 */
+.bd-head{margin-top:15px;display:flex;align-items:center;gap:12px}
+.bd-head::before,.bd-head::after{content:"";flex:1 1 0;min-width:12px;height:1px;background:var(--line2)}
+.bd-seg{flex:none;max-width:calc(100% - 48px);display:inline-flex;flex-wrap:wrap;justify-content:center;
+  padding:2px;border:1px solid var(--line2);border-radius:16px;background:#fff}
+.bd-tab{margin:0;padding:3px 13px;border:0;border-radius:13px;background:none;
+  font:inherit;font-size:11.5px;line-height:1.5;color:var(--ink2);cursor:pointer;white-space:nowrap}
+.bd-tab:hover{color:var(--ink);background:#F7F4EE}
+.bd-tab[aria-selected="true"]{background:#EFEAE0;color:var(--ink);font-weight:600}
+.bd-tab:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
+.bd-tab.solo{cursor:default;font-weight:600;color:var(--ink);background:none}
+.bd-head+.bd-fig,.bd-head+[role="tabpanel"]>.bd-fig{margin-top:12px}
+/* 説明：決めたことの一覧（札＋文）。
+   図のある行が2つ以上なら、行が図の切り替え（丸印＝いま図に出ている行）。 */
+.bd-items{margin:7px 0 0 -5px;display:flex;flex-direction:column;gap:1px}
+.bd-item{display:grid;grid-template-columns:3.3em minmax(0,1fr);gap:0 6px;align-items:baseline;width:100%;margin:0;
+  padding:3px 6px 3px 5px;border:0;border-radius:4px;background:none;font:inherit;font-size:11px;line-height:1.6;
+  color:var(--ink2);text-align:left}
+.bd-items.pick .bd-item{grid-template-columns:8px 3.3em minmax(0,1fr)}
+.bd-item i{font-style:normal;font-size:10px;color:var(--ink3);white-space:nowrap}
+.bd-item b{width:7px;height:7px;border-radius:50%;border:1.2px solid currentColor;transform:translateY(-1px)}
+.bd-item b.off{border-color:transparent}
+button.bd-item{cursor:pointer;color:var(--ink3)}
+button.bd-item:hover{color:var(--ink2);background:#F4F1EA}
+button.bd-item[aria-pressed="true"]{color:var(--ink);background:#F1EDE4}
+button.bd-item[aria-pressed="true"] b{background:currentColor}
+button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
+/* 越えているものごとの持ち主の問い。問いどうしの間をあける。 */
+.re-sub [data-e-own],.re-sub [data-e-wall]{margin-top:12px}
+.re-sub .re-why+[data-e-own]{margin-top:10px}
+.bs-t{font-size:3.1px;fill:#7D7666;font-family:var(--font)}
+.bs-halo{paint-order:stroke;stroke:#fff;stroke-width:.9px;stroke-linejoin:round}
+.bd-cap{flex:1 1 170px;min-width:0}
 .pr-act{margin-top:14px;padding-top:12px;border-top:1px solid #EBE3D5}
 .pr-act-h{display:flex;align-items:baseline;justify-content:space-between;gap:4px 8px;flex-wrap:wrap}
 .pr-act-h>span:first-child{font-size:10.5px;font-weight:600;color:var(--ink3);letter-spacing:.04em}
@@ -294,7 +338,16 @@
 .pr-lim svg{width:13px;height:13px;flex:none}
 .pr-lim.unk{color:var(--ink2);font-weight:500}
 .pr-lim em{font-style:normal;font-weight:600;margin-left:6px;padding-left:7px;border-left:1px solid var(--or-ln)}
-.pr-act p{margin:5px 0 0;font-size:14.5px;font-weight:700;line-height:1.6;color:var(--ink);text-wrap:pretty}
+.pr-act p{margin:5px 0 0;font-size:14.5px;font-weight:700;line-height:1.6;color:var(--ink)}
+/* 文末の語を分けない（「ます。」が行頭に残らないように）。 */
+.nw{white-space:nowrap}
+/* 境界：用意できている書類。やることではないので、次にすることより軽く。 */
+.bd-docs p{font-size:13px;font-weight:600}
+/* 境界：どの家の次にすることか。上の家の切り替えと同じ札の形。 */
+.bd-act-nb{display:inline-block;margin-right:8px;padding:1px 10px;border:1px solid var(--line2);border-radius:11px;
+  background:#fff;font-size:11px;font-weight:600;line-height:1.6;color:var(--ink2);vertical-align:2px;white-space:nowrap}
+.pr-act p+p{margin-top:4px}
+.pr-act .pr-act-sub{font-size:11px;font-weight:400;color:var(--ink2);margin-top:4px}
 .pr-act p small{display:block;font-size:11px;font-weight:400;color:var(--ink2);margin-top:2px}
 .pr-dt{margin:14px -18px -17px;border-top:1px solid #EFE8DB;border-radius:0 0 8px 8px}
 .pr-dt.open{background:#FBF9F4}
@@ -581,6 +634,32 @@ button.bdg.status-pick{font-size:10.5px;padding:3px 9px 3px 10px}
 .re-opt input:checked+span b{font-weight:650}
 .re-opts.row .re-opt input:checked+span::before{border:4px solid #4F7358}
 .re-opt input:focus-visible+span{outline:2px solid #64886B;outline-offset:2px}
+/* 複数選べる row は、印を丸でなく角にする（ラジオと見分ける）。 */
+.re-opts.row.multi .re-opt>span::before{border-radius:3px}
+.re-opts.row.multi .re-opt input:checked+span::before{border:0;background:#4F7358 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='m3.5 7.2 2.3 2.3 4.7-5' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% no-repeat}
+/* チェックした項目のすぐ下に開く問い。どの項目の続きかを左の線で示す。 */
+.re-sub{margin:6px 0 4px 22px;padding:8px 0 6px 14px;border-left:2px solid #D5DECF}
+.re-sub .re-opts+.re-sub-t{margin-top:12px}
+.re-sub-t{margin:0 0 7px;font-size:12px;font-weight:600;color:#56604F}
+/* 選べない選択肢の理由（境界：目印と越境の連動）。選択肢のすぐ下に。 */
+.re-why{margin:7px 0 0;font-size:11px;color:#7A6F5A;line-height:1.65}
+.re-sub .re-why+.re-sub-t{margin-top:12px}
+.re-sub+.re-opts,.re-opts+.re-opts{margin-top:6px}
+/* 境界：隣1つぶんの取り決め。隣ごとに枠で区切り、足す・外すができる。 */
+.re-entry{margin:0 0 14px;padding:14px 16px 16px;border:1px solid #DCD9CC;border-radius:10px;background:#FDFCF8}
+.re-entry-h{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px}
+.re-entry-h b{font-size:12.5px;font-weight:600;color:#56604F}
+.re-entry-del{border:0;background:none;padding:4px 2px;font:inherit;font-size:12px;color:#8A6E5A;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+/* 取り決めを外す前の確認。保存していない入力の確認（.re-discard）と同じ見た目。 */
+.re-entry-confirm{margin:-4px 0 14px;padding:10px 14px;background:#fff0db;border:1px solid #e7d1ac;border-radius:6px;font-size:12px}
+.re-entry-confirm p{margin:0 0 8px}
+.re-entry-confirm button{font:600 12px/1.5 var(--font);padding:7px 14px;border:1px solid #cbd0bf;border-radius:5px;background:#fffef9;color:#55634d;cursor:pointer}
+.re-entry-confirm button+button{margin-left:8px}
+.re-entry-add{margin:0 0 22px}
+/* 選べない選択肢（同じ塀を目印と越境の両方にはできない）。 */
+.re-opt input:disabled+span{opacity:.4;cursor:not-allowed;background:#F4F3EE}
+.re-opt:has(input:disabled){cursor:not-allowed}
+textarea.re-q-in{width:100%;resize:vertical;display:block}
 @media (max-width:620px){
   .re-q-in{width:100%;font-size:16px}
 }

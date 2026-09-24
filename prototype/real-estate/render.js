@@ -339,11 +339,407 @@
     return '<p class="pr-why">' + (c.duty ? PR_NEED : '') + priorNow(c) + '</p>' + priorNames(p, c) + priorAct(c, now) +
       (c.duty ? priorDetail(p, c, now) : '');
   }
+  /* ■ 境界・越境の取り決め（2026-09-24 作り直し）
+     答え（決めたことがあるか、隣ごとの取り決め＝どの隣と・何を・書面か・内容）
+     から組み立てる。取り決めは隣ごとに別（西隣とは塀の中心、北隣の枝が越境…）
+     なので、隣1つを1件として持ち、図・説明・次にすることも隣ごとに出す。
+     以前は1件にまとめていて、隣を複数選ぶと別々の取り決めが1枚の図に混ざった。
+     答えの意味は state.js の boundaryStatus の注記を参照。
+
+     行の組み方は前の代の相続登記と同じ（一文 → 図 → 次にすること →
+     くわしく）。ただし図は前の代の「名義の図」（枠→矢印→枠）を写さない
+     ―― あれは誰から誰へ移るかの図で、境界は「敷地のどの辺で、何が越えて
+     いるか」という場所の話。図は横から見た断面図にする（boundarySection）。
+
+     文で言い過ぎない：書面にすること自体は代が変わってもできる。言える
+     のは、口頭の取り決めは登記にも図面にも残らないこと、隣の家も代替わり
+     や売却で人が変わること（今のうち §3-6）。境界が曖昧なだけなら
+     今のうちではない（家族が後から測量できる）。
+     「売るとき」だけを言う。境界の確定が求められると調べてあるのは売却で、
+     建て替えではない。
+
+     書類があるときは、種類と図面の日付で言うことが変わる（設計 §7-1）：
+       境界確認書 … 隣が署名している。売るとき、境界を確かめてあることを示せる
+       測量図だけ … 隣が確かめたかは分からない（2005年3月以降の地積測量図は
+                    隣の立会いを経ている）
+       2005年3月以降の図面は境界点の座標が入り、境界標が無くなっても戻せる。
+       現地に境界標が残っていれば、売るとき測り直さずに済むことがある。 */
+  const openMatter = new Set();   // 事情の「くわしく」（物件 id:項目）
+  /* 隣は玄関を出て見た向きで持つ（state.js の境界の注記）。 */
+  const SIDE = { right: '右隣', left: '左隣', back: '裏の家' };
+  const OVER_WHAT = { wall: '塀', footing: '塀の基礎', roof: 'ひさし', tree: '木の枝', pipe: '配管', other: 'もの' };
+  /* 隣1件ぶんの読み取り。図（boundarySection）と説明（boundaryFigure）はこれを受ける。 */
+  function entryCase(p, e, idx) {
+    const sd = SIDE[e.side] ? e.side : '';
+    const side = sd ? SIDE[sd] : '隣';
+    const kinds = e.kinds || [];
+    const line = kinds.includes('line');
+    /* 目印が塀のとき、塀の持ち主（both 両家／ours 自宅／theirs 隣）。位置は持ち主から決まる：
+       両家＝塀の中心が境界、自宅の塀＝隣側の面が境界、隣の塀＝自宅側の面が境界。 */
+    const markWall = line && e.mark === 'wall';
+    const owner = markWall ? (['ours', 'theirs'].includes(e.wallOwner) ? e.wallOwner : 'both') : '';
+    /* 越境しているもの（隣1つに複数ありうる）。フォームで選べない組み合わせの古い記録は
+       ここで読み替える：目印の塀と同じ塀の越境（地上）→ 出さない／両家の塀の基礎 →
+       出さない／塀と基礎の両方 → 塀だけ（越えている塀は基礎も一緒に越えている）／
+       目印の塀の基礎 → 持ち主は塀と同じ。 */
+    const raw = kinds.includes('over') ? (e.overs || []).filter(o => OVER_WHAT[o.what]) : [];
+    const wallOut = !markWall && raw.some(o => o.what === 'wall');
+    const overs = raw.filter(o => !(o.what === 'wall' && markWall) && !(o.what === 'footing' && (owner === 'both' || wallOut)))
+      .map(o => ({ what: o.what, owner: o.what === 'footing' && markWall ? owner : o.owner === 'theirs' ? 'theirs' : 'ours' }));
+    const things = overs.map(o => OVER_WHAT[o.what]).filter(t => t !== 'もの');
+    const what = [line ? '境界の位置' : '', kinds.includes('over') ? '越境している' + (things.length ? things.join('・') : 'もの') + 'の扱い' : '']
+      .filter(Boolean).join('と、');
+    return { b: e, idx, sides: sd ? [sd] : [], side, party: side + (e.who ? 'の' + e.who : ''),
+      line, markWall, owner, overs, what };
+  }
+  /* 文末の語は分けない（「変わりま／す。」と、最後の行に「す。」だけが残った）。 */
+  const nw = t => '<span class="nw">' + t + '</span>';
+  /* 隣と境界を確かめて署名し合うのは、売るときだけではない（2026-09-24 調べ直し）：
+     売る（確定測量）／相続した土地を分ける（分筆登記：隣接地の全員の立会い・署名）／
+     隣が売る・分ける・建てる（こちらが立会い・署名を求められる。父の没後は家族が答える）。
+     国庫帰属制度（境界が明らかでないと却下）は利用がまれなので、くわしくに置く。 */
+  const BD_NEED = '土地を<b>売る</b>・分けるとき、隣が測量するときには、隣と境界を確かめて' + nw('<b>署名</b>し合います。');
+
+  /* ══ 造形｜境界の断面図（横から見る）
+     素材探しの記録は `prototype/assets/不動産-境界の図.RESEARCH.md`。
+     専門家の説明図（三井住友トラスト不動産）の描き方に倣う：横から見た断面、
+     縦の破線に「境界」、越境するものの断面、越境の矢印。一般の家族には真上からの
+     配置図より読みやすい（前の版は配置図を自作して「雑」「分かりづらい」と言われた）。
+
+     木は素材（`assets/tree-side.svg`＝Commons「Blue Silhouette - Tree」CC0）。
+     塀・家のひさし・配管は矩形と直線で足り、実寸から引く（1単位＝0.1m）：
+       塀   … ブロック 390×190mm・厚さ150・6段（1.14m）、基礎 幅450×深さ350。
+              越境しているときは、厚み全体が境界の向こう
+       ひさし … 軒高2.5m・外壁と境界0.3m・ひさしの出0.7m（境界を0.4m越える）・
+              勾配4/10・引違い窓1.3×1.0m
+       木   … 高さ3.0m・幹は境界から0.6m
+       配管 … 排水管 φ100（太さ0.11m）。桝（300角・深さ0.68m）から深さ0.55mで
+              境界の向こうへ。塀の基礎（底 0.36m）より下を通す ―― 同じ深さに
+              置くと基礎の底の線に溶けて、配管に見えなかった。線1本では何か
+              分からないので、太さのある管と蓋のある桝で描き、「配管」と字を置く
+     左がこちら、右が隣。x=0 が境界、y=0 が地面。
+     境界の位置を決めたときは、その目印（塀の中心・塀の面・境界標）も描く。
+     塀の中心なら、塀は両家の共有と推定される（民法229条）。               */
+  const TREE_D = "m 92.52969,1046.7674 c 10.9884,-0.6928 71.6241,-2.4465 84.4808,-2.4433 l 10.7283,0 2.0989,-4.2011 c 4.1286,-8.2639 8.2316,-23.4653 10.4409,-38.6837 1.4406,-9.92309 1.1832,-13.23899 -1.4519,-18.69799 -2.0109,-4.1659 -8.7768,-10.3667 -16.3346,-14.9704 -22.5696,-13.74781 -40.7255,-27.59311 -60.488,-46.12681 -5.3075,-4.9775 -7.4576,-6.5154 -12.7924,-9.1507 -9.8388,-4.86 -16.1925,-10.2253 -23.217,-19.6051 -1.1533,-1.5401 -1.4275,-1.6178 -3.7343,-1.0587 -1.3692,0.3319 -5.7104,0.6481 -9.6469,0.7027 -15.5864,0.216 -30.3664,-6.1233 -41.7466,-17.9055 -12.7052,-13.1539 -18.6354,-28.1627 -18.6165,-47.1165 0.014,-13.3839 2.821,-23.7179 9.4871,-34.9199 7.6486,-12.8529 21.7839,-23.9109 34.9101,-27.3099 2.0015,-0.5183 3.7759,-1.0792 3.9432,-1.2465 0.1673,-0.1672 -0.041,-2.4425 -0.4625,-5.0561 -1.1213,-6.9514 -0.4422,-17.3372 1.5885,-24.2896 5.5858,-19.1243 19.8501,-33.2967 38.5927,-38.3442 9.0821,-2.4457 23.4262,-1.72 32.147,1.6265 0.7309,0.2804 1.3023,-0.5716 2.3813,-3.5512 4.9387,-13.638 14.9414,-26.7866 26.3348,-34.617 28.3574,-19.4893 64.4171,-15.7929 88.5578,9.0778 l 4.4055,4.5387 3.9967,-0.9757 c 2.1981,-0.5366 7.2175,-1.1337 11.154,-1.3267 12.8569,-0.6305 25.1661,3.0672 36.0394,10.8262 l 4.056,2.8943 9.9823,0.093 c 7.94064,0.074 10.94897,0.3564 14.70838,1.3804 23.14728,6.3052 40.06103,25.8545 44.53987,51.4803 1.07689,6.1616 0.8716,17.1464 -0.43758,23.4128 l -0.72856,3.4869 4.26857,5.6238 c 15.98837,21.0645 20.29721,48.4561 11.676,74.2249 -6.25253,18.6888 -19.87656,34.5498 -36.88718,42.9439 -8.07909,3.9867 -18.37197,6.8148 -24.87953,6.836 -3.01453,0.01 -3.62273,0.2643 -6.53507,2.7352 -5.5338,4.6949 -16.373,10.8769 -22.505,12.8353 -1.3693,0.4373 -3.1898,1.2689 -4.0455,1.848 -0.8558,0.5791 -6.4572,3.8114 -12.4477,7.1826 -14.7717,8.3132 -29.8496,18.0081 -38.7452,24.9124 -10.5516,8.1897 -13.3817,17.9625 -11.7084,40.43171 2.1064,28.28389 6.4093,47.14739 12.9903,56.94809 l 2.2986,3.4231 23.3812,0.3939 c 27.1526,0.4575 73.59162,1.8183 73.96999,2.1675 0.14258,0.1316 -59.09279,0.1986 -131.63409,0.149 -72.5414,-0.05 -128.3925,-0.3111 -124.1137,-0.5809 z m 104.0913,-80.76259 c -0.087,-0.79941 -2.5026,-4.71951 -5.3681,-8.71131 -6.2746,-8.7409 -15.6753,-23.0074 -17.7885,-26.9955 -1.2676,-2.3924 -1.9105,-2.9579 -3.7344,-3.285 -5.7734,-1.0353 -14.2423,-4.2253 -21.9358,-8.2626 -1.4384,-0.7547 4.5085,15.9952 7.1831,20.232 3.8648,6.1222 22.0216,19.7908 35.8496,26.98781 4.1177,2.1432 6.0245,2.1545 5.7941,0.035 z m 4.9053,-15.44571 c 0.655,-0.7918 0.8541,-3.6809 0.8541,-12.3958 0,-6.2498 -0.1404,-11.5037 -0.312,-11.6753 -0.1716,-0.1717 -1.8347,0.083 -3.6959,0.5657 -1.8611,0.4827 -5.567,1.0598 -8.2354,1.2823 -5.6207,0.4688 -5.4848,0 -2.3732,8.1561 2.1713,5.6901 5.0328,10.1672 8.2684,12.9367 2.7937,2.3914 4.2097,2.6826 5.494,1.1303 z m 39.6918,-12.0063 c 3.1122,-1.5877 9.0467,-7.4697 12.6956,-12.5831 3.1671,-4.4383 6.9096,-11.9046 6.5332,-13.0338 -0.1296,-0.3889 -2.6049,-1.3886 -5.5005,-2.2214 -2.8957,-0.8327 -7.6094,-2.7787 -10.475,-4.3243 l -5.2103,-2.8102 -1.7286,1.6562 c -1.708,1.6363 -1.7332,1.7731 -2.1036,11.4025 -0.2061,5.3605 -0.4996,12.0382 -0.652,14.8394 -0.2407,4.4221 -0.1117,5.3033 0.9795,6.6906 1.5076,1.9166 2.3427,1.9754 5.4617,0.3841 z m -93.9222,-4.5435 c -1.7418,-3.7529 -4.9755,-14.0119 -4.9755,-15.7848 0,-0.6891 -1.5123,-0.864 -7.4686,-0.864 -4.1077,0 -7.4686,0.1742 -7.4686,0.3873 0,1.239 20.1434,20.1514 21.4632,20.1514 0.1402,0 -0.5576,-1.7505 -1.5505,-3.8899 z m 119.1402,-7.5683 c 4.3638,-2.9262 15.4751,-11.6228 15.1696,-11.873 -0.1004,-0.082 -3.3378,-0.3086 -7.1943,-0.503 l -7.0116,-0.3533 -3.1551,4.6756 c -3.4076,5.0498 -5.6374,9.5127 -5.1482,10.3042 0.7211,1.1668 3.5262,0.3067 7.3396,-2.2505 z";
+  /* 図の枠は1つに揃える（描くものごとに高さを変えると、行ごとに大きさが跳ねる）。
+     上は地上2.6m まで：ひさし（軒高2.1m）・庭木（2.4m）が収まり、屋根はその先で切れる。
+     「境界」の字は地面の下の真ん中（自宅｜境界｜隣）。上に字の場所を取らない。 */
+  /* o＝越境しているもの1つ（{ what, owner }）。無ければ境界の目印だけを描く。
+     境界（目印）と越境は別々の図にする ―― 越境の図に目印の塀を重ねると、
+     塀と木・ひさしが同じ場所に来て、何の図か読めなかった。越境の図に塀を描く
+     のは、塀の基礎のときだけ（基礎は塀と一体）。越境が複数あるときも1つずつ。 */
+  function boundarySection(p, c, o, k) {
+    const b = c.b, what = o ? o.what : '', mine = o ? o.owner === 'ours' : true, sgn = mine ? 1 : -1;
+    const own = x => mine ? x : -x;                       // 持ち主の側へ（こちら＝左で書く）
+    const X0 = -30, X1 = 30, Y0 = -26, Y1 = 11;
+    const uid = 'bd-' + p.id + '-' + c.idx + '-' + (k || 0);
+    /* 色：図に色相を持ち込まない。橙は「今のうち・対応が必要」、緑は
+       「そのとき」の面の色なので（shared/tokens.css）、地面・境界線・越境の
+       矢印に使うと、どちらかの面の意味に読めてしまう。書面の有無は右の説明
+       （印と字）が言うので、境界線の色で重ねて言わない。                  */
+    const INK = '#6B6963', EDGE = '#7E7462';
+    /* ブロック塀の断面。side＝塀がどちらの土地に立っているか：
+         'both' 境界線の上（中心が境界）／'ours' こちらの土地／'theirs' 隣の土地。
+       こちら側・隣側の違いは厚みではなく、誰の土地に立つ・誰の塀か。
+       面が境界に揃う塀は、壁も基礎も持ち主の側に丸ごと置き、基礎は持ち主の
+       側へだけ張り出す（境界をまたがせない）。越境している塀は、持ち主の
+       側から境界を越えて相手の土地に立つ（cross）。塀の上に誰の塀かを書く。
+       塀は図式の太さで描く。実寸（厚み15cm）では幅6mの図の中で位置が読めず、
+       専門家の説明図と同じく誇張する。                                      */
+    const tags = [];                                      // 図の中の字（反転させずに後で置く）
+    /* 越えている量（基礎の張り出し・塀のはみ出し）は、実寸に近い比では表示幅
+       220px の中で数px になり、斜線が読めなかった。越える部分が読める幅まで誇張する。 */
+    const WT = 3.0, FT = 9.0, WH = 11.4;
+    /* opt.cross … 境界をまたいで立ち、一部が相手の土地に出ている（越境している塀）。
+                    出る幅 XC は厚みの半分近く（実際は数cmでも、図では読める幅にする）
+       opt.foot  … 基礎を壁の真下に据える（逆T字）。基礎は壁より幅が広いので、塀の面を
+                    境界に揃えて建てても、基礎の先が境界を越える ―― 基礎の越境の仕組み
+       opt.quiet … 字を出さない                                                        */
+    const XC = 1.4;
+    const wall = (side, opt) => {
+      opt = opt || {};
+      let x0, fx;                                          // 壁の左の面・基礎の左端（左がこちら）
+      if (opt.cross) x0 = side === 'ours' ? -WT + XC : -XC;
+      else x0 = side === 'both' ? -WT / 2 : side === 'ours' ? -WT : 0;
+      if (opt.cross || opt.foot || side === 'both') fx = x0 + WT / 2 - FT / 2;
+      else fx = side === 'ours' ? -FT : 0;
+      let joints = '';
+      for (let i = 1; i < 6; i++) joints += '<path d="M' + x0 + ' ' + (-1 - i * 1.9) + 'h' + WT + '" stroke="#8C7B5C" stroke-width=".2"/>';
+      const who = side === 'both' ? '両家の塀' : side === 'ours' ? p.name + 'の塀' : c.side + 'の塀';
+      /* 字は塀の真上。共有の塀は線の上に来るので縁取りで線を抜く。
+         塀の上に越境しているもの（木・ひさし）が来るときは字を出さない（quiet）。
+         字が枝や矢印と重なる。塀が誰のものかは横の説明が言う。 */
+      if (!opt.quiet) tags.push([x0 + WT / 2, -14, 'middle', who]);
+      return '<rect x="' + fx + '" y="-1" width="' + FT + '" height="4.6" fill="#BDB4A2" stroke="' + EDGE + '" stroke-width=".25"/>' +
+        '<rect x="' + x0 + '" y="' + (-1 - WH) + '" width="' + WT + '" height="' + WH + '" fill="#D6CBB3" stroke="' + EDGE + '" stroke-width=".3"/>' + joints;
+    };
+    /* 境界の目印（境界の位置を決めたとき）と、越境しているもの（ov）を分けて持つ。
+       越境しているものは、境界の向こうに出た部分だけを斜線で重ねて示す。
+       重ね順：木・ひさし（上空で越えるもの）は目印の塀より奥、地中・地面の
+       ものは手前。目印の塀と上空のものが同じ図に来ると、塀の字は出さない。 */
+    const over = !!o;
+    const aloft = over && (what === 'roof' || what === 'tree');
+    const quiet = [];                                     // 地面の刻みを置かない範囲（地中の字の下）
+    let mk = '', back = '', ov = '', ay = 0, pin = '';
+    /* 塀の字は出す（字が無いと、断面の細い柱が塀だと分からなかった）。 */
+    if (c.markWall && !o) mk = wall(c.owner);
+    /* 境界標は目印なので、越えている塀・基礎より手前に描く（奥だと基礎の下から覗くだけになる）。 */
+    else if (c.line && b.mark === 'stake' && !o) pin = '<rect x="-.6" y="-.8" width="1.2" height="5" fill="#DAD4C7" stroke="' + EDGE + '" stroke-width=".25"/>';
+    if (over) {
+      if (what === 'wall') { ov = wall(mine ? 'ours' : 'theirs', { cross: true }); ay = -19.5; }
+      else if (what === 'footing') {
+        /* 塀の基礎が地中で越える：持ち主の塀は面を境界に揃えて立ち、壁の真下に据えた
+           基礎の先が相手の土地へ入る（専門家の説明図と同じ場面）。基礎は1つの形の
+           まま描き、境界の向こうの部分だけを斜線にする（別の箱を足すと、基礎が
+           張り出しているようには見えなかった）。目印が塀でなければ塀も描く。 */
+        mk += wall(mine ? 'ours' : 'theirs', { foot: true });
+        const fx = (mine ? -WT : 0) + WT / 2 - FT / 2;
+        ov = '<rect x="' + fx + '" y="-1" width="' + FT + '" height="4.6" fill="#BDB4A2" stroke="' + EDGE + '" stroke-width=".25"/>';
+        /* 「基礎」と字を置く（地中の部分は形だけでは何か分からない）。越えた先の横。 */
+        const lx = sgn * ((FT - WT) / 2 + .8);
+        tags.push([lx, 3.3, mine ? 'start' : 'end', '基礎']);
+        quiet.push(mine ? [lx - .5, lx + 8] : [lx - 8, lx + .5]);
+        ay = -2.4;
+      } else if (what === 'roof') {
+        /* 同じ持ち主の塀が境界に立つときは、外壁を塀から離す（0.3m のままだと
+           誇張した塀の厚みと接して、家と塀が一体に見える）。軒先の位置は変えない。 */
+        const P = (x, y) => own(x) + ' ' + y, gh = -21, hx = -3, wx = -21;
+        back = '<path d="M' + P(-35, 0) + 'L' + P(hx, 0) + 'L' + P(hx, gh) + 'L' + P(-35, gh) + 'Z" fill="#E7E0D1" stroke="#A3977E" stroke-width=".3"/>' +
+          '<rect x="' + Math.min(own(wx), own(wx + 13)) + '" y="-16" width="13" height="9" fill="#FBFAF6" stroke="#A3977E" stroke-width=".25"/>' +
+          '<path d="M' + P(wx + 6.5, -16) + 'V-7" stroke="#A3977E" stroke-width=".25"/>';
+        ov = '<path d="M' + P(4, gh + .4) + 'L' + P(-35, gh + .4 - .4 * 39) + 'L' + P(-35, gh - 1.4 - .4 * 39) + 'L' + P(4, gh - 1.4) + 'Z" fill="#CFC7B2" stroke="#8C8779" stroke-width=".3"/>';
+        ay = -19.5;                                        // 軒先の下（境界で -22）
+      } else if (what === 'tree') {
+        ov = '<path d="' + TREE_D + '" transform="translate(' + own(-5) + ' 0) scale(.06) translate(-205 -1047.36)" fill="#BFC6B4"/>';
+        ay = -20;                                          // 枝張りの中ほど
+      } else if (what === 'pipe') {
+        ov = '<rect x="' + Math.min(own(-10.5), own(35)) + '" y="4.95" width="45.5" height="1.1" fill="#D5DBDA" stroke="#6F7C7D" stroke-width=".25"/>';
+        mk += '<rect x="' + (own(-12) - 1.5) + '" y="0" width="3" height="6.8" fill="#FBFAF6" stroke="#6F7C7D" stroke-width=".3"/>' +
+          '<rect x="' + (own(-12) - 1.9) + '" y="-.5" width="3.8" height=".7" fill="#C9CFCE" stroke="#6F7C7D" stroke-width=".25"/>';
+        /* 字は桝の真上（地上）。地中は地面の刻みと管に挟まれて字が置けない。 */
+        tags.push([own(-12), -1.6, 'middle', '配管']);
+        ay = -2.4;
+      } else {
+        /* その他：地面に置いた箱。 */
+        const top = -5;
+        ov = '<rect x="' + (mine ? -1 : -5) + '" y="' + top + '" width="6" height="5" fill="#E6DFD2" stroke="' + EDGE + '" stroke-width=".3"/>';
+        ay = top - 3;
+      }
+    }
+    /* 越えた部分：同じ形を相手の土地の側だけに切り抜き、斜線で塗り直す。
+       越えられた側に家を描き足さない ―― 図が重くなるだけで、言いたいのは
+       「どこまで相手の土地に入っているか」。
+       木は素材を .06 倍して置くので、斜線もその倍率を戻した柄（-ht）で塗る。 */
+    const hit = ov ? '<g clip-path="url(#' + uid + '-in)">' +
+      ov.replace(/fill="[^"]*"/g, 'fill="url(#' + uid + (what === 'tree' ? '-ht' : '-h') + ')"').replace(/stroke="[^"]*"/g, 'stroke="' + INK + '"') + '</g>' : '';
+    const upper = aloft ? ov + hit : '', lower = aloft ? '' : ov + hit;
+    const hatch = Array.from({ length: 12 }, (_, i) => X0 + 2 + i * 5)
+      .filter(x => !quiet.some(([a, z]) => x > a && x - 1.6 < z))
+      .map(x => '<path d="M' + x + ' .2l-1.6 1.6" stroke="#B3A994" stroke-width=".22"/>').join('');
+    /* 矢印は、境界に立つ塀（厚み2.6・越境している塀は 0.8〜3.4）の外から始める。 */
+    const x0 = sgn * 3.8, x1 = sgn * 8.5;
+    const arrow = over ? '<path d="M' + x0 + ' ' + ay + 'H' + x1 + '" stroke="' + INK + '" stroke-width=".45"/>' +
+      '<path d="M' + x1 + ' ' + (ay - 1.1) + 'L' + (x1 + sgn * 1.6) + ' ' + ay + 'L' + x1 + ' ' + (ay + 1.1) + 'Z" fill="' + INK + '"/>' : '';
+    /* 左右は玄関を出て見たとおり：左隣は左、右隣・裏の家は右。図は「左が
+       こちら・右が隣」で組み、左隣のときは左右を反転する。字は反転させず、
+       位置だけ写す。                                                        */
+    const flip = c.sides[0] === 'left';
+    const fx = x => flip ? -x : x;
+    const fa = a => !flip || a === 'middle' ? a : a === 'end' ? 'start' : 'end';
+    const txt = (x, y, a, t, cls) => '<text x="' + fx(x) + '" y="' + y + '" text-anchor="' + fa(a) + '" class="' + (cls || 'bs-t') + '">' + esc(t) + '</text>';
+    const label = '横から見た図。' + (o ? overText(p, c, o) : markText(p, c));
+    const inX = mine ? 0 : X0;                             // 越えられた側（反転前の座標）
+    return '<svg class="bd-sec" viewBox="' + X0 + ' ' + Y0 + ' ' + (X1 - X0) + ' ' + (Y1 - Y0) + '" role="img" aria-label="' + esc(label) + '">' +
+      '<defs><clipPath id="' + uid + '"><rect x="' + X0 + '" y="' + Y0 + '" width="' + (X1 - X0) + '" height="' + (Y1 - Y0) + '"/></clipPath>' +
+        '<clipPath id="' + uid + '-in"><rect x="' + inX + '" y="' + Y0 + '" width="' + X1 + '" height="' + (Y1 - Y0) + '"/></clipPath>' +
+        '<pattern id="' + uid + '-h" width="1" height="1" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+          '<rect width="1" height="1" fill="#F4F2EC"/><path d="M0 .5H1" stroke="' + INK + '" stroke-width=".32"/></pattern>' +
+        '<pattern id="' + uid + '-ht" width="1" height="1" patternUnits="userSpaceOnUse" patternTransform="scale(' + (1 / .06) + ') rotate(45)">' +
+          '<rect width="1" height="1" fill="#F4F2EC"/><path d="M0 .5H1" stroke="' + INK + '" stroke-width=".32"/></pattern></defs>' +
+      '<g clip-path="url(#' + uid + ')"><g' + (flip ? ' transform="scale(-1 1)"' : '') + '>' +
+        /* 越えられた側の土地は、上の空間ごと淡く敷く（土地は上空・地下にも及ぶ）。
+           家を描き足す代わりに、「ここから先は相手の土地」を面で見せる。 */
+        (over ? '<rect x="' + inX + '" y="' + Y0 + '" width="' + X1 + '" height="' + (-Y0) + '" fill="#F3F0E8"/>' : '') +
+        '<rect x="' + X0 + '" y="0" width="' + (X1 - X0) + '" height="' + Y1 + '" fill="#ECE8DF"/>' + back + upper +
+        '<path d="M' + X0 + ' 0H' + X1 + '" stroke="#8C8472" stroke-width=".45"/>' + hatch +
+        '<path d="M0 ' + Y0 + 'V6.6" stroke="' + INK + '" stroke-width=".5" stroke-dasharray="2 1.3"/>' + mk + lower + pin + arrow + '</g>' +
+      tags.map(t => txt(t[0], t[1], t[2], t[3], 'bs-t bs-halo')).join('') +
+      txt(X0 + 1.5, 9.4, 'start', p.name) +
+      txt(0, 9.4, 'middle', '境界') +
+      txt(X1 - 1.5, 9.4, 'end', c.side + (b.who ? ' ' + b.who : '')) + '</g></svg>';
+  }
+  /* 説明の字。「こちら／隣」とは書かず、物件の名前と隣の名前で言う
+     （位置の「こちら側の面」と持ち主の「こちらのもの」が混ざって読みにくかった）。 */
+  /* 境界の位置の言い方。「塀の自宅側の面」は分かりづらいと言われた。家族には、
+     誰の塀が、どちらの土地に建っているかで言う（面が境界＝塀は丸ごと持ち主の土地）。 */
+  function markText(p, c) {
+    if (!c.line) return '';
+    if (c.markWall) return c.owner === 'both' ? '塀は両家のもの。境界の上に建っている'
+      : c.owner === 'ours' ? '塀は' + p.name + 'のもの。' + p.name + 'の土地に建っている' : '塀は' + c.side + 'のもの。' + c.side + 'の土地に建っている';
+    return c.b.mark === 'stake' ? '境界標（杭・金属の鋲）の位置' : '決めてある（目印はない）';
+  }
+  function overText(p, c, o) {
+    if (!o) return '';
+    const from = o.owner === 'ours' ? p.name : c.side, to = o.owner === 'ours' ? c.side : p.name;
+    return o.what === 'footing' ? from + 'の塀の基礎が、地中で' + to + 'の土地へ出ている'
+      : from + 'の' + OVER_WHAT[o.what] + 'が、' + to + 'の土地へ出ている';
+  }
+  const bdPick = new Map();                 // 図に出している項目（物件 id:隣 → 項目の番号）
+  /* 家1軒ぶん：図と、決めたことの一覧（境界・越境）→ その他。
+     決めたことは1行ずつ「境界」「越境」の札をつけて並べ、図のある行が2つ以上
+     あれば、その行が図の切り替えになる（押した行の図が枠に出る）。図は縦に
+     積まない（行が図で埋まる）。ポップアップにもしない（開くまで図が見えない）。
+     「〜との取り決め」の見出しと書面の一文は置かない ―― 誰の話かは上の家の札が、
+     書面の状態は次にすること（書面にする／あるか聞く）と書類のありかが言う。
+     一文・各家・次にすることで「口頭」を3回言っていた。 */
+  function boundaryFigure(p, c) {
+    const b = c.b, key = p.id + ':' + c.idx;
+    const markFig = c.markWall || (c.line && b.mark === 'stake');
+    const items = (c.line ? [{ tag: '境界', text: markText(p, c), fig: markFig ? boundarySection(p, c, null, 'm') : '' }] : [])
+      .concat(c.overs.map((o, k) => ({ tag: '越境', text: overText(p, c, o), fig: boundarySection(p, c, o, k) })));
+    const withFig = items.map((x, i) => x.fig ? i : -1).filter(i => i >= 0);
+    const many = withFig.length > 1;
+    const pick = withFig.includes(bdPick.get(key)) ? bdPick.get(key) : withFig[0];
+    const figs = withFig.map(i => '<div class="bd-one"' + (many && i !== pick ? ' hidden' : '') + ' data-bd-fig="' + i + '">' + items[i].fig + '</div>').join('');
+    const line = (x, i) => {
+      const body = '<i>' + x.tag + '</i><span>' + esc(x.text) + '</span>';
+      return many && x.fig
+        ? '<button type="button" class="bd-item" data-bd-pick="' + esc(key) + '" data-bd-k="' + i + '" aria-pressed="' + (i === pick) + '"><b aria-hidden="true"></b>' + body + '</button>'
+        : '<div class="bd-item">' + (many ? '<b aria-hidden="true" class="off"></b>' : '') + body + '</div>';
+    };
+    return '<div class="bd-fig">' + (figs ? '<div class="bd-figs">' + figs + '</div>' : '') + '<div class="bd-cap">' +
+      '<div class="bd-items' + (many ? ' pick' : '') + '"' + (many ? ' role="group" aria-label="図に出すもの"' : '') + '>' +
+        items.map(line).join('') +
+        (b.content ? line({ tag: 'その他', text: b.content, fig: '' }, -1) : '') + '</div></div></div>';
+  }
+  /* 家ごとの取り決めは縦に積まない（3軒並べると、この行だけで画面2つ分になった）。
+     上に家の札を並べ、選んだ1軒を出す。1軒だけのときは札の位置に「〜との境界」。
+     家ごとに一覧の長さが違うので、切り替えたら間取りごと描き直す（wire）。 */
+  const bdNb = new Map();                   // 出している家（物件 id → 番号）
+  function boundaryNeighbors(p, es) {
+    /* 見出しは中央に置き、左右に細い線を引く（1軒のときに名前だけを左に置くと、
+       その右が丸ごと空いた）。1軒は「〜との境界」の札、2軒以上は家の切り替え。
+       「〜と決めたこと」とは言わない ―― 一覧には越境という事実も並ぶ。 */
+    const name = c => nbName(c, es.length);
+    const head = inner => '<div class="bd-head">' + inner + '</div>';
+    if (es.length === 1) return head('<span class="bd-seg"><span class="bd-tab solo">' + esc(es[0].party) + 'との境界</span></span>') + boundaryFigure(p, es[0]);
+    const sel = Math.min(bdNb.get(p.id) || 0, es.length - 1);
+    return head('<span class="bd-seg" role="tablist" aria-label="境界を見る家">' + es.map((c, i) =>
+        '<button type="button" role="tab" class="bd-tab" data-bd-nb="' + esc(p.id + ':' + i) + '" aria-selected="' + (i === sel) + '">' + esc(name(c)) + '</button>').join('') +
+      '</span>') + '<div role="tabpanel">' + boundaryFigure(p, es[sel]) + '</div>';
+  }
+  /* 隣1件の次にすること（口頭のまま・書面が分からないとき）。どの家の話かは文の頭に
+     家の札（上の切り替えと同じ名前）で示すので、文には家の名前を入れない。 */
+  function entryNext(c) {
+    const e = c.b;
+    if (!c.what) return '何を決めたか、' + WHO + 'に聞いて記録する';
+    if (e.paper === 'no') return (c.what.startsWith('境界の位置') ? '決めた' : '') + c.what + 'を、書面（覚書）にする';
+    return '決めたことを書いた覚書や境界確認書があるか、' + WHO + 'に聞く';
+  }
+  /* 家の名前（上の切り替えと次にすることの札で同じにする）。n＝家の数。 */
+  const nbName = (c, n) => (c.b.side ? c.side : '隣' + (n > 1 ? c.idx + 1 : '')) + (c.b.who ? ' ' + c.b.who : '');
+  /* くわしく。sections＝[見出し, 本文HTML] の並び。 */
+  function boundaryDetail(p, sections) {
+    const key = p.id + ':boundary', open = openMatter.has(key);
+    const body = sections.map(([t, html], i) => '<section><h6><i>' + (i + 1) + '</i>' + t + '</h6><p>' + html + '</p></section>').join('');
+    return '<div class="pr-dt' + (open ? ' open' : '') + '"><button type="button" class="pr-dt-t" data-matter-open="' + esc(key) +
+      '" aria-expanded="' + open + '"><span class="pr-dt-k">くわしく</span><span class="pr-dt-s">' + sections.map(s => s[0]).join('・') + '</span>' + PG.down + '</button>' +
+      (open ? '<div class="pr-dt-b">' + body + '</div>' : '') + '</div>';
+  }
+  /* 塀の中心を境界にしたとき。境界線上の囲障は相隣者の共有と推定され（民法229条）、
+     共有の持分は等しいと推定される（250条）。直す費用は持分に応じて負担（253条）。 */
+  const BD_SHARED = ['塀の持ち主と費用', '境界線の上にある塀は、両家の<b>共有</b>と推定されます（民法229条）。直す・建て替えるときの費用は、原則として両家で半分ずつです。覚書にするときは、塀の持ち主と費用の分け方も書いておきます。'];
+  const BD_HEIRS = ['書面が効く相手', '覚書は、' + WHO + 'や隣が亡くなっても、それぞれの相続人に引き継がれます。ただ、どちらかが土地を<b>売る</b>と、買主には当然には引き継がれません。売るときは、覚書を引き継ぐことを売買契約に書きます。'];
+  /* 書類があるときに言うこと。種類で一文を、図面の日付でくわしくを変える。
+     d＝書類の種類（confirm／memo／map）、age＝図面の日付、shared＝塀の中心の取り決めがあるか。 */
+  function boundaryDocs(p, d, age, deal, shared) {
+    const why = [];
+    if (d.includes('confirm')) why.push('境界確認書は、隣と境界の位置を確かめて、双方が署名した書面です。売るとき、境界を確かめてあることを買主に示せます。');
+    else if (d.includes('map')) why.push('測量図だけでは、隣が境界を確かめたかは分かりません。' +
+      (age === 'after' ? '2005年3月以降の地積測量図なら、隣の立会いを経て作られています。' : ''));
+    if (d.includes('memo')) why.push('覚書は、' + WHO + 'や隣が亡くなっても、それぞれの相続人に引き継がれます。土地を<b>売る</b>ときは、買主に引き継ぐことを売買契約に書きます。');
+    if (!why.length) why.push(deal === 'unknown' ? '境界確認書や測量図が見つかっています。' : '決めたことは書面にしてあります。');
+    const sections = [];
+    if (shared) sections.push(BD_SHARED);
+    if (d.includes('confirm') || d.includes('map')) {
+      sections.push(['売るときに効くこと', '図面の境界点に、今も境界標（杭・金属の鋲など）が残っていれば、売るときに測り直さずに済むことがあります。' +
+        '無くなっていると、測り直しになりやすくなります。' + (d.includes('confirm') ? '隣の家が代替わりしていると、新しい所有者と確かめ直すことがあります。' : '')]);
+      sections.push(['図面の日付', age === 'after'
+        ? '2005年3月以降の図面は、境界点の座標が入っているので、境界標が無くなっていても元の位置に戻せます（土地家屋調査士に頼む）。'
+        : age === 'before'
+        ? '2005年3月より前の図面は、作られた時期で精度が違います。1977年9月以前のものは測った基準がはっきりしないことがあり、参考として扱われます。売るときは測り直すことがあります。'
+        : '図面の作成日を見ておきます。2005年3月以降の図面は境界点の座標が入っていて、境界標が無くなっても元の位置に戻せます。それより前のものは、作られた時期で精度が違います。']);
+    }
+    /* 書類があるときは、次にすることを出さない。書類の場所は「書類のありか」の欄が
+       持っている（境界・測量、越境の合意）。ここで「書類のありかに残す」と言うと、
+       状態が済み（書面あり）なのに次にすることが出て、しかも画面の操作の指示になる。 */
+    return { why: why.join(''), act: '', detail: sections.length ? boundaryDetail(p, sections) : '' };
+  }
+  /* 書類があるときは、用意できている書類を家ごとに書く（済んだ状態でも、何が
+     あるのかは家族が知ることなので消さない）。場所は「書類のありか」の欄が持つ。 */
+  const docName = kinds => { const d = (kinds || []).map(k => BD_DOC[k]).filter(Boolean); return d.length ? d.join('・') : '書面（種類は記録なし）'; };
+  const BD_DOC = { confirm: '境界確認書', memo: '覚書', map: '測量図' };
+  function docRows(es) { return es.filter(c => c.b.paper === 'yes').map(c => ({ nb: nbName(c, es.length), text: docName(c.b.docKinds) })); }
+  function docsBlock(rows) {
+    if (!rows.length) return '';
+    return '<div class="pr-act bd-docs"><div class="pr-act-h"><span>用意できている書類</span></div>' +
+      rows.map(r => '<p>' + (r.nb ? '<span class="bd-act-nb">' + esc(r.nb) + '</span>' : '') + esc(r.text) + '</p>').join('') + '</div>';
+  }
+  function boundaryBody(p) {
+    const b = p.matters.boundary || {};
+    const act = (text, sub) => '<div class="pr-act"><div class="pr-act-h"><span>次にすること</span></div><p>' + esc(text) +
+      (sub ? '<small>' + esc(sub) + '</small>' : '') + '</p></div>';
+    if (b.deal === 'no') return '<p class="pr-quiet">隣と、境界や越境について決めたことはありません。</p>';
+    /* 父が覚えていなくても終わりにしない。境界確認書や測量図は、土地を
+       買ったとき・家を建てたときに受け取っていることがあり、仕舞った場所
+       は父に聞ける。探し尽くして無ければ、売るときに起きることを言って閉じる。 */
+    if (b.deal === 'unknown') {
+      if (b.paper === 'yes') { const x = boundaryDocs(p, b.docKinds || [], b.docAge, 'unknown', false); return '<p class="pr-why">' + x.why + '</p>' + docsBlock([{ nb: '', text: docName(b.docKinds) }]) + x.detail; }
+      if (b.paper === 'no') return '<p class="pr-quiet">' + WHO + 'は隣と決めたことを覚えておらず、境界確認書や測量図も見つかりませんでした。' +
+        '売るときは、隣と立ち会う測量（確定測量）から始めます。費用の目安は30〜80万円です。</p>';
+      return '<p class="pr-why">' + BD_NEED + WHO + 'が覚えていなくても、境界確認書や測量図が残っていれば、それで境界を示せます。</p>' +
+        act('土地を買ったとき・家を建てたときの書類から、境界確認書や測量図を探す',
+          '仕舞った場所は' + WHO + 'に聞きます。家に無くても、法務局の地積測量図は家族でも取れます（無い土地もあります）。当時の不動産会社や、測量をした土地家屋調査士が写しを持っていることもあります。');
+    }
+    if (b.deal !== 'yes') return '<p class="pr-why">' + BD_NEED + '塀の位置や越境を隣と口頭で決めていても、そのことは登記にも図面にも残りません。' +
+      '決めたことがあるかは、' + WHO + 'に聞かないと分かりません。</p>' +
+      act(WHO + 'に、隣と境界や塀・越境について決めたことがあるか聞く', '隣ごとに聞きます。境界確認書や測量図が家にあれば、それも一緒に。');
+    /* 決めたことがある：隣ごとに図と説明を並べる。 */
+    const es = (b.entries || []).map((e, i) => entryCase(p, e, i));
+    if (!es.length) return '<p class="pr-why">' + BD_NEED + '口頭の取り決めは、登記にも図面にも残りません。</p>' +
+      act('どの隣と何を決めたか、' + WHO + 'に聞いて記録する', '');
+    const figs = boundaryNeighbors(p, es);
+    const shared = es.some(c => c.owner === 'both');
+    if (es.every(c => c.b.paper === 'yes')) {
+      const kinds = [...new Set([].concat(...es.map(c => c.b.docKinds || [])))];
+      const ages = es.filter(c => (c.b.docKinds || []).some(k => k !== 'memo')).map(c => c.b.docAge || 'unknown');
+      const age = ages.includes('before') ? 'before' : ages.length && ages.every(a => a === 'after') ? 'after' : 'unknown';
+      const x = boundaryDocs(p, kinds, age, 'yes', shared);
+      return '<p class="pr-why">' + x.why + '</p>' + figs + docsBlock(docRows(es)) + x.detail;
+    }
+    /* 次にすることは、口頭のまま・書面が分からない隣の数だけ。 */
+    const todo = es.filter(c => c.b.paper !== 'yes');
+    const nextHtml = '<div class="pr-act"><div class="pr-act-h"><span>次にすること</span></div>' +
+      todo.map(c => '<p><span class="bd-act-nb">' + esc(nbName(c, es.length)) + '</span>' + esc(entryNext(c)) + '</p>').join('') +
+      (es.some(c => c.b.paper === 'no') ? '<p class="pr-act-sub">土地家屋調査士に頼むと、測量図をつけて作れます。</p>' : '') + '</div>';
+    /* 一文は「いつ要るか」と「書面にしておくと何が済むか」まで。書面が無いと困る、で
+       止めると「だから書面にする」が答えられていなかった。「隣の家も人が変わる」
+       「新しい持ち主は知らない」は、何も言っていないと言われて外した。 */
+    return '<p class="pr-why">' + BD_NEED + '口頭で決めたことも、覚書にしておけば、そのとき見せて確かめるだけで' + nw('済みます。') + '</p>' +
+      figs + nextHtml + docsBlock(docRows(es)) +
+      boundaryDetail(p, [BD_HEIRS].concat(shared ? [BD_SHARED] : []).concat([['境界を確かめる場面', '<b>売る</b>ときは、隣と境界を確かめる測量（<b>確定測量</b>）を求められることが多く、隣の立会いと署名が要ります。費用の目安は、接するのが民有地だけなら30〜50万円、道路など公の土地にも接すると60〜80万円です。' +
+        (es.some(c => c.overs.length) ? '越境しているものがあると、買主から、直す時期などを書いた覚書を求められます。' : '') +
+        '相続した土地を相続人で<b>分ける</b>ときも（分筆登記）、隣接する土地の全員と立ち会い、境界確認書に署名をもらいます。' +
+        '<b>隣が</b>売る・分ける・建てるときは、こちらが立会いと署名を求められます。' +
+        '相続した土地を国に引き取ってもらう制度（相続土地国庫帰属制度）は、境界が明らかでない土地では申請できません。']]));
+  }
+
   function nowRows(p) {
     const names = { boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
     const out = ['boundary', 'road', 'changed'].filter(key => !(key === 'changed' && p.kind === 'land')).map(key => {
       const m = p.matters[key] || {};
-      const status = NOW_STATUS[m.uiStatus] ? m.uiStatus : S.matterProgress(p, key).status;
+      const ms = S.matterStatus(p, key), status = ms.status;
+      if (key === 'boundary') return { key, type: 'matter', nm: names[key], status, pick: true, label: ms.label, body: boundaryBody };
       return { key, type: 'matter', nm: names[key], status, pick: true,
         summary: m.memo || 'まだ記録がありません。',
         next: m.next || (status === 'unknown' ? MATTER_QUESTIONS[key] : status === 'action' ? ACTION_NEXT[key] : ''),
@@ -644,7 +1040,7 @@
         matterIcon(x.icon || x.key) +
         (x.pick ? unitHead(x.nm, statusPick(p, x.type, x.key, x.status, x.nm, x.label), '')
           : unitHead(x.nm, badge(x.status), editButton(p, x.type, x.key, x.nm))) + '</div>' +
-        (x.type === 'prior' ? priorBody(p) :
+        (x.type === 'prior' ? priorBody(p) : x.body ? x.body(p) :
         '<div class="rw-record"><p>' + esc(x.summary) + '</p></div>' +
         (active && x.next ? '<div class="record-next"><span>次にすること</span><p>' + esc(x.next) + '</p>' +
           (context ? '<small>' + esc(context) + '</small>' : '') + '</div>' : '')) + '</section>';
@@ -936,9 +1332,7 @@
   function placedDocs(p) {
     const at = p.docs.at || {};
     const keys = new Set(['deed', 'acquire']);
-    Object.entries(p.matters || {}).forEach(([key, m]) => {
-      if (m.find !== 'no' && m.detail && m.detail.paper === 'あり') keys.add(key);
-    });
+    Object.keys(p.matters || {}).forEach(key => { if (S.matterPaper(p, key)) keys.add(key); });
     Object.keys(at).forEach(key => { if (S.DOC_KINDS[key] && key !== 'prior' && key !== 'priorWill') keys.add(key); });
     /* 前の代の協議書・遺言書は、父が取得する側で登記がまだのときだけ。
        父が先に亡くなると、家族がこれを司法書士に渡して登記に使う。 */
@@ -1717,14 +2111,26 @@
   }
 
   function wire() {
+    /* 境界：越境が複数の隣で、図に出すものを切り替える。図の枠は同じ大きさなので
+       描き直さず、表示だけ切り替える（選んだものは描き直し後も残す）。 */
+    document.querySelectorAll('[data-bd-pick]').forEach(button => {
+      button.onclick = () => {
+        const k = Number(button.dataset.bdK), fig = button.closest('.bd-fig');
+        bdPick.set(button.dataset.bdPick, k);
+        fig.querySelectorAll('[data-bd-fig]').forEach(el => { el.hidden = Number(el.dataset.bdFig) !== k; });
+        fig.querySelectorAll('[data-bd-pick]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+      };
+    });
     /* 開閉は表示中だけの状態。押したら間取りごと描き直す（部屋の深さは
        中身の実測で決まる）。押したボタンを同じ画面位置に留める。 */
-    [['data-procedure', 'procedure', openProcedures], ['data-prior-open', 'priorOpen', openPrior]].forEach(([sel, attr, set]) =>
+    [['data-procedure', 'procedure', openProcedures], ['data-prior-open', 'priorOpen', openPrior], ['data-matter-open', 'matterOpen', openMatter], ['data-bd-nb', 'bdNb', null]].forEach(([sel, attr, set]) =>
       document.querySelectorAll('[' + sel + ']').forEach(button => {
       button.onclick = () => {
         const key = button.dataset[attr];
         const before = button.getBoundingClientRect().top;
-        if (set.has(key)) set.delete(key);
+        /* 境界の家の札：選んだ家を覚える（開閉ではない）。 */
+        if (!set) { const i = key.lastIndexOf(':'); bdNb.set(key.slice(0, i), Number(key.slice(i + 1))); }
+        else if (set.has(key)) set.delete(key);
         else set.add(key);
         const section = button.closest('.prop');
         const p = S.find(section.dataset.p);

@@ -39,6 +39,65 @@
     STATUS_ORDER.map(k => '<label class="re-st-opt"><input type="radio" name="status" value="' + k + '"' +
       (k === cur ? ' checked' : '') + '><span class="bdg ' + S.NOW_STATUS[k].tone + '">' +
       esc(S.NOW_STATUS[k].label) + '</span></label>').join('') + '</div>';
+  /* 境界：隣1つぶんの取り決め。名前は e<番号>-… で、番号は足した順（外しても詰めない）。
+     決めたことは、チェックを入れた項目のすぐ下にその問いを開く。 */
+  function bdEntry(i, e) {
+    const n = k => 'e' + i + '-' + k;
+    const kinds = e.kinds || [];
+    const overs = e.overs || [];
+    const ownerOf = k => (overs.find(o => o.what === k) || {}).owner || 'ours';
+    const P = bdName;
+    /* 〈隣〉は選んだ隣の名前（右隣など）に差し替える。「こちら／隣」とは書かない
+       ―― 位置の「こちら側の面」と持ち主の「こちらのもの」が混ざって読みにくかった。
+       隣は方角でなく、玄関を出た向きで聞く（「玄関から見て」は、外を向くか
+       玄関を向くかで左右が逆になるので、動作で言う）。
+       越境は向きを聞かず、持ち主を聞く（2軒の間なので持ち主で向きが決まる）。
+       目印の「その塀は誰のものですか」と同じ形に揃える。
+       選べない選択肢には、その下に理由を出す（data-e-why。conditionals）。 */
+    const nb = html => html.replace(/〈隣〉/g, '<span data-nb>隣</span>');
+    /* 見出しは選んだ相手の名前にする（「隣との取り決め」の下で「どの隣ですか」と
+       聞くと、同じことを二度言う。裏の家は「隣」とは呼ばない）。 */
+    return nb('<div class="re-entry" data-entry="' + i + '"><div class="re-entry-h"><b data-e-title>' + esc(entryTitle(e.side)) + '</b>' +
+      '<button type="button" class="re-entry-del" data-entry-del>この取り決めを外す</button></div>' +
+      /* 外す前に確かめる（押してすぐ消えると、入力した中身ごと戻せなかった）。 */
+      '<div class="re-entry-confirm" role="alertdialog" aria-live="polite" data-entry-confirm hidden><p data-entry-ask></p>' +
+        '<button type="button" data-entry-yes>外す</button><button type="button" data-entry-no>やめる</button></div>' +
+      question('相手はどの家ですか', choice(n('side'), e.side || '', [['right', '右隣'], ['left', '左隣'], ['back', '裏の家']]) +
+        '<div class="re-q-sub"><input class="re-q-in" name="' + n('who') + '" value="' + esc(e.who) + '" placeholder="相手の名前（分かれば）" autocomplete="off" aria-label="相手の名前"></div>',
+        '玄関を出て見た向きで。裏の家は、玄関の反対側の家。') +
+      question('決めたこと',
+        choice(n('kind-'), kinds, [['line', '境界の位置', '塀の中心を境界にした、など']], 'row multi', 'checkbox') +
+        '<div class="re-sub" data-e-line><p class="re-sub-t">何を目印に決めましたか</p>' +
+          choice(n('mark'), ['wall', 'stake'].includes(e.mark) ? e.mark : 'none', [['wall', '塀'], ['stake', '境界標（杭・金属の鋲など）'], ['none', '目印はない']]) +
+          '<p class="re-why" data-e-why="mark" hidden></p>' +
+          '<div data-e-wall><p class="re-sub-t">その塀は誰のものですか</p>' + choice(n('wallOwner'), e.wallOwner || 'both', [
+            ['both', '両家のもの', '境界の上に建っている'], ['ours', P + 'のもの', P + 'の土地に建っている'], ['theirs', '〈隣〉のもの', '〈隣〉の土地に建っている']], 'row') + '</div></div>' +
+        choice(n('kind-'), kinds, [['over', '越境しているものの扱い', '塀・屋根・枝・配管などが境界を越えている']], 'row multi', 'checkbox') +
+        /* 越えているものは複数ありうる（隣の木の枝と自宅の配管、など）。
+           持ち主はものごとに違うので、選んだものの数だけ持ち主を聞く。 */
+        '<div class="re-sub" data-e-over><p class="re-sub-t">何が越えていますか（いくつでも）</p>' +
+          choice(n('ow-'), overs.map(o => o.what), BD_OVER, 'pill', 'checkbox') +
+          '<p class="re-why" data-e-why="over" hidden></p>' +
+          BD_OVER.map(([k]) => '<div data-e-own="' + k + '"><p class="re-sub-t">' + BD_THING[k] + 'は誰のものですか</p>' +
+            choice(n('oo-' + k), ownerOf(k), [['ours', P + 'のもの'], ['theirs', '〈隣〉のもの']]) +
+            (k === 'footing' ? '<p class="re-why" data-e-why="owner" hidden></p>' : '') + '</div>').join('') + '</div>',
+        '当てはまるものをすべて。') +
+      question('書面にしてありますか', choice(n('paper'), e.paper || 'unknown', [['yes', '覚書・境界確認書がある'], ['no', '口頭のまま'], ['unknown', '分からない']])) +
+      question('どんな書類ですか', choice(n('doc-'), e.docKinds || [], [
+        ['confirm', '境界確認書', '隣と境界を確かめ、双方が署名したもの'], ['memo', '越境などの覚書'],
+        ['map', '測量図', '地積測量図・確定測量図など']], 'row multi', 'checkbox'), '当てはまるものをすべて。', ' data-e-doc') +
+      question('図面の作成日', choice(n('docAge'), e.docAge || 'unknown', [['after', '2005年3月以降'], ['before', 'それより前'], ['unknown', '分からない']]),
+        '2005年3月以降の図面は、境界点の座標が入っています。', ' data-e-age') +
+      /* 位置・持ち主は上で選んで答えるので、ここは選べないことだけを書く。 */
+      question('ほかに決めたこと', '<textarea class="re-q-in" rows="2" name="' + n('content') + '">' + esc(e.content) + '</textarea>',
+        '上で選んだこと以外に。例：越えている枝は、毎年秋に隣が切る。') + '</div>');
+  }
+  const BD_SIDE = { right: '右隣', left: '左隣', back: '裏の家' };
+  const BD_OVER = [['roof', '屋根・ひさし'], ['tree', '木の枝'], ['pipe', '配管'], ['wall', '塀'], ['footing', '塀の基礎（地中）'], ['other', 'その他']];
+  const BD_THING = { roof: 'その屋根・ひさし', tree: 'その木', pipe: 'その配管', wall: 'その塀', footing: 'その塀の基礎', other: 'その他のもの' };
+  const entryTitle = side => BD_SIDE[side] ? BD_SIDE[side] + 'との取り決め' : '隣の家との取り決め';
+  let bdName = '';
+  let bdCount = 0;
   let dialog, opener, savedCallback, identity, initial;
   function ensureDialog() {
     if (dialog) return;
@@ -64,7 +123,31 @@
     ensureDialog();
     opener = trigger; savedCallback = onSave; identity = { id: p.id, type, key };
     let title = '', lead = '', body = '';
-    if (type === 'matter') {
+    if (type === 'matter' && key === 'boundary') {
+      /* 境界・越境の取り決め。答えは選ぶだけ（相手の名前と、決めた内容を
+         除く）。状態・次にすること・くわしくは答えから出すので、状態欄も
+         「誰・何で確認したか」も置かない（state.js の boundaryStatus）。
+         取り決めは隣ごとに別なので、隣1つを1ブロックにして足せるようにする。 */
+      const b = p.matters.boundary || {};
+      const es = (b.entries || []).length ? b.entries : [{}];
+      bdCount = es.length; bdName = p.name;
+      title = titles.boundary; lead = '';
+      body = section('取り決め',
+        question('隣と、境界や塀・越境について決めたことはありますか', choice('deal', b.deal || 'unasked',
+          [['yes', 'ある'], ['no', 'ない'], ['unasked', 'まだ聞いていない'], ['unknown', WHO + 'も覚えていない']]),
+          '境界標や法務局の地積測量図は家族でも確かめられます。口頭で決めたことは、' + WHO + 'に聞くしかありません。') +
+        '<div data-bd-yes><div data-entries>' + es.map((x, i) => bdEntry(i, x)).join('') + '</div>' +
+          '<button type="button" class="record-add re-entry-add" data-entry-add><span aria-hidden="true">＋</span>別の家との取り決めを足す</button></div>' +
+        /* 父が覚えていないときは、書類を探した結果を聞く（保存は paper）。 */
+        question('境界確認書や測量図は見つかりましたか', choice('found', b.deal === 'unknown' ? b.paper || 'unknown' : 'unknown',
+          [['yes', '見つかった'], ['no', '探したが無い'], ['unknown', 'まだ探していない']]),
+          '土地を買ったとき・家を建てたときの書類に入っていることがあります。法務局の地積測量図は家族でも取れます。', ' data-bd-unknown') +
+        question('どんな書類ですか', choice('udoc-', b.docKinds || [], [
+          ['confirm', '境界確認書', '隣と境界を確かめ、双方が署名したもの'], ['memo', '越境などの覚書'],
+          ['map', '測量図', '地積測量図・確定測量図など']], 'row multi', 'checkbox'), '当てはまるものをすべて。', ' data-bd-udoc') +
+        question('図面の作成日', choice('udocAge', b.docAge || 'unknown', [['after', '2005年3月以降'], ['before', 'それより前'], ['unknown', '分からない']]),
+          '2005年3月以降の図面は、境界点の座標が入っています。', ' data-bd-uage'));
+    } else if (type === 'matter') {
       const m = p.matters[key] || {}, d = m.detail || {}, doc = p.docs.at[key] || {};
       title = titles[key]; lead = questions[key];
       const cur = S.NOW_STATUS[m.uiStatus] ? m.uiStatus : S.matterProgress(p, key).status;
@@ -174,6 +257,62 @@
     dialog.querySelector('[data-discard]').onclick = () => dialog.close();
     function conditionals() {
       const form = dialog.querySelector('form');
+      if (form.elements.deal) {
+        const deal = form.elements.deal.value;
+        dialog.querySelectorAll('[data-bd-yes]').forEach(el => { el.hidden = deal !== 'yes'; });
+        dialog.querySelector('[data-bd-unknown]').hidden = deal !== 'unknown';
+        const udoc = deal === 'unknown' && form.elements.found.value === 'yes';
+        dialog.querySelector('[data-bd-udoc]').hidden = !udoc;
+        dialog.querySelector('[data-bd-uage]').hidden = !(udoc && (form.elements['udoc-confirm'].checked || form.elements['udoc-map'].checked));
+        const entries = dialog.querySelectorAll('.re-entry');
+        entries.forEach(el => {
+          const f = k => form.elements['e' + el.dataset.entry + '-' + k];
+          el.querySelector('[data-e-line]').hidden = !f('kind-line').checked;
+          el.querySelector('[data-e-over]').hidden = !f('kind-over').checked;
+          const doc = f('paper').value === 'yes';
+          el.querySelector('[data-e-doc]').hidden = !doc;
+          el.querySelector('[data-e-age]').hidden = !(doc && (f('doc-confirm').checked || f('doc-map').checked));
+          el.querySelector('[data-entry-del]').hidden = entries.length < 2;
+          /* 隣の名前を選択肢に写す。 */
+          el.querySelectorAll('[data-nb]').forEach(s => { s.textContent = BD_SIDE[f('side').value] || '隣'; });
+          el.querySelector('[data-e-title]').textContent = entryTitle(f('side').value);
+          /* 本当に矛盾する組み合わせだけを選べなくし、選べない理由をその下に出す：
+               目印が塀 → その塀は境界に立っているので「塀（地上）」は越境しない
+               目印が両家の塀 → 基礎も両家のもので、越境にならない
+               目印が片方の塀で「塀の基礎」→ 基礎の持ち主は塀と同じ（固定）
+               越境に「塀」→ 越えている塀は基礎も一緒に越えている（「塀の基礎」は要らない）。
+                             その塀は境界に合わせて建っていないので、目印に「塀」は選べない
+             すでに選んでいた答えを外したときは、外したことも言う（黙って消さない）。 */
+          const opt = (k, v) => el.querySelector('input[name="e' + el.dataset.entry + '-' + k + '"][value="' + v + '"]');
+          const ow = k => f('ow-' + k);
+          const markWall = f('kind-line').checked && f('mark').value === 'wall';
+          const owner = f('wallOwner').value;
+          el.querySelector('[data-e-wall]').hidden = !markWall;
+          const dropped = [];
+          const lock = (input, off) => {
+            if (off && input.checked) { input.checked = false; dropped.push(input.closest('.re-opt').querySelector('b').textContent); }
+            input.disabled = off;
+          };
+          lock(ow('wall'), markWall);
+          lock(ow('footing'), (markWall && owner === 'both') || ow('wall').checked);
+          const overOn = f('kind-over').checked;
+          const footingFixed = markWall && owner !== 'both' && overOn && ow('footing').checked;
+          if (footingFixed) opt('oo-footing', owner).checked = true;
+          opt('oo-footing', owner === 'ours' ? 'theirs' : 'ours').disabled = footingFixed;
+          const overWall = overOn && ow('wall').checked;
+          if (overWall && opt('mark', 'wall').checked) opt('mark', 'none').checked = true;
+          opt('mark', 'wall').disabled = overWall;
+          el.querySelectorAll('[data-e-own]').forEach(d => { d.hidden = !ow(d.dataset.eOwn).checked; });
+          const why = (k, text) => { const w = el.querySelector('[data-e-why="' + k + '"]'); w.hidden = !text; w.textContent = text || ''; };
+          why('over', (dropped.length ? '「' + dropped.join('」「') + '」の選択を外しました。' : '') +
+            (markWall ? owner === 'both' ? '目印にした両家の塀は境界の上に立っているので、塀も基礎も越境になりません。'
+              : '目印にした塀は境界に揃えて立っているので、塀そのものは越境になりません。' : '') +
+            (overWall ? '越えている塀は、基礎も一緒に越えています。' : ''));
+          why('owner', footingFixed ? '目印にした塀の基礎なので、持ち主は塀と同じです。' : '');
+          why('mark', overWall ? '越境している塀は境界に合わせて建っていないので、目印にはなりません。' : '');
+        });
+        dialog.querySelector('[data-entry-add]').hidden = entries.length >= 4;
+      }
       const fields = dialog.querySelector('[data-matter-details]');
       if (fields) fields.hidden = form.elements.find.value === 'no';
       const docFields = dialog.querySelector('.re-doc-fields');
@@ -200,13 +339,42 @@
       }
     }
     dialog.querySelector('form').onchange = conditionals;
+    /* 境界：隣を足す・外す。 */
+    dialog.querySelector('form').onclick = ev => {
+      const add = ev.target.closest('[data-entry-add]'), del = ev.target.closest('[data-entry-del]');
+      if (add) { dialog.querySelector('[data-entries]').insertAdjacentHTML('beforeend', bdEntry(bdCount++, {})); conditionals();
+        dialog.querySelector('.re-entry:last-child').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      if (del) {
+        const entry = del.closest('.re-entry'), box = entry.querySelector('[data-entry-confirm]');
+        entry.querySelector('[data-entry-ask]').textContent = entry.querySelector('[data-e-title]').textContent + 'を外しますか？この家について入力した内容も消えます。';
+        box.hidden = false; box.querySelector('[data-entry-no]').focus();
+      }
+      const yes = ev.target.closest('[data-entry-yes]'), no = ev.target.closest('[data-entry-no]');
+      if (no) { const entry = no.closest('.re-entry'); entry.querySelector('[data-entry-confirm]').hidden = true; entry.querySelector('[data-entry-del]').focus(); }
+      if (yes) { yes.closest('.re-entry').remove(); conditionals(); dialog.querySelector('[data-entry-add]').focus(); }
+    };
     dialog.querySelector('form').oninput = e => { if (e.target.name === 'takerName') conditionals(); };
     conditionals();
     initial = JSON.stringify(formData());
     dialog.querySelector('form').onsubmit = e => {
       e.preventDefault();
       const values = formData();
-      if (identity.type === 'matter' && values.paper !== 'あり') { delete values.docSt; delete values.docPlace; }
+      if (identity.type === 'matter' && identity.key === 'boundary') {
+        values.entries = Array.from(dialog.querySelectorAll('.re-entry'), el => {
+          const v = k => values['e' + el.dataset.entry + '-' + k];
+          return { side: v('side') || '', who: v('who') || '', kinds: ['line', 'over'].filter(k => v('kind-' + k)),
+            mark: v('mark'), wallOwner: v('wallOwner'), paper: v('paper'),
+            overs: BD_OVER.filter(([k]) => v('ow-' + k)).map(([k]) => ({ what: k, owner: v('oo-' + k) })),
+            docKinds: ['confirm', 'memo', 'map'].filter(k => v('doc-' + k)), docAge: v('docAge'), content: v('content') || '' };
+        });
+        values.docKinds = ['confirm', 'memo', 'map'].filter(k => values['udoc-' + k]);
+        values.docAge = values.udocAge;
+        values.paper = values.deal === 'unknown' ? values.found : '';
+        if (values.deal === 'yes' && values.entries.some(x => x.kinds.includes('over') && !x.overs.length)) {
+          dialog.querySelector('.re-error').textContent = '越境しているものを選んでください。'; return; }
+        const sides = values.entries.map(x => x.side).filter(Boolean);
+        if (values.deal === 'yes' && new Set(sides).size < sides.length) { dialog.querySelector('.re-error').textContent = '同じ家が2つあります。1つにまとめてください。'; return; }
+      } else if (identity.type === 'matter' && values.paper !== 'あり') { delete values.docSt; delete values.docPlace; }
       if (identity.type === 'prior') {
         values.parcels = ['land', 'bldg'].filter(k => values['parcel-' + k]);
         values.stage = values.route === 'split' ? values['stage-split'] : values.route === 'unknown' ? 'none' : values['stage-once'];

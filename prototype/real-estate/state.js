@@ -147,15 +147,9 @@
      正本 §9 に従い、何を確認すべきかの問いは SeiZen 側が持つ。
      利用者は問いに答えるだけでよく、論点を自分で思いつく必要がない。 */
   const MATTERS = {
-    boundary: {
-      label: '境界・越境', icon: 'bound',
-      ask: '境界に不明・曖昧なところはありませんか。塀・建物・屋根' +
-           'などの越境はありませんか。',
-      why: '確定していないと、売却・建て替えのときに隣家との協議から' +
-           '始めることになります。越境は口約束で済ませていることが' +
-           '多く、代が変わると「聞いていない」になります。',
-      /* 「あり」のとき確認する詳細（項目設計 §5-A） */
-      detail: ['何があるか', '相手', '取り決め', '書面の有無'] },
+    /* 境界は答えだけを持つ（2026-09-24）。問い・文は editor.js と
+       render.js の boundaryBody、状態は boundaryStatus。 */
+    boundary: { label: '境界・越境', icon: 'bound' },
     road: {
       label: '私道・通行・配管', icon: 'road',
       ask: '私道が関係しますか。他人の土地を通行している・させている、' +
@@ -266,13 +260,10 @@
          以前あった未登記・名義・取り決めの行は、独立項目をやめて
          それぞれ C の結果・2 権利関係・各詳細の中へ移した。      */
       matters: {
-        boundary: { find: 'yes', st: 'action', reach: 'onlyself',
-          uiStatus: 'action',
-          memo: '西側の境界は、隣家と口頭で「ブロック塀の中心」と' +
-                '決めたまま。境界標なし。',
-          detail: { what: '境界標がなく、位置が口約束のまま',
-                    who: '西隣の◇◇さん', deal: '口頭のみ',
-                    paper: 'なし', state: '未解決' } },
+        /* 境界は答えだけを持つ（boundaryStatus の注記を参照）。 */
+        boundary: { deal: 'yes', reach: 'onlyself', entries: [
+          { side: 'left', who: '◇◇さん', kinds: ['line'], mark: 'wall', wallOwner: 'both', paper: 'no',
+            content: '塀を直すときの費用は、半分ずつ出す。' }] },
         road:     { find: 'no', st: 'done', reach: 'public',
           uiStatus: 'none',
           memo: '前面道路は市道。私道持分なし。通行・配管について隣地との個別の取り決めなし。',
@@ -349,9 +340,7 @@
       ],
       loan: { has: false, gteeStatus: 'none', st: 'none', reach: 'public', memo: '完済済み。' },
       matters: {
-        boundary: { find: 'unasked', st: 'todo', reach: 'onlyself',
-          uiStatus: 'ask',
-          memo: '西側の境界について、書類だけでは経緯が分からない。', detail: null },
+        boundary: { deal: 'unasked', entries: [], reach: 'onlyself' },
         road:     { find: 'unknown', st: 'todo', reach: 'onlyself',
           uiStatus: 'check',
           memo: '前面道路は私道。持分と、給排水管の経路が確認できていない。',
@@ -409,7 +398,11 @@
     Object.values(p.rights).forEach(r => { if (r && r.owner === '本人') r.owner = WHO; });
     if (p.loan && typeof p.loan.debtor === 'string') p.loan.debtor = p.loan.debtor.replace(/^本人/, WHO);
 
-    ['boundary', 'road', 'changed'].forEach(k => {
+    if (p.matters.boundary) {
+      p.matters.boundary = migrateBoundary(p.matters.boundary);
+      p.matters.boundary.st = stOf(boundaryStatus(p.matters.boundary).status);
+    }
+    ['road', 'changed'].forEach(k => {
       if (p.matters[k]) {
         const status = inferredMatterStatus(k, p.matters[k]);
         p.matters[k].uiStatus = status;
@@ -472,6 +465,106 @@
     if (complete.length) return { ...base, remains: 'yes', parcels: complete, stage: 'registered' };
     if (pr.status === 'none' || pr.status === 'problem') return { ...base, remains: 'no', parcels: [], stage: 'none' };
     return { ...base, remains: 'unknown', parcels: [], stage: 'none' };
+  }
+
+  /* ■ 境界・越境の取り決め（2026-09-24 作り直し）
+     答えだけを持ち、状態・文は答えから出す（前の代の相続登記と同じ考え方）。
+       entries … 隣ごとの取り決め（隣1つにつき1件。以下の side〜content を持つ）
+       deal    … 隣と境界や塀・越境について決めたことがあるか
+                 yes／no／unasked（まだ聞いていない）／unknown（父も覚えていない）
+       kinds   … 決めたこと line 境界の位置／over 越境しているもの
+       overs   … 越境しているもの。[{ what, owner }] の並び（隣1つに複数ありうる ――
+                 隣の木の枝と自宅の配管、など。持ち主もものごとに違う）。
+                 what  wall 塀（地上）／footing 塀の基礎（地中）／roof 屋根・ひさし／
+                       tree 木の枝／pipe 配管／other
+                 owner ours 自宅／theirs 隣。越境は2軒の間でしか起きないので、
+                       持ち主が決まれば向きも決まる（向きは聞かない）
+                 （以前の over／overWhat の1件は、読み込み時に overs へ移す）
+       side    … どの隣か。玄関を出て right 右隣／left 左隣／back 裏（玄関の反対側）。
+                 方角では聞かない ―― 家族は実家の方角を即答できず、父も「裏の
+                 山田さん」「右隣」で言う。以前の n・e・s・w は位置不明（''）へ。
+                 who … 相手の名前（任意）
+       paper   … 書面にしてあるか yes 覚書・境界確認書がある／no 口頭のまま／unknown。
+                 父が覚えていないときは、境界確認書・測量図が yes 見つかった／
+                 no 探したが無い／unknown まだ探していない
+       mark    … 境界の位置の目印 wall 塀／stake 境界標／none 目印はない
+       wallOwner … 目印の塀の持ち主 both 両家（塀の中心が境界）／ours 自宅（隣側の面が境界）／
+                 theirs 隣（自宅側の面が境界）。位置ではなく持ち主で聞く
+                 （以前の center／ourWall／theirWall は読み込み時に読み替える）
+       docKinds … 書類があるとき、その種類 confirm 境界確認書／memo 覚書／map 測量図
+       docAge  … 図面の日付 after 2005年3月以降（座標入り）／before／unknown
+       content … 決めた内容（父しか知らない、構造にできない中身。唯一の自由記入）
+     今のうちに当たるのは、書面にない取り決めがあるときだけ ―― 何を決めたかを
+     知っているのは当事者だけだから。境界が曖昧なこと自体は、家族が後から
+     測量できるので今のうちではない（地籍調査53%／筆界特定0.18%：下エリア調査 §1-4）。 */
+  const BD_SIDES = ['right', 'left', 'back'];
+  const BD_OVER = ['roof', 'tree', 'pipe', 'wall', 'footing', 'other'];
+  /* 越境しているものの並びを整える。1件だけ持っていた版（over／overWhat）も読む。 */
+  function toOvers(x) {
+    const list = Array.isArray(x.overs) ? x.overs : x.overWhat ? [{ what: x.overWhat, owner: x.over }] : [];
+    const seen = new Set();
+    return list.filter(o => o && BD_OVER.includes(o.what) && !seen.has(o.what) && seen.add(o.what))
+      .map(o => ({ what: o.what, owner: o.owner === 'theirs' ? 'theirs' : 'ours' }));
+  }
+  function boundaryStatus(b) {
+    b = b || {};
+    if (b.deal === 'no') return { status: 'none', label: '' };
+    /* 父が覚えていないときは、書類を探すところまで進める（paper を
+       「見つかった／探したが無い／まだ探していない」として読む）。 */
+    if (b.deal === 'unknown') return b.paper === 'yes' ? { status: 'done', label: '書類あり' }
+      : b.paper === 'no' ? { status: 'none', label: '記録なし' } : { status: 'unknown', label: '' };
+    if (b.deal !== 'yes') return { status: 'unknown', label: '' };
+    /* 隣ごとの取り決め。どれか1つでも口頭のまま・書面が分からなければ対応が必要。 */
+    const es = b.entries || [];
+    if (!es.length) return { status: 'unknown', label: '' };
+    if (es.every(e => e.paper === 'yes')) return { status: 'done', label: '書面あり' };
+    return { status: 'action', label: '' };
+  }
+  function stOf(status) { return status === 'unknown' ? 'todo' : status; }
+  /* 旧版を答えへ読み替える。
+       ・find／detail／memo の版 … 1件の取り決めとして entries へ
+       ・取り決めを1件だけ持っていた版（kinds／sides／mark… が直下）… 最初の辺の1件へ
+         （隣を複数選んでいても、中身は1件ぶんしかない。辺ごとに複製しない） */
+  function migrateBoundary(m) {
+    const entry = x => ({
+      side: x.side || '', who: x.who || '', kinds: x.kinds || [],
+      mark: x.mark || ((x.kinds || []).includes('line') ? (/中心/.test(x.content || '') ? 'center' : /境界標|杭|鋲/.test(x.content || '') ? 'stake' : 'none') : ''),
+      wallOwner: x.wallOwner || '',
+      overs: toOvers(x), paper: x.paper || 'unknown',
+      docKinds: x.docKinds || [], docAge: x.docAge || '', content: x.content || ''
+    });
+    /* 目印の旧値（位置で持っていた版）を、塀＋持ち主へ。 */
+    const OLD_MARK = { center: 'both', ourWall: 'ours', theirWall: 'theirs' };
+    const remark = e => { if (OLD_MARK[e.mark]) { e.wallOwner = OLD_MARK[e.mark]; e.mark = 'wall'; }
+      if (!BD_SIDES.includes(e.side)) e.side = '';
+      e.overs = toOvers(e); delete e.over; delete e.overWhat; return e; };
+    if (m.deal && Array.isArray(m.entries)) { m.entries.forEach(remark); return m; }
+    if (m.deal) {
+      const out = { deal: m.deal, reach: m.reach || 'onlyself', entries: [] };
+      if (m.deal === 'yes') out.entries = [remark(entry(Object.assign({}, m, { side: (m.sides || [])[0] || '' })))];
+      if (m.deal === 'unknown') { out.paper = m.paper; out.docKinds = m.docKinds || []; out.docAge = m.docAge || ''; }
+      return out;
+    }
+    const d = m.detail || {};
+    const deal = m.find === 'yes' ? 'yes' : m.find === 'no' ? 'no' : 'unasked';
+    return { deal, reach: m.reach || 'onlyself', entries: deal !== 'yes' ? [] : [remark(entry({
+      side: '', who: String(d.who || '').replace(/^[東西南北]隣の?/, ''),
+      kinds: [/越境/.test((d.what || '') + (m.memo || '')) ? 'over' : 'line'],
+      paper: d.paper === 'あり' ? 'yes' : d.paper === 'なし' ? 'no' : 'unknown',
+      content: m.memo || '' }))] };
+  }
+  /* 書面が「ある」と答えた事情だけ、書類のありかに所在が立つ（下エリア §10-3）。 */
+  function matterPaper(p, key) {
+    const m = (p.matters || {})[key];
+    if (!m) return false;
+    if (key === 'boundary') return m.deal === 'unknown' ? m.paper === 'yes' : m.deal === 'yes' && (m.entries || []).some(e => e.paper === 'yes');
+    return m.find !== 'no' && !!m.detail && m.detail.paper === 'あり';
+  }
+  /* 今のうちの行の状態。境界は答えから、ほかはまだ旧版の選んだ状態から。 */
+  function matterStatus(p, key) {
+    const m = (p.matters || {})[key] || {};
+    if (key === 'boundary') return boundaryStatus(m);
+    return { status: NOW_STATUS[m.uiStatus] ? m.uiStatus : matterProgress(p, key).status, label: '' };
   }
 
   let props = (loadSaved() || JSON.parse(JSON.stringify(SEED))).map(normalize);
@@ -602,7 +695,22 @@
     const assign = (target, fields) => fields.forEach(k => {
       if (Object.prototype.hasOwnProperty.call(values, k)) target[k] = String(values[k]).trim();
     });
-    if (type === 'matter' && MATTERS[key]) {
+    if (type === 'matter' && key === 'boundary') {
+      const m = p.matters.boundary || (p.matters.boundary = { reach: 'onlyself' });
+      /* 父が覚えていない道の答え（書類を探した結果）は直下、隣ごとの取り決めは entries。 */
+      assign(m, ['deal', 'paper', 'docAge']);
+      const docs = v => (v || []).filter(k => ['confirm', 'memo', 'map'].includes(k));
+      m.docKinds = docs(values.docKinds);
+      if (Array.isArray(values.entries)) m.entries = values.entries.map(e => ({
+        side: BD_SIDES.includes(e.side) ? e.side : '', who: String(e.who || '').trim(),
+        kinds: (e.kinds || []).filter(k => ['line', 'over'].includes(k)), mark: ['wall', 'stake'].includes(e.mark) ? e.mark : 'none',
+        wallOwner: ['ours', 'theirs'].includes(e.wallOwner) ? e.wallOwner : 'both',
+        overs: toOvers(e),
+        paper: ['yes', 'no'].includes(e.paper) ? e.paper : 'unknown',
+        docKinds: docs(e.docKinds), docAge: e.docAge || 'unknown', content: String(e.content || '').trim() }));
+      m.st = stOf(boundaryStatus(m).status);
+      m.updatedAt = new Date().toISOString();
+    } else if (type === 'matter' && MATTERS[key]) {
       const m = p.matters[key] || (p.matters[key] = {});
       assign(m, ['find', 'interview', 'memo', 'source', 'resolution', 'next', 'assignee', 'timing']);
       m.detail = m.detail || {};
@@ -679,7 +787,11 @@
       assign(d, ['st', 'place', 'note']);
       p.docs.at[key] = d;
       const m = p.matters[key];
-      if (m) {
+      if (m && key === 'boundary') {
+        /* 所在が分かった＝見つかった、と読めるのは父が覚えていない道だけ。
+           隣ごとの取り決めは、どの隣の書面か分からないので触らない。 */
+        if (d.st === 'have' && m.deal === 'unknown') { m.paper = 'yes'; m.st = stOf(boundaryStatus(m).status); }
+      } else if (m) {
         m.detail = m.detail || {};
         if (d.st === 'have') m.detail.paper = 'あり';
         // 「見つからない」は「書面なし」と同義ではない。
@@ -754,8 +866,8 @@
       else if (d.from && d.from.indexOf('deal:') === 0)
         need = (p.deals || []).some(x => x.kind === d.from.slice(5));
       else if (d.from && d.from.indexOf('matter:') === 0) {
-        const m = (p.matters || {})[d.from.slice(7)];
-        need = !!m && (m.find === 'yes' || m.find === 'unknown');
+        const key = d.from.slice(7), m = (p.matters || {})[key];
+        need = key === 'boundary' ? matterPaper(p, key) : !!m && (m.find === 'yes' || m.find === 'unknown');
       }
       if (need) out.push({ kind: k, label: d.label,
         st: (p.docs && p.docs.have && p.docs.have[k]) || 'todo' });
@@ -769,7 +881,7 @@
     find: id => props.filter(p => p.id === id)[0] || null,
     gauge,
     neededDocs,
-    updateRecord, matterProgress, priorStatus, priorPending, priorOwner, priorParty, priorRoute, priorPartyDone,
+    updateRecord, matterProgress, matterStatus, matterPaper, priorStatus, priorPending, priorOwner, priorParty, priorRoute, priorPartyDone,
     save
   };
 })(window);
