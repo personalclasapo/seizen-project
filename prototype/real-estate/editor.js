@@ -29,7 +29,6 @@
   const titles = { boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
   const questions = {
     boundary: '隣家と境界や塀について、話したこと・決めたことはありますか？',
-    road: '通り道や配管について、誰と、どのような取り決めをしていますか？',
     changed: '増築や取り壊しなどをしたのは、いつ、どこに頼んだ工事ですか？'
   };
   /* 状態＝今のうちのバッジと同じ4つ。バッジを押して開いたポップアップの
@@ -92,6 +91,43 @@
       question('ほかに決めたこと', '<textarea class="re-q-in" rows="2" name="' + n('content') + '">' + esc(e.content) + '</textarea>',
         '上で選んだこと以外に。例：越えている枝は、毎年秋に隣が切る。') + '</div>');
   }
+  /* 私道・通行・配管：相手の土地1件ぶん。名前は l<番号>-…（足した順）。
+     境界の「隣との取り決め」は写さない ―― 聞くのは、相手の土地・何に使うか・
+     誰のための通行や管か（向き）・私道の持分・取り決め（state.js の roadStatus）。
+     向きは使い方ごとに聞く（同じ相手との間に両向きがありうる）。前の私道では
+     聞かない（私道はこの家が使う側）。 */
+  function rdLink(i, l) {
+    const n = k => 'l' + i + '-' + k;
+    const uses = l.uses || [];
+    const byOf = k => (uses.find(u => u.what === k) || {}).by || 'ours';
+    const P = rdHome;
+    const nb = html => html.replace(/〈相手〉/g, '<span data-rd>相手</span>');
+    return nb('<div class="re-entry" data-link="' + i + '"><div class="re-entry-h"><b data-l-title>' + esc(RD_LAND[l.land] || '相手の土地') + '</b>' +
+      '<button type="button" class="re-entry-del" data-entry-del>この土地を外す</button></div>' +
+      '<div class="re-entry-confirm" role="alertdialog" aria-live="polite" data-entry-confirm hidden><p data-entry-ask></p>' +
+        '<button type="button" data-entry-yes>外す</button><button type="button" data-entry-no>やめる</button></div>' +
+      question('相手はどの土地ですか', choice(n('land'), l.land || '', RD_LAND_OPTS) +
+        '<div class="re-q-sub"><input class="re-q-in" name="' + n('who') + '" value="' + esc(l.who) + '" placeholder="持ち主の名前・どこの土地か（分かれば）" autocomplete="off" aria-label="持ち主の名前"></div>',
+        '隣は、玄関を出て見た向きで。離れた土地や水路の向こうの土地は「ほかの土地」に。') +
+      question('何に使っていますか', choice(n('use-'), uses.map(u => u.what), RD_USE_OPTS, 'pill', 'checkbox') +
+        /* 向き：私道でなければ、選んだ使い方ごとに誰のためかを聞く。 */
+        RD_USE_OPTS.map(([k]) => '<div class="re-sub" data-l-by="' + k + '"><p class="re-sub-t">' + (k === 'pass' ? '誰が通りますか' : 'その' + RD_PIPE_NAME[k] + 'の管は誰のものですか') + '</p>' +
+          choice(n('by-' + k), byOf(k), k === 'pass'
+            ? [['ours', P + 'の人', '〈相手〉の土地を通る'], ['theirs', '〈相手〉の人', P + 'の土地を通る']]
+            : [['ours', P + 'の管', '〈相手〉の土地の下を通っている'], ['theirs', '〈相手〉の管', P + 'の土地の下を通っている']], 'row') + '</div>').join(''),
+        '当てはまるものをすべて。') +
+      question(P + 'も、この私道の持分を持っていますか', choice(n('share'), l.share || 'unknown', [['yes', '持っている'], ['no', '持っていない'], ['unknown', '分からない']]),
+        '登記事項証明書で分かります（私道の地番で取ります）。', ' data-l-road') +
+      question('取り決めはありますか', choice(n('pact'), l.pact || 'unknown', [
+        ['paper', '承諾書・覚書がある'], ['oral', '口頭で決めた'], ['none', '特に決めていない'], ['unknown', '分からない']], 'row')) +
+      question('決めた内容', '<textarea class="re-q-in" rows="2" name="' + n('content') + '">' + esc(l.content) + '</textarea>',
+        '例：私道の舗装を直す費用は、4軒で等分する。建て替えるときは、隣の管を移す費用を隣が持つ。', ' data-l-content') + '</div>');
+  }
+  const RD_LAND = { road: '前の私道', right: '右隣', left: '左隣', back: '裏の家', other: 'ほかの土地' };
+  const RD_LAND_OPTS = [['road', '前の私道'], ['right', '右隣'], ['left', '左隣'], ['back', '裏の家'], ['other', 'ほかの土地']];
+  const RD_USE_OPTS = [['pass', '通る（出入りの道）'], ['water', '水道の管'], ['sewer', '下水の管'], ['gas', 'ガスの管']];
+  const RD_PIPE_NAME = { water: '水道', sewer: '下水', gas: 'ガス' };
+  let rdHome = '';
   const BD_SIDE = { right: '右隣', left: '左隣', back: '裏の家' };
   const BD_OVER = [['roof', '屋根・ひさし'], ['tree', '木の枝'], ['pipe', '配管'], ['wall', '塀'], ['footing', '塀の基礎（地中）'], ['other', 'その他']];
   const BD_THING = { roof: 'その屋根・ひさし', tree: 'その木', pipe: 'その配管', wall: 'その塀', footing: 'その塀の基礎', other: 'その他のもの' };
@@ -147,6 +183,20 @@
           ['map', '測量図', '地積測量図・確定測量図など']], 'row multi', 'checkbox'), '当てはまるものをすべて。', ' data-bd-udoc') +
         question('図面の作成日', choice('udocAge', b.docAge || 'unknown', [['after', '2005年3月以降'], ['before', 'それより前'], ['unknown', '分からない']]),
           '2005年3月以降の図面は、境界点の座標が入っています。', ' data-bd-uage'));
+    } else if (type === 'matter' && key === 'road') {
+      /* 私道・通行・配管の取り決め。答えは選ぶだけ（持ち主の名前と、決めた内容を
+         除く）。状態・次にすること・くわしくは答えから出す（state.js の roadStatus）。
+         使い方は相手の土地ごとに別なので、相手1つを1ブロックにして足せるようにする。 */
+      const r = p.matters.road || {};
+      const ls = (r.links || []).length ? r.links : [{}];
+      bdCount = ls.length; rdHome = p.name;
+      title = titles.road; lead = '';
+      body = section('通る道と管',
+        question(p.name + 'が他人の土地を使っていること、他人が' + p.name + 'の土地を使っていることはありますか', choice('has', r.has || 'unasked',
+          [['yes', 'ある'], ['no', 'ない'], ['unasked', 'まだ聞いていない'], ['unknown', WHO + 'も分からない']]),
+          '前の道が私道なら「ある」です（私道は他人の土地）。水道・下水・ガスの管が隣の土地の下を通っている、隣の管がこの家の土地の下を通っている、なども。') +
+        '<div data-rd-yes><div data-entries>' + ls.map((x, i) => rdLink(i, x)).join('') + '</div>' +
+          '<button type="button" class="record-add re-entry-add" data-entry-add><span aria-hidden="true">＋</span>別の土地を足す</button></div>');
     } else if (type === 'matter') {
       const m = p.matters[key] || {}, d = m.detail || {}, doc = p.docs.at[key] || {};
       title = titles[key]; lead = questions[key];
@@ -313,6 +363,23 @@
         });
         dialog.querySelector('[data-entry-add]').hidden = entries.length >= 4;
       }
+      if (form.elements.has) {
+        dialog.querySelector('[data-rd-yes]').hidden = form.elements.has.value !== 'yes';
+        const links = dialog.querySelectorAll('[data-link]');
+        links.forEach(el => {
+          const f = k => form.elements['l' + el.dataset.link + '-' + k];
+          const land = f('land').value, road = land === 'road';
+          el.querySelector('[data-l-title]').textContent = RD_LAND[land] || '相手の土地';
+          /* 選択肢の〈相手〉に、選んだ相手の呼び名を写す。 */
+          el.querySelectorAll('[data-rd]').forEach(s => { s.textContent = land === 'other' ? 'ほかの土地' : RD_LAND[land] || '相手'; });
+          /* 前の私道は、この家が使う側だけ。向きは聞かず、持分を聞く。 */
+          el.querySelectorAll('[data-l-by]').forEach(d => { d.hidden = road || !f('use-' + d.dataset.lBy).checked; });
+          el.querySelector('[data-l-road]').hidden = !road;
+          el.querySelector('[data-l-content]').hidden = !['paper', 'oral'].includes(f('pact').value);
+          el.querySelector('[data-entry-del]').hidden = links.length < 2;
+        });
+        dialog.querySelector('[data-entry-add]').hidden = links.length >= 5;
+      }
       const fields = dialog.querySelector('[data-matter-details]');
       if (fields) fields.hidden = form.elements.find.value === 'no';
       const docFields = dialog.querySelector('.re-doc-fields');
@@ -342,11 +409,14 @@
     /* 境界：隣を足す・外す。 */
     dialog.querySelector('form').onclick = ev => {
       const add = ev.target.closest('[data-entry-add]'), del = ev.target.closest('[data-entry-del]');
-      if (add) { dialog.querySelector('[data-entries]').insertAdjacentHTML('beforeend', bdEntry(bdCount++, {})); conditionals();
+      const road = identity.key === 'road';
+      if (add) { dialog.querySelector('[data-entries]').insertAdjacentHTML('beforeend', road ? rdLink(bdCount++, {}) : bdEntry(bdCount++, {})); conditionals();
         dialog.querySelector('.re-entry:last-child').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
       if (del) {
         const entry = del.closest('.re-entry'), box = entry.querySelector('[data-entry-confirm]');
-        entry.querySelector('[data-entry-ask]').textContent = entry.querySelector('[data-e-title]').textContent + 'を外しますか？この家について入力した内容も消えます。';
+        entry.querySelector('[data-entry-ask]').textContent = road
+          ? entry.querySelector('[data-l-title]').textContent + 'を外しますか？この土地について入力した内容も消えます。'
+          : entry.querySelector('[data-e-title]').textContent + 'を外しますか？この家について入力した内容も消えます。';
         box.hidden = false; box.querySelector('[data-entry-no]').focus();
       }
       const yes = ev.target.closest('[data-entry-yes]'), no = ev.target.closest('[data-entry-no]');
@@ -374,6 +444,23 @@
           dialog.querySelector('.re-error').textContent = '越境しているものを選んでください。'; return; }
         const sides = values.entries.map(x => x.side).filter(Boolean);
         if (values.deal === 'yes' && new Set(sides).size < sides.length) { dialog.querySelector('.re-error').textContent = '同じ家が2つあります。1つにまとめてください。'; return; }
+      } else if (identity.type === 'matter' && identity.key === 'road') {
+        values.links = Array.from(dialog.querySelectorAll('[data-link]'), el => {
+          const v = k => values['l' + el.dataset.link + '-' + k];
+          const land = v('land') || '';
+          return { land, who: v('who') || '', share: v('share'), pact: v('pact'), content: v('content') || '',
+            uses: RD_USE_OPTS.filter(([k]) => v('use-' + k)).map(([k]) => ({ what: k, by: land === 'road' ? 'ours' : v('by-' + k) })) };
+        });
+        Object.keys(values).filter(k => /^l\d+-/.test(k)).forEach(k => delete values[k]);
+        const error = dialog.querySelector('.re-error');
+        /* 「ある」以外では、書きかけの空のブロックは残さない。 */
+        if (values.has !== 'yes') values.links = values.links.filter(l => l.land && l.uses.length);
+        if (values.has === 'yes') {
+          if (values.links.some(l => !l.land)) { error.textContent = '相手の土地を選んでください。'; return; }
+          if (values.links.some(l => !l.uses.length)) { error.textContent = '何に使っているかを選んでください。'; return; }
+          const lands = values.links.map(l => l.land).filter(l => l !== 'other');
+          if (new Set(lands).size < lands.length) { error.textContent = '同じ土地が2つあります。1つにまとめてください。'; return; }
+        }
       } else if (identity.type === 'matter' && values.paper !== 'あり') { delete values.docSt; delete values.docPlace; }
       if (identity.type === 'prior') {
         values.parcels = ['land', 'bldg'].filter(k => values['parcel-' + k]);

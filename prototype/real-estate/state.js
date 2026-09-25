@@ -150,13 +150,8 @@
     /* 境界は答えだけを持つ（2026-09-24）。問い・文は editor.js と
        render.js の boundaryBody、状態は boundaryStatus。 */
     boundary: { label: '境界・越境', icon: 'bound' },
-    road: {
-      label: '私道・通行・配管', icon: 'road',
-      ask: '私道が関係しますか。他人の土地を通行している・させている、' +
-           '水道やガスが他人の土地を通っていませんか。',
-      why: '私道だと、水道・ガスの工事や再建築に承諾が要ります。' +
-           '誰の承諾が要るかは' + WHO + 'しか知らないことが多い項目です。',
-      detail: ['何についての関係か', '相手', '取り決め', '書面の有無'] },
+    /* 私道・通行・配管も答えだけを持つ（2026-09-24）。roadStatus の注記を参照。 */
+    road: { label: '私道・通行・配管', icon: 'road' },
     changed: {
       label: '建物の変更・登記', icon: 'build',
       ask: '増築・改築、取り壊し、物置などの新築をしたことは' +
@@ -264,10 +259,8 @@
         boundary: { deal: 'yes', reach: 'onlyself', entries: [
           { side: 'left', who: '◇◇さん', kinds: ['line'], mark: 'wall', wallOwner: 'both', paper: 'no',
             content: '塀を直すときの費用は、半分ずつ出す。' }] },
-        road:     { find: 'no', st: 'done', reach: 'public',
-          uiStatus: 'none',
-          memo: '前面道路は市道。私道持分なし。通行・配管について隣地との個別の取り決めなし。',
-          detail: null },
+        /* 前面道路は市道。他人の土地を通る・使わせていることはない。 */
+        road:     { has: 'no', links: [], reach: 'onlyself' },
         changed:  { find: 'yes', st: 'action', reach: 'onlyself',
           uiStatus: 'action',
           memo: '北側に約6畳の増築あり（1998年ごろ）。登記には未反映。' +
@@ -341,12 +334,12 @@
       loan: { has: false, gteeStatus: 'none', st: 'none', reach: 'public', memo: '完済済み。' },
       matters: {
         boundary: { deal: 'unasked', entries: [], reach: 'onlyself' },
-        road:     { find: 'unknown', st: 'todo', reach: 'onlyself',
-          uiStatus: 'check',
-          memo: '前面道路は私道。持分と、給排水管の経路が確認できていない。',
-          detail: { what: '前面道路が私道。持分の有無が不明',
-                    who: '近隣3軒（未確認）', deal: '不明',
-                    paper: '不明', state: '未解決' } },
+        /* 前面は私道（持分は未確認）。舗装の費用の分け方は口頭のまま。
+           裏の家の下水の管が、この家の土地の下を通っている。 */
+        road:     { has: 'yes', reach: 'onlyself', links: [
+          { land: 'road', who: '向かいの3軒', uses: [{ what: 'pass', by: 'ours' }, { what: 'water', by: 'ours' }, { what: 'sewer', by: 'ours' }],
+            share: 'unknown', pact: 'oral', content: '私道の舗装を直すときは、4軒で費用を等分する。' },
+          { land: 'back', who: '△△さん', uses: [{ what: 'sewer', by: 'theirs' }], share: '', pact: 'none', content: '' }] },
         changed:  { find: 'unasked', st: 'todo', reach: 'onlyself',
           uiStatus: 'ask',
           memo: '北側に増築部分あり。時期・施工者・登記状況が分からない。', detail: null }
@@ -402,7 +395,11 @@
       p.matters.boundary = migrateBoundary(p.matters.boundary);
       p.matters.boundary.st = stOf(boundaryStatus(p.matters.boundary).status);
     }
-    ['road', 'changed'].forEach(k => {
+    if (p.matters.road) {
+      p.matters.road = migrateRoad(p.matters.road);
+      p.matters.road.st = stOf(roadStatus(p.matters.road).status);
+    }
+    ['changed'].forEach(k => {
       if (p.matters[k]) {
         const status = inferredMatterStatus(k, p.matters[k]);
         p.matters[k].uiStatus = status;
@@ -417,11 +414,6 @@
         p.matters[k].st = status === 'action' ? 'action'
           : status === 'none' ? 'none'
           : status === 'done' ? 'done' : 'todo';
-        if (k === 'road' && status === 'none' &&
-            p.matters[k].memo === '前面道路は市道。') {
-          p.matters[k].memo = '前面道路は市道。私道持分なし。' +
-            '通行・配管について隣地との個別の取り決めなし。';
-        }
       }
     });
     p.priorInheritance = migratePrior(p);
@@ -553,17 +545,80 @@
       paper: d.paper === 'あり' ? 'yes' : d.paper === 'なし' ? 'no' : 'unknown',
       content: m.memo || '' }))] };
   }
+  /* ■ 私道・通行・配管の取り決め（2026-09-24 作り直し。設計 §8）
+     境界の持ち方は写さない。境界は2軒の間の1本の線の上の合意だが、こちらは
+     「ある土地のために別の土地を通る・管を通す」という向きのある依存で、相手は
+     隣とは限らない（前の私道の持ち主、離れた土地）。
+       has   … この家が他人の土地を使っている・使わせていることがあるか
+               yes／no／unasked（まだ聞いていない）／unknown（父も分からない）
+       links … 相手の土地ごとに1件。
+         land  road 前の私道／right 右隣／left 左隣／back 裏の家／other ほかの土地
+               （隣は境界と同じく、玄関を出て見た向き）
+         who   持ち主の名前・どこの土地か（任意）
+         uses  何に使っているか [{ what, by }]
+               what pass 通る／water 水道の管／sewer 下水の管／gas ガスの管
+               by   ours この家のための通行・管（相手の土地を使っている）／
+                    theirs 相手のための通行・管（この家の土地を使わせている）。
+                    同じ相手との間に両向きがありうるので、向きは使い方ごとに持つ。
+                    前の私道は ours だけ
+         share 前の私道のとき、この家も持分を持っているか yes／no／unknown
+         pact  取り決め paper 承諾書・覚書がある／oral 口頭で決めた／
+               none 特に決めていない／unknown 分からない
+         content 決めた内容（書面・口頭のとき。唯一の自由記入）
+     今のうちに当たるのは2つ（設計 §8-2）：書面にない取り決め（口頭・分からない）と、
+     相手の管がこの家の土地の下を通っていること（見えず、登記にも出ず、他人の管の
+     図面は家族には見られない）。後者は記録した時点で今のうちの分が済む。
+     承諾書をもらうこと自体は今のうちではない ―― 要るのは管を直す・建て替える・
+     売るときで、頼む相手はその時点の持ち主（登記で辿れる）。法律も、管を通す
+     しかないときは通知で足りる（民法213条の2、2023年4月）。 */
+  const RD_LANDS = ['road', 'right', 'left', 'back', 'other'];
+  const RD_USES = ['pass', 'water', 'sewer', 'gas'];
+  function toUses(list, land) {
+    const seen = new Set();
+    return (Array.isArray(list) ? list : []).filter(u => u && RD_USES.includes(u.what) && !seen.has(u.what) && seen.add(u.what))
+      .map(u => ({ what: u.what, by: land !== 'road' && u.by === 'theirs' ? 'theirs' : 'ours' }));
+  }
+  function roadStatus(r) {
+    r = r || {};
+    if (r.has === 'no') return { status: 'none', label: '' };
+    if (r.has !== 'yes') return { status: 'unknown', label: '' };
+    const ls = r.links || [];
+    if (!ls.length) return { status: 'unknown', label: '' };
+    if (ls.some(l => l.pact === 'oral' || l.pact === 'unknown')) return { status: 'action', label: '' };
+    if (ls.every(l => l.pact === 'paper')) return { status: 'done', label: '書面あり' };
+    return { status: 'done', label: '' };
+  }
+  /* 旧版（find／detail／memo）を答えへ読み替える。前面が私道と書いてあれば
+     前の私道の1件にする（持分・取り決めは分からないまま）。 */
+  function migrateRoad(m) {
+    if (m.has) {
+      m.links = (m.links || []).map(l => ({ land: RD_LANDS.includes(l.land) ? l.land : 'other', who: l.who || '',
+        uses: toUses(l.uses, l.land), share: l.land === 'road' ? (['yes', 'no'].includes(l.share) ? l.share : 'unknown') : '',
+        pact: ['paper', 'oral', 'none'].includes(l.pact) ? l.pact : 'unknown', content: l.content || '' }));
+      return m;
+    }
+    const d = m.detail || {}, text = (m.memo || '') + (d.what || '');
+    const out = { has: m.find === 'no' ? 'no' : 'unasked', reach: 'onlyself', links: [] };
+    if (m.find !== 'no' && /私道/.test(text)) {
+      out.has = 'yes';
+      out.links = [{ land: 'road', who: '', uses: [{ what: 'pass', by: 'ours' }], share: 'unknown',
+        pact: d.paper === 'あり' ? 'paper' : 'unknown', content: '' }];
+    }
+    return out;
+  }
   /* 書面が「ある」と答えた事情だけ、書類のありかに所在が立つ（下エリア §10-3）。 */
   function matterPaper(p, key) {
     const m = (p.matters || {})[key];
     if (!m) return false;
     if (key === 'boundary') return m.deal === 'unknown' ? m.paper === 'yes' : m.deal === 'yes' && (m.entries || []).some(e => e.paper === 'yes');
+    if (key === 'road') return m.has === 'yes' && (m.links || []).some(l => l.pact === 'paper');
     return m.find !== 'no' && !!m.detail && m.detail.paper === 'あり';
   }
-  /* 今のうちの行の状態。境界は答えから、ほかはまだ旧版の選んだ状態から。 */
+  /* 今のうちの行の状態。境界・私道は答えから、建物の変更はまだ旧版の選んだ状態から。 */
   function matterStatus(p, key) {
     const m = (p.matters || {})[key] || {};
     if (key === 'boundary') return boundaryStatus(m);
+    if (key === 'road') return roadStatus(m);
     return { status: NOW_STATUS[m.uiStatus] ? m.uiStatus : matterProgress(p, key).status, label: '' };
   }
 
@@ -710,6 +765,18 @@
         docKinds: docs(e.docKinds), docAge: e.docAge || 'unknown', content: String(e.content || '').trim() }));
       m.st = stOf(boundaryStatus(m).status);
       m.updatedAt = new Date().toISOString();
+    } else if (type === 'matter' && key === 'road') {
+      const m = p.matters.road || (p.matters.road = { reach: 'onlyself' });
+      assign(m, ['has']);
+      if (Array.isArray(values.links)) m.links = values.links.map(l => {
+        const land = RD_LANDS.includes(l.land) ? l.land : 'other';
+        return { land, who: String(l.who || '').trim(), uses: toUses(l.uses, land),
+          share: land === 'road' ? (['yes', 'no'].includes(l.share) ? l.share : 'unknown') : '',
+          pact: ['paper', 'oral', 'none'].includes(l.pact) ? l.pact : 'unknown',
+          content: ['paper', 'oral'].includes(l.pact) ? String(l.content || '').trim() : '' };
+      });
+      m.st = stOf(roadStatus(m).status);
+      m.updatedAt = new Date().toISOString();
     } else if (type === 'matter' && MATTERS[key]) {
       const m = p.matters[key] || (p.matters[key] = {});
       assign(m, ['find', 'interview', 'memo', 'source', 'resolution', 'next', 'assignee', 'timing']);
@@ -791,6 +858,8 @@
         /* 所在が分かった＝見つかった、と読めるのは父が覚えていない道だけ。
            隣ごとの取り決めは、どの隣の書面か分からないので触らない。 */
         if (d.st === 'have' && m.deal === 'unknown') { m.paper = 'yes'; m.st = stOf(boundaryStatus(m).status); }
+      } else if (m && key === 'road') {
+        /* 私道も相手ごとに書面を持つので、所在からは書き戻さない。 */
       } else if (m) {
         m.detail = m.detail || {};
         if (d.st === 'have') m.detail.paper = 'あり';
@@ -867,7 +936,7 @@
         need = (p.deals || []).some(x => x.kind === d.from.slice(5));
       else if (d.from && d.from.indexOf('matter:') === 0) {
         const key = d.from.slice(7), m = (p.matters || {})[key];
-        need = key === 'boundary' ? matterPaper(p, key) : !!m && (m.find === 'yes' || m.find === 'unknown');
+        need = key === 'boundary' || key === 'road' ? matterPaper(p, key) : !!m && (m.find === 'yes' || m.find === 'unknown');
       }
       if (need) out.push({ kind: k, label: d.label,
         st: (p.docs && p.docs.have && p.docs.have[k]) || 'todo' });

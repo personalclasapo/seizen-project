@@ -252,8 +252,11 @@
 .rail{display:flex;flex-direction:column;gap:12px}
 .rw{min-width:0;background:var(--card);border:1px solid #EEE5D6;border-radius:8px;
   padding:16px 18px 17px;box-shadow:0 1px 2px #6a51200a}
-.rh{display:grid;grid-template-columns:36px minmax(0,1fr);align-items:start;gap:12px}
-.rh .matter-icon{width:36px;height:39px}
+/* アイコンと見出し（名前・状態バッジ）は上下中央で揃える。上揃えだと、名前が
+   アイコンの上寄りに付いた（2026-09-25）。アイコンは描いた寸法（viewBox 44×48）のまま。 */
+.rh{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:12px}
+.rh .matter-icon{width:44px;height:48px;display:block}
+.rh .uh{align-items:center}
 .rh .uh-nm{font-size:14px}
 .rw-record{margin-top:12px}
 .rw-record p{margin:0;font-size:12.25px;line-height:1.85;color:#3F3B34;overflow-wrap:anywhere}
@@ -331,6 +334,8 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .bs-t{font-size:3.1px;fill:#7D7666;font-family:var(--font)}
 .bs-halo{paint-order:stroke;stroke:#fff;stroke-width:.9px;stroke-linejoin:round}
 .bd-cap{flex:1 1 170px;min-width:0}
+/* 私道・通行・配管：相手の管がこの家の土地を通っている行に添える、売る・掘るときのこと。 */
+.rd-note{display:block;margin-top:1px;font-size:10.5px;color:var(--ink3)}
 .pr-act{margin-top:14px;padding-top:12px;border-top:1px solid #EBE3D5}
 .pr-act-h{display:flex;align-items:baseline;justify-content:space-between;gap:4px 8px;flex-wrap:wrap}
 .pr-act-h>span:first-child{font-size:10.5px;font-weight:600;color:var(--ink3);letter-spacing:.04em}
@@ -521,8 +526,8 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 }
 @media (max-width:430px){
   .stack .rw{padding:14px}
-  .stack .rh{grid-template-columns:30px minmax(0,1fr);gap:10px}
-  .stack .rh .matter-icon{width:30px;height:33px}
+  .stack .rh{grid-template-columns:36px minmax(0,1fr);gap:10px}
+  .stack .rh .matter-icon{width:36px;height:39px}
   .stack .pr-dt{margin:14px -14px -14px}
   .stack .pr-dt-t{padding:10px 14px 11px}
   .stack .pr-dt-b{padding:2px 14px 14px}
@@ -663,3 +668,21 @@ textarea.re-q-in{width:100%;resize:vertical;display:block}
 @media (max-width:620px){
   .re-q-in{width:100%;font-size:16px}
 }
+/* 私道・通行・配管の区画図（render.js の rdFigure）。行の中の置かれ方は境界に揃える：
+   図は境界の断面図と同じ幅（220px）、右に短い説明（.bd-fig／.bd-cap をそのまま使う）。 */
+.rd-figs{flex:none;width:220px;max-width:100%;align-self:center}
+.rd-plan{width:100%;height:auto;display:block}
+.rd-t{font-size:16px;fill:#6F6A60;font-family:var(--font)}
+.rd-t.sub{font-size:14px;fill:#8A8477}
+.rd-t.off{fill:#B8B1A3}
+.rd-t.home{font-size:17px;font-weight:600;fill:#4A453C}
+.rd-t.road{font-size:15px;fill:#8A8477}
+/* 説明の札に線の見本（通り道＝破線／管＝太さのある管）を付け、凡例を兼ねる。 */
+.rd-fig .bd-item{grid-template-columns:3.9em minmax(0,1fr)}
+.rd-g{display:inline-block;width:12px;margin-right:4px;vertical-align:middle}
+.rd-g.ps{border-top:1.5px dashed #6B6963}
+.rd-g.pp{height:4px;border:1.3px solid #6B6963;border-radius:1px}
+/* 選んでいない相手の線は薄く（図には全部の線を描き、札で選んだ相手に目を向ける）。 */
+.rd-r.off{opacity:.28}
+.rd-t.me{font-weight:600;fill:#4A453C}
+.rd-t.dim{fill:#8A8477}

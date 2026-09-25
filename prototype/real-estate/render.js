@@ -87,7 +87,6 @@
 
   const MATTER_QUESTIONS = {
     boundary: '隣家と境界や塀について、話したこと・決めたことはありますか？',
-    road: '通り道や配管について、誰と、どのような取り決めをしていますか？',
     changed: '増築や取り壊しなどをしたのは、いつ、どこに頼んだ工事ですか？'
   };
   /* ── 記録の単位に共通する2つの部品 ─────────────────
@@ -152,7 +151,6 @@
      移した）。本人が書いた m.next があればそれを優先する。          */
   const ACTION_NEXT = {
     boundary: '当時の取り決めを双方で確認し、必要なら書面や図面に残しておく。代替わりすると、当時の合意内容を確認できなくなる。',
-    road: '現在の当事者同士で内容を確認し、必要なら書面に残しておく。',
     changed: '工事時期・施工者・図面・確認申請書類などを確認し、増築部分を登記に反映するための資料をそろえる。'
   };
   /* ■ 前の代の相続登記（2026-09-24 作り直し）
@@ -639,8 +637,8 @@
   /* 家の名前（上の切り替えと次にすることの札で同じにする）。n＝家の数。 */
   const nbName = (c, n) => (c.b.side ? c.side : '隣' + (n > 1 ? c.idx + 1 : '')) + (c.b.who ? ' ' + c.b.who : '');
   /* くわしく。sections＝[見出し, 本文HTML] の並び。 */
-  function boundaryDetail(p, sections) {
-    const key = p.id + ':boundary', open = openMatter.has(key);
+  function boundaryDetail(p, sections, item) {
+    const key = p.id + ':' + (item || 'boundary'), open = openMatter.has(key);
     const body = sections.map(([t, html], i) => '<section><h6><i>' + (i + 1) + '</i>' + t + '</h6><p>' + html + '</p></section>').join('');
     return '<div class="pr-dt' + (open ? ' open' : '') + '"><button type="button" class="pr-dt-t" data-matter-open="' + esc(key) +
       '" aria-expanded="' + open + '"><span class="pr-dt-k">くわしく</span><span class="pr-dt-s">' + sections.map(s => s[0]).join('・') + '</span>' + PG.down + '</button>' +
@@ -734,12 +732,239 @@
         '相続した土地を国に引き取ってもらう制度（相続土地国庫帰属制度）は、境界が明らかでない土地では申請できません。']]));
   }
 
+  /* ■ 私道・通行・配管の取り決め（2026-09-24 作り直し。設計 §8）
+     答え（相手の土地ごとの使い方・向き・持分・取り決め）から組み立てる。
+     答えの意味は state.js の roadStatus の注記を参照。
+
+     図は真上から見た区画図（rdFigure）。最初は「関係の事実だから文で足りる、
+     位置を持たないので描けば作り話」として図を置かなかったが、行が答えの
+     言い直しの羅列になった（2026-09-25 指摘）。事実の形は関係ではなく
+     道筋 ―― 通り道も管も、道路（とその下の本管）へつなぐために他人の土地を
+     通っている。持っている答え（前の私道／右隣／左隣／裏の家、向き）だけで
+     「この家から道路まで、誰の土地を通るか」は描ける。法務省の共有私道
+     ガイドラインも、私道と管は真上からの区画図で説明している。
+     図の横の行は、答えを言い直さず、それが家族に何を意味するか（いつ・何を
+     する）を書く。相手は1枚の図にまとめて描くので、相手の札は置かない。
+
+     承諾書をもらうこと自体は今のうちではない（要るのは直す・建て替える・
+     売るときで、相手はその時点の持ち主）。文は「承諾書を求められることが
+     ある」まで。「承諾が無いと工事できない」とは言わない（民法213条の2）。 */
+  const RD_LAND = { road: '前の私道', right: '右隣', left: '左隣', back: '裏の家', other: 'ほかの土地' };
+  const RD_PIPE = { water: '水道', sewer: '下水', gas: 'ガス' };
+  const rdName = l => l.land === 'other' ? (l.who || 'ほかの土地') : RD_LAND[l.land] + (l.who ? ' ' + l.who : '');
+  /* 相手の呼び方（文の中で）。 */
+  const rdOwner = l => l.land === 'road' ? '私道の持ち主' : l.land === 'other' ? (l.who || 'ほかの土地の持ち主') : RD_LAND[l.land];
+  const RD_NEED = '水道・下水・ガスの管を<b>直す</b>・建て替える・<b>売る</b>ときには、管や道が通る土地の持ち主の<b>承諾書</b>を求められることがあります。';
+
+  /* ══ 造形｜区画図（真上から）
+     描き方は法務省「共有私道ガイドライン（第2版）」の概略図（事例11・19）に倣う：
+     公道は図の一辺の帯で、その下に本管。私道は公道から直角に入る通路で、両側に
+     宅地が並ぶ（向かいの家も描く）。主役の私道は太い枠で囲む。宅地は四角と名前
+     だけで、建物は描かない。管は宅地から私道の下を通って本管へ。
+     前の版は、私道を図の上の細い帯・公道を右端の縦長の帯にし、関わる区画だけを
+     描いたので、片側に寄って隙間だらけになった（2026-09-25「バランス悪い」）。
+     枠は境界の断面図と同じ横長（幅220px）で、右に短い説明を置く（行の中での
+     置かれ方を境界に揃える。描く中身は写さない）。区画の奥行きは実寸（15m）でなく
+     枠に合わせて縮める ―― 見せるのは大きさではなく、どの土地を通るか。間口10m・
+     道の幅4mは実寸から（1単位＝0.1m）。
+     向きは玄関を出て前の道を向いた向き（前の道が上、右隣が右）。
+     「ほかの土地」は位置を持たないので描かない（説明の文だけ）。
+
+     図には全部の相手の線をいつも描き、上の札で選んだ相手の線と区画を濃く、ほかを
+     薄くする（sel＝選んだ相手の番号）。区画図は1枚に全部が載るのが利点で、どこの
+     話かが見えたまま1件に目が行く。説明は選んだ相手のぶんだけ（境界と同じ）。
+
+     線の筋は決まりで割り当てる（相手ごとの決め打ちだと、相手が2つ以上で同じ所を
+     取り合い、矢印が重なり線が字を横切った）：
+       自宅の中を縦に通る相手の線 … 左の筋（x 104・111）と右の筋（189・196）。
+                                       左隣は左、右隣は右、裏の家は空いている方
+                                       （両方ふさがっていれば内側 118・125 にし、
+                                       自宅と裏の家の名前を右へ寄せる）
+       隣の区画の中の線 … 自宅寄りを通し、名前は区画の外寄りに置く
+       裏の家へ下りる自宅の線 … 裏の家の名前の右（176・183） */
+  function rdFigure(p, ls, sel) {
+    const on = land => ls.find(l => l.land === land);
+    const road = on('road'), back = on('back');
+    if (!ls.some(l => l.land !== 'other')) return '';
+    const cur = ls[sel] || {};
+    const INK = '#6B6963', LINE = '#BDB5A6', LOT = '#FAF8F4', uid = 'rd' + p.id;
+    const txt = (x, y, t, cls) => '<text x="' + x + '" y="' + y + '" text-anchor="middle" class="rd-t' + (cls ? ' ' + cls : '') + '">' + esc(t) + '</text>';
+    const rect = (x, y, w, h, fill, stroke, sw) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + fill + '"' +
+      (stroke ? ' stroke="' + stroke + '" stroke-width="' + (sw || 1) + '"' : '') + '/>';
+    /* 列：向かいの家（私道のときだけ）→ 前の道 → 自宅の列 → 裏の列（裏の家が関わるときだけ）。 */
+    const F = road ? 56 : 0, RY = F, RH = 40, HY = RY + RH;
+    const HH = back ? 90 : road ? 120 : 140, BY = HY + HH, BH = back ? 56 : 0, H = BY + BH;
+    const W = 300, VW = road ? 356 : W;
+    const mid = y => HY + HH * y;
+    /* 自宅の中の縦の筋。 */
+    const lanes = { left: [104, 111], right: [189, 196] };
+    const backLane = !on('left') ? [104, 111] : !on('right') ? [189, 196] : [118, 125];
+    /* 内側の筋を使うときは、自宅と裏の家の名前を右へ寄せる（筋が名前を横切らないように）。 */
+    const inner = backLane[0] === 118 && back && (back.uses || []).some(u => u.by === 'theirs');
+    const homeX = inner ? 160 : 150;
+    let s = '';
+    /* 前の道と本管。私道なら、公道（右の一辺）の下に本管。私道の太枠は、私道を選んでいるときだけ濃く。 */
+    if (road) {
+      s += rect(W, 0, 56, H, '#E4E0D7') + '<path d="M344 0V' + H + '" stroke="#A39B8A" stroke-width="7"/><path d="M344 0V' + H + '" stroke="#E4E0D7" stroke-width="3"/>' +
+        txt(322, 18, '公道', 'road') + txt(322, H - 8, '本管', 'road');
+      [0, 100, 200].forEach(x => { s += rect(x, 0, 100, F, LOT, LINE); });
+      s += txt(150, F / 2 + 6, '向かいの家', 'off') + rect(0, RY, W, RH, '#ECE8DF', cur.land === 'road' ? INK : LINE, cur.land === 'road' ? 2 : 1.2) +
+        txt(52, RY + 26, '前の私道', cur.land === 'road' ? '' : 'road');
+    } else {
+      s += rect(0, RY, W, RH, '#ECE8DF') + '<path d="M0 ' + (RY + 11) + 'H' + W + '" stroke="#A39B8A" stroke-width="7"/><path d="M0 ' + (RY + 11) + 'H' + W + '" stroke="#ECE8DF" stroke-width="3"/>' +
+        txt(40, RY + 33, '前の道', 'road') + txt(262, RY + 33, '本管', 'road');
+    }
+    /* 区画。選んだ相手は枠を濃く・名前を濃く、ほかに関わる相手は中くらい、関わらない区画は薄く。 */
+    const nbLot = (x, y, h, land, name, lx) => { const l = on(land), me = cur.land === land;
+      return rect(x, y, 100, h, LOT, me ? INK : LINE, me ? 1.6 : 1) +
+        txt(lx, y + h / 2 + (l && l.who ? -2 : 6), name, me ? 'me' : l ? 'dim' : 'off') + (l && l.who ? txt(lx, y + h / 2 + 17, l.who, 'sub') : ''); };
+    s += nbLot(0, HY, HH, 'left', '左隣', 36) + nbLot(200, HY, HH, 'right', '右隣', 264) +
+      rect(100, HY, 100, HH, '#EFEBE2', INK, 1.4) + txt(homeX, HY + HH / 2 + 6, p.name, 'home');
+    if (back) s += rect(0, BY, 100, BH, LOT, LINE) + rect(200, BY, 100, BH, LOT, LINE) + nbLot(100, BY, BH, 'back', '裏の家', inner ? 162 : 146);
+    /* 道筋。通り道＝破線と矢印、管＝太さのある管。この家の管は本管まで、相手の管は前の道まで。 */
+    const pass = d => '<path d="' + d + '" fill="none" stroke="' + INK + '" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#' + uid + 'a)"/>';
+    const pipe = d => '<path d="' + d + '" fill="none" stroke="' + INK + '" stroke-width="6" stroke-linejoin="round"/>' +
+      '<path d="' + d + '" fill="none" stroke="#fff" stroke-width="2.8" stroke-linejoin="round"/>';
+    const PASS_END = RY + RH - 8;
+    const toMain = road ? 'V' + (RY + 26) + 'H344' : 'V' + (RY + 11);
+    const toRoad = road ? 'V' + (RY + 26) : 'V' + (RY + 11);
+    const [lp, lq] = lanes.left, [rp, rq] = lanes.right, [bp, bq] = backLane;
+    const R = {
+      road:  { ours: ['M140 ' + (HY + 16) + 'V' + (RY + 13) + 'H' + (W + 12), 'M160 ' + (HY + 16) + toMain] },
+      right: { ours: ['M184 ' + mid(.3) + 'H216V' + PASS_END, 'M184 ' + mid(.44) + 'H226' + toMain],
+               theirs: ['M240 ' + mid(.8) + 'H' + rp + 'V' + PASS_END, 'M246 ' + mid(.92) + 'H' + rq + toRoad] },
+      left:  { ours: ['M116 ' + mid(.3) + 'H84V' + PASS_END, 'M116 ' + mid(.44) + 'H74' + toMain],
+               theirs: ['M60 ' + mid(.8) + 'H' + lq + 'V' + PASS_END, 'M54 ' + mid(.92) + 'H' + lp + toRoad] },
+      back:  { ours: ['M176 ' + (BY - 12) + 'V' + (H - 4), 'M183 ' + (BY - 12) + 'V' + (H - 2)],
+               theirs: ['M' + bp + ' ' + (H - 6) + 'V' + PASS_END, 'M' + bq + ' ' + (H - 4) + toRoad] }
+    };
+    const draw = l => { const us = l.uses || [], r = R[l.land]; let g = '';
+      if (!r) return g;
+      ['ours', 'theirs'].forEach(by => { const pair = r[by]; if (!pair) return;
+        if (us.some(u => u.what !== 'pass' && u.by === by)) g += pipe(pair[1]);
+        if (us.some(u => u.what === 'pass' && u.by === by)) g += pass(pair[0]); });
+      return g; };
+    /* 選んでいない相手の線を先に薄く描き、選んだ相手の線を上に重ねる。 */
+    s += ls.map((l, i) => i === sel ? '' : '<g class="rd-r off">' + draw(l) + '</g>').join('') + '<g class="rd-r">' + draw(cur) + '</g>';
+    return '<div class="rd-figs"><svg class="rd-plan" viewBox="0 0 ' + VW + ' ' + H + '" xmlns="' + NS + '" role="img" aria-label="' + esc(p.name + 'と、通り道・管が通る土地の図') + '">' +
+      '<defs><marker id="' + uid + 'a" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1L7 4L1 7" fill="none" stroke="' + INK + '" stroke-width="1.4"/></marker></defs>' +
+      s + '</svg></div>';
+  }
+  /* 図の右の説明。選んだ相手のぶんだけ、図に描いたことを短い言葉で言う（境界の説明と
+     同じ役割）。札に線の見本を付けて凡例を兼ねる。いつ何をするかは、くわしくに場面ごと。 */
+  const RD_G = { pass: '<em class="rd-g ps"></em>', pipe: '<em class="rd-g pp"></em>' };
+  function rdFacts(p, l) {
+    const P = p.name, out = [], us = l.uses || [], O = rdOwner(l);
+    const place = l.land === 'road' ? '前の私道' : l.land === 'other' ? (l.who ? l.who + 'の土地' : 'ほかの人の土地') : RD_LAND[l.land] + 'の土地';
+    const pipes = by => us.filter(u => u.by === by && RD_PIPE[u.what]).map(u => RD_PIPE[u.what]).join('・');
+    if (us.some(u => u.what === 'pass' && u.by === 'ours')) out.push({ g: 'pass', tag: '通る', text: place + 'を通って' + (l.land === 'road' ? '公道' : '道') + 'へ出る' });
+    if (pipes('ours')) out.push({ g: 'pipe', tag: '管', text: pipes('ours') + 'の管が、' + place + 'の下を通' + (l.land === 'road' ? 'って本管へ' : 'る') });
+    if (us.some(u => u.what === 'pass' && u.by === 'theirs')) out.push({ g: 'pass', tag: '通る', text: O + 'の人が、' + P + 'の土地を通って道へ出る' });
+    if (pipes('theirs')) out.push({ g: 'pipe', tag: '管', text: O + 'の' + pipes('theirs') + 'の管が、' + P + 'の土地の下を通る' });
+    if (l.land === 'road') out.push({ tag: '持分', text: l.share === 'yes' ? P + 'も持分を持っている' : l.share === 'no' ? '持分はない（' + (l.who || 'ほかの家') + 'のもの）' : '持分があるかは、まだ確かめていない' });
+    if (l.content) out.push({ tag: '決めた', text: l.content });
+    return '<div class="bd-cap"><div class="bd-items">' + out.map(x =>
+      '<div class="bd-item"><i>' + (x.g ? RD_G[x.g] : '') + esc(x.tag) + '</i><span>' + esc(x.text) + '</span></div>').join('') + '</div></div>';
+  }
+  /* 相手の札は境界の家の札と同じ形（図の上の中央、左右に細い線）。1件なら切り替えのない見出し。
+     札を押したら間取りごと描き直す（説明の長さで部屋の高さが変わる。wire）。 */
+  const rdNb = new Map();                   // 選んでいる相手（物件 id → 番号）
+  function roadLinks(p, ls) {
+    const head = inner => '<div class="bd-head">' + inner + '</div>';
+    const sel = Math.min(rdNb.get(p.id) || 0, ls.length - 1);
+    const body = '<div class="bd-fig rd-fig">' + rdFigure(p, ls, sel) + rdFacts(p, ls[sel]) + '</div>';
+    if (ls.length === 1) return head('<span class="bd-seg"><span class="bd-tab solo">' + esc(rdName(ls[0])) + '</span></span>') + body;
+    return head('<span class="bd-seg" role="tablist" aria-label="見る相手">' + ls.map((l, i) =>
+        '<button type="button" role="tab" class="bd-tab" data-rd-nb="' + esc(p.id + ':' + i) + '" aria-selected="' + (i === sel) + '">' + esc(rdName(l)) + '</button>').join('') +
+      '</span>') + '<div role="tabpanel">' + body + '</div>';
+  }
+  /* 口頭・分からない相手の次にすること（文と補足）。何を決めたかが空なら、書面に
+     する前に、まず何を決めたかを聞く。書面の形は相手で変わる：私道で持分があれば
+     持ち主どうしの取り決め、この家が使う側なら相手の承諾書、相手も使うなら覚書。 */
+  function rdNext(l) {
+    if (l.pact === 'unknown') return { text: '決めたことを書いた承諾書や覚書があるか、' + WHO + 'に聞く', sub: '' };
+    if (!l.content) return { text: '口頭で何を決めたか、' + WHO + 'に聞いて記録する', sub: '記録したら、相手と書面にします。' };
+    const clause = '「持ち主が変わっても引き継ぐ」と書いてもらいます。';
+    if (l.land === 'road') return l.share === 'yes'
+      ? { text: '決めたことを、私道の持ち主どうしで書面にする', sub: '持ち主全員で署名します。' }
+      : { text: '決めたことを、私道の持ち主と書面にする', sub: '通る・管を通すことの承諾なら、' + clause };
+    return (l.uses || []).some(u => u.by === 'theirs')
+      ? { text: '決めたことを、' + rdOwner(l) + 'と覚書にする', sub: '' }
+      : { text: '口頭の承諾を、' + rdOwner(l) + 'に承諾書にしてもらう', sub: clause };
+  }
+  /* くわしく。場面ごと（管を直すとき／売るとき／相手が変わったとき）に、答えの
+     組み合わせで文を決める（設計 §8-3 の表）。欄ごとの決まり文句を並べない ――
+     持分があるのに「私道の持ち主へ知らせる」と書いて食い違った。
+       私道・持分あり … 自分の管は持分の範囲で私道の下に置ける（ガイドライン 事例11）。
+                        効くのは工事の窓口の運用（下水道は約7割が持ち主全員の同意書）
+       私道・持分なし … 管は知らせれば足りる（民法213条の2）。売るとき通行・掘削承諾書
+       私道・持分不明 … どちらになるかは持分で決まる（登記で分かる） */
+  const RD_WINDOW = { water: '水道局', sewer: '下水道の窓口', gas: 'ガス会社' };
+  function roadDetail(p, ls) {
+    const P = p.name, pipeFix = [], sell = [];
+    ls.forEach(l => {
+      const us = l.uses || [], O = rdOwner(l), paper = l.pact === 'paper', road = l.land === 'road';
+      const mine = us.filter(u => u.by === 'ours' && RD_PIPE[u.what]).map(u => u.what);
+      const passOurs = us.some(u => u.what === 'pass' && u.by === 'ours');
+      const place = road ? '前の私道' : l.land === 'other' ? (l.who ? l.who + 'の土地' : 'ほかの人の土地') : RD_LAND[l.land] + 'の土地';
+      /* 窓口が求める書面。下水（私道）は持ち主全員の同意書、それ以外は承諾書。混ぜて言わない。 */
+      const ask = who => {
+        const all = road && mine.includes('sewer'), rest = all ? mine.filter(k => k !== 'sewer') : mine;
+        return (all ? '下水は、工事のとき下水道の窓口から、' + who + '全員の同意書を求められることが多いです（窓口の約7割）。' : '') +
+          (rest.length ? rest.map(k => RD_PIPE[k]).join('・') + 'は、' + rest.map(k => RD_WINDOW[k]).join('・') + 'から' + who + 'の承諾書を求められることがあります。' : '');
+      };
+      if (mine.length) pipeFix.push(paper ? place + 'の下の管は、承諾書があるので、工事の窓口に見せます。'
+        : road && l.share === 'yes' ? place + 'の下の管は、持分があるので置けます。ただ、' + ask('ほかの持ち主')
+        : road && l.share === 'no' ? place + 'の下の管を直すときは、先に私道の持ち主へ知らせます。' + ask('私道の持ち主')
+        : road ? place + 'の下の管のうち、' + ask('私道の持ち主')
+        : place + 'の下の管を直すときは、先に' + O + 'へ知らせます。' + ask(O));
+      if (passOurs && !paper && road && l.share === 'no') sell.push('私道の持分がないので、買主の金融機関から、私道の持ち主の通行・掘削承諾書を求められます。無いと、ローンが通らないことがあります。');
+      else if (passOurs && !paper && road && l.share !== 'yes') sell.push('私道の持分がなければ、買主の金融機関から、私道の持ち主の通行・掘削承諾書を求められます。持分は登記事項証明書で分かります。');
+      else if (passOurs && !paper && !road) sell.push('買主の金融機関から、' + O + 'の通行承諾書を求められることがあります。');
+      else if (passOurs && paper) sell.push(O + 'の承諾書を、買主に見せます。');
+      if (us.some(u => u.by === 'theirs')) sell.push(O + 'の' + (us.some(u => u.by === 'theirs' && u.what !== 'pass') ? '管' : '通り道') + 'が' + P + 'の土地にあることを、買主に伝えて契約に書きます。伝えずに売ると、後から責任を問われることがあります。' +
+        (us.some(u => u.by === 'theirs' && u.what !== 'pass') ? '建て替えで掘る前にも、' + O + 'と話します。' : ''));
+    });
+    const sections = [];
+    if (pipeFix.length) sections.push(['管を直すとき', pipeFix.join('') + '法律では、ほかの土地に管を通すしかないときは、前もって知らせれば足ります（民法213条の2、2023年4月から）。承諾料に応じる義務はありません。']);
+    if (sell.length) sections.push(['売るとき', sell.join('')]);
+    if (ls.some(l => ['oral', 'paper'].includes(l.pact))) sections.push(['相手が変わったとき', '決めたことは、相手の家の相続人に引き継がれます。相手が土地を<b>売る</b>と、買主には当然には及びません。' +
+      '承諾書に「持ち主が変わっても引き継ぐ」と書いてあれば、買主にも効きます。道として見えている通り道は、書面がなくても、買主に通ることを主張できることが多いです（最高裁 平成10年）。']);
+    return sections.length ? boundaryDetail(p, sections, 'road') : '';
+  }
+  function roadBody(p) {
+    const r = p.matters.road || {};
+    const act = (text, sub) => '<div class="pr-act"><div class="pr-act-h"><span>次にすること</span></div><p>' + esc(text) +
+      (sub ? '<small>' + esc(sub) + '</small>' : '') + '</p></div>';
+    if (r.has === 'no') return '<p class="pr-quiet">' + p.name + 'が他人の土地を通る・管を通すことも、他人が' + p.name + 'の土地を使うこともありません。</p>';
+    /* 父が覚えていなくても終わりにしない。この家の管の経路は、家族も図面で見られる。
+       見られないもの（他人の管）と、図面に無い古い管がどうなるかまで言って閉じる。 */
+    if (r.has === 'unknown') return '<p class="pr-why">' + RD_NEED + WHO + 'が覚えていなくても、この家の管がどこを通っているかは、図面で確かめられます。</p>' +
+      act('水道局で給水装置の図面を、市役所で排水設備の図面を見て、この家の管がどこを通っているか確かめる',
+        '水道の使用者・土地の所有者なら見られます（家族は委任状で）。古い管は図面に無いことがあり、そのときは管を直す・建て替えるときに掘って分かります。他人の管がこの家の土地を通っているかは、図面では分かりません。');
+    if (r.has !== 'yes') return '<p class="pr-why">' + RD_NEED + '他人の管が' + p.name + 'の土地の下を通っていても、地面の上からは見えず、' + nw('登記にも出ません。') + '</p>' +
+      act(WHO + 'に、他人の土地とのあいだを通る道や管があるか、両方の向きで聞く',
+        p.name + 'が他人の土地を通る・管を通している場合と、他人の通り道や管が' + p.name + 'の土地にある場合。前の道が私道かは、役所の道路の窓口で家族も調べられます。');
+    const ls = r.links || [];
+    if (!ls.length) return '<p class="pr-why">' + RD_NEED + '</p>' + act('どの土地を何に使っているか、' + WHO + 'に聞いて記録する', '');
+    const todo = ls.filter(l => l.pact === 'oral' || l.pact === 'unknown');
+    const paper = ls.filter(l => l.pact === 'paper');
+    const why = todo.length ? RD_NEED + '口頭で決めたことも、書面にしておけば、そのとき見せるだけで' + nw('済みます。')
+      : paper.length === ls.length ? '決めたことは書面にしてあります。'
+      : RD_NEED + 'そのときは、その時点の持ち主に頼みます（持ち主は' + nw('登記で分かります）。');
+    const nextHtml = todo.length ? '<div class="pr-act"><div class="pr-act-h"><span>次にすること</span></div>' +
+      todo.map(l => { const n = rdNext(l); return '<p><span class="bd-act-nb">' + esc(rdName(l)) + '</span>' + esc(n.text) + (n.sub ? '<small>' + esc(n.sub) + '</small>' : '') + '</p>'; }).join('') + '</div>' : '';
+    const docs = docsBlock(paper.map(l => ({ nb: rdName(l), text: '承諾書・覚書' })));
+    return '<p class="pr-why">' + why + '</p>' + roadLinks(p, ls) + nextHtml + docs + roadDetail(p, ls);
+  }
+
   function nowRows(p) {
-    const names = { boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
+    const names ={ boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
     const out = ['boundary', 'road', 'changed'].filter(key => !(key === 'changed' && p.kind === 'land')).map(key => {
       const m = p.matters[key] || {};
       const ms = S.matterStatus(p, key), status = ms.status;
       if (key === 'boundary') return { key, type: 'matter', nm: names[key], status, pick: true, label: ms.label, body: boundaryBody };
+      if (key === 'road') return { key, type: 'matter', nm: names[key], status, pick: true, label: ms.label, body: roadBody };
       return { key, type: 'matter', nm: names[key], status, pick: true,
         summary: m.memo || 'まだ記録がありません。',
         next: m.next || (status === 'unknown' ? MATTER_QUESTIONS[key] : status === 'action' ? ACTION_NEXT[key] : ''),
@@ -811,6 +1036,11 @@
         out.push('戸籍は、' + WHO + 'の分に加えて、' + owner + 'の出生から死亡までの分も要ります。');
       }
     }
+    /* 前の私道の持分は、非課税で課税明細書に載らないことがあり、相続登記で漏れる
+       （設計 §8-1）。持分があるか分からないときも、確かめる先を言う。 */
+    const road = (p.matters.road || {}).has === 'yes' ? ((p.matters.road.links || []).find(l => l.land === 'road') || null) : null;
+    if (road && road.share === 'yes') out.push('前の私道の持分も、相続登記に入れます。私道は固定資産税がかからず、課税明細書に載らないことがあります。地番は名寄帳か所有不動産記録証明で確かめます。');
+    else if (road && road.share === 'unknown') out.push('前の道は私道です。' + WHO + 'が持分を持っていれば、相続登記に入れます。課税明細書には載らないことがあるので、名寄帳か所有不動産記録証明で確かめます。');
     ['land', 'bldg'].forEach(k => {
       const r = (p.rights || {})[k];
       if (r && r.owner === WHO && r.hold === 'share' && r.shares && r.shares !== '単独')
@@ -2123,13 +2353,13 @@
     });
     /* 開閉は表示中だけの状態。押したら間取りごと描き直す（部屋の深さは
        中身の実測で決まる）。押したボタンを同じ画面位置に留める。 */
-    [['data-procedure', 'procedure', openProcedures], ['data-prior-open', 'priorOpen', openPrior], ['data-matter-open', 'matterOpen', openMatter], ['data-bd-nb', 'bdNb', null]].forEach(([sel, attr, set]) =>
+    [['data-procedure', 'procedure', openProcedures], ['data-prior-open', 'priorOpen', openPrior], ['data-matter-open', 'matterOpen', openMatter], ['data-bd-nb', 'bdNb', null, bdNb], ['data-rd-nb', 'rdNb', null, rdNb]].forEach(([sel, attr, set, pick]) =>
       document.querySelectorAll('[' + sel + ']').forEach(button => {
       button.onclick = () => {
         const key = button.dataset[attr];
         const before = button.getBoundingClientRect().top;
-        /* 境界の家の札：選んだ家を覚える（開閉ではない）。 */
-        if (!set) { const i = key.lastIndexOf(':'); bdNb.set(key.slice(0, i), Number(key.slice(i + 1))); }
+        /* 境界の家・私道の相手の札：選んだものを覚える（開閉ではない）。 */
+        if (!set) { const i = key.lastIndexOf(':'); pick.set(key.slice(0, i), Number(key.slice(i + 1))); }
         else if (set.has(key)) set.delete(key);
         else set.add(key);
         const section = button.closest('.prop');
