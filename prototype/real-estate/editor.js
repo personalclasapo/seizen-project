@@ -23,21 +23,9 @@
   const section = (title, html, attr) => '<fieldset' + (attr || '') + '><legend>' + esc(title) + '</legend>' + html + '</fieldset>';
   const group = (title, html, note) => '<fieldset><legend>' + esc(title) + '</legend>' + (note ? '<p class="re-group-note">' + esc(note) + '</p>' : '') + '<div class="re-fields">' + html + '</div></fieldset>';
   const nextFields = v => group('残っている確認・対応', field('next', '次にすること', v.next, true, '分かったところまで保存できます。残る確認があれば書き留めてください。') + field('assignee', '確認する人', v.assignee) + field('timing', '確認する時期・きっかけ', v.timing));
-  const findingOptions = [['unasked', 'まだ確認していない'], ['yes', 'ある'], ['no', 'ないと確認した'], ['unknown', '確認したが分からない']];
   const docOptions = [['unknown', '所在が分からない'], ['have', '所在が分かる'], ['lost', '探したが見つからない']];
   const known = [['unknown', '分からない'], ['yes', 'あり'], ['no', 'なし']];
   const titles = { boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
-  const questions = {
-    boundary: '隣家と境界や塀について、話したこと・決めたことはありますか？',
-    changed: '増築や取り壊しなどをしたのは、いつ、どこに頼んだ工事ですか？'
-  };
-  /* 状態＝今のうちのバッジと同じ4つ。バッジを押して開いたポップアップの
-     頭で選び直す。並びは 確認済み→対応が必要→未確認→該当なし。    */
-  const STATUS_ORDER = ['done', 'action', 'unknown', 'none'];
-  const statusField = cur => '<div class="re-status" role="radiogroup" aria-label="状態"><span class="re-status-lb">状態</span>' +
-    STATUS_ORDER.map(k => '<label class="re-st-opt"><input type="radio" name="status" value="' + k + '"' +
-      (k === cur ? ' checked' : '') + '><span class="bdg ' + S.NOW_STATUS[k].tone + '">' +
-      esc(S.NOW_STATUS[k].label) + '</span></label>').join('') + '</div>';
   /* 境界：隣1つぶんの取り決め。名前は e<番号>-… で、番号は足した順（外しても詰めない）。
      決めたことは、チェックを入れた項目のすぐ下にその問いを開く。 */
   function bdEntry(i, e) {
@@ -123,6 +111,55 @@
       question('決めた内容', '<textarea class="re-q-in" rows="2" name="' + n('content') + '">' + esc(l.content) + '</textarea>',
         '例：私道の舗装を直す費用は、4軒で等分する。建て替えるときは、隣の管を移す費用を隣が持つ。', ' data-l-content') + '</div>');
   }
+  /* 建物の変更：変更1件ぶん。名前は c<番号>-…（足した順）。境界・私道のブロックは写さない
+     ―― 聞くのは、何をしたか・場所と時期・この変更の記録（state.js の changedStatus）。
+     「記録」は1つの問いにまとめ、登記／課税明細書／工事の書類を左に名前・右に選択肢で揃える。
+     3つとも「この変更がどの記録に載っているか」の答えで、行の図が描く事実と同じ（以前は
+     別々の問いにし、選択肢の形も長さ任せでばらばらだった：2026-09-26）。
+     増える変更と取り壊しでは答えの言い方が逆になる（載っている／消えている）ので、値は
+     同じにして言葉だけ差し替える（data-lg／data-ld）。場所と時期も同じ並べ方で1つに。 */
+  const CH_WHAT = { ext: '増築', annex: '別棟', cut: '一部の取り壊し', demo: '取り壊し' };
+  /* 並べる選択肢。opts＝[値, 増える変更の言葉, 取り壊しの言葉（省けば同じ）] */
+  const pills = (name, value, opts) => '<div class="re-opts pill" role="radiogroup">' + opts.map(([v, lg, ld]) =>
+    '<label class="re-opt"><input type="radio" name="' + name + '" value="' + v + '"' + (v === value ? ' checked' : '') + '><span><b' +
+    (ld ? ' data-lg="' + esc(lg) + '" data-ld="' + esc(ld) + '"' : '') + '>' + esc(lg) + '</b></span></label>').join('') + '</div>';
+  const line = (label, html, attr) => '<div class="re-ln"' + (attr || '') + '><span class="re-ln-lb">' + label + '</span><div class="re-ln-v">' + html + '</div></div>';
+  /* いつごろ＝年を選ぶ（自由記入にしない）。建てた年から今年まで、和暦を添える。
+     年が分からなくても登記はできるので「分からない」を先頭に。 */
+  let chBuilt = 1950;
+  const wareki = y => y >= 2019 ? '令和' + (y === 2019 ? '元' : y - 2018) + '年' : y >= 1989 ? '平成' + (y === 1989 ? '元' : y - 1988) + '年' : '昭和' + (y - 1925) + '年';
+  function yearSelect(name, value) {
+    const now = new Date().getFullYear(), ys = [];
+    for (let y = now; y >= chBuilt; y--) ys.push(y);
+    return '<select class="re-yr-sel" name="' + name + '" aria-label="いつごろ（年）"><option value="">分からない</option>' +
+      ys.map(y => '<option value="' + y + '"' + (String(y) === String(value) ? ' selected' : '') + '>' + y + '年（' + wareki(y) + '）</option>').join('') + '</select>';
+  }
+  function chEntry(i, c) {
+    const n = k => 'c' + i + '-' + k;
+    return '<div class="re-entry" data-change="' + i + '"><div class="re-entry-h"><b data-c-title>' + esc(CH_WHAT[c.what] || '変更') + '</b>' +
+      '<button type="button" class="re-entry-del" data-entry-del>この変更を外す</button></div>' +
+      '<div class="re-entry-confirm" role="alertdialog" aria-live="polite" data-entry-confirm hidden><p data-entry-ask></p>' +
+        '<button type="button" data-entry-yes>外す</button><button type="button" data-entry-no>やめる</button></div>' +
+      question('何をしましたか', choice(n('what'), c.what || '', [
+        ['ext', '増築した', '横や上に部屋を足した'], ['annex', '別棟を建てた', '離れ・車庫・物置など'],
+        ['cut', '一部を取り壊した', '部屋を減らした'], ['demo', '建物を取り壊した', '離れ・物置や、古い建物など']], 'row'),
+        '物置でも、基礎に固定され、屋根と壁があれば建物として登記の対象になります。') +
+      question('場所と時期', '<div class="re-lines">' +
+        line('玄関から見て', pills(n('side'), c.side || '', [['back', '奥'], ['right', '右'], ['left', '左'], ['front', '玄関側']])) +
+        line('階', pills(n('floor'), String(c.floor || 1), [['1', '1階'], ['2', '2階']]), ' data-c-floor') +
+        line('何の建物', pills(n('bldg'), c.bldg || '', [['hanare', '離れ'], ['garage', '車庫'], ['shed', '物置'], ['other', 'その他']]), ' data-c-bldg') +
+        line('<span data-c-partlb>どの部分</span>', '<input class="re-q-in" name="' + n('where') + '" value="' + esc(c.where) + '" placeholder="例：北側の約6畳" autocomplete="off" aria-label="どの部分">', ' data-c-part') +
+        line('いつごろ', '<span class="re-yr">' + yearSelect(n('when'), c.when) + '<span>ごろ</span></span>') + '</div>',
+        '分かる範囲で。年が分からなくても登記はできます。') +
+      question('この変更の記録', '<div class="re-lines">' +
+        line('登記', pills(n('reg'), c.reg || 'unknown', [['yes', '載っている', '消えている'], ['no', '載っていない', '残っている'], ['unknown', 'まだ確かめていない']])) +
+        line('課税明細書', pills(n('tax'), c.tax || '', [['match', '載っている', '消えている'], ['miss', '載っていない', '残っている'], ['', 'まだ見ていない']]), ' data-c-tax') +
+        line('工事の書類', pills(n('docs'), c.docs || 'unknown', [['yes', 'ある'], ['no', '見つからない'], ['unknown', 'まだ探していない']]) +
+          '<div class="re-ln-sub" data-c-kinds>' + choice(n('kind-'), c.kinds || [], [
+            ['confirm', '確認済証'], ['inspect', '検査済証'], ['contract', '工事請負契約書'], ['receipt', '領収書'], ['handover', '工事完了引渡証明書']], 'pill', 'checkbox') + '</div>', ' data-c-docs') +
+        line('請け負った会社', '<input class="re-q-in" name="' + n('by') + '" value="' + esc(c.by) + '" placeholder="例：◯◯工務店" autocomplete="off" aria-label="工事を請け負った会社">', ' data-c-docs') + '</div>' +
+        '<p class="re-q-h" data-c-rech></p>') + '</div>';
+  }
   const RD_LAND = { road: '前の私道', right: '右隣', left: '左隣', back: '裏の家', other: 'ほかの土地' };
   const RD_LAND_OPTS = [['road', '前の私道'], ['right', '右隣'], ['left', '左隣'], ['back', '裏の家'], ['other', 'ほかの土地']];
   const RD_USE_OPTS = [['pass', '通る（出入りの道）'], ['water', '水道の管'], ['sewer', '下水の管'], ['gas', 'ガスの管']];
@@ -197,22 +234,24 @@
           '前の道が私道なら「ある」です（私道は他人の土地）。水道・下水・ガスの管が隣の土地の下を通っている、隣の管がこの家の土地の下を通っている、なども。') +
         '<div data-rd-yes><div data-entries>' + ls.map((x, i) => rdLink(i, x)).join('') + '</div>' +
           '<button type="button" class="record-add re-entry-add" data-entry-add><span aria-hidden="true">＋</span>別の土地を足す</button></div>');
-    } else if (type === 'matter') {
-      const m = p.matters[key] || {}, d = m.detail || {}, doc = p.docs.at[key] || {};
-      title = titles[key]; lead = questions[key];
-      const cur = S.NOW_STATUS[m.uiStatus] ? m.uiStatus : S.matterProgress(p, key).status;
-      body = statusField(cur) +
-        group(WHO + 'への確認', select('interview', WHO + 'に聞けましたか', m.interview || 'unasked', [['unasked', 'まだ聞いていない'], ['heard', '聞けた'], ['unavailable', WHO + 'には確認できない']]) +
-        select('find', key === 'changed' ? '建物の変更はありますか' : 'このような関係・取り決めはありますか', m.find || 'unasked', findingOptions) + field('source', '誰・何で確認しましたか', m.source, false, '例：' + WHO + 'に聞いた、工事資料で確認した')) +
-        '<div data-matter-details>' + group('分かったことを残す',
-          field('memo', '確認できた内容・これまでの経緯', m.memo, true) +
-          field('who', key === 'changed' ? '工事の依頼先' : '関係する相手', d.who) +
-          field('when', key === 'changed' ? '工事の時期' : '取り決めた時期', d.when) +
-          select('resolution', key === 'changed' ? '登記・必要な手続きへの反映' : '取り決めについて残る確認・相談', m.resolution || (d.reg === '未対応' ? 'pending' : 'unknown'), key === 'changed'
-            ? [['unknown', 'まだ確認できていない'], ['pending', '未対応・照会中'], ['resolved', '反映済み、または手続き不要と確認した']]
-            : [['unknown', 'まだ確認できていない'], ['pending', '確認・相談が残っている'], ['resolved', '必要な確認・相談は済んでいる']])) +
-          group('関係する書面', select('paper', '書面はありますか', d.paper || '不明', [['不明', '分からない'], ['あり', 'ある'], ['なし', 'ない']]) +
-            '<div class="re-doc-fields wide">' + select('docSt', '書面の所在', doc.st || 'unknown', docOptions) + field('docPlace', '保管場所・取り出し方', doc.place, false, '「書類のありか」にも反映します。') + '</div>') + '</div>' + nextFields(m);
+    } else if (type === 'matter' && key === 'changed') {
+      /* 建物の変更・登記。答えは選ぶだけ（どこを・いつ・頼んだ会社を除く）。状態・次に
+         すること・くわしくは答えから出す（state.js の changedStatus）。変更ごとに要る登記と
+         書類が違うので、変更1つを1ブロックにして足せるようにする。 */
+      const m = p.matters.changed || {};
+      const cs = (m.changes || []).length ? m.changes : [{}];
+      bdCount = cs.length;
+      chBuilt = Math.min(Number(String(p.built || '').replace(/[^0-9]/g, '').slice(0, 4)) || 1950, ...cs.map(c => Number(c.when) || 9999));
+      title = titles.changed; lead = '';
+      body = section('建物の変更',
+        question('建ててから、増築や取り壊し、離れ・車庫を建てたことはありますか', choice('has', m.has || 'unasked',
+          [['yes', 'ある'], ['no', 'ない'], ['unasked', 'まだ聞いていない'], ['unknown', WHO + 'も覚えていない']]),
+          '市町村が把握している変更は、課税明細書でも分かります。工事を頼んだ会社や書類のありかは、' + WHO + 'に聞くしかありません。') +
+        '<div data-ch-yes><div data-entries>' + cs.map((x, i) => chEntry(i, x)).join('') + '</div>' +
+          '<button type="button" class="record-add re-entry-add" data-entry-add><span aria-hidden="true">＋</span>別の変更を足す</button></div>' +
+        question('課税明細書で、登記床面積と現況床面積を比べましたか', choice('check', m.check || '', [
+          ['diff', '違いがあった', '現況床面積のほうが大きい・「未登記家屋」の行がある'], ['same', '違いはなかった'], ['', 'まだ比べていない']], 'row'),
+          '家屋の欄の「登記地積又は床面積」と「現況地積又は床面積」を比べます。', ' data-ch-unknown'));
     } else if (type === 'prior') {
       /* 前の代の相続登記。答えは選ぶだけ（名前の欄を除く）。状態・次の
          対応・誰が・期限は SeiZen が答えから出すので、欄を置かない。 */
@@ -363,7 +402,7 @@
         });
         dialog.querySelector('[data-entry-add]').hidden = entries.length >= 4;
       }
-      if (form.elements.has) {
+      if (identity.key === 'road' && form.elements.has) {
         dialog.querySelector('[data-rd-yes]').hidden = form.elements.has.value !== 'yes';
         const links = dialog.querySelectorAll('[data-link]');
         links.forEach(el => {
@@ -380,10 +419,37 @@
         });
         dialog.querySelector('[data-entry-add]').hidden = links.length >= 5;
       }
-      const fields = dialog.querySelector('[data-matter-details]');
-      if (fields) fields.hidden = form.elements.find.value === 'no';
-      const docFields = dialog.querySelector('.re-doc-fields');
-      if (docFields) docFields.hidden = form.elements.paper.value !== 'あり';
+      if (identity.key === 'changed' && form.elements.has) {
+        const has = form.elements.has.value;
+        dialog.querySelector('[data-ch-yes]').hidden = has !== 'yes';
+        dialog.querySelector('[data-ch-unknown]').hidden = has !== 'unknown';
+        const items = dialog.querySelectorAll('[data-change]');
+        items.forEach(el => {
+          const f = k => form.elements['c' + el.dataset.change + '-' + k];
+          const what = f('what').value, grow = what !== 'cut' && what !== 'demo', open = f('reg').value !== 'yes';
+          el.querySelector('[data-c-title]').textContent = CH_WHAT[what] || '変更';
+          el.querySelector('[data-c-floor]').hidden = what !== 'ext';
+          /* 別棟・取り壊した建物は「何の建物か」を選ぶ（自由記入だと「建てた6畳」のようになった）。
+             その他のときだけ名前を書く。増築・一部の取り壊しは、どの部分かを書く。 */
+          const apart = what === 'annex' || what === 'demo';
+          el.querySelector('[data-c-bldg]').hidden = !apart;
+          el.querySelector('[data-c-part]').hidden = apart && f('bldg').value !== 'other';
+          el.querySelector('[data-c-partlb]').textContent = apart ? '建物の名前' : 'どの部分';
+          f('where').placeholder = apart ? '例：納屋' : '例：北側の約6畳';
+          /* 取り壊しは「消えている／残っている」で答える。 */
+          el.querySelectorAll('[data-lg]').forEach(b => { b.textContent = grow ? b.dataset.lg : b.dataset.ld; });
+          el.querySelector('[data-c-tax]').hidden = !open;
+          el.querySelectorAll('[data-c-docs]').forEach(d => { d.hidden = !(open && grow); });
+          el.querySelector('[data-c-kinds]').hidden = f('docs').value !== 'yes';
+          /* 記録の問いの説明は、見えている行に合わせる。 */
+          el.querySelector('[data-c-rech]').textContent = !what ? '' : grow
+            ? '登記は登記事項証明書で、課税は課税明細書で確かめられます（現況床面積が登記床面積より大きければ、登記に載っていません）。' +
+              (open ? '工事の書類は、増えた部分が' + WHO + 'のものだと示すのに使い、2種類以上あれば足ります。' : '')
+            : '取り壊した建物が登記に残っているかは、登記事項証明書で確かめられます。';
+          el.querySelector('[data-entry-del]').hidden = items.length < 2;
+        });
+        dialog.querySelector('[data-entry-add]').hidden = items.length >= 5;
+      }
       const loanFields = dialog.querySelector('[data-loan-details]');
       if (loanFields) loanFields.hidden = form.elements.has.value === 'no';
       if (form.elements.remains) {
@@ -409,12 +475,14 @@
     /* 境界：隣を足す・外す。 */
     dialog.querySelector('form').onclick = ev => {
       const add = ev.target.closest('[data-entry-add]'), del = ev.target.closest('[data-entry-del]');
-      const road = identity.key === 'road';
-      if (add) { dialog.querySelector('[data-entries]').insertAdjacentHTML('beforeend', road ? rdLink(bdCount++, {}) : bdEntry(bdCount++, {})); conditionals();
+      const road = identity.key === 'road', ch = identity.key === 'changed';
+      if (add) { dialog.querySelector('[data-entries]').insertAdjacentHTML('beforeend', ch ? chEntry(bdCount++, {}) : road ? rdLink(bdCount++, {}) : bdEntry(bdCount++, {})); conditionals();
         dialog.querySelector('.re-entry:last-child').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
       if (del) {
         const entry = del.closest('.re-entry'), box = entry.querySelector('[data-entry-confirm]');
-        entry.querySelector('[data-entry-ask]').textContent = road
+        entry.querySelector('[data-entry-ask]').textContent = ch
+          ? 'この変更（' + entry.querySelector('[data-c-title]').textContent + '）を外しますか？入力した内容も消えます。'
+          : road
           ? entry.querySelector('[data-l-title]').textContent + 'を外しますか？この土地について入力した内容も消えます。'
           : entry.querySelector('[data-e-title]').textContent + 'を外しますか？この家について入力した内容も消えます。';
         box.hidden = false; box.querySelector('[data-entry-no]').focus();
@@ -461,7 +529,22 @@
           const lands = values.links.map(l => l.land).filter(l => l !== 'other');
           if (new Set(lands).size < lands.length) { error.textContent = '同じ土地が2つあります。1つにまとめてください。'; return; }
         }
-      } else if (identity.type === 'matter' && values.paper !== 'あり') { delete values.docSt; delete values.docPlace; }
+      } else if (identity.type === 'matter' && identity.key === 'changed') {
+        const grow = w => w !== 'cut' && w !== 'demo';
+        values.changes = Array.from(dialog.querySelectorAll('[data-change]'), el => {
+          const v = k => values['c' + el.dataset.change + '-' + k];
+          const what = v('what') || '';
+          return { what, bldg: v('bldg') || '', side: v('side') || '', floor: Number(v('floor')) || 1, where: v('where') || '', when: v('when') || '',
+            reg: v('reg'), tax: v('tax'), docs: v('docs'), by: v('by') || '',
+            kinds: ['confirm', 'inspect', 'contract', 'receipt', 'handover'].filter(k => v('kind-' + k)) };
+        });
+        Object.keys(values).filter(k => /^c\d+-/.test(k)).forEach(k => delete values[k]);
+        const error = dialog.querySelector('.re-error');
+        if (values.has === 'yes') {
+          if (values.changes.some(c => !c.what)) { error.textContent = '何をしたかを選んでください。'; return; }
+          if (values.changes.some(c => !c.side)) { error.textContent = 'どこか（玄関から見た向き）を選んでください。'; return; }
+        }
+      }
       if (identity.type === 'prior') {
         values.parcels = ['land', 'bldg'].filter(k => values['parcel-' + k]);
         values.stage = values.route === 'split' ? values['stage-split'] : values.route === 'unknown' ? 'none' : values['stage-once'];
@@ -471,7 +554,6 @@
       const error = dialog.querySelector('.re-error');
       if (identity.type === 'prior' && values.remains === 'yes' && !values.parcels.length) { error.textContent = '前の代の名義のものを選んでください。'; return; }
       if (identity.type === 'deal' && !values.who.trim()) { error.textContent = '相手の名前・会社名を記録してください。'; return; }
-      if (identity.type === 'matter' && values.find === 'no' && values.interview !== 'heard' && !values.source.trim()) { error.textContent = '該当しないことを確認した相手・資料を記録してください。'; return; }
       try { S.updateRecord(identity.id, identity.type, values.docKind || identity.key, values); }
       catch (e) { error.textContent = e.message; return; }
       dialog.close();

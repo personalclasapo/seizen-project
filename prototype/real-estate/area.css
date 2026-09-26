@@ -686,3 +686,67 @@ textarea.re-q-in{width:100%;resize:vertical;display:block}
 .rd-r.off{opacity:.28}
 .rd-t.me{font-weight:600;fill:#4A453C}
 .rd-t.dim{fill:#8A8477}
+/* 建物の変更・登記の図（render.js の chFigure）。真上から見た今の家（地の色と実線）の
+   下に、登記の形を灰色の太い線で重ねる。置かれ方は境界・私道に揃える（幅220px＋右に説明）。 */
+.cg-fig svg{display:block;max-width:100%;height:auto}
+.cg-t{font-size:11px;fill:#6B6963;font-family:var(--font)}
+.cg-t.no{font-size:11.5px;font-weight:600}
+.cg-t.q{fill:#A39B8A}
+/* 説明の凡例（登記の形／登記に入っていない／取り壊したが登記に残る） */
+.cg-g{display:inline-block;width:12px;height:8px;margin-right:4px;vertical-align:middle;border:1.2px solid #6B6963}
+.cg-g.df{background:repeating-linear-gradient(135deg,#fff 0 2px,#8C877D 2px 3px)}
+.cg-g.gn{box-sizing:border-box;width:14px;height:10px;border:2.5px solid #CFC8BA;background:#fff}
+.cg-g.rg{border:0;height:4px;background:#CFC8BA;box-shadow:inset 0 1.3px 0 #6B6963}
+.cg-fig .bd-item{grid-template-columns:1.3em minmax(0,1fr)}
+.cg-fig .bd-item span small{display:block;color:var(--ink3);font-size:10.5px;margin-top:1px}
+.cg-lg{white-space:nowrap;margin-right:10px}
+/* 建物の変更のフォーム：1つの問いの中に、名前（左）と選択肢（右）を揃えて並べる
+   （場所と時期／この変更の記録）。狭い幅では名前を上に。 */
+.re-lines{display:grid;grid-template-columns:7.4em minmax(0,1fr);gap:10px 16px;align-items:center}
+.re-ln{display:contents}
+.re-ln[hidden]{display:none}
+.re-ln-lb{font-size:12px;font-weight:600;color:#56604F;white-space:nowrap}
+.re-ln-v{min-width:0}
+.re-ln-v .re-opts{gap:6px}
+.re-ln-v .re-opt>span{padding:6px 14px}
+.re-ln-v .re-q-in{width:min(260px,100%)}
+.re-ln-sub{margin-top:8px}
+.re-ln-sub .re-opt>span{padding:4px 11px;font-size:12px}
+.re-yr{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#56604F}
+.re-yr-sel{box-sizing:border-box;min-width:12em;border:1px solid #cccfc0;background:#fff;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;color:#434A3D}
+.re-yr-sel:focus{outline:2px solid #8ca484;outline-offset:1px;border-color:#72886a}
+@media (max-width:520px){
+  .re-lines{grid-template-columns:1fr;gap:4px}
+  .re-ln-v{margin-bottom:8px}
+}
+/* 図の横の説明：変更ごとに見出しと、見本付きの登記の状態（凡例を兼ねる）。最後に「登記の形」。
+   図と説明は上端を揃える（図を枠いっぱいに描いたので、高さも近い）。 */
+.cg-fig{align-items:center;flex-wrap:nowrap;justify-content:center;gap:0 24px}
+/* 図と説明は1つのまとまり（間24px）で、行の中央に置く。説明は文が要る幅（max-content）で、
+   行に収まらなければ折り返す（そのときはまとまりが行いっぱいになる）。 */
+.cg-fig .bd-cap .bd-item{padding-right:0}
+.cg-fig .bd-cap{flex:0 1 auto;width:max-content;min-width:0}
+.cg-fig .bd-figs{align-self:center;width:auto;flex:none;margin-top:9px}
+/* ↑ 説明は1行目の上と最後の行の下に余白があり、文字の中心が箱の中心より下にある。図をその分
+   下げて、描いたものと説明の文字の上下の中心を揃える（実測で4〜5pxのずれ）。 */
+/* 狭い幅：説明が図の横で170pxを切るなら、図の下へ回す（390pxで横に押し込まれて縦に伸びた）。 */
+@media (max-width:520px){ .cg-fig{flex-wrap:wrap;row-gap:12px;justify-content:flex-start} .cg-fig .bd-cap{flex:1 1 100%;min-width:170px} .cg-fig .bd-figs{margin-top:0} }
+/* 2件以上の説明：見出しは1行ずつ、登記の状態は種類ごとに（見本＋番号） */
+.cg-fig .cg-many .bd-item{padding-top:1px;padding-bottom:1px}
+.cg-fig .cg-many .bd-item+.bd-item{margin-top:0}
+.cg-st{margin-top:8px}
+.cg-st p{margin:0;font-size:10.5px;line-height:1.9;color:var(--ink3)}
+.cg-st b{font-weight:600;color:#6B6963;margin-left:6px;letter-spacing:.05em}
+.cg-fig .bd-item+.bd-item{margin-top:6px}
+.cg-fig .bd-item small .cg-g{margin-right:5px}
+.cg-legend{margin:10px 0 0;font-size:10.5px;color:var(--ink3)}
+.cg-g.on{background:#F4F1EA}
+.cg-g.dz{border:1.2px dashed #BDB5A6;background:none}
+/* 所有を示すもの（境界・私道の「用意できている書類」と同じ位置と作り） */
+.cg-proof .pr-act-h small{font-size:10.5px;color:var(--ink3)}
+.cg-proof p{font-size:13px;font-weight:600}
+.cg-proof .cg-none{color:var(--ink3);font-weight:500}
+.cg-v{display:inline-block;margin-left:8px;padding:0 8px;border-radius:9px;font-size:11px;font-weight:600;line-height:1.7;vertical-align:1px}
+.cg-v.ok{color:var(--gr);background:var(--gr-bg)}
+.cg-v.or{color:var(--or);background:var(--or-bg)}
+.cg-g.uk{background:repeating-linear-gradient(135deg,#fff 0 2px,#CFC8BA 2px 3px);border-color:#A39B8A}

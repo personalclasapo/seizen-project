@@ -85,10 +85,6 @@
      ■ 今のうち／そのとき｜v28 からの移植（項目・文言・ロジック）
      ══════════════════════════════════════════════════════════ */
 
-  const MATTER_QUESTIONS = {
-    boundary: '隣家と境界や塀について、話したこと・決めたことはありますか？',
-    changed: '増築や取り壊しなどをしたのは、いつ、どこに頼んだ工事ですか？'
-  };
   /* ── 記録の単位に共通する2つの部品 ─────────────────
      部屋ごとに中身の形は変えるが、**入口と状態の位置だけは揃える**：
        ・状態バッジ … 単位の名前の直下（§11 の状態。値はバッジにしない）
@@ -140,19 +136,11 @@
       '<div class="uh-r">' + st + button + '</div></div>';
   }
 
-  /* 今のうち＝事情（境界・私道・建物の変更）だけ。
+  /* 今のうち＝事情（境界・私道・建物の変更）と前の代の相続登記。
      権利・ローン・契約の確認は、以前ここにも行として出していたが、
      下段の部屋（権利関係・ローン・契約）に同じ事実と入口があり、
      二重表示になっていた。下段が持つ（2026-09-23）。
-
-     状態は保存された値（uiStatus）。フォームの答えから推し量らない。
-     「次にすること」は状態ごと・項目ごとに変える ―― 未確認なら本人に
-     聞く問い、対応が必要なら項目ごとの対応（以前の版の actions を
-     移した）。本人が書いた m.next があればそれを優先する。          */
-  const ACTION_NEXT = {
-    boundary: '当時の取り決めを双方で確認し、必要なら書面や図面に残しておく。代替わりすると、当時の合意内容を確認できなくなる。',
-    changed: '工事時期・施工者・図面・確認申請書類などを確認し、増築部分を登記に反映するための資料をそろえる。'
-  };
+     状態・次にすることは、どの行も答えから出す（state.js の matterStatus）。 */
   /* ■ 前の代の相続登記（2026-09-24 作り直し）
      答え（名義が残っているか・どれが・名義人・名義人は父から見て誰か・
      名義を移す道・進み具合・取得する人・亡くなった時期）だけを持ち、
@@ -697,7 +685,7 @@
         '売るときは、隣と立ち会う測量（確定測量）から始めます。費用の目安は30〜80万円です。</p>';
       return '<p class="pr-why">' + BD_NEED + WHO + 'が覚えていなくても、境界確認書や測量図が残っていれば、それで境界を示せます。</p>' +
         act('土地を買ったとき・家を建てたときの書類から、境界確認書や測量図を探す',
-          '仕舞った場所は' + WHO + 'に聞きます。家に無くても、法務局の地積測量図は家族でも取れます（無い土地もあります）。当時の不動産会社や、測量をした土地家屋調査士が写しを持っていることもあります。');
+          '保管場所は' + WHO + 'に確かめます。家になくても、法務局の地積測量図は家族でも取れます（無い土地もあります）。当時の不動産会社や、測量をした土地家屋調査士が写しを持っていることもあります。');
     }
     if (b.deal !== 'yes') return '<p class="pr-why">' + BD_NEED + '塀の位置や越境を隣と口頭で決めていても、そのことは登記にも図面にも残りません。' +
       '決めたことがあるかは、' + WHO + 'に聞かないと分かりません。</p>' +
@@ -958,17 +946,345 @@
     return '<p class="pr-why">' + why + '</p>' + roadLinks(p, ls) + nextHtml + docs + roadDetail(p, ls);
   }
 
+  /* ■ 建物の変更・登記（2026-09-26。設計 §9。見本 `_検討/建物の変更_表示v3.html`）
+     答え（変更ごとの 何を・どこ・いつ・登記・課税明細書・工事の書類・請け負った会社）から
+     組み立てる。答えの意味と今のうちの線は state.js の changedStatus の注記を参照。
+     行の組み方は境界・私道と同じ（一文 → 図＋右に短い説明 → 次にすること → くわしく）。
+     相手の札は置かない ―― 1枚の図に全部の変更が載り、説明は変更1件で2〜3行に収まる。
+     文は答えの組み合わせごとに決める（欄ごとの決まり文句を並べない）：
+       課税されている → 固定資産評価証明書も所有を示す書類に使える
+       課税もされておらず書類も無い → 増築したことを示すものは父の記憶だけ
+       書類が1種類だけ → もう1種類（請け負った会社の工事完了引渡証明書など）
+     言い方はフォームの「この変更の記録」と揃える（載っている／載っていない、取り壊しは
+     消えている／残っている）。 */
+  const KIND = { confirm: '確認済証', inspect: '検査済証', contract: '工事請負契約書', receipt: '領収書', handover: '工事完了引渡証明書' };
+  const circled = i => '①②③④⑤⑥'.charAt(i) || String(i + 1);
+  /* 別棟・取り壊した建物の名前。 */
+  const BLDG = { hanare: '離れ', garage: '車庫', shed: '物置' };
+  const bname = c => BLDG[c.bldg] || c.where || (c.what === 'annex' ? '別棟' : '建物');
+  /* 変更の見出し（名詞で）。例：2015年ごろの増築（北側に約6畳）／2019年ごろに建てた車庫 */
+  function desc(c) {
+    const t = c.when ? c.when + '年ごろ' : '';
+    if (c.what === 'ext') return (t ? t + 'の' : '') + '増築' + (c.where ? '（' + c.where + '）' : '');
+    return (t ? t + 'に' : '') + (c.what === 'annex' ? '建てた' + bname(c) : '取り壊した' + (c.what === 'cut' ? c.where || '建物の一部' : bname(c)));
+  }
+  /* ══ 図｜今の家と、登記の形を重ねる（v3）
+     v2 は登記の形を実線の四角にして、その外に変更の箱を付けたので、どの変更も「四角に
+     足した」に見えた（2026-09-25）。変更は、家の形が変わったのに登記の形が前のまま、と
+     いうこと。形を2つ重ねる：
+       今の家   … 地の色と実線。増えれば出っ張り、減れば欠ける一続きの外形（本体と箱に分けない）
+       登記の形 … 今の家の線の後ろに敷く灰色の太い線。同じところは縁取りに見え、違うところ
+                   だけ別の道を通る
+     違いの面：登記に載っていない部分＝斜線（登記をまだ確かめていない部分は薄い斜線）、取り壊したが登記に残る部分＝灰色の線の中の白抜き。
+     参考は法務局の各階平面図（壁芯を実線、階ごと、上の階は1階の位置を点線：不動産登記規則83条）。
+     描き込みすぎない：部屋・大きさ・時期は描かない。位置は答え（何階・玄関から見た側・
+     接するか離れるか）だけ。
+       side  back 奥／right 右／left 左／front 玄関側   floor 1／2（増築のとき） */
+  function chFigure(uid, cs) {
+    const two = cs.some(c => c.what === 'ext' && c.floor === 2);
+    const W = 220, INK = '#6B6963', BAND = '#CFC8BA', FILL = '#F4F1EA';
+    const hatch = 'cg' + uid;
+    const inReg = c => c.reg === 'yes';
+    /* 枠（幅220px＝境界・私道と同じ）いっぱいに描く。以前は家を 96×62 で描き、枠の4割しか
+       使わず、番号も斜線も小さかった（2026-09-26）。表示範囲は描いたものの外形から決める。 */
+    /* 主役は変わった部分なので、家に対して小さくしすぎない（家 124×78 に出っ張り30：2026-09-26）。 */
+    const D = two ? { ext: 22, cut: -18, dep: 24, gap: 10 } : { ext: 30, cut: -24, dep: 30, gap: 12 };
+    /* 描いたものの外形。左右も測り、枠の中央に寄せる（以前は家の位置を固定し、右側だけに
+       変更があっても左に寄った：2026-09-26）。 */
+    const box = { x0: Infinity, x1: -Infinity, y0: 0, y1: 0 };
+    const grow = r => { box.x0 = Math.min(box.x0, r[0]); box.x1 = Math.max(box.x1, r[0] + r[2]);
+      box.y0 = Math.min(box.y0, r[1]); box.y1 = Math.max(box.y1, r[1] + r[3]); };
+    /* 辺に沿って、出っ張り（+）と欠け（−）を持つ外形を1本の道にする。
+       ps＝[{ side, off, len, d }]（d>0 出る、d<0 欠ける） */
+    function outline(X, Y, w, h, ps) {
+      const by = side => ps.filter(p => p.side === side).sort((a, b) => a.off - b.off);
+      let d = 'M' + X + ' ' + Y;
+      by('back').forEach(p => { d += 'L' + p.off + ' ' + Y + 'L' + p.off + ' ' + (Y - p.d) + 'L' + (p.off + p.len) + ' ' + (Y - p.d) + 'L' + (p.off + p.len) + ' ' + Y; });
+      d += 'L' + (X + w) + ' ' + Y;
+      by('right').forEach(p => { d += 'L' + (X + w) + ' ' + p.off + 'L' + (X + w + p.d) + ' ' + p.off + 'L' + (X + w + p.d) + ' ' + (p.off + p.len) + 'L' + (X + w) + ' ' + (p.off + p.len); });
+      d += 'L' + (X + w) + ' ' + (Y + h);
+      by('front').reverse().forEach(p => { d += 'L' + (p.off + p.len) + ' ' + (Y + h) + 'L' + (p.off + p.len) + ' ' + (Y + h + p.d) + 'L' + p.off + ' ' + (Y + h + p.d) + 'L' + p.off + ' ' + (Y + h); });
+      d += 'L' + X + ' ' + (Y + h);
+      by('left').reverse().forEach(p => { d += 'L' + X + ' ' + (p.off + p.len) + 'L' + (X - p.d) + ' ' + (p.off + p.len) + 'L' + (X - p.d) + ' ' + p.off + 'L' + X + ' ' + p.off; });
+      return d + 'Z';
+    }
+    const rectPath = r => 'M' + r[0] + ' ' + r[1] + 'h' + r[2] + 'v' + r[3] + 'h' + (-r[2]) + 'Z';
+    const lbl = (x, y, t, cls) => '<text x="' + x + '" y="' + (y + 4) + '" text-anchor="middle" class="cg-t ' + (cls || 'no') + '">' + t + '</text>';
+    const pat = c => 'url(#' + hatch + (c.reg === 'unknown' ? 'u' : '') + ')';
+    let door = null;                          // 玄関の位置（1階の平面の下の辺）
+
+    function plan(X, Y, w, h, floor, name) {
+      grow([X, Y, w, h]);
+      const mine = cs.map((c, i) => ({ c, i })).filter(({ c }) => c.what === 'ext' ? (c.floor || 1) === floor : floor === 1);
+      const sides = { back: [], right: [], left: [], front: [] };
+      mine.forEach(o => (sides[o.c.side] || sides.back).push(o));
+      const edge = [], apart = [], upper = [];
+      Object.keys(sides).forEach(side => {
+        const list = sides[side], hor = side === 'back' || side === 'front';
+        /* 玄関側は、中央に玄関の口（幅36）を空け、左の半分・右の半分に振り分ける（2件で玄関が
+           ふさがり、1件でも口をまたいだ）。 */
+        const door = side === 'front' && floor === 1;
+        const halfW = (w - 36) / 2, nL = Math.ceil(list.length / 2);
+        list.forEach((o, k) => {
+          const c = o.c;
+          const inR = door && k >= nL, cnt = door ? (inR ? list.length - nL : nL) : list.length, kk = door && inR ? k - nL : k;
+          const span = door ? halfW / cnt : (hor ? w : h) / list.length;
+          const len = Math.min(span - 8, hor ? w * .45 : h * .6);
+          const off = (hor ? X : Y) + (inR ? halfW + 36 : 0) + span * kk + (span - len) / 2;
+          if (c.what === 'ext' && floor === 2) upper.push({ o, side });
+          else if (c.what === 'ext' || c.what === 'cut') edge.push({ o, side, off, len, d: c.what === 'ext' ? D.ext : D.cut });
+          else {
+            const L = Math.min(len, D.dep + 8), o2 = off + (len - L) / 2;
+            const r = side === 'back' ? [o2, Y - D.gap - D.dep, L, D.dep] : side === 'front' ? [o2, Y + h + D.gap, L, D.dep]
+              : side === 'left' ? [X - D.gap - D.dep, o2, D.dep, L] : [X + w + D.gap, o2, D.dep, L];
+            apart.push({ o, r }); grow(r);
+          }
+        });
+      });
+      edge.forEach(e => { if (e.d > 0) grow(e.side === 'back' ? [e.off, Y - e.d, e.len, e.d] : e.side === 'front' ? [e.off, Y + h, e.len, e.d]
+        : e.side === 'left' ? [X - e.d, e.off, e.d, e.len] : [X + w, e.off, e.d, e.len]); });
+      let g = '';
+      if (floor === 2) {
+        /* 2階：今の2階＝1階と同じ外形とし、増築した側ごとに斜線（登記に載っていなければ）。
+           登記の形は、登記に載っていない側を除いた残り。2件以上も同じ（以前は1件しか描かなかった）。 */
+        const PART = { back: [X, Y, w, h * .45], front: [X, Y + h * .55, w, h * .45], left: [X, Y, w * .45, h], right: [X + w * .55, Y, w * .45, h] };
+        const off = upper.filter(u => !inReg(u.o.c)).map(u => u.side);
+        const regR = [X + (off.includes('left') ? w * .45 : 0), Y + (off.includes('back') ? h * .45 : 0)];
+        regR.push(X + w - (off.includes('right') ? w * .45 : 0) - regR[0], Y + h - (off.includes('front') ? h * .45 : 0) - regR[1]);
+        g += '<path d="' + rectPath([X, Y, w, h]) + '" fill="' + FILL + '"/>';
+        upper.forEach(u => {
+          const r = PART[u.side] || PART.back;
+          g += inReg(u.o.c) ? '<path d="' + rectPath(r) + '" fill="none" stroke="#BDB5A6" stroke-width="1" stroke-dasharray="2 2"/>'
+            : '<path d="' + rectPath(r) + '" fill="' + pat(u.o.c) + '"/>';
+        });
+        g += '<path d="' + rectPath(regR) + '" fill="none" stroke="' + BAND + '" stroke-width="5" stroke-linejoin="round" opacity=".9"/>';
+        g += '<path d="' + rectPath([X, Y, w, h]) + '" fill="none" stroke="' + INK + '" stroke-width="1.4"/>';
+        upper.forEach(u => { const r = PART[u.side] || PART.back; g += lbl(r[0] + r[2] / 2, r[1] + r[3] / 2, circled(u.o.i)); });
+        return g;
+      }
+      /* 今の家：増築は出っ張り、一部の取り壊しは欠け。登記の形：登記済みの変更だけ反映。 */
+      const now = edge.map(e => ({ side: e.side, off: e.off, len: e.len, d: e.d }));
+      const reg = edge.filter(e => inReg(e.o.c)).map(e => ({ side: e.side, off: e.off, len: e.len, d: e.d }));
+      g += '<path d="' + outline(X, Y, w, h, now) + '" fill="' + FILL + '"/>';
+      /* 登記に載っていない部分（今の家にあって登記に無い）は斜線。 */
+      edge.filter(e => e.d > 0 && !inReg(e.o.c)).forEach(e => {
+        const r = e.side === 'back' ? [e.off, Y - e.d, e.len, e.d] : e.side === 'front' ? [e.off, Y + h, e.len, e.d]
+          : e.side === 'left' ? [X - e.d, e.off, e.d, e.len] : [X + w, e.off, e.d, e.len];
+        g += '<path d="' + rectPath(r) + '" fill="' + pat(e.o.c) + '"/>';
+      });
+      /* 取り壊した部分で、登記をまだ確かめていないものは薄い斜線（説明の見本と揃える。以前は
+         「登記に残っている」と同じ白抜きにして、説明と食い違った）。 */
+      edge.filter(e => e.d < 0 && e.o.c.reg === 'unknown').forEach(e => {
+        const q = -e.d, r = e.side === 'back' ? [e.off, Y, e.len, q] : e.side === 'front' ? [e.off, Y + h - q, e.len, q]
+          : e.side === 'left' ? [X, e.off, q, e.len] : [X + w - q, e.off, q, e.len];
+        g += '<path d="' + rectPath(r) + '" fill="' + pat(e.o.c) + '"/>';
+      });
+      apart.filter(a => a.o.c.what === 'demo' && a.o.c.reg === 'unknown').forEach(a => { g += '<path d="' + rectPath(a.r) + '" fill="' + pat(a.o.c) + '"/>'; });
+      /* 取り壊して登記からも消えた建物は、かつての位置を薄い点線で（番号だけが浮かないように）。 */
+      apart.filter(a => a.o.c.what === 'demo' && inReg(a.o.c)).forEach(a => { g += '<path d="' + rectPath(a.r) + '" fill="none" stroke="#BDB5A6" stroke-width="1.1" stroke-dasharray="3 3"/>'; });
+      /* 登記の形は、地の色と斜線の上・今の家の線の下に敷く（付け根を横切る線が見えるように）。 */
+      apart.filter(a => a.o.c.what === 'annex').forEach(a => { g += '<path d="' + rectPath(a.r) + '" fill="' + (inReg(a.o.c) ? FILL : pat(a.o.c)) + '"/>'; });
+      g += '<path d="' + outline(X, Y, w, h, reg) + '" fill="none" stroke="' + BAND + '" stroke-width="5" stroke-linejoin="round" opacity=".9"/>';
+      apart.forEach(a => { const c = a.o.c; if ((c.what === 'annex' && inReg(c)) || (c.what === 'demo' && !inReg(c))) g += '<path d="' + rectPath(a.r) + '" fill="none" stroke="' + BAND + '" stroke-width="5" stroke-linejoin="round"/>'; });
+      /* 玄関：下の辺のうち、玄関側の変更が無いところ（中央から順に探す）。開口と矢印。 */
+      door = { x: X + w / 2, y: Y + h };
+      g += '<path d="' + outline(X, Y, w, h, now) + '" fill="none" stroke="' + INK + '" stroke-width="1.4" stroke-linejoin="round"/>';
+      apart.filter(a => a.o.c.what === 'annex').forEach(a => { g += '<path d="' + rectPath(a.r) + '" fill="none" stroke="' + INK + '" stroke-width="1.4"/>'; });
+      g += '<path d="M' + (door.x - 8) + ' ' + door.y + 'h16" stroke="' + FILL + '" stroke-width="3.2"/>';
+      /* 番号 */
+      edge.forEach(e => {
+        const q = Math.abs(e.d), hor = e.side === 'back' || e.side === 'front';
+        const cx = hor ? e.off + e.len / 2 : e.side === 'left' ? X + (e.d > 0 ? -q / 2 : q / 2) : X + w + (e.d > 0 ? q / 2 : -q / 2);
+        const cy = !hor ? e.off + e.len / 2 : e.side === 'back' ? Y + (e.d > 0 ? -q / 2 : q / 2) : Y + h + (e.d > 0 ? q / 2 : -q / 2);
+        g += lbl(cx, cy, circled(e.o.i));
+      });
+      apart.forEach(a => { g += lbl(a.r[0] + a.r[2] / 2, a.r[1] + a.r[3] / 2, circled(a.o.i)); });
+      return g + (name ? '<text x="' + (X + w / 2) + '" y="' + (box.y0 - 8) + '" text-anchor="middle" class="cg-t">' + name + '</text>' : '');
+    }
+    let s = '<defs><pattern id="' + hatch + '" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#fff"/><path d="M0 0V5" stroke="#8C877D" stroke-width="1.5"/></pattern>' +
+      '<pattern id="' + hatch + 'u" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#fff"/><path d="M0 0V6" stroke="#CFC8BA" stroke-width="1.3"/></pattern></defs>';
+    if (two) {
+      s += plan(38, 0, 68, 72, 1, '') + plan(150, 0, 68, 72, 2, '');
+      /* 階の名前は、2枚とも同じ高さ（描いたもののいちばん上のさらに上）に。 */
+      s += [[72, '1階'], [184, '2階']].map(([x, t]) => '<text x="' + x + '" y="' + (box.y0 - 7) + '" text-anchor="middle" class="cg-t">' + t + '</text>').join('');
+      box.y0 -= 18;
+    }
+    else s += plan(48, 0, 124, 78, 1, '');
+    /* 玄関の字は、玄関の真下に短い矢印を付けて。玄関の位置は玄関側の変更を避けて選んで
+       いるので、字が別棟と重なることはない。 */
+    const doorY = door.y + 13;
+    s += '<path d="M' + door.x + ' ' + (door.y + 4) + 'V' + (doorY - 1) + 'm-3-3 3 3 3-3" fill="none" stroke="#A39B8A" stroke-width="1.1"/>' +
+      '<text x="' + door.x + '" y="' + (doorY + 13) + '" text-anchor="middle" class="cg-t q">玄関</text>';
+    /* 図の幅は描いたものの幅そのもの（1:1）。見えない固定の枠に入れて中央に寄せると、図の左端が
+       行の文の左端と揃わず、説明との間も組み合わせで変わった（2026-09-26）。左端は文に揃え、
+       説明は図の右端のすぐ後ろから（.cg-fig）。 */
+    const top = box.y0 - 2, H = Math.max(box.y1, doorY + 16) + 2 - top;
+    const left = box.x0 - 1, VW = Math.ceil(box.x1 - box.x0 + 2);
+    return '<svg viewBox="' + left + ' ' + top + ' ' + VW + ' ' + H + '" width="' + VW + '" role="img" aria-label="真上から見た今の家と、登記の形を重ねた図（玄関が下）">' + s + '</svg>';
+  }
+  /* 図の右の説明。図を言葉で言う短い事実だけ。 */
+  /* 図の右の説明。図を言葉で言うことだけ（変更と、登記に載っているか）。課税明細書と工事の
+     書類は図に描いていないので、ここに並べない ―― 以前は3行の表にして右の欄が詰まり、図と
+     釣り合わなかった（2026-09-26）。それが何を意味するかは、次にすることが言う。 */
+  /* 説明の2行目（登記の状態）に図と同じ見本を付け、凡例を兼ねる（凡例を別に置くと、同じ
+     「登記に載っていない」を2回言い、右の欄が上に固まった：2026-09-26）。 */
+  function chCaption(cs) {
+    const st = c => S.chGrow(c.what)
+      ? { yes: ['on', '登記に載っている'], no: ['df', '登記に載っていない'] }[c.reg] || ['uk', '登記はまだ確かめていない']
+      : { yes: [c.what === 'demo' ? 'dz' : '', '登記からも消えている'], no: ['gn', '登記に残っている'] }[c.reg] || ['uk', '登記はまだ確かめていない'];
+    const glyph = g => g ? '<em class="cg-g ' + g + '"></em>' : '';
+    const legend = '<p class="cg-legend"><em class="cg-g rg"></em>灰色の線は登記の形</p>';
+    if (cs.length === 1) {
+      const [g, t] = st(cs[0]);
+      return '<div class="bd-cap"><div class="bd-items"><div class="bd-item"><i>' + circled(0) + '</i><span>' + esc(desc(cs[0])) + '<small>' + glyph(g) + t + '</small></span></div></div>' + legend + '</div>';
+    }
+    /* 2件以上：同じ登記の状態が件数だけ並ぶと、説明が図の倍の高さになった。見出しは1行ずつ、
+       登記の状態は種類ごとにまとめて、見本の横に番号を並べる。 */
+    const groups = new Map();
+    cs.forEach((c, i) => { const [g, t] = st(c), k = g + '|' + t; groups.set(k, (groups.get(k) || { g, t, n: [] })); groups.get(k).n.push(circled(i)); });
+    return '<div class="bd-cap"><div class="bd-items cg-many">' + cs.map((c, i) => '<div class="bd-item"><i>' + circled(i) + '</i><span>' + esc(desc(c)) + '</span></div>').join('') + '</div>' +
+      '<div class="cg-st">' + [...groups.values()].map(x => '<p>' + glyph(x.g) + x.t + '<b>' + x.n.join('') + '</b></p>').join('') + '</div>' + legend + '</div>';
+  }
+  /* 所有を示すもの（増える変更で、登記に載っていないものごと）。フォームの「この変更の記録」の
+     答え（課税明細書・工事の書類）をここに映す ―― 以前は次にすることの文に混ぜるだけで、
+     何のために聞いたのかが画面から見えなかった（2026-09-26）。2種類以上で足りる。 */
+  const PROOF = Object.assign({ valuation: '固定資産評価証明書' }, KIND);
+  function proofBlock(cs) {
+    const rows = cs.map((c, i) => ({ c, i })).filter(({ c }) => S.chGrow(c.what) && c.reg !== 'yes');
+    if (!rows.length) return '';
+    return '<div class="pr-act bd-docs cg-proof"><div class="pr-act-h"><span>所有を示すもの</span><small>2種類以上あれば足ります</small></div>' +
+      rows.map(({ c, i }) => {
+        const have = S.changeProof(c), n = have.length;
+        /* まだ確かめていないものだけを一言で（課税明細書に載っていれば評価証明書が1種類になる）。 */
+        const note = [c.tax === '' && '課税明細書', c.docs === 'unknown' && '工事の書類'].filter(Boolean);
+        const noteText = note.length ? 'まだ確かめていない：' + note.join('・') : '';
+        return '<p>' + (cs.length > 1 ? '<span class="bd-act-nb">' + circled(i) + '</span>' : '') +
+          (n ? esc(have.map(k => PROOF[k]).join('・')) : '<span class="cg-none">まだない</span>') +
+          '<b class="cg-v ' + (n >= 2 ? 'ok' : 'or') + '">' + (n >= 2 ? '足りる' : 'あと' + (2 - n) + '種類') + '</b>' +
+          (noteText ? '<small>' + esc(noteText) + '</small>' : '') + '</p>';
+      }).join('') + '</div>';
+  }
+
+  /* 一文の前半（なぜ必要か）。何の登記を、誰が申請するのかまで言う（「登記は義務」だけでは
+     何をするのか分からない：2026-09-26）。 */
+  const CH_NEED = '増築や取り壊しをしたら、所有者が登記を直す<b>義務</b>があります。登記が今の建物と違うと、<b>売る</b>ときに買主が住宅ローンを組めないことがあります。';
+  const chAct = rows => '<div class="pr-act"><div class="pr-act-h"><span>次にすること</span></div>' + rows.map(r =>
+    '<p>' + (r.nb ? '<span class="bd-act-nb">' + esc(r.nb) + '</span>' : '') + esc(r.text) + (r.sub ? '<small>' + esc(r.sub) + '</small>' : '') + '</p>').join('') + '</div>';
+  /* くわしく。場面ごと。どの節を出すかは答えで決める。 */
+  const DT_SELL_GROW = ['売る・担保に入れるとき', '買主の金融機関は、担保にする建物の登記が今の建物と合っていることを求めます。登記に載っていない増築があると、住宅ローンの審査が通らない、または融資額が減ることがあります。'];
+  const DT_SELL_GONE = ['売る・担保に入れるとき', '取り壊した建物が登記に残っていると、売る前に、取り壊しの登記（滅失登記）を求められます。'];
+  const DT_PROOF = ['所有を示す書類', '増えた部分が' + WHO + 'のものだと示すには、確認済証・検査済証、工事請負契約書と領収書、工事を請け負った会社の工事完了引渡証明書、固定資産評価証明書などを使い、2種類以上を求められることが多いです。' +
+    '確認済証をなくしても、建築確認を受けていれば、役所で台帳記載事項証明書を取れることがあります。' +
+    '足りないときは上申書（実印を押し、印鑑証明書を添える）で補います。今なら' + WHO + 'の上申書で足りますが、' + WHO + 'が亡くなった後は相続人全員の上申書が必要です。'];
+  const DT_TAX = ['課税されていなかったとき', '登記をすると、法務局から市町村へ通知が行きます。課税されていなかった増築は、最大5年さかのぼって課税されることがあります。'];
+  const DT_DUTY = ['義務と費用', '増築・取り壊しから1か月以内に申請する義務があり、怠ると10万円以下の過料の定めがあります。1か月を過ぎても義務は続き、今からでも申請できます。過料は、登記官から裁判所へ通知され、催告にも応じないときに検討されるものです。' +
+    '土地家屋調査士の報酬の目安は、増築の登記で約10万円、取り壊しの登記で約5万円です（登録免許税はかかりません）。'];
+
+  function changedBody(p) {
+    const m = p.matters.changed || {}, key = 'ch' + p.id;
+    const quiet = t => '<p class="pr-quiet">' + t + '</p>';
+    const W = WHO;
+    if (m.has === 'no') return quiet('建ててから、増築や取り壊しはしていません。');
+    /* 何が記録に残らないのか、を事実で言う（「父に聞かないと分からない」とは書かない）。 */
+    if (m.has === 'unasked') return '<p class="pr-why">' + CH_NEED + '請け負った会社や工事の書類の保管場所は、登記にも課税明細書にも載りません。</p>' +
+      chAct([{ text: W + 'に、建ててから増築や取り壊し、離れ・車庫の新築をしたことがあるか確かめる', sub: 'あれば、時期と場所、請け負った会社、登記をしたか、工事の書類の保管場所も確かめます。' }]);
+    if (m.has === 'unknown') {
+      if (m.check === 'same') return quiet('課税明細書では、登記床面積と現況床面積に違いはありませんでした。ただ、市町村も把握していない増築はこれでは分からず、売るときの調査で見つかることがあります。その場合は、相続人全員の上申書を添えて登記します。');
+      if (m.check === 'diff') return '<p class="pr-why">' + CH_NEED + '課税明細書で、登記に載っていない部分が見つかっています。</p>' +
+        chAct([{ text: '土地家屋調査士に課税明細書を見せ、' + W + 'の名前で表題変更登記を依頼する', sub: '工事の書類がなくても、今なら固定資産評価証明書と' + W + 'の上申書で、増えた部分が' + W + 'のものだと示せます。' }]) +
+        boundaryDetail(p, [DT_SELL_GROW, DT_PROOF, DT_DUTY], 'changed');
+      return '<p class="pr-why">' + CH_NEED + W + 'が覚えていなくても、市町村が把握している増築は課税明細書で分かります。</p>' +
+        chAct([{ text: '課税明細書の家屋の欄で、登記床面積と現況床面積を比べる', sub: '現況床面積のほうが大きいか、家屋番号の欄に「未登記家屋」とある行があれば、登記に載っていない部分があります。課税明細書は、固定資産税の納税通知書に同封されています。' }]);
+    }
+    const cs = m.changes || [];
+    const st = cs.map(S.changeState);
+    /* 図と説明は1つのまとまり（説明は図の凡例なので、決まった間隔で寄せる）。まとまりを行の中央に
+       置く ―― 内容が少なければ小さく中央に、多ければ行の幅いっぱいに広がる。以前は図と説明を
+       別々に扱い、間の余白だけを調整していた（固定の枠／図のすぐ後ろ／余白を等分、のどれも変だった）。 */
+    const fig = '<div class="bd-fig cg-fig"><div class="bd-figs">' + chFigure(key, cs) + '</div>' + chCaption(cs) + '</div>';
+    /* 全部登記に載っている：済んだ段でも、家族にとっての意味（建物の登記を直さずに相続登記が
+       できる）と、どこが変わった建物かは残す（以前は1行だけだった：2026-09-26）。 */
+    if (st.every(x => x === 'ok')) return '<p class="pr-why">建ててからの変更は、すべて登記に載っています。' + W +
+      'が亡くなったときは、建物の登記を直さずに、そのまま相続登記ができます。</p>' + fig;
+    const grow = cs.filter(c => S.chGrow(c.what) && c.reg !== 'yes');
+    const gone = cs.filter(c => !S.chGrow(c.what) && c.reg !== 'yes');
+    const act = st.includes('act'), check = st.includes('check');
+    const sections = [];
+    if (grow.length) sections.push(DT_SELL_GROW); else if (gone.length) sections.push(DT_SELL_GONE);
+    if (act) sections.push(DT_PROOF);
+    if (grow.some(c => c.tax !== 'match')) sections.push(DT_TAX);
+    sections.push(DT_DUTY);
+    const idx = cs.map((c, i) => ({ c, i, nb: cs.length > 1 ? circled(i) : '' }));
+    const nbs = list => list.map(x => x.nb).join('');
+    /* ■ 次にすること。画面に「まだ確かめていない」と出すものには、必ず確かめる手を出す
+       （以前は取り壊しの登記を「後からできる」として外し、①が行き止まりになった：2026-09-26）。
+         1 確かめる … 登記に載っているか（登記事項証明書）、課税明細書に載っているか
+         2 探す     … 工事の書類（示すものが足りない増える変更で、まだ探していない）
+         3 依頼する … 登記に載っていないと分かり、書類を探し終えた増える変更。依頼は1回で済む
+                      ので1行にまとめる
+       登記に載っているか分からないうちは依頼を出さない（載っていれば要らない）。 */
+    const rows = [];
+    const regU = idx.filter(x => x.c.reg === 'unknown');
+    const taxU = idx.filter(x => S.chGrow(x.c.what) && x.c.reg !== 'yes' && x.c.tax === '');
+    if (regU.length || taxU.length) {
+      const all = idx.filter(x => regU.includes(x) || taxU.includes(x));
+      const tag = (list, t) => (all.length > 1 && list.length < all.length ? nbs(list) + ' ' : '') + t;
+      rows.push({ nb: nbs(all),
+        text: regU.length && taxU.length ? '登記事項証明書と課税明細書で、載っているか確かめる'
+          : regU.length ? '登記事項証明書で、登記に載っているか確かめる' : '課税明細書で、載っているか確かめる',
+        sub: (regU.length ? tag(regU, '登記事項証明書は法務局で取れます。表題部に' + (regU.every(x => S.chGrow(x.c.what)) ? '「◯年増築」' : regU.some(x => S.chGrow(x.c.what)) ? '「◯年増築」「◯年一部取毀」' : '「◯年一部取毀」「◯年取毀」') + 'などの記録があれば、登記に反映されています。') : '') +
+          (taxU.length ? tag(taxU, '課税明細書に載っていれば、固定資産評価証明書も所有を示すものになります。') : '') });
+    }
+    const hunt = idx.filter(x => S.changeState(x.c) === 'act' && x.c.docs === 'unknown');
+    if (hunt.length) rows.push({ nb: nbs(hunt), text: '工事の書類を探す', sub: '確認済証・検査済証・工事請負契約書・領収書などです。保管場所は' + W + 'に確かめます。' });
+    const asks = idx.filter(x => S.changeState(x.c) === 'act' && x.c.reg === 'no' && x.c.docs !== 'unknown');
+    if (asks.length) {
+      /* 補足は文ごとに集め、同じ文は1回だけ。全部に当てはまらない文には番号を付ける。 */
+      const seen = new Map();
+      asks.forEach(x => [
+        '足りない分は、工事を請け負った会社の工事完了引渡証明書か、' + W + 'の上申書で補います。',
+        x.c.by && x.c.by + 'が請け負った工事です。',
+        S.changeProof(x.c).length === 0 && x.c.tax === 'miss' && '上申書には、' + W + 'が覚えている工事の時期と内容を書きます。'
+      ].filter(Boolean).forEach(t => seen.set(t, (seen.get(t) || []).concat(x.nb))));
+      rows.push({ nb: nbs(asks),
+        text: '土地家屋調査士に、' + W + 'の名前で' + (asks.length === 1 && asks[0].c.what === 'ext' ? '表題変更登記' : '登記') + 'を依頼する',
+        sub: [...seen].map(([t, n]) => (n.length === asks.length ? '' : n.join('') + ' ') + t).join('') });
+    }
+    /* 一文。対応が要る・確かめることが残るときは、なぜ必要か＋なぜ今のうちか。
+       残っていない（書類がそろう／未登記は取り壊しだけ）ときは、家族が後から申請できること。 */
+    let why;
+    if (act) {
+      const acts = idx.filter(x => S.changeState(x.c) === 'act');
+      const bare = acts.find(x => x.c.docs === 'no' && x.c.tax === 'miss');
+      why = CH_NEED + (bare ? chName(bare.c) + 'は課税明細書にも載っておらず、示せるのは' + W + 'の記憶だけです。'
+        : '今なら、工事の書類が' + (acts.every(x => x.c.docs === 'unknown') ? '見つからなくても' : '足りなくても') + W + 'の上申書で申請できます。');
+    } else if (check) why = CH_NEED + '登記に載っているかは、登記事項証明書で家族も確かめられます。';
+    else why = (grow.length ? '登記はまだですが、工事の書類がそろっているので、' : '取り壊しの登記は所有を示す書類が要らないので、') +
+      W + 'が亡くなった後でも相続人が申請できます。売る前や担保に入れる前には必要です。';
+    return '<p class="pr-why">' + why + '</p>' + fig + proofBlock(cs) + (rows.length ? chAct(rows) : '') + boundaryDetail(p, sections, 'changed');
+  }
+
+  /* 読み手（そのとき・現所有者の申告・権利関係）が使う、登記と今の建物のずれ。 */
+  function chName(c) {
+    return c.what === 'ext' ? (c.where ? c.where + 'の増築' : '増築部分') : c.what === 'annex' ? bname(c)
+      : '取り壊した' + (c.what === 'cut' ? c.where || '部分' : bname(c));
+  }
+  function chGap(p) {
+    const m = p.matters.changed || {};
+    const cs = m.has === 'yes' ? m.changes || [] : [];
+    const open = cs.filter(c => c.reg !== 'yes');
+    return { m, ext: open.filter(c => c.what === 'ext'), annex: open.filter(c => c.what === 'annex'),
+      gone: open.filter(c => !S.chGrow(c.what)), grow: open.filter(c => S.chGrow(c.what)),
+      diff: m.has === 'unknown' && m.check === 'diff' };
+  }
+
   function nowRows(p) {
     const names ={ boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
     const out = ['boundary', 'road', 'changed'].filter(key => !(key === 'changed' && p.kind === 'land')).map(key => {
-      const m = p.matters[key] || {};
       const ms = S.matterStatus(p, key), status = ms.status;
       if (key === 'boundary') return { key, type: 'matter', nm: names[key], status, pick: true, label: ms.label, body: boundaryBody };
       if (key === 'road') return { key, type: 'matter', nm: names[key], status, pick: true, label: ms.label, body: roadBody };
-      return { key, type: 'matter', nm: names[key], status, pick: true,
-        summary: m.memo || 'まだ記録がありません。',
-        next: m.next || (status === 'unknown' ? MATTER_QUESTIONS[key] : status === 'action' ? ACTION_NEXT[key] : ''),
-        assignee: m.assignee, timing: m.timing };
+      return { key, type: 'matter', nm: names[key], status, pick: true, label: ms.label, body: changedBody };
     });
 
     const pr = p.priorInheritance || {};
@@ -1041,6 +1357,18 @@
     const road = (p.matters.road || {}).has === 'yes' ? ((p.matters.road.links || []).find(l => l.land === 'road') || null) : null;
     if (road && road.share === 'yes') out.push('前の私道の持分も、相続登記に入れます。私道は固定資産税がかからず、課税明細書に載らないことがあります。地番は名寄帳か所有不動産記録証明で確かめます。');
     else if (road && road.share === 'unknown') out.push('前の道は私道です。' + WHO + 'が持分を持っていれば、相続登記に入れます。課税明細書には載らないことがあるので、名寄帳か所有不動産記録証明で確かめます。');
+    /* 登記と今の建物のずれ（設計 §9）。相続登記をした人には、その日から1か月以内の
+       表題変更登記の義務がかかる（不動産登記法51条2項）。登記のない別棟は、相続登記では
+       名義が移らない。取り壊した建物が登記に残っていれば、先に滅失登記。 */
+    const gap = chGap(p), names = cs => cs.map(chName).join('・');
+    if (gap.ext.length) out.push(names(gap.ext) + 'は、登記に載っていません。相続登記をすると、相続した人に1か月以内の表題変更登記の義務がかかるので、先に（または同時に）土地家屋調査士に頼みます。遺産分割協議書には、登記に載っていない部分も誰が取得するか書きます。');
+    if (gap.annex.length) out.push(names(gap.annex) + 'は登記がないので、相続登記では名義が移りません。取得した人が1か月以内に表題登記をします（土地家屋調査士）。遺産分割協議書にも書きます。');
+    if (gap.grow.length) out.push(gap.grow.some(c => c.docs === 'yes')
+      ? '工事の書類の場所：' + (docAt('changed') || 'まだ記録されていません（書類のありか）')
+      : (gap.grow.every(c => c.docs === 'no') ? '工事の書類がないので、' : '工事の書類（確認済証・工事請負契約書・領収書など）が見つからなければ、') +
+        '固定資産評価証明書と、相続人全員が実印を押した上申書で、' + WHO + 'のものだったことを示します。');
+    if (gap.gone.length) out.push(names(gap.gone) + 'が、まだ登記に残っています。相続登記の前に、滅失登記をします（相続人の1人で申請できます）。');
+    if (gap.diff) out.push('課税明細書と登記で、建物の床面積が違っています。登記に載っていない部分があるので、相続登記の前に土地家屋調査士に見てもらいます。');
     ['land', 'bldg'].forEach(k => {
       const r = (p.rights || {})[k];
       if (r && r.owner === WHO && r.hold === 'share' && r.shares && r.shares !== '単独')
@@ -1104,7 +1432,14 @@
         lim: yokohama ? '現所有者と知った日から3か月以内' : '自治体に申告期限を確認',
         steps: ['固定資産税担当へ連絡し、申告の要否・期限・必要な添付書類を確認する。',
           '必要な場合は、自治体の現所有者申告書を記入し、添付書類とともに指定の方法で提出する。'],
-        note: 'この申告だけでは登記上の名義は変わりません。未登記の家屋がある場合は、所有者変更の届出も窓口へ確認します。',
+        /* 未登記家屋は、市町村へ所有者変更届（遺産分割協議書の写しを添える）。登記のない
+           別棟があると分かっていればその名前で、無いと分かっていれば言わない。 */
+        note: 'この申告だけでは登記上の名義は変わりません。' + (() => {
+          const gap = chGap(p), m = gap.m;
+          if (gap.annex.length) return '登記のない' + gap.annex.map(chName).join('・') + 'は、未登記家屋の所有者変更届も出します（遺産分割協議書の写しを添えます）。';
+          if (m.has === 'no' || (m.has === 'yes' && (m.changes || []).length)) return '';
+          return '登記のない家屋がある場合は、所有者変更の届出も窓口へ確認します。';
+        })(),
         link: yokohama ? 'https://www.city.yokohama.lg.jp/kurashi/koseki-zei-hoken/zeikin/y-shizei/koteishisan-toshikeikakuzei/kotei-gensyoyu.html'
           : nagaoka ? 'https://www.city.nagaoka.niigata.jp/kurashi/cate02/kotei/kotei.html' : '',
         linkLabel: yokohama ? '横浜市｜現所有者申告の案内' : '長岡市｜固定資産税の案内' });
@@ -1442,6 +1777,14 @@
     if (!r.match || r.match === 'unknown') return 'unknown';
     return 'done';
   }
+  function bldgGap(p) {
+    if (p.kind === 'land') return '';
+    const gap = chGap(p), t = [];
+    if (gap.grow.length) t.push(gap.grow.map(chName).join('・') + 'が載っていない');
+    if (gap.gone.length) t.push(gap.gone.map(chName).join('・') + 'が残っている');
+    if (gap.diff) t.push('課税明細書と床面積が違う');
+    return t.join('。');
+  }
   function roomRights(p) {
     const keys = (p.kind === 'condo' ? ['bldg'] : p.kind === 'land' ? ['land'] : ['land', 'bldg'])
       .filter(k => p.rights[k]);
@@ -1454,6 +1797,8 @@
       ['登記との一致', r => r.match === 'differ' ? '認識と違いがある' : (MATCH[r.match] || MATCH.unknown).label,
         r => r.match === 'differ'],
       ['前の代の相続', (r, i) => inheritText(p, keys[i]), (r, i) => S.priorPending(p, keys[i])],
+      /* 建物の変更が登記に載っていないとき（今のうちの「建物の変更・登記」の答えを映す）。 */
+      bldgGap(p) && ['登記と今の建物', (r, i) => keys[i] === 'bldg' ? bldgGap(p) : '', (r, i) => keys[i] === 'bldg'],
       any(r => r.memo) && ['経緯', r => r.memo]
     ].filter(Boolean);
     let h = '<div class="deeds" style="--n:' + keys.length + '"><div class="dg-lb dg-corner"></div>' +

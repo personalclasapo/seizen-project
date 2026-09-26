@@ -152,14 +152,8 @@
     boundary: { label: '境界・越境', icon: 'bound' },
     /* 私道・通行・配管も答えだけを持つ（2026-09-24）。roadStatus の注記を参照。 */
     road: { label: '私道・通行・配管', icon: 'road' },
-    changed: {
-      label: '建物の変更・登記', icon: 'build',
-      ask: '増築・改築、取り壊し、物置などの新築をしたことは' +
-           'ありませんか。必要な登記・手続きは済んでいますか。',
-      why: '目的は増改築歴の保存ではなく、実際の建物と登記等に' +
-           'ズレが残っていないかの確認です。未登記部分は売却・相続の' +
-           '手続きで必ず表に出ます。',
-      detail: ['何をしたか', '登記・手続きの状況'] }
+    /* 建物の変更・登記も答えだけを持つ（2026-09-26）。changedStatus の注記を参照。 */
+    changed: { label: '建物の変更・登記', icon: 'build' }
   };
 
   /* 事情の確認結果。項目設計 §5「共通UI」。
@@ -261,12 +255,12 @@
             content: '塀を直すときの費用は、半分ずつ出す。' }] },
         /* 前面道路は市道。他人の土地を通る・使わせていることはない。 */
         road:     { has: 'no', links: [], reach: 'onlyself' },
-        changed:  { find: 'yes', st: 'action', reach: 'onlyself',
-          uiStatus: 'action',
-          memo: '北側に約6畳の増築あり（1998年ごろ）。登記には未反映。' +
-                '確認申請の有無は工務店に照会中。',
-          detail: { what: '北側に約6畳を増築',
-                    reg: '未対応', state: '確認申請の有無を照会中' } }
+        /* 北側（玄関から見て奥）に約6畳を増築。登記には入っていない。工事の書類は
+           まだ探していない。建てたのが2004年なので、増築はそれより後
+           （以前の仮データの「1998年ごろ」は建築年と食い違っていた）。 */
+        changed:  { has: 'yes', reach: 'onlyself', changes: [
+          { what: 'ext', side: 'back', floor: 1, where: '北側に約6畳', when: '2015',
+            reg: 'no', tax: '', docs: 'unknown', kinds: [], by: '' }] }
       },
 
       /* 前の代の相続登記。答えだけを持ち、状態・次の対応・期限は
@@ -340,9 +334,7 @@
           { land: 'road', who: '向かいの3軒', uses: [{ what: 'pass', by: 'ours' }, { what: 'water', by: 'ours' }, { what: 'sewer', by: 'ours' }],
             share: 'unknown', pact: 'oral', content: '私道の舗装を直すときは、4軒で費用を等分する。' },
           { land: 'back', who: '△△さん', uses: [{ what: 'sewer', by: 'theirs' }], share: '', pact: 'none', content: '' }] },
-        changed:  { find: 'unasked', st: 'todo', reach: 'onlyself',
-          uiStatus: 'ask',
-          memo: '北側に増築部分あり。時期・施工者・登記状況が分からない。', detail: null }
+        changed:  { has: 'unasked', changes: [], reach: 'onlyself' }
       },
       priorInheritance: { remains: 'no', parcels: [], died: 'unknown', stage: 'none', taker: '', takerName: '' },
       ownerReport: {
@@ -364,22 +356,6 @@
     }
   ];
 
-  // 旧版の「誰に聞くか」「作業中か」を示す値は、事実の状態へ読み替える。
-  const LEGACY_NOW_STATUS = {
-    problem: 'none', ask: 'unknown', check: 'unknown', doing: 'action'
-  };
-  const canonicalNowStatus = status => LEGACY_NOW_STATUS[status] || status;
-
-  function inferredMatterStatus(key, m) {
-    const stored = canonicalNowStatus(m && m.uiStatus);
-    if (NOW_STATUS[stored]) return stored;
-    if (!m || m.find === 'unasked' || m.find === 'unknown') return 'unknown';
-    if (m.find === 'no') return 'none';
-    if (m.st === 'action') return 'action';
-    if (m.st === 'doing') return 'action';
-    return 'done';
-  }
-
   /* 旧 localStorage を読み込んだ場合も、新しい判定項目を補う。 */
   function normalize(p) {
     p.matters = p.matters || {};
@@ -399,23 +375,10 @@
       p.matters.road = migrateRoad(p.matters.road);
       p.matters.road.st = stOf(roadStatus(p.matters.road).status);
     }
-    ['changed'].forEach(k => {
-      if (p.matters[k]) {
-        const status = inferredMatterStatus(k, p.matters[k]);
-        p.matters[k].uiStatus = status;
-        p.matters[k].statusRecords = p.matters[k].statusRecords || {};
-        if (!p.matters[k].statusRecords[status]) {
-          p.matters[k].statusRecords[status] = {
-            memo: p.matters[k].memo || '',
-            detail: p.matters[k].detail == null ? null
-              : JSON.parse(JSON.stringify(p.matters[k].detail))
-          };
-        }
-        p.matters[k].st = status === 'action' ? 'action'
-          : status === 'none' ? 'none'
-          : status === 'done' ? 'done' : 'todo';
-      }
-    });
+    if (p.matters.changed) {
+      p.matters.changed = migrateChanged(p.matters.changed);
+      p.matters.changed.st = stOf(changedStatus(p.matters.changed).status);
+    }
     p.priorInheritance = migratePrior(p);
     if (!p.ownerReport) {
       p.ownerReport = {
@@ -606,49 +569,119 @@
     }
     return out;
   }
+  /* ■ 建物の変更・登記（2026-09-26。設計 §9）
+     境界・私道の持ち方は写さない。事実の形は、建物そのものがいつ・誰の手で・どう
+     変わったか（出来事）と、その結果、記録（法務局の登記・市町村の課税台帳）が
+     今の建物とずれているか。相手は人ではなく記録。1件＝工事（変更）ごと ―― 要る
+     登記・要る書類・書類があるかが工事ごとに違う。
+       has    … 建ててから形を変えたことがあるか yes／no／unasked／unknown（父も覚えていない）
+       check  … 父が覚えていないとき、課税明細書で登記と比べた結果 diff／same／''（まだ）
+       changes … 変更ごとに1件
+         what  ext 増築（横・上に部屋を足した）／annex 別棟を建てた（離れ・車庫・物置）／
+               cut 一部を取り壊した／demo 建物を取り壊した（別棟・古い建物）
+         side  玄関から見て back 奥／right 右／left 左／front 玄関側（図の置き場所。境界と
+               同じく方角では聞かない）  floor 1／2（増築のとき）
+         where 増築・一部の取り壊しは、どの部分か（任意。例：北側の約6畳）。別棟・取り壊した建物で
+               「その他」のときは、建物の名前
+         bldg  別棟・取り壊した建物は何の建物か hanare 離れ／garage 車庫／shed 物置／other その他
+         when  いつごろ（年。フォームは年を選ぶ。分からなければ空）
+         reg   登記に入っているか yes／no／unknown
+         tax   課税明細書は今の建物と合っているか（登記に入っていないときだけ）
+               match 合っている（増築なら現況床面積に入っている）／miss 合っていない／''（まだ見ていない）
+         docs  工事の書類（増える変更で、登記に入っていないときだけ）yes／no／unknown（まだ探していない）
+         kinds 書類の種類 confirm 確認済証／inspect 検査済証／contract 工事の契約書／
+               receipt 領収書／handover 工事完了引渡証明書
+         by    工事を頼んだ会社（任意。工事完了引渡証明書を出せるのはその会社だけ）
+     今のうちの線（設計 §9-2）：登記の手続きそのものは、父が亡くなっても相続人が申請
+     できる（不動産登記法30条）。父がいなくなると取り返せないのは、床面積が増えた変更に
+     ついて、増えた部分が父のものだと示す手がかり（工事の書類のありか・頼んだ会社）。
+     所有を示す情報が要るのは増える変更だけ（不動産登記令 別表14）で、実務では2点以上。
+     書類が足りなければ、今なら父の上申書、亡くなった後は相続人全員の上申書になる。
+       対応が必要 … 増える変更が登記に入っていない・分からず、書類が2点そろっていない
+       確認済み   … 書類がそろっている／登記に入っていないのが取り壊しだけ（家族が後から
+                     申請できる）／全部登記済み（「登記済み」）
+     登記と課税は一方向にしか連動しない（登記すれば課税台帳も直る：地方税法382条）。 */
+  const CH_WHAT = ['ext', 'annex', 'cut', 'demo'];
+  const CH_KINDS = ['confirm', 'inspect', 'contract', 'receipt', 'handover'];
+  const chGrow = what => what === 'ext' || what === 'annex';
+  /* 増えた部分が父のものだと示すもの。課税明細書に載っていれば固定資産評価証明書も1種類
+     （不動産登記事務取扱手続準則87条の固定資産税の納付証明の類）。実務では2種類以上。 */
+  function changeProof(c) {
+    return (c.tax === 'match' ? ['valuation'] : []).concat(c.docs === 'yes' ? c.kinds || [] : []);
+  }
+  const chDocsOK = c => changeProof(c).length >= 2;
+  /* 変更1件の段：ok 登記済み／paper 未登記だが書類がそろう／later 未登記の取り壊し／
+     check 登記に載っているかまだ確かめていない（家族が登記事項証明書で確かめられる）／act 対応が必要。
+     増える変更で示すものが足りなければ、登記を確かめていなくても act（載っていなければ今のうち）。 */
+  function changeState(c) {
+    if (c.reg === 'yes') return 'ok';
+    if (chGrow(c.what) && !chDocsOK(c)) return 'act';
+    if (c.reg !== 'no') return 'check';
+    return chGrow(c.what) ? 'paper' : 'later';
+  }
+  function toChange(c) {
+    const what = CH_WHAT.includes(c.what) ? c.what : 'ext', reg = ['yes', 'no'].includes(c.reg) ? c.reg : 'unknown';
+    const open = reg !== 'yes', grow = chGrow(what);
+    const apart = what === 'annex' || what === 'demo';
+    const bldg = apart ? (['hanare', 'garage', 'shed', 'other'].includes(c.bldg) ? c.bldg
+      : /離れ/.test(c.where || '') ? 'hanare' : /車庫|ガレージ/.test(c.where || '') ? 'garage' : /物置|納屋|倉庫/.test(c.where || '') ? 'shed' : c.where ? 'other' : '') : '';
+    return { what, bldg, side: ['back', 'right', 'left', 'front'].includes(c.side) ? c.side : '',
+      floor: what === 'ext' && Number(c.floor) === 2 ? 2 : 1,
+      where: apart && bldg !== 'other' ? '' : String(c.where || '').trim(), when: String(c.when || '').replace(/[^0-9]/g, '').slice(0, 4), reg,
+      tax: open && ['match', 'miss'].includes(c.tax) ? c.tax : '',
+      docs: open && grow ? (['yes', 'no'].includes(c.docs) ? c.docs : 'unknown') : '',
+      kinds: open && grow && c.docs === 'yes' ? (c.kinds || []).filter(k => CH_KINDS.includes(k)) : [],
+      by: open && grow ? String(c.by || '').trim() : '' };
+  }
+  function changedStatus(m) {
+    m = m || {};
+    if (m.has === 'no') return { status: 'none', label: '' };
+    if (m.has === 'unknown') return m.check === 'diff' ? { status: 'action', label: '' }
+      : m.check === 'same' ? { status: 'none', label: '違いなし' } : { status: 'unknown', label: '' };
+    const cs = m.changes || [];
+    if (m.has !== 'yes' || !cs.length) return { status: 'unknown', label: '' };
+    const st = cs.map(changeState);
+    if (st.includes('act')) return { status: 'action', label: '' };
+    /* 画面に「まだ確かめていない」と出すものが残るあいだは、確認済みにしない（§11）。 */
+    if (st.includes('check')) return { status: 'unknown', label: '' };
+    if (st.every(x => x === 'ok')) return { status: 'done', label: '登記済み' };
+    return { status: 'done', label: st.includes('paper') ? '書類あり' : '' };
+  }
+  /* 旧版（find／detail／memo／uiStatus）を答えへ読み替える。memo の言葉から、
+     何をしたか・年・登記に入っているかを拾う。書類と課税明細書は分からないまま。 */
+  function migrateChanged(m) {
+    if (m.has) { m.changes = (m.changes || []).map(toChange); return m; }
+    const has = { yes: 'yes', no: 'no', unknown: 'unknown' }[m.find] || 'unasked';
+    const out = { has, reach: m.reach || 'onlyself', changes: [] };
+    if (has !== 'yes') return out;
+    const d = m.detail || {}, text = (m.memo || '') + ' ' + (d.what || '') + ' ' + (d.reg || '');
+    const gone = /取り壊|解体|撤去/.test(text), apart = /離れ|車庫|物置|納屋/.test(text);
+    const where = ((d.what || m.memo || '').match(/([東西南北]側に約?[0-9０-９.]+畳|[東西南北]側に[^。、（(]{1,12}?)(?=を?増築|の増築)/) || [])[1] || '';
+    out.changes = [toChange({ what: gone ? (apart ? 'demo' : 'cut') : apart ? 'annex' : 'ext', where,
+      when: ((text.match(/(19|20)\d\d/) || [])[0] || ''),
+      reg: /未反映|未登記|していない|未対応/.test(text) ? 'no' : /登記済|反映済/.test(text) ? 'yes' : 'unknown',
+      docs: 'unknown' })];
+    return out;
+  }
   /* 書面が「ある」と答えた事情だけ、書類のありかに所在が立つ（下エリア §10-3）。 */
   function matterPaper(p, key) {
     const m = (p.matters || {})[key];
     if (!m) return false;
     if (key === 'boundary') return m.deal === 'unknown' ? m.paper === 'yes' : m.deal === 'yes' && (m.entries || []).some(e => e.paper === 'yes');
     if (key === 'road') return m.has === 'yes' && (m.links || []).some(l => l.pact === 'paper');
-    return m.find !== 'no' && !!m.detail && m.detail.paper === 'あり';
+    /* 建物の変更：増える変更が登記に入っていない・分からず、工事の書類が手元にあるとき。 */
+    if (key === 'changed') return m.has === 'yes' && (m.changes || []).some(c => chGrow(c.what) && c.reg !== 'yes' && c.docs === 'yes');
+    return false;
   }
-  /* 今のうちの行の状態。境界・私道は答えから、建物の変更はまだ旧版の選んだ状態から。 */
+  /* 今のうちの行の状態。どれも答えから出す。 */
   function matterStatus(p, key) {
     const m = (p.matters || {})[key] || {};
     if (key === 'boundary') return boundaryStatus(m);
     if (key === 'road') return roadStatus(m);
-    return { status: NOW_STATUS[m.uiStatus] ? m.uiStatus : matterProgress(p, key).status, label: '' };
+    return changedStatus(m);
   }
 
   let props = (loadSaved() || JSON.parse(JSON.stringify(SEED))).map(normalize);
-
-  // 確認した事実だけを書き戻す。状態の変更から事実を生成しない。
-  function matterProgress(p, key) {
-    const m = p.matters[key] || {};
-    const d = m.detail || {};
-    const doc = (p.docs.at || {})[key] || {};
-    if (m.find === 'no') return { status: 'none', label: '該当なし', next: '' };
-    if (!m.interview && m.uiStatus === 'done') {
-      if (d.paper === 'あり' && (!doc.place || doc.st !== 'have'))
-        return { status: 'unknown', label: '書類の所在を確認', next: '合意書・資料の保管場所を確認し、家族が取り出せるようにする。' };
-      return { status: 'done', label: '記録あり', next: '' };
-    }
-    if (m.interview !== 'heard' && !m.source) return {
-      status: 'unknown', label: m.interview === 'unavailable' ? '別の確認先を探す' : WHO + 'への確認',
-      next: m.next || (m.interview === 'unavailable' ? '関係する相手や、残っている資料に手掛かりがないか確認する。' : '')
-    };
-    if (m.find !== 'yes') return { status: 'unknown', label: '確認先を整理', next: m.next || WHO + 'にも分からなかった点を、資料や関係する相手に確認する。' };
-    if (m.next) return { status: 'action', label: '対応が残っています', next: m.next };
-    if (m.resolution !== 'resolved') return { status: m.resolution === 'pending' ? 'action' : 'unknown',
-      label: m.resolution === 'pending' ? '対応が残っています' : '資料・状況の確認',
-      next: m.next || (key === 'changed' ? '工事資料と登記への反映を確認する。' : '取り決めの内容と、残っている確認・相談を整理する。') };
-    if (d.paper === 'あり' && (doc.st !== 'have' || !doc.place)) return {
-      status: 'unknown', label: '書類の所在を確認', next: '書面の保管場所を確認し、家族が取り出せるようにする。' };
-    if (!m.memo || !m.source) return { status: 'unknown', label: '確認の記録を残す', next: '分かった内容と、誰・何で確認したかを記録する。' };
-    return { status: 'done', label: '確認・記録済み', next: '' };
-  }
 
   /* 前の代の相続登記の状態は、答えそのものから決まる。状態の欄を別に
      置かない ―― 両方あると「該当なし」なのに「名義が残っている」が作れる。
@@ -777,22 +810,12 @@
       });
       m.st = stOf(roadStatus(m).status);
       m.updatedAt = new Date().toISOString();
-    } else if (type === 'matter' && MATTERS[key]) {
-      const m = p.matters[key] || (p.matters[key] = {});
-      assign(m, ['find', 'interview', 'memo', 'source', 'resolution', 'next', 'assignee', 'timing']);
-      m.detail = m.detail || {};
-      ['what', 'who', 'deal', 'paper', 'state', 'reg', 'when'].forEach(k => {
-        if (Object.prototype.hasOwnProperty.call(values, k)) m.detail[k] = String(values[k]).trim();
-      });
-      if (values.docSt) {
-        p.docs.at[key] = { ...(p.docs.at[key] || {}), st: values.docSt, place: String(values.docPlace || '').trim() };
-      }
-      /* 状態は、ポップアップの状態欄で選んだ値（values.status）だけで
-         決める ―― フォームの答えから状態を推し量ると、選んだ状態を
-         次の保存で上書きしてしまう（2026-09-23）。                */
-      if (NOW_STATUS[values.status]) m.uiStatus = values.status;
-      else if (!NOW_STATUS[m.uiStatus]) m.uiStatus = matterProgress(p, key).status;
-      m.st = m.uiStatus === 'unknown' ? 'todo' : m.uiStatus;
+    } else if (type === 'matter' && key === 'changed') {
+      const m = p.matters.changed || (p.matters.changed = { reach: 'onlyself' });
+      assign(m, ['has', 'check']);
+      if (m.has !== 'unknown') m.check = '';
+      if (Array.isArray(values.changes)) m.changes = m.has === 'yes' ? values.changes.map(toChange) : [];
+      m.st = stOf(changedStatus(m).status);
       m.updatedAt = new Date().toISOString();
     } else if (type === 'prior') {
       const pr = p.priorInheritance || (p.priorInheritance = {});
@@ -858,13 +881,8 @@
         /* 所在が分かった＝見つかった、と読めるのは父が覚えていない道だけ。
            隣ごとの取り決めは、どの隣の書面か分からないので触らない。 */
         if (d.st === 'have' && m.deal === 'unknown') { m.paper = 'yes'; m.st = stOf(boundaryStatus(m).status); }
-      } else if (m && key === 'road') {
-        /* 私道も相手ごとに書面を持つので、所在からは書き戻さない。 */
-      } else if (m) {
-        m.detail = m.detail || {};
-        if (d.st === 'have') m.detail.paper = 'あり';
-        // 「見つからない」は「書面なし」と同義ではない。
       }
+      /* 私道・建物の変更は、相手ごと・変更ごとに書面を持つので、所在からは書き戻さない。 */
     } else throw new Error('編集する項目が見つかりません。');
     // 保存失敗時は画面の事実も変更しない。
     try { localStorage.setItem(STORE_KEY, JSON.stringify(next)); }
@@ -917,7 +935,7 @@
     gtee:     { label: '団信関係',     from: 'loan' },
     boundary: { label: '境界・測量、越境の合意', from: 'matter:boundary' },
     road:     { label: '私道・通行・配管の取り決め', from: 'matter:road' },
-    changed:  { label: '増改築・建物変更の資料',     from: 'matter:changed' },
+    changed:  { label: '増築・別棟の工事の書類',     from: 'matter:changed' },
     /* 前の代の協議書・遺言書は、当事者が取得する側で登記がまだのときだけ。 */
     prior:    { label: '前の代の遺産分割協議書',     from: 'prior' },
     priorWill: { label: '前の代の遺言書',            from: 'prior' }
@@ -935,8 +953,8 @@
       else if (d.from && d.from.indexOf('deal:') === 0)
         need = (p.deals || []).some(x => x.kind === d.from.slice(5));
       else if (d.from && d.from.indexOf('matter:') === 0) {
-        const key = d.from.slice(7), m = (p.matters || {})[key];
-        need = key === 'boundary' || key === 'road' ? matterPaper(p, key) : !!m && (m.find === 'yes' || m.find === 'unknown');
+        const key = d.from.slice(7);
+        need = matterPaper(p, key);
       }
       if (need) out.push({ kind: k, label: d.label,
         st: (p.docs && p.docs.have && p.docs.have[k]) || 'todo' });
@@ -950,7 +968,7 @@
     find: id => props.filter(p => p.id === id)[0] || null,
     gauge,
     neededDocs,
-    updateRecord, matterProgress, matterStatus, matterPaper, priorStatus, priorPending, priorOwner, priorParty, priorRoute, priorPartyDone,
+    updateRecord, matterStatus, matterPaper, changeState, changeProof, chGrow, priorStatus, priorPending, priorOwner, priorParty, priorRoute, priorPartyDone,
     save
   };
 })(window);
