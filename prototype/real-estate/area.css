@@ -541,13 +541,13 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 }
 
 .re-editing{overflow:hidden}
-.re-dialog{width:min(660px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 48px);padding:0;
+.re-dialog{width:min(860px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 48px);padding:0;
   border:1px solid #d5c9b5;border-radius:12px;background:#fffdf8;color:#363c34;
   box-shadow:0 20px 80px #1d291f40;font-family:var(--font)}
 .re-dialog::backdrop{background:#29392d80;backdrop-filter:blur(3px)}
 .re-dialog form{display:flex;flex-direction:column;max-height:calc(100dvh - 50px)}
 .re-dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:24px 28px 18px;border-bottom:1px solid #e5dfd3;flex:none}
-.re-eyebrow{font-size:11px;letter-spacing:.08em;color:#8d7653;margin:0 0 7px}
+.re-eyebrow{font-size:12px;letter-spacing:.08em;color:#8d7653;margin:0 0 7px}
 .re-dialog h2{font-size:21px;font-weight:650;line-height:1.5;margin:0;outline:none}
 .re-close{border:0;background:#f0ece3;color:#6a6d60;border-radius:50%;width:34px;height:34px;flex:none;cursor:pointer;font:24px/1 sans-serif}
 .re-dialog-body{padding:20px 28px 26px;overflow:auto;overscroll-behavior:contain;min-height:0}
@@ -562,48 +562,50 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .re-st-opt input:not(:checked) + .bdg{background:#fff;color:#8A8C80;border-color:#D8D6CB}
 .re-st-opt:hover input:not(:checked) + .bdg{border-color:#A9AC9C;color:#5E6356}
 .re-st-opt input:focus-visible + .bdg{outline:2px solid #64886B;outline-offset:2px}
-.re-lead{font-size:14px;line-height:1.9;margin:0 0 24px;padding-left:13px;border-left:3px solid #c5a46f;color:#586050}
+.re-lead{font-size:15px;line-height:1.9;margin:0 0 24px;padding-left:13px;border-left:3px solid #c5a46f;color:#586050}
 .re-dialog fieldset{border:0;padding:0;margin:0 0 26px;min-width:0}
 .re-dialog fieldset:last-child{margin-bottom:0}
-.re-dialog legend{font-size:12px;font-weight:700;letter-spacing:.06em;color:#6c765d;width:100%;border-bottom:1px solid #e3e5d9;padding:0 0 9px;margin-bottom:13px}
+.re-dialog legend{font-size:13px;font-weight:700;letter-spacing:.06em;color:#6c765d;width:100%;border-bottom:1px solid #e3e5d9;padding:0 0 9px;margin-bottom:15px}
 .re-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
-.re-field{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;color:#58604f}
+.re-field{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:13px;color:#58604f}
 .re-field>span{line-height:1.6}
 .re-fields .wide{grid-column:1/-1}
 .re-field input,.re-field textarea,.re-field select{box-sizing:border-box;width:100%;min-width:0;max-width:100%;border:1px solid #cccfc0;background:white;
-  color:#333c32;border-radius:5px;padding:10px 11px;font:13px/1.65 var(--font)}
+  color:#333c32;border-radius:5px;padding:10px 11px;font:14px/1.65 var(--font)}
 .re-field textarea{resize:vertical;min-height:86px}
-.re-field small{font-size:10.5px;color:#858978;line-height:1.7}
+.re-field small{font-size:12px;color:#858978;line-height:1.7}
 /* 選択肢の下に添える一言（その欄をどう確かめるか）。 */
-.re-field-note{margin:-8px 0 0;font-size:10.5px;color:#858978;line-height:1.7}
+.re-field-note{margin:-8px 0 0;font-size:12px;color:#858978;line-height:1.7}
 /* 複数を選べる欄（前の代の名義のもの：土地／建物）。 */
-.re-checks{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;font-size:12px;color:#58604f}
+.re-checks{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;font-size:13px;color:#58604f}
 .re-checks>span{width:100%;line-height:1.6}
-.re-checks label{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#333c32}
+.re-checks label{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:14px;color:#333c32}
 .re-checks input{width:16px;height:16px;margin:0;accent-color:#4f7358}
-.re-checks small{font-size:10.5px;color:#858978}
+.re-checks small{font-size:12px;color:#858978}
 .re-field :is(input,select,textarea):focus{outline:2px solid #8ca484;outline-offset:1px;border-color:#72886a}
 .re-doc-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
 .re-dialog [hidden]{display:none!important}
 .re-dialog-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 28px;border-top:1px solid #e5dfd3;background:#f7f5ee;flex:none}
-.re-dialog-foot>span{font-size:11px;color:#818473;margin-right:auto}
-.re-dialog-foot button,.re-discard button{font:600 12px/1.5 var(--font);padding:10px 15px;border:1px solid #cbd0bf;border-radius:5px;background:#fffef9;color:#55634d;cursor:pointer}
+.re-dialog-foot>span{font-size:12px;color:#818473;margin-right:auto}
+.re-dialog-foot button,.re-discard button{font:600 13px/1.5 var(--font);padding:10px 15px;border:1px solid #cbd0bf;border-radius:5px;background:#fffef9;color:#55634d;cursor:pointer}
 .re-dialog-foot .re-save{background:#41654a;border-color:#41654a;color:white}
 .re-error:empty{display:none}
 .re-error{width:100%;margin:0;color:#a34333;font-size:12px;line-height:1.7}
-.re-discard{padding:12px 28px;background:#fff0db;border-top:1px solid #e7d1ac;font-size:12px;flex:none}
-.re-discard p{margin:0 0 8px}
-.re-discard button+button{margin-left:8px}
+/* 保存していない入力の確認。削除の吹き出しと同じ確認の色（地 #fff8ea・枠 #e4d3ab）に揃え、
+   問いと2つのボタンを1行に（以前は橙の地で、ダイアログの色から浮いていた）。 */
+.re-discard{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 28px;
+  background:#fff8ea;border-top:1px solid #e4d3ab;font-size:13px;color:#56604F;flex:none}
+.re-discard p{margin:0 auto 0 0;font-weight:600}
 @media(max-width:600px){
   .re-dialog{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);border-radius:10px}
   .re-dialog form{max-height:calc(100dvh - 18px)}
   .re-dialog-head{padding:18px 18px 14px}.re-dialog h2{font-size:18px}
   .re-dialog-body{padding:18px}.re-dialog-foot{padding:12px 18px;gap:8px}
-  .re-dialog-foot>span{width:100%;font-size:10px}
+  .re-dialog-foot>span{width:100%;font-size:11px}
   .re-dialog-foot button{flex:1}
   .re-fields,.re-doc-fields{grid-template-columns:minmax(0,1fr)}
   .re-field input,.re-field textarea,.re-field select{font-size:16px}
-  .re-discard{padding:12px 18px}
+  .re-discard{padding:12px 18px}.re-discard p{width:100%}.re-discard button{flex:1}
 }
 /* 担保の1行は縦中央で揃えるので、入口の引き上げを打ち消す。 */
 .unit-line .record-edit{margin-top:0}
@@ -616,10 +618,10 @@ button.bdg.status-pick{font-size:10.5px;padding:3px 9px 3px 10px}
    pill＝短い選択肢を横に、row＝説明の要る選択肢を縦に。 */
 .re-q{margin:0 0 22px}
 .re-q:last-child{margin-bottom:0}
-.re-q-t{margin:0 0 9px;font-size:13px;font-weight:600;line-height:1.6;color:#3C4437}
-.re-q-h{margin:7px 0 0;font-size:11px;color:#858978;line-height:1.65}
+.re-q-t{margin:0 0 10px;font-size:15px;font-weight:600;line-height:1.6;color:#3C4437}
+.re-q-h{margin:8px 0 0;font-size:12px;color:#858978;line-height:1.65}
 .re-q-in{box-sizing:border-box;width:min(340px,100%);border:1px solid #cccfc0;background:#fff;border-radius:6px;
-  padding:10px 12px;font:14px/1.5 var(--font);color:#333c32}
+  padding:10px 12px;font:15px/1.5 var(--font);color:#333c32}
 .re-q-in:focus{outline:2px solid #8ca484;outline-offset:1px;border-color:#72886a}
 .re-q-sub{margin-top:10px}
 .re-opts{display:flex;flex-wrap:wrap;gap:8px}
@@ -627,12 +629,12 @@ button.bdg.status-pick{font-size:10.5px;padding:3px 9px 3px 10px}
 .re-opt{position:relative;cursor:pointer;min-width:0}
 .re-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
 .re-opt>span{display:flex;flex-direction:column;gap:1px;border:1px solid #D6D3C6;background:#fff;border-radius:999px;
-  padding:8px 16px;font-size:13px;line-height:1.5;color:#434A3D;transition:border-color .15s,background .15s}
+  padding:8px 16px;font-size:14px;line-height:1.5;color:#434A3D;transition:border-color .15s,background .15s}
 .re-opt b{font-weight:500}
-.re-opt small{font-size:11px;color:#858978;line-height:1.5}
+.re-opt small{font-size:12px;color:#858978;line-height:1.5}
 .re-opts.row .re-opt>span{position:relative;border-radius:8px;padding:10px 14px 10px 40px}
 /* row の選択印（ラジオの丸）。1行目の字の高さに揃える。 */
-.re-opts.row .re-opt>span::before{content:"";position:absolute;left:14px;top:14px;width:14px;height:14px;box-sizing:border-box;
+.re-opts.row .re-opt>span::before{content:"";position:absolute;left:14px;top:14.5px;width:14px;height:14px;box-sizing:border-box;
   border-radius:50%;border:1.5px solid #B9B6A8;background:#fff}
 .re-opt:hover>span{border-color:#A9AC9C}
 .re-opt input:checked+span{border-color:#5E8466;background:#EFF4EE;color:#26402D;box-shadow:inset 0 0 0 1px #5E8466}
@@ -645,21 +647,73 @@ button.bdg.status-pick{font-size:10.5px;padding:3px 9px 3px 10px}
 /* チェックした項目のすぐ下に開く問い。どの項目の続きかを左の線で示す。 */
 .re-sub{margin:6px 0 4px 22px;padding:8px 0 6px 14px;border-left:2px solid #D5DECF}
 .re-sub .re-opts+.re-sub-t{margin-top:12px}
-.re-sub-t{margin:0 0 7px;font-size:12px;font-weight:600;color:#56604F}
+.re-sub-t{margin:0 0 8px;font-size:13.5px;font-weight:600;color:#56604F}
 /* 選べない選択肢の理由（境界：目印と越境の連動）。選択肢のすぐ下に。 */
-.re-why{margin:7px 0 0;font-size:11px;color:#7A6F5A;line-height:1.65}
+.re-why{margin:7px 0 0;font-size:12px;color:#7A6F5A;line-height:1.65}
 .re-sub .re-why+.re-sub-t{margin-top:12px}
 .re-sub+.re-opts,.re-opts+.re-opts{margin-top:6px}
-/* 境界：隣1つぶんの取り決め。隣ごとに枠で区切り、足す・外すができる。 */
-.re-entry{margin:0 0 14px;padding:14px 16px 16px;border:1px solid #DCD9CC;border-radius:10px;background:#FDFCF8}
-.re-entry-h{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px}
-.re-entry-h b{font-size:12.5px;font-weight:600;color:#56604F}
-.re-entry-del{border:0;background:none;padding:4px 2px;font:inherit;font-size:12px;color:#8A6E5A;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
-/* 取り決めを外す前の確認。保存していない入力の確認（.re-discard）と同じ見た目。 */
-.re-entry-confirm{margin:-4px 0 14px;padding:10px 14px;background:#fff0db;border:1px solid #e7d1ac;border-radius:6px;font-size:12px}
-.re-entry-confirm p{margin:0 0 8px}
-.re-entry-confirm button{font:600 12px/1.5 var(--font);padding:7px 14px;border:1px solid #cbd0bf;border-radius:5px;background:#fffef9;color:#55634d;cursor:pointer}
-.re-entry-confirm button+button{margin-left:8px}
+/* 1件ぶんのブロック（境界の隣・私道の相手の土地・建物の変更）。件ごとに1つのまとまりに
+   見せる：頭に帯（番号・名前・答えの要約）を敷き、問いより強い見出しにする。
+   以前は見出しが問いより小さい灰色で、地もダイアログとほぼ同じ色だったため、
+   件の境目が読めず、2件目があることにも気づけなかった（2026-09-26）。 */
+.re-entry{margin:0 0 16px;padding:0 18px 18px;border:1px solid #CFCBBB;border-radius:10px;background:#fff}
+.re-entry[data-invalid]{border-color:#B5533F;box-shadow:0 0 0 1px #B5533F}
+.re-entry-h{display:flex;align-items:center;gap:10px;margin:0 -18px 16px;padding:11px 18px;
+  background:#F4F2EA;border-bottom:1px solid #E3DFD2;border-radius:9px 9px 0 0}
+.re-entry-h b{font-size:15px;font-weight:700;color:#3C4437;outline:none;white-space:nowrap}
+.re-entry-sub{min-width:0;font-size:13px;color:#6F735F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.re-entry-no{flex:none;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;
+  background:#56604F;color:#fff;font-size:12.5px;font-weight:700;line-height:1}
+.re-entry-delw{position:relative;margin-left:auto;flex:none}
+.re-entry-del{display:block;padding:4px 12px;border:1px solid #D6D3C6;border-radius:6px;background:#fff;
+  font:500 13px/1.5 var(--font);color:#6F735F;cursor:pointer}
+.re-entry-del:hover,.re-entry-del[aria-expanded="true"]{border-color:#D9ACA2;color:#A34333}
+.re-entry-del:focus-visible{outline:2px solid #64886B;outline-offset:2px}
+/* 削除の確認。医療・介護の .rowdel-ask と同じ吹き出し（地・枠・影・尖り、問い1行＋
+   ボタン2つの縦積み）。入口の真下に右寄せで浮かせ、下の問いは押し下げない
+   （以前は件の中に橙の箱を差し込み、下の問いを押し下げていた）。 */
+.re-entry-ask{position:absolute;right:0;top:calc(100% + 9px);z-index:6;display:flex;flex-direction:column;align-items:center;gap:8px;
+  width:max-content;padding:10px 12px;background:#fff8ea;border:1px solid #e4d3ab;border-radius:8px;
+  box-shadow:0 3px 10px #6b421f2e;font-size:13px;color:#56604F}
+.re-entry-ask::before{content:"";position:absolute;right:22px;top:-5px;width:9px;height:9px;background:#fff8ea;
+  border-left:1px solid #e4d3ab;border-top:1px solid #e4d3ab;transform:rotate(45deg)}
+.re-entry-ask-btns{display:flex;gap:8px}
+/* 取り返しのつかない側のボタン（削除する・変更を破棄して閉じる）。地は隣のボタンと同じ白で、
+   赤は文字と枠だけに持たせる。赤はエラー文と同じ煉瓦色（#A34333）。以前は医療の .rowdel-yes の
+   薄いピンク地（#fbeceb）を写したが、確認の地（暖かいクリーム）の上で冷たいピンクが浮いた。 */
+.re-entry-ask button{padding:5px 14px;border:1px solid #D6D3C6;border-radius:6px;background:#fff;
+  font:700 13px/1.5 var(--font);color:#56604F;cursor:pointer;white-space:nowrap}
+.re-entry-ask button:hover{border-color:#b9b2a0}
+.re-dialog .re-entry-yes,.re-dialog [data-discard]{background:#fff;border-color:#D9ACA2;color:#A34333}
+.re-dialog .re-entry-yes:hover,.re-dialog [data-discard]:hover{background:#FDF5F0;border-color:#C48B7E}
+/* 件の目次。2件以上のとき、ダイアログの頭（スクロールしない所）に並べる。
+   押すとその件の頭へ飛び、いま見ている件に色が付く。保存で足りない件には印。 */
+.re-toc{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:11px 28px;
+  border-bottom:1px solid #e5dfd3;background:#F7F5EE;flex:none}
+.re-toc-lb{font-size:12.5px;font-weight:700;letter-spacing:.04em;color:#6c765d;margin-right:4px;white-space:nowrap}
+.re-toc button{position:relative;display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:4px 13px 4px 5px;
+  border:1px solid #D6D3C6;border-radius:999px;background:#fff;font:500 13.5px/1.5 var(--font);color:#434A3D;cursor:pointer}
+.re-toc button>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.re-toc button small{font-size:12px;color:#858978;margin-left:4px}
+.re-toc .re-entry-no{width:21px;height:21px;font-size:11.5px;background:#A3A695}
+.re-toc button:hover{border-color:#A9AC9C}
+.re-toc button[aria-current]{border-color:#5E8466;background:#EFF4EE;box-shadow:inset 0 0 0 1px #5E8466;color:#26402D}
+.re-toc button[aria-current] .re-entry-no{background:#4F7358}
+.re-toc button[data-invalid]{border-color:#B5533F;box-shadow:inset 0 0 0 1px #B5533F}
+.re-toc button[data-invalid] .re-entry-no{background:#B5533F}
+.re-toc button:focus-visible{outline:2px solid #64886B;outline-offset:2px}
+/* 狭い幅：目次は横に流す（はみ出した分は横スクロール）。件の数は番号で分かるので
+   「◯件」と要約は省き、名前だけにする。件の頭の要約は名前の下の行へ回す
+   （横に置くと、外すボタンに押されて1文字まで潰れた）。 */
+@media(max-width:600px){
+  .re-toc{flex-wrap:nowrap;overflow-x:auto;padding:9px 18px}
+  .re-toc-lb,.re-toc button small{display:none}
+  .re-toc button{flex:none;max-width:70vw}
+  .re-entry{padding:0 14px 16px}.re-entry-h{flex-wrap:wrap;row-gap:2px;margin:0 -14px 14px;padding:10px 14px}
+  .re-entry-sub{order:3;flex-basis:100%;padding-left:34px}
+  .re-entry-sub:empty{display:none}
+  .re-entry-no[hidden]~.re-entry-sub{padding-left:0}
+}
 .re-entry-add{margin:0 0 22px}
 /* 選べない選択肢（同じ塀を目印と越境の両方にはできない）。 */
 .re-opt input:disabled+span{opacity:.4;cursor:not-allowed;background:#F4F3EE}
@@ -705,15 +759,15 @@ textarea.re-q-in{width:100%;resize:vertical;display:block}
 .re-lines{display:grid;grid-template-columns:7.4em minmax(0,1fr);gap:10px 16px;align-items:center}
 .re-ln{display:contents}
 .re-ln[hidden]{display:none}
-.re-ln-lb{font-size:12px;font-weight:600;color:#56604F;white-space:nowrap}
+.re-ln-lb{font-size:13.5px;font-weight:600;color:#56604F;white-space:nowrap}
 .re-ln-v{min-width:0}
 .re-ln-v .re-opts{gap:6px}
 .re-ln-v .re-opt>span{padding:6px 14px}
 .re-ln-v .re-q-in{width:min(260px,100%)}
 .re-ln-sub{margin-top:8px}
-.re-ln-sub .re-opt>span{padding:4px 11px;font-size:12px}
-.re-yr{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#56604F}
-.re-yr-sel{box-sizing:border-box;min-width:12em;border:1px solid #cccfc0;background:#fff;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;color:#434A3D}
+.re-ln-sub .re-opt>span{padding:4px 11px;font-size:13px}
+.re-yr{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:#56604F}
+.re-yr-sel{box-sizing:border-box;min-width:12em;border:1px solid #cccfc0;background:#fff;border-radius:6px;padding:7px 10px;font:inherit;font-size:14px;color:#434A3D}
 .re-yr-sel:focus{outline:2px solid #8ca484;outline-offset:1px;border-color:#72886a}
 @media (max-width:520px){
   .re-lines{grid-template-columns:1fr;gap:4px}

@@ -26,7 +26,20 @@
   const docOptions = [['unknown', '所在が分からない'], ['have', '所在が分かる'], ['lost', '探したが見つからない']];
   const known = [['unknown', '分からない'], ['yes', 'あり'], ['no', 'なし']];
   const titles = { boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
-  /* 境界：隣1つぶんの取り決め。名前は e<番号>-… で、番号は足した順（外しても詰めない）。
+  /* 1件ぶんのブロックの頭：番号・名前・答えの要約（右端に削除の入口が続く）。
+     番号と要約は conditionals が並び順と答えから入れ、頭の目次（renderToc）も同じものを写す。 */
+  const entryHead = (attr, title) => '<div class="re-entry-h"><span class="re-entry-no" aria-hidden="true"></span>' +
+    '<b ' + attr + ' tabindex="-1">' + esc(title) + '</b><span class="re-entry-sub" data-sub></span>';
+  /* 件を削除する入口と、その確認の吹き出し（医療・介護の .rowdel-ask と同じ形：
+     問い1行＋「やめる｜削除する」）。押してすぐ消えると、入力した中身ごと戻せない。
+     入口は ✕ にしない ―― ダイアログ右上の「閉じる」✕ と並び、件を畳む意味に読める。
+     「外す」とも書かない ―― 取り決めそのものを解いたように読めた（2026-09-26）。
+     読み上げ用の名前（「右隣との取り決めを削除」）は renderToc が件の名前から入れる。 */
+  const entryDel = '<span class="re-entry-delw"><button type="button" class="re-entry-del" data-entry-del aria-expanded="false">削除</button>' +
+    '<span class="re-entry-ask" role="alertdialog" aria-label="削除の確認" hidden><span>削除しますか？</span>' +
+    '<span class="re-entry-ask-btns"><button type="button" class="re-entry-cancel" data-entry-no>やめる</button>' +
+    '<button type="button" class="re-entry-yes" data-entry-yes>削除する</button></span></span></span>';
+  /* 境界：隣1つぶんの取り決め。名前は e<番号>-… で、番号は足した順（削除しても詰めない）。
      決めたことは、チェックを入れた項目のすぐ下にその問いを開く。 */
   function bdEntry(i, e) {
     const n = k => 'e' + i + '-' + k;
@@ -44,11 +57,8 @@
     const nb = html => html.replace(/〈隣〉/g, '<span data-nb>隣</span>');
     /* 見出しは選んだ相手の名前にする（「隣との取り決め」の下で「どの隣ですか」と
        聞くと、同じことを二度言う。裏の家は「隣」とは呼ばない）。 */
-    return nb('<div class="re-entry" data-entry="' + i + '"><div class="re-entry-h"><b data-e-title>' + esc(entryTitle(e.side)) + '</b>' +
-      '<button type="button" class="re-entry-del" data-entry-del>この取り決めを外す</button></div>' +
-      /* 外す前に確かめる（押してすぐ消えると、入力した中身ごと戻せなかった）。 */
-      '<div class="re-entry-confirm" role="alertdialog" aria-live="polite" data-entry-confirm hidden><p data-entry-ask></p>' +
-        '<button type="button" data-entry-yes>外す</button><button type="button" data-entry-no>やめる</button></div>' +
+    return nb('<div class="re-entry" data-entry="' + i + '">' + entryHead('data-e-title', entryTitle(e.side)) +
+      entryDel + '</div>' +
       question('相手はどの家ですか', choice(n('side'), e.side || '', [['right', '右隣'], ['left', '左隣'], ['back', '裏の家']]) +
         '<div class="re-q-sub"><input class="re-q-in" name="' + n('who') + '" value="' + esc(e.who) + '" placeholder="相手の名前（分かれば）" autocomplete="off" aria-label="相手の名前"></div>',
         '玄関を出て見た向きで。裏の家は、玄関の反対側の家。') +
@@ -90,10 +100,8 @@
     const byOf = k => (uses.find(u => u.what === k) || {}).by || 'ours';
     const P = rdHome;
     const nb = html => html.replace(/〈相手〉/g, '<span data-rd>相手</span>');
-    return nb('<div class="re-entry" data-link="' + i + '"><div class="re-entry-h"><b data-l-title>' + esc(RD_LAND[l.land] || '相手の土地') + '</b>' +
-      '<button type="button" class="re-entry-del" data-entry-del>この土地を外す</button></div>' +
-      '<div class="re-entry-confirm" role="alertdialog" aria-live="polite" data-entry-confirm hidden><p data-entry-ask></p>' +
-        '<button type="button" data-entry-yes>外す</button><button type="button" data-entry-no>やめる</button></div>' +
+    return nb('<div class="re-entry" data-link="' + i + '">' + entryHead('data-l-title', RD_LAND[l.land] || '相手の土地') +
+      entryDel + '</div>' +
       question('相手はどの土地ですか', choice(n('land'), l.land || '', RD_LAND_OPTS) +
         '<div class="re-q-sub"><input class="re-q-in" name="' + n('who') + '" value="' + esc(l.who) + '" placeholder="持ち主の名前・どこの土地か（分かれば）" autocomplete="off" aria-label="持ち主の名前"></div>',
         '隣は、玄関を出て見た向きで。離れた土地や水路の向こうの土地は「ほかの土地」に。') +
@@ -136,10 +144,8 @@
   }
   function chEntry(i, c) {
     const n = k => 'c' + i + '-' + k;
-    return '<div class="re-entry" data-change="' + i + '"><div class="re-entry-h"><b data-c-title>' + esc(CH_WHAT[c.what] || '変更') + '</b>' +
-      '<button type="button" class="re-entry-del" data-entry-del>この変更を外す</button></div>' +
-      '<div class="re-entry-confirm" role="alertdialog" aria-live="polite" data-entry-confirm hidden><p data-entry-ask></p>' +
-        '<button type="button" data-entry-yes>外す</button><button type="button" data-entry-no>やめる</button></div>' +
+    return '<div class="re-entry" data-change="' + i + '">' + entryHead('data-c-title', CH_WHAT[c.what] || '変更') +
+      entryDel + '</div>' +
       question('何をしましたか', choice(n('what'), c.what || '', [
         ['ext', '増築した', '横や上に部屋を足した'], ['annex', '別棟を建てた', '離れ・車庫・物置など'],
         ['cut', '一部を取り壊した', '部屋を減らした'], ['demo', '建物を取り壊した', '離れ・物置や、古い建物など']], 'row'),
@@ -164,6 +170,11 @@
   const RD_LAND_OPTS = [['road', '前の私道'], ['right', '右隣'], ['left', '左隣'], ['back', '裏の家'], ['other', 'ほかの土地']];
   const RD_USE_OPTS = [['pass', '通る（出入りの道）'], ['water', '水道の管'], ['sewer', '下水の管'], ['gas', 'ガスの管']];
   const RD_PIPE_NAME = { water: '水道', sewer: '下水', gas: 'ガス' };
+  const RD_USE_SHORT = { pass: '通る', water: '水道', sewer: '下水', gas: 'ガス' };
+  const CH_SIDE = { back: '奥', right: '右', left: '左', front: '玄関側' };
+  const CH_BLDG = { hanare: '離れ', garage: '車庫', shed: '物置' };
+  /* 目次の頭に出す、件の呼び名。 */
+  const TOC_NOUN = { boundary: '隣との取り決め', road: '相手の土地', changed: '建物の変更' };
   let rdHome = '';
   const BD_SIDE = { right: '右隣', left: '左隣', back: '裏の家' };
   const BD_OVER = [['roof', '屋根・ひさし'], ['tree', '木の枝'], ['pipe', '配管'], ['wall', '塀'], ['footing', '塀の基礎（地中）'], ['other', 'その他']];
@@ -178,7 +189,7 @@
     dialog.className = 're-dialog';
     dialog.setAttribute('aria-labelledby', 're-dialog-title');
     document.body.appendChild(dialog);
-    dialog.addEventListener('cancel', e => { e.preventDefault(); closeRequest(); });
+    dialog.addEventListener('cancel', e => { e.preventDefault(); if (!closeAsk(true)) closeRequest(); });
     dialog.addEventListener('close', () => {
       document.body.classList.remove('re-editing');
       if (opener && opener.isConnected) opener.focus({ preventScroll: true });
@@ -192,6 +203,67 @@
       prompt.querySelector('button').focus();
     } else dialog.close();
   }
+  /* 件の目次。2件以上あるとき、ダイアログの頭（スクロールしない所）に件を並べる。
+     1件目だけで本文の見える高さを超えるので、目次がないと2件目があることに
+     気づけなかった（2026-09-26）。番号は並び順で振り直す（名前の番号は足した順のまま）。 */
+  const entryEls = () => Array.from(dialog.querySelectorAll('.re-entry'));
+  function renderToc() {
+    const toc = dialog.querySelector('.re-toc'), els = entryEls();
+    const many = els.length > 1 && !els[0].closest('[hidden]');
+    els.forEach((el, i) => {
+      const no = el.querySelector('.re-entry-no'); no.textContent = i + 1; no.hidden = els.length < 2;
+      el.querySelector('[data-entry-del]').setAttribute('aria-label', el.querySelector('.re-entry-h b').textContent + 'を削除');
+    });
+    toc.hidden = !many;
+    if (!many) { toc.innerHTML = ''; return; }
+    toc.innerHTML = '<span class="re-toc-lb">' + esc(TOC_NOUN[identity.key]) + ' ' + els.length + '件</span>' + els.map((el, i) => {
+      const t = el.querySelector('.re-entry-h b').textContent, s = el.querySelector('[data-sub]').textContent, bad = el.hasAttribute('data-invalid');
+      return '<button type="button" data-jump="' + i + '"' + (bad ? ' data-invalid' : '') +
+        ' aria-label="' + esc((i + 1) + '　' + t + (s ? '　' + s : '') + (bad ? '。入力が足りません' : '')) + '">' +
+        '<span class="re-entry-no" aria-hidden="true">' + (i + 1) + '</span><span>' + esc(t) + (s ? '<small>' + esc(s) + '</small>' : '') + '</span></button>';
+    }).join('');
+    spy();
+  }
+  /* いま見ている件：本文の上から1/3の線を越えた最後の件。 */
+  function spy() {
+    const toc = dialog.querySelector('.re-toc');
+    if (toc.hidden) return;
+    const body = dialog.querySelector('.re-dialog-body'), r = body.getBoundingClientRect();
+    const line = r.top + body.clientHeight / 3;
+    let cur = -1;
+    entryEls().forEach((el, i) => { if (el.getBoundingClientRect().top <= line) cur = i; });
+    toc.querySelectorAll('[data-jump]').forEach((b, i) => {
+      if (i === cur) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
+  }
+  /* 件の頭を本文の上端へ。フォーカスも件の名前へ移す（読み上げで、どこへ来たか分かる）。 */
+  function jump(el) {
+    const body = dialog.querySelector('.re-dialog-body');
+    body.scrollTo({ top: body.scrollTop + el.getBoundingClientRect().top - body.getBoundingClientRect().top - 12, behavior: 'smooth' });
+    el.querySelector('.re-entry-h b').focus({ preventScroll: true });
+  }
+  /* 保存で足りない件に印を付け、最初の件へ飛ぶ（目次にも同じ印）。
+     以前は文だけで、どの件のことか分からなかった。 */
+  function flag(bad, text) {
+    const els = entryEls();
+    els.forEach((el, i) => { if (bad(i)) el.setAttribute('data-invalid', ''); else el.removeAttribute('data-invalid'); });
+    dialog.querySelector('.re-error').textContent = text;
+    renderToc();
+    const first = els.find(el => el.hasAttribute('data-invalid'));
+    if (first) jump(first);
+  }
+  /* 開いている削除の確認を閉じる。refocus なら入口の「削除」へフォーカスを戻す。
+     閉じたものがあれば true（Esc でダイアログまで閉じないように使う）。 */
+  function closeAsk(refocus) {
+    const ask = dialog.querySelector('.re-entry-ask:not([hidden])');
+    if (!ask) return false;
+    ask.hidden = true;
+    const del = ask.previousElementSibling;
+    del.setAttribute('aria-expanded', 'false');
+    if (refocus) del.focus();
+    return true;
+  }
+  /* 同じ値がほかの件にもあるか（空は数えない）。 */
+  const dup = (arr, i) => !!arr[i] && arr.filter(x => x === arr[i]).length > 1;
   function open(p, type, key, trigger, onSave) {
     ensureDialog();
     opener = trigger; savedCallback = onSave; identity = { id: p.id, type, key };
@@ -337,6 +409,7 @@
       body = group('書類のありか', (key === 'new' ? select('docKind', '書類の種類', 'build', Object.entries(S.DOC_KINDS).filter(([k]) => k !== 'prior' && k !== 'priorWill' && !p.docs.at[k]).map(([k,v]) => [k,v.label])) : '') + select('st', '書類の所在', d.st || 'unknown', docOptions) + field('place', '保管場所・取り出し方', d.place) + field('note', '探した場所・補足', d.note, true));
     }
     dialog.innerHTML = '<form><header class="re-dialog-head"><div><p class="re-eyebrow">' + esc(p.name) + ' ／ 確認と記録</p><h2 id="re-dialog-title" tabindex="-1">' + esc(title) + '</h2></div><button type="button" class="re-close" aria-label="閉じる">×</button></header>' +
+      '<nav class="re-toc" aria-label="件の一覧" hidden></nav>' +
       '<div class="re-dialog-body">' + (lead ? '<p class="re-lead">' + esc(lead) + '</p>' : '') + body + '</div>' +
       '<div class="re-discard" hidden><p>保存していない入力があります。</p><button type="button" data-keep>入力に戻る</button><button type="button" data-discard>変更を破棄して閉じる</button></div>' +
       '<footer class="re-dialog-foot"><p class="re-error" role="alert"></p><span>分かったところまで残せます</span><button type="button" data-cancel>キャンセル</button><button class="re-save" type="submit">記録を保存</button></footer></form>';
@@ -365,6 +438,7 @@
           /* 隣の名前を選択肢に写す。 */
           el.querySelectorAll('[data-nb]').forEach(s => { s.textContent = BD_SIDE[f('side').value] || '隣'; });
           el.querySelector('[data-e-title]').textContent = entryTitle(f('side').value);
+          el.querySelector('[data-sub]').textContent = f('who').value.trim();
           /* 本当に矛盾する組み合わせだけを選べなくし、選べない理由をその下に出す：
                目印が塀 → その塀は境界に立っているので「塀（地上）」は越境しない
                目印が両家の塀 → 基礎も両家のもので、越境にならない
@@ -409,6 +483,7 @@
           const f = k => form.elements['l' + el.dataset.link + '-' + k];
           const land = f('land').value, road = land === 'road';
           el.querySelector('[data-l-title]').textContent = RD_LAND[land] || '相手の土地';
+          el.querySelector('[data-sub]').textContent = RD_USE_OPTS.filter(([k]) => f('use-' + k).checked).map(([k]) => RD_USE_SHORT[k]).join('・');
           /* 選択肢の〈相手〉に、選んだ相手の呼び名を写す。 */
           el.querySelectorAll('[data-rd]').forEach(s => { s.textContent = land === 'other' ? 'ほかの土地' : RD_LAND[land] || '相手'; });
           /* 前の私道は、この家が使う側だけ。向きは聞かず、持分を聞く。 */
@@ -435,6 +510,9 @@
           el.querySelector('[data-c-bldg]').hidden = !apart;
           el.querySelector('[data-c-part]').hidden = apart && f('bldg').value !== 'other';
           el.querySelector('[data-c-partlb]').textContent = apart ? '建物の名前' : 'どの部分';
+          const bldg = f('bldg').value;
+          el.querySelector('[data-sub]').textContent = [apart && (bldg === 'other' ? f('where').value.trim() : CH_BLDG[bldg]),
+            CH_SIDE[f('side').value], f('when').value && f('when').value + '年ごろ'].filter(Boolean).join('・');
           f('where').placeholder = apart ? '例：納屋' : '例：北側の約6畳';
           /* 取り壊しは「消えている／残っている」で答える。 */
           el.querySelectorAll('[data-lg]').forEach(b => { b.textContent = grow ? b.dataset.lg : b.dataset.ld; });
@@ -470,25 +548,34 @@
         dialog.querySelector('[data-seal-title]').textContent = partyName + 'の印鑑証明書を、' +
           (form.elements.takerName.value.trim() || '取得する人') + 'に渡しましたか';
       }
+      renderToc();
     }
-    dialog.querySelector('form').onchange = conditionals;
-    /* 境界：隣を足す・外す。 */
+    /* 答えを直した件からは、足りない印を外す（全部外れたら文も消す）。 */
+    dialog.querySelector('form').onchange = e => {
+      const en = e.target.closest('.re-entry');
+      if (en && en.hasAttribute('data-invalid')) {
+        en.removeAttribute('data-invalid');
+        if (!dialog.querySelector('.re-entry[data-invalid]')) dialog.querySelector('.re-error').textContent = '';
+      }
+      conditionals();
+    };
+    dialog.querySelector('.re-dialog-body').addEventListener('scroll', spy, { passive: true });
+    /* 件を足す・削除する・目次から飛ぶ。 */
     dialog.querySelector('form').onclick = ev => {
-      const add = ev.target.closest('[data-entry-add]'), del = ev.target.closest('[data-entry-del]');
+      const add = ev.target.closest('[data-entry-add]'), del = ev.target.closest('[data-entry-del]'), to = ev.target.closest('[data-jump]');
+      /* 吹き出しの外を押したら、吹き出しだけ閉じる。 */
+      if (!ev.target.closest('.re-entry-delw')) closeAsk();
+      if (to) jump(entryEls()[Number(to.dataset.jump)]);
       const road = identity.key === 'road', ch = identity.key === 'changed';
       if (add) { dialog.querySelector('[data-entries]').insertAdjacentHTML('beforeend', ch ? chEntry(bdCount++, {}) : road ? rdLink(bdCount++, {}) : bdEntry(bdCount++, {})); conditionals();
-        dialog.querySelector('.re-entry:last-child').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+        jump(dialog.querySelector('.re-entry:last-child')); }
       if (del) {
-        const entry = del.closest('.re-entry'), box = entry.querySelector('[data-entry-confirm]');
-        entry.querySelector('[data-entry-ask]').textContent = ch
-          ? 'この変更（' + entry.querySelector('[data-c-title]').textContent + '）を外しますか？入力した内容も消えます。'
-          : road
-          ? entry.querySelector('[data-l-title]').textContent + 'を外しますか？この土地について入力した内容も消えます。'
-          : entry.querySelector('[data-e-title]').textContent + 'を外しますか？この家について入力した内容も消えます。';
-        box.hidden = false; box.querySelector('[data-entry-no]').focus();
+        const ask = del.nextElementSibling, opening = ask.hidden;
+        closeAsk();
+        if (opening) { ask.hidden = false; del.setAttribute('aria-expanded', 'true'); ask.querySelector('[data-entry-no]').focus(); }
       }
       const yes = ev.target.closest('[data-entry-yes]'), no = ev.target.closest('[data-entry-no]');
-      if (no) { const entry = no.closest('.re-entry'); entry.querySelector('[data-entry-confirm]').hidden = true; entry.querySelector('[data-entry-del]').focus(); }
+      if (no) closeAsk(true);
       if (yes) { yes.closest('.re-entry').remove(); conditionals(); dialog.querySelector('[data-entry-add]').focus(); }
     };
     dialog.querySelector('form').oninput = e => { if (e.target.name === 'takerName') conditionals(); };
@@ -508,10 +595,10 @@
         values.docKinds = ['confirm', 'memo', 'map'].filter(k => values['udoc-' + k]);
         values.docAge = values.udocAge;
         values.paper = values.deal === 'unknown' ? values.found : '';
-        if (values.deal === 'yes' && values.entries.some(x => x.kinds.includes('over') && !x.overs.length)) {
-          dialog.querySelector('.re-error').textContent = '越境しているものを選んでください。'; return; }
-        const sides = values.entries.map(x => x.side).filter(Boolean);
-        if (values.deal === 'yes' && new Set(sides).size < sides.length) { dialog.querySelector('.re-error').textContent = '同じ家が2つあります。1つにまとめてください。'; return; }
+        const noOver = i => values.entries[i].kinds.includes('over') && !values.entries[i].overs.length;
+        if (values.deal === 'yes' && values.entries.some((x, i) => noOver(i))) { flag(noOver, '越境しているものを選んでください。'); return; }
+        const sides = values.entries.map(x => x.side);
+        if (values.deal === 'yes' && sides.some((x, i) => dup(sides, i))) { flag(i => dup(sides, i), '同じ家が2つあります。1つにまとめてください。'); return; }
       } else if (identity.type === 'matter' && identity.key === 'road') {
         values.links = Array.from(dialog.querySelectorAll('[data-link]'), el => {
           const v = k => values['l' + el.dataset.link + '-' + k];
@@ -520,14 +607,13 @@
             uses: RD_USE_OPTS.filter(([k]) => v('use-' + k)).map(([k]) => ({ what: k, by: land === 'road' ? 'ours' : v('by-' + k) })) };
         });
         Object.keys(values).filter(k => /^l\d+-/.test(k)).forEach(k => delete values[k]);
-        const error = dialog.querySelector('.re-error');
         /* 「ある」以外では、書きかけの空のブロックは残さない。 */
         if (values.has !== 'yes') values.links = values.links.filter(l => l.land && l.uses.length);
         if (values.has === 'yes') {
-          if (values.links.some(l => !l.land)) { error.textContent = '相手の土地を選んでください。'; return; }
-          if (values.links.some(l => !l.uses.length)) { error.textContent = '何に使っているかを選んでください。'; return; }
-          const lands = values.links.map(l => l.land).filter(l => l !== 'other');
-          if (new Set(lands).size < lands.length) { error.textContent = '同じ土地が2つあります。1つにまとめてください。'; return; }
+          if (values.links.some(l => !l.land)) { flag(i => !values.links[i].land, '相手の土地を選んでください。'); return; }
+          if (values.links.some(l => !l.uses.length)) { flag(i => !values.links[i].uses.length, '何に使っているかを選んでください。'); return; }
+          const lands = values.links.map(l => l.land === 'other' ? '' : l.land);
+          if (lands.some((x, i) => dup(lands, i))) { flag(i => dup(lands, i), '同じ土地が2つあります。1つにまとめてください。'); return; }
         }
       } else if (identity.type === 'matter' && identity.key === 'changed') {
         const grow = w => w !== 'cut' && w !== 'demo';
@@ -539,10 +625,9 @@
             kinds: ['confirm', 'inspect', 'contract', 'receipt', 'handover'].filter(k => v('kind-' + k)) };
         });
         Object.keys(values).filter(k => /^c\d+-/.test(k)).forEach(k => delete values[k]);
-        const error = dialog.querySelector('.re-error');
         if (values.has === 'yes') {
-          if (values.changes.some(c => !c.what)) { error.textContent = '何をしたかを選んでください。'; return; }
-          if (values.changes.some(c => !c.side)) { error.textContent = 'どこか（玄関から見た向き）を選んでください。'; return; }
+          if (values.changes.some(c => !c.what)) { flag(i => !values.changes[i].what, '何をしたかを選んでください。'); return; }
+          if (values.changes.some(c => !c.side)) { flag(i => !values.changes[i].side, 'どこか（玄関から見た向き）を選んでください。'); return; }
         }
       }
       if (identity.type === 'prior') {
