@@ -1601,7 +1601,7 @@
     return '<div class="rail">' + rows.map(x => {
       const active = !['none', 'done'].includes(x.status);
       const context = x.context || [x.assignee, x.timing].filter(Boolean).join(' ／ ');
-      return '<section class="rw is-' + esc(x.status) + '"><div class="rh">' +
+      return '<section class="rw is-' + esc(x.status) + '" data-now-row="' + esc(x.key) + '"><div class="rh">' +
         matterIcon(x.icon || x.key) +
         (x.pick ? unitHead(x.nm, statusPick(p, x.type, x.key, x.status, x.nm, x.label), '')
           : unitHead(x.nm, badge(x.status), editButton(p, x.type, x.key, x.nm))) + '</div>' +
@@ -1610,6 +1610,23 @@
         (active && x.next ? '<div class="record-next"><span>次にすること</span><p>' + esc(x.next) + '</p>' +
           (context ? '<small>' + esc(context) + '</small>' : '') + '</div>' : '')) + '</section>';
     }).join('') + '</div>';
+  }
+
+  /* 今のうちの札（部屋の説明の下）。行は1つ目の途中までしか画面に入らず、
+     何がいくつあるかはスクロールしないと分からなかった（2026-09-26）。
+     行と同じ数の札を並べ、押すとその行の頭へ飛ぶ。行は全部並べたまま ――
+     切り替えのタブにすると、部屋の中身の高さで決まる間取りの形が押すたびに変わる。
+     部屋の上に張り付き、読んでいる行の札に印が付く（wire の spyNow）。
+     札は小さな絵と短い名前だけ。状態は行のバッジが言う（絵の右上に状態の点を
+     打ったが、小さな橙が赤い通知のしるしに見え、状態とは読めなかった）。 */
+  const NOW_SHORT = { boundary: '境界・越境', road: '私道・配管', changed: '建物の変更', prior: '前の代の登記', loan: '団信' };
+  function nowNav(rows) {
+    return '<nav class="now-nav" aria-label="今のうちの項目"><div class="now-nav-in">' + rows.map(x => {
+      const b = BADGE[x.status] || BADGE.unknown;
+      return '<button type="button" class="now-go" data-now-go="' + esc(x.key) + '" aria-label="' +
+        esc(x.nm + '（' + (x.label || b.label) + '）へ移動') + '">' + matterIcon(x.icon || x.key) +
+        '<span class="now-go-nm">' + esc(NOW_SHORT[x.key] || x.nm) + '</span></button>';
+    }).join('') + '</div></nav>';
   }
 
   /* 手続きは入口を常時表示し、順序と補足だけを展開する。
@@ -1653,13 +1670,12 @@
      部屋の床そのものが地なので、.pane は作らない。室名札が
      大見出しの役をし、その下に説明、白いカードが載る。            */
   function roomLiv(p) {
-    return roomTag('liv', '今のうち', tagCounts(nowRows(p))) +
-      '<div class="pn">' + WHO + 'に聞く。記録に残す。家族が続きから動けるように。</div>' +
-      nowHTML(p);
+    /* 表札の下の説明文は置かない。「今のうち／そのとき」は SeiZen 全体の言葉で、
+       部屋ごとに言い直さない。なぜ今のうちかは各行の一文が言う（2026-09-26）。 */
+    return roomTag('liv', '今のうち', tagCounts(nowRows(p))) + nowNav(nowRows(p)) + nowHTML(p);
   }
   function roomWhen(p) {
-    return roomTag('when', 'そのとき', { act: 0 }) +
-      '<div class="pn">' + WHO + 'が亡くなった後の連絡先と手順を、今から確認する。</div>' + whenHTML(p);
+    return roomTag('when', 'そのとき', { act: 0 }) + whenHTML(p);
   }
 
   /* ══ 造形｜表札（ルームタグ）════════════════════════════
@@ -1976,7 +1992,11 @@
   })();
 
   const W_ = 1170, TO = 15, TI = 10, GK = 140;
-  const MINR = 137, MAXR = 2400;
+  /* 部屋の高さの下限。上限は置かない ―― 部屋は中身の高さまで伸び、建物ごと伸ばす。
+     以前は上限 2400 があり、超えた分は部屋の中のスクロールで見せていたが、
+     今のうちの札を張り付かせるために部屋のスクロールを外すと、超えた分が
+     切れて見えなくなった（建物の変更が2件のとき：2026-09-26）。 */
+  const MINR = 137;
   /* 敷地の余白（SVG 単位）。間取り図の草地の縁。見出しの屋根を
      建物に接させるため、propHead 側もこの値を使う。 */
   const SITE_U = 34;
@@ -2041,7 +2061,7 @@
       raw[k] = measureHTML(html[k], Math.max(50, toPx(wUnit[k])));
       const walls = (wallY[k][0] + wallY[k][1]) / 2;
       const inUnit = px2u(raw[k] + headOf(k)) + PADIN * 2 + walls;
-      need[k] = Math.min(MAXR, Math.max(MINR, Math.ceil(inUnit)));
+      need[k] = Math.max(MINR, Math.ceil(inUnit));
     });
 
     const H1 = Math.max(need.liv, need.when);
@@ -2724,6 +2744,20 @@
         }
       };
     }));
+    /* 今のうちの札：同じ部屋（間取りの部屋か、狭い幅の一覧）の行へ飛ぶ。
+       張り付いた札の帯の下に、行の頭が来るようにする。 */
+    document.querySelectorAll('[data-now-go]').forEach(b => {
+      b.onclick = () => {
+        const nav = b.closest('.now-nav'), room = nav.parentElement;
+        const row = room.querySelector('[data-now-row="' + CSS.escape(b.dataset.nowGo) + '"]');
+        if (!row) return;
+        const stick = parseFloat(getComputedStyle(nav).top) || 0;
+        window.scrollTo({ top: scrollY + row.getBoundingClientRect().top - stick - nav.offsetHeight - 10, behavior: 'smooth' });
+        const nm = row.querySelector('.uh-nm');
+        nm.tabIndex = -1; nm.focus({ preventScroll: true });
+      };
+    });
+    spyNow();
     document.querySelectorAll('[data-go]').forEach(b => {
       b.onclick = () => {
         const el = document.getElementById(b.dataset.go);
@@ -2753,6 +2787,33 @@
       };
     });
   }
+
+  /* 読んでいる行の札に印。札の帯のすぐ下を越えた最後の行を「読んでいる行」とする。
+     帯が張り付いているあいだは、帯に下の影を付ける（is-stuck）。 */
+  function spyNow() {
+    document.querySelectorAll('.now-nav').forEach(nav => {
+      const r = nav.getBoundingClientRect();
+      if (!r.width) return;
+      const stick = parseFloat(getComputedStyle(nav).top) || 0;
+      nav.classList.toggle('is-stuck', r.top <= stick + 0.5 && nav.parentElement.getBoundingClientRect().top < stick);
+      const line = r.bottom + 40;
+      let cur = '';
+      nav.parentElement.querySelectorAll('[data-now-row]').forEach(row => { if (row.getBoundingClientRect().top <= line) cur = row.dataset.nowRow; });
+      nav.querySelectorAll('[data-now-go]').forEach(b => {
+        if (b.dataset.nowGo === cur) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
+      /* 狭い幅（札を横に流す）で、印の札が見えていなければ横に送る。印が変わったときだけ
+         （毎回送ると、指で横に流した位置を奪う）。 */
+      if (cur !== (nav.dataset.cur || '')) {
+        nav.dataset.cur = cur;
+        const inn = nav.firstElementChild, on = cur && inn.querySelector('[aria-current]');
+        if (on && inn.scrollWidth > inn.clientWidth) {
+          const br = on.getBoundingClientRect(), ir = inn.getBoundingClientRect();
+          if (br.left < ir.left || br.right > ir.right) inn.scrollBy({ left: br.right > ir.right ? br.right - ir.right + 8 : br.left - ir.left - 8, behavior: 'smooth' });
+        }
+      }
+    });
+  }
+  addEventListener('scroll', spyNow, { passive: true });
 
   let resizeFrame;
   addEventListener('resize', () => {
