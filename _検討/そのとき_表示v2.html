@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>そのとき 相続登記 表示v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<link rel="stylesheet" href="../prototype/real-estate/area.css">
+<!--
+  そのとき｜相続登記のカード 見本 v2（2026-09-27）
+
+  v1 の指摘：「前よりは良くなったが、まだテキストの羅列」。
+  v1 は問いごとに行を分けただけで、中身は「ラベル＋文」の繰り返しだった。
+
+  v2：中身の形を図にする（今のうちの各項目と同じ考え方）。
+  ① 名義の移り … 土地と建物を2本の筋にし、名義人の札を矢印でつなぐ。
+     前の代の名義が残る家は、土地の筋だけ1段長い ―― これがこの家の
+     事情そのもの。移る先（家族）は破線の札（今のうちの名義の図と同じ約束）。
+     筋の下に、各段を何で移すか（協議書・遺言）を括弧で示す。
+     登記に載っていない増築は斜線（今のうちの建物の図と同じ約束）。
+  ② そろえる書類 … 書類を A4 の書面（1:1.414）で描き、どこから来るかで
+     3つに分ける：役所で取る／家族で作る／家にある。
+     実線＝ある・取れる、破線＝まだ無い（作る・見つかっていない）。
+     役所で取るものはどの家でも同じなので小さく1列、この家に固有の
+     「作る」「家にある」を大きく出す。
+  図は無彩色（面の色を持ち込まない）。
+-->
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink)}
+  .wrap{max-width:1500px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:18px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);line-height:1.8;margin:0 0 24px;max-width:780px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(451px,1fr));gap:28px 24px;align-items:start}
+  .case{background:#E9EFE9;padding:14px 14px 16px;border-radius:4px}
+  .case > h2{font-size:11.5px;font-weight:600;color:#4b5f50;margin:0 0 10px;line-height:1.6}
+  .case > h2 small{display:block;font-weight:400;color:var(--ink3);font-size:10.5px}
+  .case .procedure-sheet{max-width:423px}
+
+  /* ── 見本で足すもの ─────────────────────────────── */
+  .sw-sec{margin:14px 0 0;padding-top:12px;border-top:1px solid #e8eee7}
+  .sw-lb{font-size:10.5px;color:#5c7562;letter-spacing:.02em;margin:0 0 8px}
+
+  /* ① 名義の移り */
+  .nm-fig{display:block;width:100%;height:auto;overflow:visible}
+  .nm-fig text{font-family:var(--font)}
+  .nm-key{display:flex;align-items:center;gap:6px;margin:6px 0 0;font-size:10.5px;color:var(--ink2);line-height:1.6}
+  .nm-key svg{flex:none}
+  .nm-ppl{margin:8px 0 0;font-size:11.5px;line-height:1.7;color:var(--ink2)}
+  .nm-ppl b{color:var(--ink);font-weight:600}
+
+  /* ② そろえる書類 */
+  .dk{display:grid;grid-template-columns:5.2em minmax(0,1fr);gap:10px 10px;align-items:start}
+  .dk-h{font-size:10.5px;color:var(--ink2);line-height:1.5;padding-top:4px}
+  .dk-h small{display:block;color:var(--ink3);font-size:9.5px}
+  .dk-row{display:flex;flex-wrap:wrap;gap:10px 12px}
+  .dk-doc{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 7px;align-items:start;max-width:100%}
+  .dk-doc svg{display:block;flex:none;overflow:visible}
+  .dk-t{font-size:12px;font-weight:600;line-height:1.45;color:var(--ink)}
+  .dk-s{display:block;font-size:10.5px;font-weight:400;color:var(--ink2);line-height:1.55}
+  .dk-at{display:block;font-size:10.5px;font-weight:600;color:#355640;line-height:1.55}
+  .dk-no{color:#8f6227}
+  .dk-row.big .dk-doc{flex:1 1 100%}
+  /* 役所で取るもの：どの家でも同じ。名前だけ小さく並べる。 */
+  .dk-row.small{gap:6px 12px}
+  .dk-row.small .dk-t{font-size:11.5px;font-weight:500}
+
+  /* 順番（2段あるときだけ） */
+  .sq{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap}
+  .sq-step{flex:1 1 0;min-width:0;border:1px solid #dfe6dd;border-radius:6px;padding:7px 9px}
+  .sq-step b{display:block;font-size:12px;line-height:1.5}
+  .sq-step small{display:block;font-size:10.5px;color:#5c7562}
+  .sq-ar{align-self:center;color:#9B988E;font-size:13px}
+  .one{font-size:11.5px;color:var(--ink2);line-height:1.7;margin:0}
+  .one b{color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>そのとき｜相続登記のカード v2</h1>
+  <p class="lead">v1（問いごとの行）でも「ラベル＋文」の羅列のままだった。v2 は中身の形を図にする：
+    ①名義がどう移るか（土地・建物の2本の筋。前の代の名義があると土地だけ1段長い）、
+    ②書類をどこからそろえるか（役所で取る／家族で作る／家にある）。答えの組み合わせ6通り。</p>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const TOKI = '<svg class="gi" viewBox="0 0 30 42.4" width="25" height="35.3" aria-hidden="true">' +
+  '<rect x="1.4" y="1" width="24" height="36" rx="1" fill="#FFFFFF" stroke="#BDB5A0" stroke-width=".9"/>' +
+  '<rect x="4.2" y="5.4" width="13" height="2.4" rx=".5" fill="#BFB49A"/>' +
+  '<line x1="4.2" y1="11.4" x2="22.6" y2="11.4" stroke="#DDD7C7" stroke-width=".9"/><line x1="4.2" y1="15.4" x2="22.6" y2="15.4" stroke="#DDD7C7" stroke-width=".9"/>' +
+  '<rect x="4.2" y="23" width="18.4" height="8.4" rx=".6" fill="#E4E0D4" stroke="#C4BCA6" stroke-width=".8"/>' +
+  '<rect x="18" y="30.4" width="5.6" height="5.6" rx=".6" fill="none" stroke="#C0574E" stroke-width="1" opacity=".85"/></svg>';
+const CAL = '<svg viewBox="0 0 14 14" width="14" height="14"><rect x=".7" y="2.4" width="12.6" height="11" rx="1.4" fill="none" stroke="#B9B2A0" stroke-width="1.1"/><line x1=".7" y1="5.8" x2="13.3" y2="5.8" stroke="#B9B2A0" stroke-width="1.1"/><line x1="4.2" y1=".7" x2="4.2" y2="3.5" stroke="#B9B2A0" stroke-width="1.3" stroke-linecap="round"/><line x1="9.8" y1=".7" x2="9.8" y2="3.5" stroke="#B9B2A0" stroke-width="1.3" stroke-linecap="round"/></svg>';
+
+/* ── ① 名義の移り ──────────────────────────────────
+   lanes: [{ lb:'土地', nodes:['祖父一郎','父','家族'], hatch:false, note:'' }]
+   列は3つ（前の代／父／家族）で固定し、筋ごとに始まる列が違う。
+   hops: 括弧 [{ from:0|1, to:1|2, t:'…' }] を筋の下に。 */
+function nameFig(f) {
+  /* 列の数は一番長い筋に合わせる。前の代の名義が無い家は2列で幅いっぱいに
+     使う（3列のままだと左に空きの列が残り、図が右に寄った）。 */
+  const lanes = f.lanes, hops = f.hops || [];
+  const NC = Math.max.apply(null, lanes.map(l => l.nodes.length)), off = 3 - NC;
+  const W = 387, LB = 34, GAP = 30, NH = 30, LH = 40, NW = (W - LB - GAP * (NC - 1)) / NC;
+  const cx = i => LB + (i - off) * (NW + GAP);
+  const H = lanes.length * LH - (LH - NH) + (hops.length ? 34 : 0);
+  let s = '<svg class="nm-fig" viewBox="0 0 ' + W + ' ' + H + '" xmlns="' + NS + '" role="img" aria-label="名義の移り">' +
+    '<defs><pattern id="hz" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+    '<line x1="0" y1="0" x2="0" y2="5" stroke="#8E877A" stroke-width="1"/></pattern>' +
+    '<marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">' +
+    '<path d="M1 1 7 4 1 7" fill="none" stroke="#8E877A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>';
+  lanes.forEach((ln, li) => {
+    const y = li * LH;
+    s += '<text x="0" y="' + (y + NH / 2 + 4) + '" font-size="11" fill="#6B6963">' + ln.lb + '</text>';
+    const start = 3 - ln.nodes.length;
+    ln.nodes.forEach((nm, k) => {
+      const col = start + k, x = cx(col), last = k === ln.nodes.length - 1;
+      /* 移る先（家族）は破線＝まだ移っていない。今の名義は実線。 */
+      s += '<rect x="' + x + '" y="' + y + '" width="' + NW + '" height="' + NH + '" rx="4" fill="' + (last ? '#FFFFFF' : '#F4F2EC') +
+        '" stroke="' + (last ? '#A9A294' : '#8E877A') + '" stroke-width="1.1"' + (last ? ' stroke-dasharray="3 2.5"' : '') + '/>';
+      /* 登記に載っていない増築＝札の右端の斜線（今のうちの建物の図と同じ約束）。 */
+      if (ln.hatch && k === 0) s += '<rect x="' + (x + NW - 22) + '" y="' + (y + 1) + '" width="21" height="' + (NH - 2) + '" fill="url(#hz)" opacity=".75"/>' +
+        '<line x1="' + (x + NW - 22) + '" y1="' + y + '" x2="' + (x + NW - 22) + '" y2="' + (y + NH) + '" stroke="#8E877A" stroke-width="1"/>';
+      s += '<text x="' + (x + (ln.hatch && k === 0 ? (NW - 22) / 2 : NW / 2)) + '" y="' + (y + NH / 2 + 4.5) + '" font-size="12" font-weight="' + (last ? 500 : 600) +
+        '" text-anchor="middle" fill="' + (last ? '#6B6963' : '#32322E') + '">' + nm + '</text>';
+      if (!last) s += '<line x1="' + (x + NW + 3) + '" y1="' + (y + NH / 2) + '" x2="' + (x + NW + GAP - 4) + '" y2="' + (y + NH / 2) + '" stroke="#8E877A" stroke-width="1.2" marker-end="url(#ar)"/>';
+    });
+  });
+  /* 括弧：各段を何で移すか。 */
+  const by = lanes.length * LH - (LH - NH) + 8;
+  hops.forEach(h => {
+    const x1 = cx(h.from) + NW / 2, x2 = cx(h.to) + NW / 2;
+    s += '<path d="M' + x1 + ' ' + by + 'v5H' + x2 + 'v-5" fill="none" stroke="#A9A294" stroke-width="1"/>' +
+      '<text x="' + ((x1 + x2) / 2) + '" y="' + (by + 20) + '" font-size="10.5" text-anchor="middle" fill="#6B6963">' + h.t + '</text>';
+  });
+  return s + '</svg>' + (lanes.some(l => l.hatch)
+    ? '<p class="nm-key"><svg width="16" height="11" aria-hidden="true"><defs><pattern id="hzk" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#8E877A" stroke-width="1"/></pattern></defs><rect x=".5" y=".5" width="15" height="10" fill="url(#hzk)" stroke="#8E877A"/></svg>登記に載っていない増築。相続登記の前に、表題変更登記で載せる</p>' : '');
+}
+
+/* ── ② そろえる書類 ───────────────────────────────
+   書面は A4 1:1.414。solid＝ある・取れる、dash＝まだ無い。 */
+function paper(dash, w) {
+  w = w || 20; const h = (w * 1.414).toFixed(1);
+  return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 20 28.3" aria-hidden="true">' +
+    '<rect x=".6" y=".6" width="18.8" height="27.1" rx=".8" fill="' + (dash ? '#FFFFFF' : '#FBFAF6') + '" stroke="' + (dash ? '#A9A294' : '#9C9584') +
+    '" stroke-width="1"' + (dash ? ' stroke-dasharray="2.4 2"' : '') + '/>' +
+    (dash ? '' : '<path d="M4 6h8M4 10h12M4 13.5h12M4 17h8" stroke="#D6D0C1" stroke-width="1" stroke-linecap="round"/>') + '</svg>';
+}
+function docs(d) {
+  const item = x => '<div class="dk-doc">' + paper(x.dash, x.small ? 14 : 20) +
+    '<div class="dk-t">' + x.t + (x.s ? '<span class="dk-s">' + x.s + '</span>' : '') +
+    (x.at ? '<span class="dk-at">' + x.at + '</span>' : '') +
+    (x.no ? '<span class="dk-at dk-no">' + x.no + '</span>' : '') + '</div></div>';
+  const grp = (h, sub, xs, cls) => xs && xs.length
+    ? '<div class="dk-h">' + h + (sub ? '<small>' + sub + '</small>' : '') + '</div><div class="dk-row ' + cls + '">' + xs.map(item).join('') + '</div>' : '';
+  return '<div class="dk">' +
+    grp('家にある', '家族が取り出す', d.home, 'big') +
+    grp('家族で作る', '', d.make, 'big') +
+    grp('役所で取る', 'どの家でも同じ', d.office.map(t => ({ t, small: true })), 'small') + '</div>';
+}
+
+const OFFICE1 = ['戸籍（父）', '住民票の除票（父）', '印鑑証明書（全員）', '固定資産評価証明書'];
+const OFFICE2 = ['戸籍（父・祖父一郎）', '住民票の除票（父・祖父一郎）', '印鑑証明書（全員）', '固定資産評価証明書'];
+const KYO = { t: '遺産分割協議書', s: '相続人全員が署名し、実印を押す', dash: true };
+
+const CASES = [
+  { h: 'A　事情なし', s: '土地・建物とも父の名義・単独',
+    fig: { lanes: [{ lb: '土地', nodes: ['父', '家族'] }, { lb: '建物', nodes: ['父', '家族'] }],
+      hops: [{ from: 1, to: 2, t: '遺産分割協議書' }] },
+    ppl: '話し合いに加わる：<b>父の相続人（家族）全員</b>',
+    docs: { make: [KYO], office: OFFICE1 },
+    steps: null, who: '司法書士に頼む（自分で法務局へ申請することもできる）' },
+
+  { h: 'B　前の代の名義が残る', s: '土地は祖父一郎の名義のまま・父が取得すると口頭で決まっている',
+    fig: { lanes: [{ lb: '土地', nodes: ['祖父一郎', '父', '家族'] }, { lb: '建物', nodes: ['父', '家族'] }],
+      hops: [{ from: 0, to: 2, t: '1通の遺産分割協議書に、2人分をまとめる' }] },
+    ppl: '話し合いに加わる：<b>父の相続人（家族）全員 ＋ 祖父一郎のほかの相続人</b>',
+    docs: { make: [{ t: '遺産分割協議書', s: '祖父一郎の分と父の分を1通に。父が取得すると口頭で決まっていただけで、書面はない', dash: true }], office: OFFICE2 },
+    steps: null, who: '司法書士に頼む。父が1人で取得する協議書にすれば、土地も1回の申請で家族へ移せることがある' },
+
+  { h: 'C　前の代の名義＋登記にない増築（自宅）', s: 'B に加えて、北側の増築（約6畳）が登記に載っていない・工事の書類は分からない',
+    fig: { lanes: [{ lb: '土地', nodes: ['祖父一郎', '父', '家族'] }, { lb: '建物', nodes: ['父', '家族'], hatch: true }],
+      hops: [{ from: 0, to: 2, t: '1通の遺産分割協議書に、2人分をまとめる' }] },
+    ppl: '話し合いに加わる：<b>父の相続人（家族）全員 ＋ 祖父一郎のほかの相続人</b>',
+    docs: { home: [{ t: '工事の書類', s: '確認済証・工事請負契約書・領収書', no: '場所は分からない', dash: true }],
+      make: [{ t: '遺産分割協議書', s: '2人分を1通に。増築部分を誰が取得するかも書く', dash: true },
+        { t: '上申書', s: '工事の書類が見つからないとき。相続人全員が実印を押す', dash: true }], office: OFFICE2 },
+    steps: [{ t: '増築の表題変更登記', w: '土地家屋調査士' }, { t: '相続登記', w: '司法書士' }] },
+
+  { h: 'D　前の代：遺言がある', s: '祖父一郎の自筆の遺言で父が取得・法務局には預けていない',
+    fig: { lanes: [{ lb: '土地', nodes: ['祖父一郎', '父', '家族'] }, { lb: '建物', nodes: ['父', '家族'] }],
+      hops: [{ from: 0, to: 1, t: '遺言' }, { from: 1, to: 2, t: '遺産分割協議書' }] },
+    ppl: '話し合いに加わる：<b>父の相続人（家族）全員</b>（祖父一郎の分は遺言で決まっている）',
+    docs: { home: [{ t: '祖父一郎の遺言書', s: '自筆。先に家庭裁判所の検認を受ける', at: '仏間の金庫' }], make: [KYO], office: OFFICE2 },
+    steps: [{ t: '遺言書の検認', w: '家庭裁判所' }, { t: '相続登記', w: '司法書士' }] },
+
+  { h: 'E　前の代：協議書がある', s: '祖父一郎の遺産分割協議書（父が取得）あり・父の印鑑証明書も渡してある',
+    fig: { lanes: [{ lb: '土地', nodes: ['祖父一郎', '父', '家族'] }, { lb: '建物', nodes: ['父', '家族'] }],
+      hops: [{ from: 0, to: 1, t: '協議書（済み）' }, { from: 1, to: 2, t: '遺産分割協議書' }] },
+    ppl: '話し合いに加わる：<b>父の相続人（家族）全員</b>（祖父一郎の分は協議書で決まっている）',
+    docs: { home: [{ t: '祖父一郎の遺産分割協議書', s: '父が取得すると書いたもの。添える印鑑証明書も', at: '書斎のキャビネット上段' }], make: [KYO], office: OFFICE2 },
+    steps: null, who: '司法書士に頼む。父が1人で取得しているので、1回の申請で家族へ移せることがある' },
+
+  { h: 'F　共有と私道の持分', s: '建物は父と母の共有（1/2）・前の私道に持分がある',
+    fig: { lanes: [{ lb: '土地', nodes: ['父', '家族'] }, { lb: '建物', nodes: ['父 1/2', '家族'] }, { lb: '私道', nodes: ['父（持分）', '家族'] }],
+      hops: [{ from: 1, to: 2, t: '遺産分割協議書' }] },
+    ppl: '建物の母の持分（1/2）はそのまま。<b>私道の持分は課税明細書に載らない</b>ことがあるので、名寄帳か所有不動産記録証明で地番を確かめて同じ申請に入れる',
+    docs: { make: [KYO], office: OFFICE1.concat(['名寄帳']) },
+    steps: null, who: '司法書士に頼む（自分で法務局へ申請することもできる）' }
+];
+
+function card(c) {
+  const steps = c.steps
+    ? '<div class="sq">' + c.steps.map((s, i) => (i ? '<span class="sq-ar">→</span>' : '') +
+        '<div class="sq-step"><b>' + (i + 1) + '　' + s.t + '</b><small>' + s.w + '</small></div>').join('') + '</div>'
+    : '<p class="one">' + c.who + '</p>';
+  return '<section class="case"><h2>' + c.h + '<small>' + c.s + '</small></h2>' +
+    '<article class="procedure-sheet">' +
+    '<header class="procedure-head">' + TOKI + '<div><h5>相続登記</h5></div></header>' +
+    '<div class="procedure-deadline">' + CAL + '<span><b>期限</b> 取得を知った日から3年以内</span></div>' +
+    '<div class="sw-sec"><p class="sw-lb">名義の移り</p>' + nameFig(c.fig) + '<p class="nm-ppl">' + c.ppl + '</p></div>' +
+    '<div class="sw-sec"><p class="sw-lb">そろえる書類</p>' + docs(c.docs) + '</div>' +
+    '<div class="sw-sec"><p class="sw-lb">' + (c.steps ? '順番' : '頼む先') + '</p>' + steps + '</div>' +
+    '<button type="button" class="procedure-toggle"><span>補足を見る</span><span aria-hidden="true">＋</span></button>' +
+    '</article></section>';
+}
+document.getElementById('grid').innerHTML = CASES.map(card).join('');
+</script>
+</body>
+</html>

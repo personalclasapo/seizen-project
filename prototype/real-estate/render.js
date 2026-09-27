@@ -1316,65 +1316,94 @@
     return '';
   }
 
-  /* ■ そのときの相続登記「この物件では」（2026-09-24 作り直し）
-     そのときは、父が亡くなった後に家族が開く面。ここに書くのは、この
-     物件で実際にすることと、そのとき気をつけること。「確かめます」の
-     ような今のうちの確認は書かない（以前は、前の代の名義が未確認だと
-     「残っていないか登記で確かめます」と出していた）。
-     記録から言えることだけを項目にする：前の代の名義が残っているか・
-     どう移すか、使う書類がどこにあるか、父の持分。                    */
-  function inheritHere(p) {
-    const out = [];
+  /* ■ そのときの相続登記（2026-09-27 作り直し。見本 `_検討/そのとき_表示v4.html`）
+     箇条で並べていた「この物件では」は、性格の違う情報（この家の状態／
+     加わる人／用意するもの／順番／頼む先）が同じ重さで混ざった羅列だった。
+     家族の問いごとに置き場所を分ける：
+       say    … この家の事情を一文で（前の代の名義・話し合いに加わる人・
+                増築・私道・共有・借地）。名義の移りは当たり前なので図にしない
+       docs   … そろえる書類。どこから来るか（家にある／家族で作る／役所で
+                取る）で分ける。ここだけ書面の絵にする（文では読み分けにくい）
+       steps  … 手続きが2つ以上あるときだけ順番。1つなら頼む先を1行（who）
+       flags  … くわしくの中身を家ごとに変えるところ                  */
+  function tokiParts(p) {
     const pr = p.priorInheritance || {};
     const docAt = key => { const d = (p.docs.at || {})[key] || {}; return d.st === 'have' && d.place ? d.place : ''; };
-    if (pr.remains === 'yes' && pr.stage !== 'registered') {
-      const c = priorCase(p);
-      if (c.P === WHO && (c.mine || c.route === 'unknown' || (c.route === 'split' && ['none', 'agreed'].includes(c.st)))) {
-        /* 名義人は最初の一度だけ「（故人）」まで書き、あとは名前だけにする。 */
-        const full = S.priorOwner(p) || '前の代';
-        const owner = full.replace(/（故人）$/, '');
-        out.push(c.where + 'は' + full + 'の名義のままです。');
-        if (c.route === 'split' && c.st === 'signed') {
-          out.push(WHO + 'が取得する遺産分割協議書があります。これと相続人全員の印鑑証明書で、' + owner + 'から' + WHO + '、' + WHO + 'から家族へと名義を移します。' +
-            WHO + 'が1人で取得すると決まっているので、1回の申請で家族へ移せることがあります（司法書士に確認）。');
-          out.push('協議書の場所：' + (docAt('prior') || 'まだ記録されていません（書類のありか）'));
-        } else if (c.route === 'will') {
-          out.push(owner + 'の遺言で' + WHO + 'が取得すると決まっています。遺言書を使って、' + owner + 'から' + WHO + '、' + WHO + 'から家族へと名義を移します。' +
-            '自筆の遺言書は、先に家庭裁判所の検認が要ります（法務局に預けてあったものを除く）。');
-          out.push('遺言書の場所：' + (docAt('priorWill') || 'まだ記録されていません（書類のありか）'));
-        } else if (c.route === 'sole') {
-          out.push(owner + 'の相続人は' + WHO + 'だけなので、話し合いは要りません。' + owner + 'から' + WHO + '、' + WHO + 'から家族へと名義を移します。1回の申請で家族へ移せることがあります（司法書士に確認）。');
-        } else {
-          out.push('先に' + owner + 'の相続を片付けます。' + (c.route === 'unknown' ? '遺言がなければ、' : '') +
-            owner + 'の遺産分割には、' + owner + 'のほかの相続人と、' + WHO + 'の相続人（家族）全員が加わります。2人分の相続を1通の協議書にまとめられます。');
-          if (c.st === 'agreed') out.push(WHO + 'が取得すると口頭で決まっていましたが、書面はありません。協議書にするには、相続人全員の署名・実印と印鑑証明書が要ります。');
-        }
-        out.push('戸籍は、' + WHO + 'の分に加えて、' + owner + 'の出生から死亡までの分も要ります。');
-      }
-    }
-    /* 前の私道の持分は、非課税で課税明細書に載らないことがあり、相続登記で漏れる
-       （設計 §8-1）。持分があるか分からないときも、確かめる先を言う。 */
-    const road = (p.matters.road || {}).has === 'yes' ? ((p.matters.road.links || []).find(l => l.land === 'road') || null) : null;
-    if (road && road.share === 'yes') out.push('前の私道の持分も、相続登記に入れます。私道は固定資産税がかからず、課税明細書に載らないことがあります。地番は名寄帳か所有不動産記録証明で確かめます。');
-    else if (road && road.share === 'unknown') out.push('前の道は私道です。' + WHO + 'が持分を持っていれば、相続登記に入れます。課税明細書には載らないことがあるので、名寄帳か所有不動産記録証明で確かめます。');
-    /* 登記と今の建物のずれ（設計 §9）。相続登記をした人には、その日から1か月以内の
-       表題変更登記の義務がかかる（不動産登記法51条2項）。登記のない別棟は、相続登記では
-       名義が移らない。取り壊した建物が登記に残っていれば、先に滅失登記。 */
     const gap = chGap(p), names = cs => cs.map(chName).join('・');
-    if (gap.ext.length) out.push(names(gap.ext) + 'は、登記に載っていません。相続登記をすると、相続した人に1か月以内の表題変更登記の義務がかかるので、先に（または同時に）土地家屋調査士に頼みます。遺産分割協議書には、登記に載っていない部分も誰が取得するか書きます。');
-    if (gap.annex.length) out.push(names(gap.annex) + 'は登記がないので、相続登記では名義が移りません。取得した人が1か月以内に表題登記をします（土地家屋調査士）。遺産分割協議書にも書きます。');
-    if (gap.grow.length) out.push(gap.grow.some(c => c.docs === 'yes')
-      ? '工事の書類の場所：' + (docAt('changed') || 'まだ記録されていません（書類のありか）')
-      : (gap.grow.every(c => c.docs === 'no') ? '工事の書類がないので、' : '工事の書類（確認済証・工事請負契約書・領収書など）が見つからなければ、') +
-        '固定資産評価証明書と、相続人全員が実印を押した上申書で、' + WHO + 'のものだったことを示します。');
-    if (gap.gone.length) out.push(names(gap.gone) + 'が、まだ登記に残っています。相続登記の前に、滅失登記をします（相続人の1人で申請できます）。');
-    if (gap.diff) out.push('課税明細書と登記で、建物の床面積が違っています。登記に載っていない部分があるので、相続登記の前に土地家屋調査士に見てもらいます。');
+    const noWill = WHO + 'の遺言がなければ、';
+    const say = [], home = [], make = [];
+    let office = ['戸籍（' + WHO + '）', '住民票の除票（' + WHO + '）', '印鑑証明書（全員）', '固定資産評価証明書'];
+    const kyo = s => ({ t: '遺産分割協議書', s: s || '相続人全員が署名し、実印を押す' });
+    let kyoNote = '', prior = false, once = false;
+    const lease = p.rights && p.rights.land && p.rights.land.hold === 'lease';
+    const what = lease ? '建物' : p.kind === 'condo' ? '専有部分' : p.kind === 'land' ? '土地' : '土地と建物';
+
+    /* 前の代の名義が残っていて、父が当事者のとき。 */
+    const c = pr.remains === 'yes' && pr.stage !== 'registered' ? priorCase(p) : null;
+    if (c && c.P === WHO && (c.mine || c.route === 'unknown' || (c.route === 'split' && ['none', 'agreed'].includes(c.st)))) {
+      prior = true;
+      const owner = (S.priorOwner(p) || '前の代').replace(/（故人）$/, '');
+      office = ['戸籍（' + WHO + '・' + owner + '）', '住民票の除票（' + WHO + '・' + owner + '）', '印鑑証明書（全員）', '固定資産評価証明書'];
+      if (c.route === 'will') {
+        say.push(c.where + 'は' + owner + 'の名義のままですが、<b>' + owner + 'の遺言</b>で' + WHO + 'が取得すると決まっています。' +
+          noWill + '話し合いは' + WHO + 'の分だけで、' + WHO + 'の相続人（家族）全員でします。');
+        home.push({ t: owner + 'の遺言書', s: '自筆なら、先に家庭裁判所の検認を受ける（法務局に預けたものを除く）', at: docAt('priorWill') });
+        once = true;
+      } else if (c.route === 'split' && c.st === 'signed') {
+        say.push(c.where + 'は' + owner + 'の名義のままですが、<b>協議書</b>で' + WHO + 'が取得すると決まっています。' +
+          noWill + '話し合いは' + WHO + 'の分だけで、' + WHO + 'の相続人（家族）全員でします。');
+        home.push({ t: owner + 'の遺産分割協議書', s: WHO + 'が取得すると書いたもの。添える印鑑証明書も', at: docAt('prior') });
+        once = true;
+      } else if (c.route === 'sole') {
+        say.push(c.where + 'は<b>' + owner + 'の名義のまま</b>です。' + owner + 'の相続人は' + WHO + 'だけなので、' + owner + 'の分は話し合いが要りません。' +
+          noWill + WHO + 'の分は' + WHO + 'の相続人（家族）全員で話し合います。');
+        once = true;
+      } else {
+        say.push(c.where + 'は<b>' + owner + 'の名義のまま</b>です。' + (c.route === 'unknown' ? owner + 'と' : '') + noWill +
+          owner + 'のほかの相続人も話し合いに加わり、<b>2人分の相続を1通の協議書</b>にまとめます。');
+        kyoNote = c.st === 'agreed' ? WHO + 'が取得すると口頭で決まっていただけで、書面はない' : owner + 'の分は、まだ話がついていない';
+      }
+    } else {
+      say.push(noWill + WHO + 'の相続人（家族）<b>全員で遺産分割協議</b>をして、' + what + 'の名義を移します。');
+    }
+
+    /* 何を登記するか（借地・共有・私道）。 */
+    if (lease) say.push('土地は借地なので、登記するのは建物だけです。借地権は建物と一緒に引き継ぎます。');
     ['land', 'bldg'].forEach(k => {
       const r = (p.rights || {})[k];
       if (r && r.owner === WHO && r.hold === 'share' && r.shares && r.shares !== '単独')
-        out.push((k === 'land' ? '土地' : p.kind === 'condo' ? '専有部分' : '建物') + 'は共有です。相続するのは' + WHO + 'の持分（' + r.shares + '）だけです。');
+        say.push((k === 'land' ? '土地' : p.kind === 'condo' ? '専有部分' : '建物') + 'は<b>' + WHO + 'の持分（' + r.shares + '）だけ</b>を移します。');
     });
-    return out;
+    const road = (p.matters.road || {}).has === 'yes' ? ((p.matters.road.links || []).find(l => l.land === 'road') || null) : null;
+    if (road && road.share === 'yes') {
+      say.push('<b>前の私道の持分</b>も同じ申請に入れます。私道は課税明細書に載らないことがあるので、名寄帳か所有不動産記録証明で地番を確かめます。');
+      office = office.concat(['名寄帳']);
+    } else if (road && road.share === 'unknown')
+      say.push('前の道は私道です。' + WHO + 'が持分を持っていれば、同じ申請に入れます。課税明細書に載らないことがあるので、名寄帳か所有不動産記録証明で確かめます。');
+
+    /* 登記と今の建物のずれ（設計 §9）。相続登記をした人には1か月以内の表題変更
+       登記の義務がかかる（不動産登記法51条）。登記のない別棟は相続登記では移らず、
+       取得した人が1か月以内に表題登記。取り壊した建物が残っていれば先に滅失登記。 */
+    const pre = [], post = [];
+    if (gap.gone.length) { say.push('<b>' + names(gap.gone) + 'が登記に残っています</b>。'); pre.push({ t: '取り壊した建物の滅失登記', w: '土地家屋調査士' }); }
+    if (gap.ext.length) { say.push('<b>' + names(gap.ext) + 'は登記に載っていません</b>。'); pre.push({ t: '増築の表題変更登記', w: '土地家屋調査士' }); }
+    if (gap.diff) { say.push('課税明細書と登記で、建物の床面積が違っています。'); pre.push({ t: '床面積の違いを見てもらう', w: '土地家屋調査士' }); }
+    if (gap.annex.length) { say.push('<b>' + names(gap.annex) + 'は登記がありません</b>。相続登記では名義が移りません。'); post.push({ t: names(gap.annex) + 'の表題登記', w: '取得した人・1か月以内' }); }
+    if (gap.grow.length) {
+      const has = gap.grow.some(x => x.docs === 'yes'), none = gap.grow.every(x => x.docs === 'no');
+      if (!none) home.push({ t: '工事の書類', s: '確認済証・工事請負契約書・領収書', at: has ? docAt('changed') : '', no: has ? '' : '場所は分からない' });
+      if (!has) make.push({ t: '上申書', s: (none ? '工事の書類がないので、' : '工事の書類が見つからないとき。') + '相続人全員が実印を押す' });
+      kyoNote = [kyoNote, '登記に載っていない部分を誰が取得するかも書く'].filter(Boolean).join('。');
+    }
+    make.unshift(kyo(kyoNote ? kyoNote + '。相続人全員が署名し、実印を押す' : ''));
+
+    const steps = pre.concat([{ t: '相続登記', w: '司法書士' }], post);
+    const who = once ? '司法書士に頼む。' + WHO + 'が1人で取得しているので、1回の申請で家族へ移せることがある'
+      : prior ? '司法書士に頼む。' + WHO + 'が1人で取得する協議書にすれば、1回の申請で家族へ移せることがある'
+      : '司法書士に頼む（自分で法務局へ申請することもできる）';
+    return { say: say.join(''), docs: { home, make, office }, steps: steps.length > 1 ? steps : null, who,
+      prior, survey: pre.length || post.length, road: !!(road && road.share !== 'no'),
+      owner: prior ? (S.priorOwner(p) || '前の代').replace(/（故人）$/, '') : '' };
   }
 
   /* 父が亡くなったとき、この物件に父の分があるか。
@@ -1397,69 +1426,157 @@
       return !decidedOther;
     });
   }
+  /* ■ 2026-09-26｜そのときの見直し
+     ・表に出すのは「この家では」（here）。今のうちの答えから出る、この家で
+       起きること。一般の手順・根拠は「手順・補足」の中へ。以前は逆で、
+       表は「不動産の名義を、相続した人へ変更する」のようなどの家でも同じ文、
+       この家のことは畳んだ中にしか無かった。
+     ・並びは期限の早い順（ord＝月数）。正本 §3-6「3か月の申告 → 3年の
+       相続登記。先に来るのは税で、そちらが知られていない」。
+     ・賃貸・借地の引継ぎ（正本 §3-6）を足した。団信には抵当権の抹消登記。 */
   function goneRows(p) {
     const out = [];
     const owns = fatherStake(p);
     const pr = p.priorInheritance || {};
+    const docAt = key => { const d = (p.docs.at || {})[key] || {}; return d.st === 'have' && d.place ? d.place : ''; };
+    const gap = chGap(p);
     if (owns) {
-      out.push({ icon: 'toki', nm: '相続登記',
-        de: '不動産の名義を、相続した人へ変更する。',
-        whereLabel: '申請先', where: '物件所在地を管轄する法務局',
-        first: inheritHere(p).length && (pr.remains === 'yes' && pr.stage !== 'registered' && S.priorParty(pr) === WHO && pr.taker !== 'other')
-          ? '司法書士に、' + (S.priorOwner(p) || '前の代') + 'の名義が残っていることを伝えて相談する。'
-          : '司法書士に依頼するか、自分で申請するかを選ぶ。',
-        lim: '取得を知った日から3年以内',
-        limNote: '相続によって、この不動産を取得したことを知った日が起点。',
-        only: inheritHere(p),
-        steps: ['遺言があるかを確かめる。公正証書の遺言は公証役場で、法務局に預けた自筆の遺言は法務局で調べられる。',
-          WHO + 'の出生から死亡までの戸籍と、相続人全員の戸籍を集める。' + WHO + 'や祖父母の戸籍は、最寄りの市区町村の窓口でまとめて請求できる（広域交付。請求する人が窓口へ行く。きょうだいの戸籍は対象外）。',
-          '遺言がなければ、相続人全員で遺産分割協議をする。協議書に全員が署名・実印を押し、印鑑証明書を添える。',
-          '登記事項証明書と固定資産評価証明書を取り、申請書と添付書類をそろえて法務局へ申請する。司法書士にまとめて頼める。'],
-        cautions: ['権利証（登記識別情報）が見つからなくても、相続登記はできます。',
-          '登録免許税は固定資産税評価額の0.4%です。評価額は固定資産評価証明書か、毎年届く課税明細書で分かります。',
-          '3年以内に遺産分割がまとまらなければ、相続人申告登記で義務だけ先に果たせます。名義は移らず、売ることはできません。'],
-        note: '申請書の書き方は、法務局の登記手続案内（予約制）で相談できます。',
-        link: 'https://www.moj.go.jp/MINJI/minji05_00599.html', linkLabel: '法務省｜相続登記の案内' });
+      out.push({ id: 'toki', ord: 36, icon: 'toki', nm: '相続登記', lim: '取得を知った日から3年以内',
+        toki: tokiParts(p) });
     }
+    /* ■ 2026-09-27 相続登記以外の4枚（見本 `_検討/そのとき_表示v5.html`）
+       相続登記の組み方（一文・そろえる書類・順番）は当てはめず、カードごとに
+       家族がそこで知って振る舞いが変わることから形を決めた。どれも図は置かない
+       （形を持つ中身がない）。card＝{ say, secs:[{lb, html}], toc, detail }。 */
+    const sv = xs => '<ol class="sv">' + xs.map((s, i) => '<li><span class="sv-n">' + (i + 1) + '</span><b>' +
+      (s.when ? '<span class="sv-when">' + esc(s.when) + '</span>' : '') + esc(s.t) + '</b><small>' + esc(s.w || '') + '</small>' +
+      (s.s ? '<span class="sv-s">' + s.s + '</span>' : '') + '</li>').join('') + '</ol>';
+    const unit = d => '<div class="sw-who"><b>' + esc(d.who || '相手が未記録') + '</b>' +
+      (d.tel ? '<span class="tel">' + esc(d.tel) + '</span>' : '') + (d.what ? '<small>' + esc(d.what) + '</small>' : '') + '</div>';
+    const homeDoc = (t, s, at) => '<div class="dk"><div class="dk-h">家にある<small>家族が取り出す</small></div><div class="dk-row big"><div class="dk-doc">' +
+      tokiPaper(20) + '<div class="dk-t">' + esc(t) + '<span class="dk-s">' + esc(s) + '</span>' +
+      (at ? '<span class="dk-at">' + esc(at) + '</span>' : '<span class="dk-at dk-no">場所は記録されていない</span>') + '</div></div></div></div>';
+    const h6 = (i, t) => '<section><h6><i>' + i + '</i>' + t + '</h6>';
+    const src = (href, label) => '<p><a class="procedure-source" href="' + href + '" target="_blank" rel="noopener noreferrer">' + label + ' ↗</a></p>';
+
+    /* 現所有者の申告 … 主役は要るかどうか。3か月で相続登記が済まない事情が
+       今のうちの答えにあれば「出す」、無ければ「済めば要らない」（地方税法
+       384条の3）。添える書類は相続登記とほぼ同じ（横浜市：戸籍・住民票・協議書と
+       印鑑証明書）なので、書類の絵は出さず「相続登記でそろえるもので済む」。 */
     if (owns && p.ownerReport && p.ownerReport.state !== 'hidden') {
-      const yokohama = /横浜市/.test(p.addr || '');
-      const nagaoka = /長岡市/.test(p.addr || '');
-      out.push({ icon: 'todoke', nm: '現所有者の申告', eyebrow: '固定資産税',
-        de: '相続登記が申告期限に間に合わない場合、相続人などの現所有者を届け出る。',
-        whereLabel: '連絡先', where: yokohama && /青葉区/.test(p.addr || '')
-          ? '青葉区役所 税務課' : nagaoka ? '長岡市 資産税課' : '物件所在地の自治体・固定資産税担当',
-        first: '所有者の死亡と登記の状況を伝え、申告が必要か確認する。',
-        lim: yokohama ? '現所有者と知った日から3か月以内' : '自治体に申告期限を確認',
-        steps: ['固定資産税担当へ連絡し、申告の要否・期限・必要な添付書類を確認する。',
-          '必要な場合は、自治体の現所有者申告書を記入し、添付書類とともに指定の方法で提出する。'],
-        /* 未登記家屋は、市町村へ所有者変更届（遺産分割協議書の写しを添える）。登記のない
-           別棟があると分かっていればその名前で、無いと分かっていれば言わない。 */
-        note: 'この申告だけでは登記上の名義は変わりません。' + (() => {
-          const gap = chGap(p), m = gap.m;
-          if (gap.annex.length) return '登記のない' + gap.annex.map(chName).join('・') + 'は、未登記家屋の所有者変更届も出します（遺産分割協議書の写しを添えます）。';
-          if (m.has === 'no' || (m.has === 'yes' && (m.changes || []).length)) return '';
-          return '登記のない家屋がある場合は、所有者変更の届出も窓口へ確認します。';
-        })(),
-        link: yokohama ? 'https://www.city.yokohama.lg.jp/kurashi/koseki-zei-hoken/zeikin/y-shizei/koteishisan-toshikeikakuzei/kotei-gensyoyu.html'
-          : nagaoka ? 'https://www.city.nagaoka.niigata.jp/kurashi/cate02/kotei/kotei.html' : '',
-        linkLabel: yokohama ? '横浜市｜現所有者申告の案内' : '長岡市｜固定資産税の案内' });
+      const addr = p.addr || '';
+      const yokohama = /横浜市/.test(addr), nagaoka = /長岡市/.test(addr);
+      const ward = (addr.match(/横浜市(.+?区)/) || [])[1];
+      const slow = [];
+      if (pr.remains === 'yes' && pr.stage !== 'registered' && S.priorParty(pr) === WHO && pr.taker !== 'other') {
+        const w = pr.remains === 'yes' ? priorCase(p).where : '土地・建物', o = (S.priorOwner(p) || '前の代').replace(/（故人）$/, '');
+        slow.push([w + 'は' + o + 'の名義のままで', w + 'は' + o + 'の名義のままなので']);
+      }
+      const mo = slow.length ? 'も' : 'は';
+      if (gap.grow.length) slow.push([gap.grow.map(chName).join('・') + mo + '登記に載っておらず', gap.grow.map(chName).join('・') + mo + '登記に載っていないので']);
+      if (gap.gone.length) slow.push([gap.gone.map(chName).join('・') + 'が登記に残っていて', gap.gone.map(chName).join('・') + 'が登記に残っているので']);
+      if (gap.diff) slow.push(['課税明細書と登記で床面積が違っていて', '課税明細書と登記で床面積が違っているので']);
+      const say = slow.length
+        ? esc(slow.map((x, i) => i < slow.length - 1 ? x[0] : x[1]).join('、')) + '、相続登記は3か月では済まない見込みです。<b>この申告を出します。</b>'
+        : '3か月以内に相続登記が済めば、<b>この申告は要りません</b>。済まなければ出します。';
+      const office = yokohama ? (ward || '物件のある区') + '役所 税務課' : nagaoka ? '長岡市 資産税課' : '物件のある市区町村の固定資産税の担当';
+      const secs = [{ lb: '出す先', html: '<p class="sw-line"><b>' + esc(office) + '</b>　' + (yokohama
+        ? '申告書に、相続登記でそろえる書類（戸籍・住民票。協議書がまとまっていれば協議書と印鑑証明書）を添える。原則は原本'
+        : '添える書類は相続登記でそろえるものとほぼ同じ。細かい決まりは市区町村の案内で確かめる') + '</p>' +
+        (gap.annex.length ? '<p class="sw-line">登記のない' + esc(gap.annex.map(chName).join('・')) + 'は、<b>未登記家屋の所有者変更届</b>も出す（遺産分割協議書の写しを添える）</p>' : '') }];
+      const tax = h6(2, 'その年の固定資産税') + '<p>固定資産税は1月1日の所有者に1年分かかります。亡くなった年の分は' + WHO + 'に課されたもので、残りの納期の分は相続人が納めます。</p></section>';
+      out.push({ id: 'todoke', ord: 3, icon: 'todoke', nm: '現所有者の申告', eyebrow: '固定資産税',
+        lim: yokohama ? '現所有者と知った日の翌日から3か月以内' : '市区町村に申告期限を確かめる（多くは3か月）',
+        card: { say, secs, toc: '出さないとき・その年の固定資産税',
+          detail: h6(1, '出さないとき') + '<p>' + (yokohama ? '市は、申告の内容で次の年からの固定資産税を誰に課すかを決めます。' : '') +
+            '申告がなければ、市区町村が相続人の中から納税する人を決めて、納税通知書を送ります。</p></section>' + tax +
+            (yokohama ? src('https://www.city.yokohama.lg.jp/kurashi/koseki-zei-hoken/zeikin/y-shizei/koteishisan-toshikeikakuzei/kotei-gensyoyu.html', '横浜市｜現所有者申告') : '') } });
     }
+
+    /* ローン … 主役は「家族が返すのか」。団信ありなら返さない（保険金は銀行へ）、
+       なしなら相続人が法定相続分で引き継ぐ（放棄は3か月・債務を1人に寄せるには
+       債権者の承諾）。相手が 借入先 → 借入先 → 法務局 と変わるので縦の順番。
+       隠れているのは抵当権の抹消（自動では消えない。解除証書で相続登記に続けて）。 */
     if (p.loan && p.loan.has) {
-      const insured = p.loan.gteeStatus === 'yes';
-      const uninsured = p.loan.gteeStatus === 'no';
-      out.push({ icon: 'tsushin', nm: insured ? '住宅ローン・団信' : '住宅ローンの確認',
-        de: insured ? '団信の支払対象となれば、保険金がローンの返済に充てられる。'
-          : uninsured ? '団信なし。残っている借入と、相続に伴う対応を確認する。'
-          : '団信の加入状況が不明。金融機関で加入の有無と保障内容を確認する。',
-        whereLabel: '連絡先', where: (p.loan.bank || '借入先の金融機関') + '・住宅ローン窓口',
-        first: '契約者が亡くなったことを伝え、手続きの案内を受ける。',
-        steps: [insured ? '団信の手続きに必要な書類と、提出方法・期限を金融機関に確認する。'
-            : '団信の加入・保障の状況と残債を確認し、相続に伴う手続きを相談する。',
-          '案内された書類をそろえ、取扱金融機関へ提出する。',
-          insured ? '手続きの結果と、ローンの弁済・完済を確認する。' : '残る債務の扱いと、必要な対応を確認する。'],
-        note: '手続き中の返済・引き落としの扱いも確認します。必要書類や保障の範囲は、加入している団信・契約によって異なります。' });
+      const l = p.loan, s = p.security || {};
+      const insured = l.gteeStatus === 'yes', uninsured = l.gteeStatus === 'no';
+      const bank = l.bank || '借入先', kind = l.type || '住宅ローン';
+      const lien = s.has === 'yes' && s.whose === 'self', lienMaybe = s.has !== 'no' && !lien;
+      const drop = (after) => ({ t: '抵当権の抹消登記', w: '司法書士', s: (lienMaybe ? 'この家に抵当権が付いていれば、' : '') +
+        after + '抵当権の登記は<b>自動では消えない</b>。相続登記に続けて申請する' });
+      let say, steps, toc, detail;
+      const renounce = h6(1, '相続放棄') + '<p>放棄は借入だけを選べず、預貯金やこの家を含む全部を受け取らないことになります。3か月で決められないときは、家庭裁判所に期間を延ばすよう申し立てられます。</p></section>';
+      const claim = i => h6(i, '請求の期限') + '<p>団信の保険金の請求は、亡くなった日の翌日から3年で時効になります（保険法95条）。</p></section>';
+      if (insured) {
+        say = '団信が付いているので、' + WHO + 'が亡くなると保険金で残りが返され、<b>家族が返す必要はありません</b>。保険金は家族ではなく借入先へ払われます。' +
+          (l.debtor && !/単独/.test(l.debtor) ? '借入は「' + esc(l.debtor) + '」なので、団信で返されるのが' + WHO + 'の分だけのことがあります。借入先に確かめます。' : '');
+        steps = [{ t: '借入先へ連絡し、団信の手続きをする', w: bank, s: '出す書類は借入先が案内する（死亡診断書の写しなど）' }]
+          .concat(s.has === 'no' ? [] : [{ t: '完済の書類を受け取る', w: bank, s: '解除証書・委任状など。抵当権の抹消に使う' }, drop('完済されても、')]);
+        toc = '手続き中の引き落とし' + (s.has === 'no' ? '' : '・抹消をしないと') + '・請求の期限';
+        detail = h6(1, '手続き中の引き落とし') + '<p>銀行が死亡を知ると、' + WHO + 'の口座は入出金が止まります。手続きが終わるまでの返済の扱いは、最初の連絡のときに借入先に確かめます。</p></section>' +
+          (s.has === 'no' ? '' : h6(2, '抹消をしないと') + '<p>抹消の登記に期限はありませんが、残ったままだと売るときの決済に間に合わないことがあり、借入先が合併すると書類の取り直しに手間がかかります。</p></section>') +
+          claim(s.has === 'no' ? 2 : 3);
+      } else if (uninsured) {
+        say = '団信は付いていないので、残っている借入は<b>相続人が法定相続分で引き継ぎます</b>。';
+        steps = [{ t: '借入先へ連絡し、残高を確かめる', w: bank },
+          { when: '3か月以内', t: '引き継ぐか、相続放棄するかを決める', w: '家庭裁判所', s: '相続を知った日から数える。放棄すると、この家も受け取れない' },
+          { t: '誰が返すかを決め、借入先と話す', w: bank, s: '相続人の間で1人が返すと決めても、借入先の承諾がないと他の相続人の返す義務は残る' }]
+          .concat(s.has === 'no' ? [] : [drop('返し終えても、')]);
+        toc = '相続放棄'; detail = renounce;
+      } else {
+        say = '団信が付いているかの記録がありません。付いていれば家族は返さず、付いていなければ<b>相続人が引き継ぎます</b>。';
+        steps = [{ t: '借入先へ連絡し、団信が付いているか確かめる', w: bank },
+          { when: '付いていなければ3か月以内', t: '引き継ぐか、相続放棄するかを決める', w: '家庭裁判所', s: '放棄すると、この家も受け取れない' }]
+          .concat(s.has === 'no' ? [] : [drop('返し終えても、')]);
+        toc = '相続放棄・請求の期限'; detail = renounce + claim(2);
+      }
+      out.push({ id: 'loan', ord: 36.5, icon: 'tsushin', nm: kind, eyebrow: insured ? '団信' : '',
+        card: { say, secs: [{ lb: '順番', html: sv(steps) }], toc, detail } });
     }
-    return out;
+
+    /* 貸している（正本 §3-6）… 主役は「貸主の立場は自動で移る」（借主の同意・
+       結び直し不要）と、連絡する借主。すること3つは時期が違う。遺産分割までの
+       家賃は各相続人が法定相続分で確定的に取得（最判平17.9.8）、敷金は家を継いだ
+       人が返す、家賃収入があれば準確定申告4か月（所得税法125条）。 */
+    const deals = p.deals || [];
+    const lend = deals.filter(d => d.kind === 'lend');
+    if (owns && lend.length) {
+      const who = lend.map(d => d.who || '借主').join('・');
+      out.push({ id: 'lend', ord: 4, icon: 'keiyaku', nm: '貸している契約', eyebrow: '賃貸',
+        card: {
+          say: '<b>貸主の立場は、そのまま相続人へ移ります</b>。借主の同意も、契約の結び直しも要りません。',
+          secs: [{ lb: '借主', html: lend.map(unit).join('') },
+            { lb: 'すること', html: sv([
+              { when: 'すぐ', t: '借主へ知らせ、家賃の振込先を変える', w: who, s: WHO + 'の口座は、銀行が死亡を知ると入出金が止まる' },
+              { when: '4か月以内', t: WHO + 'の分の確定申告（準確定申告）', w: '税務署', s: 'その年の家賃収入を含めて、相続人が出す' },
+              { when: '分割のあと', t: '継いだ人を借主へ知らせる', w: who }]) },
+            { lb: 'そろえる書類', html: homeDoc('賃貸借契約書', '家賃・敷金・契約期間を確かめる', docAt('lend')) }],
+          toc: '分割までの家賃・敷金・準確定申告',
+          detail: h6(1, '分割までの家賃') + '<p>遺産分割がまとまるまでの家賃は、相続人それぞれが法定相続分で受け取ります。あとで分割がまとまっても、この分は分け直しません（最高裁 平成17年9月8日）。</p></section>' +
+            h6(2, '敷金') + '<p>借主が出るときに返す敷金は、この家を継いだ人が返します。</p></section>' +
+            h6(3, '準確定申告') + '<p>1月1日から亡くなった日までの' + WHO + 'の所得を、相続人が申告します。</p>' +
+            src('https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2022.htm', '国税庁｜準確定申告') + '</section>' } });
+    }
+
+    /* 借地（正本 §3-6）… 主役は「承諾も名義書換料も要らない」（求められて払って
+       しまうのを防ぐ。民法612条は譲渡・転貸で、相続は含まない）。相続人以外への
+       遺贈は承諾が要る。建物が故人名義でも借地権は対抗できるが登記義務はかかる。 */
+    const borrow = deals.filter(d => d.kind === 'borrow');
+    if (borrow.length) {
+      const who = borrow.map(d => d.who || '地主').join('・');
+      out.push({ id: 'borrow', ord: 99, icon: 'keiyaku', nm: '借地', eyebrow: '借地',
+        card: {
+          say: '相続人が引き継ぐなら、<b>地主の承諾も、名義書換料も要りません</b>。求められても、払う義務はありません。',
+          secs: [{ lb: '地主', html: borrow.map(unit).join('') },
+            { lb: 'すること', html: sv([
+              { when: 'すぐ', t: '地主へ知らせ、地代の払い方を確かめる', w: who, s: WHO + 'の口座からの引き落としは、銀行が死亡を知ると止まる' },
+              { when: '分割のあと', t: '継いだ人を地主へ知らせる', w: who, s: '承諾をもらう手続きではない。建物の相続登記で借地権も一緒に引き継ぐ' }]) },
+            { lb: 'そろえる書類', html: homeDoc('借地契約書', '地代・契約期間・更新の時期を確かめる', docAt('borrow')) }],
+          toc: '相続人以外に遺すとき・建物の登記',
+          detail: h6(1, '相続人以外に遺すとき') + '<p>孫や相続人の配偶者など、相続人ではない人に遺言で渡すときは、地主の承諾が要ります。</p></section>' +
+            h6(2, '建物の登記') + '<p>建物が' + WHO + 'の名義のままでも、土地が売られたとき新しい地主に借地権を主張できます。それでも相続登記の義務（3年）はかかります。</p></section>' } });
+    }
+    return out.sort((a, b) => a.ord - b.ord);
   }
 
   /* ══ 造形｜書面。CLAUDE.md の振り分け1（幾何プリミティブ数個で
@@ -1619,7 +1736,10 @@
      部屋の上に張り付き、読んでいる行の札に印が付く（wire の spyNow）。
      札は小さな絵と短い名前だけ。状態は行のバッジが言う（絵の右上に状態の点を
      打ったが、小さな橙が赤い通知のしるしに見え、状態とは読めなかった）。 */
-  const NOW_SHORT = { boundary: '境界・越境', road: '私道・配管', changed: '建物の変更', prior: '前の代の登記', loan: '団信' };
+  /* 札の名前は短く。5枚（団信が不明のとき）でも部屋の幅（ウィンドウ幅1000で
+     約435px）の1行に収める（2026-09-27）。建物・前の代は、すぐ下の行の見出しと
+     図で何を指すか分かる。境界・越境と私道・配管は2つのことを含むので残す。 */
+  const NOW_SHORT = { boundary: '境界・越境', road: '私道・配管', changed: '建物', prior: '前の代', loan: '団信' };
   function nowNav(rows) {
     return '<nav class="now-nav" aria-label="今のうちの項目"><div class="now-nav-in">' + rows.map(x => {
       const b = BADGE[x.status] || BADGE.unknown;
@@ -1627,6 +1747,63 @@
         esc(x.nm + '（' + (x.label || b.label) + '）へ移動') + '">' + matterIcon(x.icon || x.key) +
         '<span class="now-go-nm">' + esc(NOW_SHORT[x.key] || x.nm) + '</span></button>';
     }).join('') + '</div></nav>';
+  }
+
+  /* ■ 相続登記のカード（2026-09-27）。tokiParts の置き場所ごとに描く。
+     書類の絵は A4（1:1.414）の書面で実線だけ（点線は凡例なしでは読めず、
+     「作る」と「場所が分からない」の2つの意味を兼ねていた）。
+     くわしくは今のうちの .pr-dt と同じ形で、場面ごとに見出しを立てる。 */
+  function tokiPaper(w) {
+    return '<svg class="dk-p" width="' + w + '" height="' + (w * 1.414).toFixed(1) + '" viewBox="0 0 20 28.3" aria-hidden="true">' +
+      '<rect x=".6" y=".6" width="18.8" height="27.1" rx=".8" fill="#FBFAF6" stroke="#9C9584" stroke-width="1"/>' +
+      '<path d="M4 6h8M4 10h12M4 13.5h12M4 17h8" stroke="#D6D0C1" stroke-width="1" stroke-linecap="round"/></svg>';
+  }
+  function tokiDetail(t) {
+    const h = (i, s) => '<section><h6><i>' + i + '</i>' + s + '</h6>';
+    return h(1, '遺言が見つかったとき') +
+      '<p>公正証書の遺言は公証役場で、法務局に預けた自筆の遺言は法務局で、あるかどうか調べられます。</p>' +
+      '<p>家で<b>封のある自筆の遺言</b>を見つけたら、開けずに家庭裁判所の<b>検認</b>を受けます。勝手に開けると5万円以下の過料の対象になります（開けても遺言は無効になりません）。</p>' +
+      '<p>遺言で取得する人が決まっていれば、その分は話し合いが要りません。</p></section>' +
+      h(2, '間に合わないとき') +
+      '<p>3年以内に話し合いがまとまらないときは、次のどちらかで義務を果たせます。</p>' +
+      '<div class="pr-two"><div><small>相続人申告登記</small><p>申し出た人の義務が果たされる。登録免許税はかからない<br><span class="ng">名義は移らず、売れない</span></p></div>' +
+      '<div><small>法定相続分での相続登記</small><p>相続人の一人が全員分を申請できる。登録免許税がかかる<br><span class="ng">全員の共有になり、売るには全員の同意が要る</span></p></div></div>' +
+      '<p>どちらの場合も、話し合いがまとまったら、その日から3年以内に分割の結果で登記します。正当な理由なく怠ると、法務局からの催告に応じない場合に10万円以下の過料の対象になります。</p></section>' +
+      h(3, '費用') +
+      '<p><b>登録免許税</b>は、固定資産税評価額の0.4%です。評価額は毎年届く課税明細書に載っています。</p>' +
+      (t.road ? '<p>固定資産税がかからない私道には評価額がないので、課税価格の出し方を法務局に確かめます。</p>' : '') +
+      '<p>司法書士の報酬は平均で約7.5万円です（日本司法書士会連合会の令和6年の調べ。土地1筆・建物1棟・評価額1,000万円・相続人3人の場合）。' +
+      (t.prior ? t.owner + 'の分も合わせた2人分の手続きになるので、これより増えます。' : '') + '</p>' +
+      (t.survey ? '<p>建物の登記を直す費用（土地家屋調査士への報酬）が、これとは別にかかります。</p>' : '') + '</section>' +
+      h(4, '自分で申請するとき') +
+      '<p>申請書のひな形と記載例は、法務局のホームページにあります。法務局の<b>登記手続案内</b>（予約制・無料）で相談でき、郵送でも申請できます。</p>' +
+      '<p>戸籍は、最寄りの市区町村の窓口でまとめて請求できます（広域交付。請求する人が窓口へ行きます。きょうだいの戸籍は対象外）。</p>' +
+      '<p><a class="procedure-source" href="https://www.moj.go.jp/MINJI/minji05_00599.html" target="_blank" rel="noopener noreferrer">法務省｜相続登記の案内 ↗</a></p></section>';
+  }
+  function tokiHTML(x, key, open) {
+    const t = x.toki;
+    const doc = d => '<div class="dk-doc">' + tokiPaper(20) + '<div class="dk-t">' + esc(d.t) +
+      (d.s ? '<span class="dk-s">' + esc(d.s) + '</span>' : '') +
+      (d.at ? '<span class="dk-at">' + esc(d.at) + '</span>' : d.no ? '<span class="dk-at dk-no">' + esc(d.no) + '</span>' : '') + '</div></div>';
+    const grp = (h, sub, xs, cls, fn) => xs.length ? '<div class="dk-h">' + h + (sub ? '<small>' + sub + '</small>' : '') + '</div>' +
+      '<div class="dk-row ' + cls + '">' + xs.map(fn).join('') + '</div>' : '';
+    const office = n => '<div class="dk-doc">' + tokiPaper(14) + '<div class="dk-t">' + esc(n) + '</div></div>';
+    const docs = '<div class="dk">' + grp('家にある', '家族が取り出す', t.docs.home, 'big', doc) +
+      grp('家族で作る', '', t.docs.make, 'big', doc) + grp('役所で取る', 'どの家でも同じ', t.docs.office, 'small', office) + '</div>' +
+      '<p class="dk-not"><b>権利証（登記識別情報）は要りません。</b>売るときに使います。</p>';
+    const steps = t.steps
+      ? '<div class="sq">' + t.steps.map((s, i) => (i ? '<span class="sq-ar" aria-hidden="true">→</span>' : '') +
+          '<div class="sq-step"><b>' + (i + 1) + '　' + esc(s.t) + '</b><small>' + esc(s.w) + '</small></div>').join('') + '</div>'
+      : '<p class="sq-one">' + esc(t.who) + '</p>';
+    return '<article class="procedure-sheet" data-now-row="' + esc(x.id) + '">' +
+      '<header class="procedure-head">' + GLYPH.toki({ w: 25 }) + '<div><h5>' + esc(x.nm) + '</h5></div></header>' +
+      '<div class="procedure-deadline">' + T_CAL + '<span><b>期限</b> ' + esc(x.lim) + '</span></div>' +
+      '<p class="sw-say">' + t.say + '</p>' +
+      '<div class="sw-sec"><p class="sw-lb">そろえる書類</p>' + docs + '</div>' +
+      '<div class="sw-sec"><p class="sw-lb">' + (t.steps ? '順番' : '頼む先') + '</p>' + steps + '</div>' +
+      '<div class="pr-dt' + (open ? ' open' : '') + '"><button type="button" class="pr-dt-t" data-procedure="' + esc(key) +
+      '" aria-expanded="' + open + '"><span class="pr-dt-k">くわしく</span><span class="pr-dt-s">遺言が見つかったとき・間に合わないとき・費用・自分で申請するとき</span>' + PG.down + '</button>' +
+      (open ? '<div class="pr-dt-b">' + tokiDetail(t) + '</div>' : '') + '</div></article>';
   }
 
   /* 手続きは入口を常時表示し、順序と補足だけを展開する。
@@ -1640,29 +1817,26 @@
       ? '<div class="card"><div class="de">' + esc(priorGone(p, pr)) + '</div></div>' : '';
     if (!rows.length) return noStake || '<div class="card"><div class="de">' +
       '登録内容だけでは手続きを判断できません。権利・契約の状況を確認してください。</div></div>';
-    return noStake + '<div class="procedure-sheets">' + rows.map((x, i) => {
-      const key = p.id + ':' + x.icon;
+    /* 期限の順に並ぶので、先頭を大きくする差は付けない。相続登記は置き場所が
+       多いので tokiHTML、ほかは card（一文・行・くわしく）を描く。 */
+    return noStake + '<div class="procedure-sheets">' + rows.map(x => {
+      const key = p.id + ':' + x.id;
       const expanded = openProcedures.has(key);
-      return '<article class="procedure-sheet' + (i === 0 ? ' primary' : '') + '">' +
-        '<header class="procedure-head">' + (GLYPH[x.icon] ? GLYPH[x.icon]({ w: i === 0 ? 32 : 25 }) : '') +
-        '<div>' + (x.eyebrow ? '<div class="procedure-eyebrow">' + esc(x.eyebrow) + '</div>' : '') +
-        '<h5>' + esc(x.nm) + '</h5></div></header>' +
-        '<p class="procedure-purpose">' + esc(x.de) + '</p>' +
-        '<dl class="procedure-entry"><dt>' + esc(x.whereLabel) + '</dt><dd>' + esc(x.where) + '</dd>' +
-        '<dt>まず</dt><dd>' + esc(x.first) + '</dd></dl>' +
-        (x.lim ? '<div class="procedure-deadline">' + T_CAL + '<span><b>期限</b> ' + esc(x.lim) + '</span></div>' : '') +
-        '<button type="button" class="procedure-toggle" data-procedure="' + esc(key) +
-        '" aria-expanded="' + expanded + '"><span>' + (expanded ? '手順・補足を閉じる' : '手順・補足を見る') +
-        '</span><span aria-hidden="true">' + (expanded ? '−' : '＋') + '</span></button>' +
-        (expanded ? '<div class="procedure-detail">' +
-          (x.only && x.only.length ? '<div class="procedure-context"><b>この物件では</b><ul>' + x.only.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' : '') +
-          '<ol>' + x.steps.map(step => '<li>' + esc(step) + '</li>').join('') + '</ol>' +
-          (x.limNote ? '<p class="procedure-note">' + esc(x.limNote) + '</p>' : '') +
-          (x.cautions ? '<div class="procedure-cautions"><b>気をつけること</b><ul>' + x.cautions.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' : '') +
-          '<p class="procedure-note">' + esc(x.note) + '</p>' +
-          (x.link ? '<a class="procedure-source" href="' + esc(x.link) + '" target="_blank" rel="noopener noreferrer">' +
-            esc(x.linkLabel) + ' ↗</a>' : '') + '</div>' : '') + '</article>';
+      return x.toki ? tokiHTML(x, key, expanded) : sheetHTML(x, key, expanded);
     }).join('') + '</div>';
+  }
+  function sheetHTML(x, key, open) {
+    const c = x.card;
+    return '<article class="procedure-sheet" data-now-row="' + esc(x.id) + '">' +
+      '<header class="procedure-head">' + (GLYPH[x.icon] ? GLYPH[x.icon]({ w: 25 }) : '') +
+      '<div>' + (x.eyebrow ? '<div class="procedure-eyebrow">' + esc(x.eyebrow) + '</div>' : '') +
+      '<h5>' + esc(x.nm) + '</h5></div></header>' +
+      (x.lim ? '<div class="procedure-deadline">' + T_CAL + '<span><b>期限</b> ' + esc(x.lim) + '</span></div>' : '') +
+      '<p class="sw-say">' + c.say + '</p>' +
+      c.secs.map(sc => '<div class="sw-sec"><p class="sw-lb">' + esc(sc.lb) + '</p>' + sc.html + '</div>').join('') +
+      '<div class="pr-dt' + (open ? ' open' : '') + '"><button type="button" class="pr-dt-t" data-procedure="' + esc(key) +
+      '" aria-expanded="' + open + '"><span class="pr-dt-k">くわしく</span><span class="pr-dt-s">' + esc(c.toc) + '</span>' + PG.down + '</button>' +
+      (open ? '<div class="pr-dt-b">' + c.detail + '</div>' : '') + '</div></article>';
   }
 
   /* ── 部屋へ渡す入口 ──────────────────────────────
@@ -1675,7 +1849,21 @@
     return roomTag('liv', '今のうち', tagCounts(nowRows(p))) + nowNav(nowRows(p)) + nowHTML(p);
   }
   function roomWhen(p) {
-    return roomTag('when', 'そのとき', { act: 0 }) + whenHTML(p);
+    const rows = goneRows(p);
+    return roomTag('when', 'そのとき', { act: 0 }) + (rows.length > 1 ? whenNav(rows) : '') + whenHTML(p);
+  }
+  /* そのときの札（2026-09-27）。今のうちの札（nowNav）と同じ仕組み：カードと
+     同じ数の札を期限の順に並べ、押すとそのカードの頭へ飛ぶ。部屋の上に張り付き、
+     読んでいるカードの札に印（spyNow）。絵はカードの頭と同じ書面。1枚だけの
+     ときは出さない（飛ぶ先が目の前にある）。 */
+  /* 札の名前は短く（今のうちの NOW_SHORT と同じ考え方）。5枚立っても部屋の
+     幅（ウィンドウ幅1000〜1440で約435〜450px）の1行に収める。 */
+  const WHEN_SHORT = { toki: '相続登記', todoke: '現所有者の申告', loan: 'ローン', lend: '貸している', borrow: '借地' };
+  function whenNav(rows) {
+    return '<nav class="now-nav when-nav" aria-label="そのときの手続き"><div class="now-nav-in">' + rows.map(x =>
+      '<button type="button" class="now-go" data-now-go="' + esc(x.id) + '" aria-label="' + esc(x.nm + 'へ移動') + '">' +
+        (GLYPH[x.icon] ? GLYPH[x.icon]({ w: 12 }) : '') + '<span class="now-go-nm">' + esc(WHEN_SHORT[x.id] || x.nm) + '</span></button>').join('') +
+      '</div></nav>';
   }
 
   /* ══ 造形｜表札（ルームタグ）════════════════════════════
@@ -1973,22 +2161,15 @@
      旧 render.js の測り方を踏襲する）。                          */
 
   /* 下段の割り。検討のあいだ URL で振れるようにする。
-       ?ratio=0.4   廊下を除いた残りのうち、左（書類）が取る割合
-       ?order=right,party  右列を上から積む順
-     既定は 書類4：権利・ローン6。 */
+       ?ratio=0.5   廊下を除いた残りのうち、左（権利関係）が取る割合
+     既定は 権利5：ローン・契約5（廊下を建物の中央に通す）。 */
   const Q = (function () {
     try { return new URLSearchParams(location.search); }
     catch (e) { return new URLSearchParams(''); }
   })();
   const RATIO = (function () {
     const v = parseFloat(Q.get('ratio'));
-    return (v > 0.2 && v < 0.8) ? v : 0.4;
-  })();
-  const ORDER = (function () {
-    const v = (Q.get('order') || '').split(',').map(s => s.trim()).filter(Boolean);
-    const ok = ['right', 'party'];
-    const picked = v.filter(k => ok.indexOf(k) >= 0);
-    return picked.length === 2 ? picked : ok;
+    return (v > 0.2 && v < 0.8) ? v : 0.5;
   })();
 
   const W_ = 1170, TO = 15, TI = 10, GK = 140;
@@ -2025,24 +2206,20 @@
     const html = { liv: roomLiv(p), when: roomWhen(p),
       right: roomRights(p), party: roomParty(p), docs: roomDocs(p) };
 
-    /* 横方向の割り。上段＝今のうち／そのとき 5：5。下段＝廊下を挟んで
-       書類4：権利＋ローン契約＋事情6（v27/v28 の実測から決めた比）。 */
+    /* 横方向の割り。上段＝今のうち／そのとき 5：5（書類はそのときの下）。
+       下段＝廊下を挟んで 権利関係：ローン・契約 ＝ RATIO。 */
     const VN = Math.round(W_ * 0.5);
     const CW = 110;
-    /* 下段は廊下を挟んで左右2列。RATIO＝廊下を除いた残りのうち
-       左（書類）が取る割合。?ratio= で検討のあいだ振れるようにする。 */
     const V2 = Math.round((W_ - CW) * RATIO);
     const V3 = V2 + CW;
 
-    /* 左＝書類、廊下、右＝権利／ローン契約を縦に積む。
-       左右の比率は RATIO（廊下を除いた残りのうち、左が取る割合）。 */
     const wLeft = V2 - TO / 2 - TI / 2;
     const wRight = W_ - V3 - TI / 2 - TO / 2;
+    const wWhen = W_ - VN - TI / 2 - TO / 2;
     const wUnit = {
       liv: VN - TO / 2 - TI / 2,
-      when: W_ - VN - TI / 2 - TO / 2,
-      docs: wLeft,
-      right: wRight, party: wRight
+      when: wWhen, docs: wWhen,
+      right: wLeft, party: wRight
     };
     const PADIN = 13;
     const HEADPX = { liv: 28, when: 28 }, HEADPX_D = 23;
@@ -2052,10 +2229,10 @@
     const px2u = x => x * viewW / stageW;
     const toPx = u => u2px(u - PADIN * 2);
 
-    /* 上下の壁厚。左の部屋は外壁に接して下端まで伸びるので [TI, TO]、
-       下の部屋も足元が外壁なので [TI, TO]。割りに依らず同じ。 */
-    const wallY = { liv: [TO, TI], when: [TO, TI], docs: [TI, TO],
-      right: [TI, TI], party: [TI, TO] };
+    /* 上下の壁厚。上段は屋根側が外壁、書類は上下とも内壁、
+       下段は足元が外壁。 */
+    const wallY = { liv: [TO, TI], when: [TO, TI], docs: [TI, TI],
+      right: [TI, TO], party: [TI, TO] };
     const raw = {}, need = {};
     Object.keys(html).forEach(k => {
       raw[k] = measureHTML(html[k], Math.max(50, toPx(wUnit[k])));
@@ -2064,46 +2241,37 @@
       need[k] = Math.max(MINR, Math.ceil(inUnit));
     });
 
-    const H1 = Math.max(need.liv, need.when);
+    /* ══ 上段｜今のうち／そのとき＋書類（2026-09-26）══════════
+       今のうちが長くなり、そのときの下に床が余った。書類はそのとき側の
+       材料（下エリア調査）なので、そのときの真下に置く。
+       上段の深さは今のうちと「そのとき＋書類」の深いほう。浅い側の
+       下の部屋（今のうち／書類）が上段の下端まで伸びる。
+       ★余りは部屋の置き場所では消えない（左右の釣り合いは配分では
+       解けない）。書類の下に床が残るのは、そのとき側の中身が薄いから。 */
+    const H1 = Math.max(need.liv, need.when + need.docs);
+    const HW = need.when;
 
     /* ══ 下段の割り｜廊下（V2〜V3）を芯として残す ══════════
-       廊下と玄関は建物の動線で、上段から下段へ降りる道。
-       消すと間取り図ではなく「仕切られた箱」になるので必ず残す。
+       廊下と玄関は建物の動線で、玄関から上段の2室へ上がり、
+       下段の左右へ振り分ける道。消すと間取り図ではなく
+       「仕切られた箱」になるので必ず残す。
 
-       左＝関係書類
-       右＝権利関係／ローン・契約を**縦に積む**
-
-       積み順は ORDER（?order= で振る）。左右比は RATIO（?ratio=）。 */
-    const LABEL = { right: '権利関係', party: 'ローン・契約' };
-    const stack = ORDER.filter(k => LABEL[k]);
-
-    /* 右列の各部屋の上下端を積み上げる。 */
-    const rightRooms = [];
-    let y = H1;
-    stack.forEach((k, i) => {
-      const last = i === stack.length - 1;
-      rightRooms.push({ id: k, label: LABEL[k], kind: 'room',
-        x1: V3, y1: y, x2: W_, y2: y + need[k], _last: last });
-      y += need[k];
-    });
-    const rSum = y - H1;
-
-    const CORR = Math.max(need.docs, rSum);
+       左＝権利関係（行が今のうちの答えを映す）、右＝ローン・契約。
+       下段の深さは深いほう。ローン・契約は契約1件ごとに伸びるので、
+       件数が多い物件では権利関係の床が広くなる ―― 部屋は動かさない。 */
+    const CORR = Math.max(need.right, need.party);
     const H = H1 + CORR;
     const KAMA = H - GK;
 
-    /* 右列の最後の部屋は足元（外壁）まで伸ばす。左が高いときに
-       右下だけ床が余るのを防ぐ ―― 壁ではなく部屋が伸びる。 */
-    const lastRoom = rightRooms[rightRooms.length - 1];
-    if (lastRoom) lastRoom.y2 = H;
-
     const rooms = [
       { id: 'liv', label: '今のうち', kind: 'liv', x1: 0, y1: 0, x2: VN, y2: H1 },
-      { id: 'when', label: 'そのとき', kind: 'main2', x1: VN, y1: 0, x2: W_, y2: H1 },
+      { id: 'when', label: 'そのとき', kind: 'main2', x1: VN, y1: 0, x2: W_, y2: HW },
+      { id: 'docs', label: '書類', kind: 'room', x1: VN, y1: HW, x2: W_, y2: H1 },
       { id: 'corr', label: '', kind: 'corr', x1: V2, y1: H1, x2: V3, y2: KAMA },
       { id: 'gk', label: '玄関', kind: 'gk', x1: V2, y1: KAMA, x2: V3, y2: H },
-      { id: 'docs', label: '書類', kind: 'room', x1: 0, y1: H1, x2: V2, y2: H }
-    ].concat(rightRooms);
+      { id: 'right', label: '権利関係', kind: 'room', x1: 0, y1: H1, x2: V2, y2: H },
+      { id: 'party', label: 'ローン・契約', kind: 'room', x1: V3, y1: H1, x2: W_, y2: H }
+    ];
     return { p, rooms, R: Object.fromEntries(rooms.map(r => [r.id, r])),
       H, KAMA, H1, html, V2, V3 };
   }
@@ -2122,16 +2290,14 @@
 
   function draw(plan, uid) {
     const { rooms, R, H, KAMA, V2, V3 } = plan;
-    /* 廊下から各部屋へ開口。右列は縦積みなので、廊下と接する辺が
-       部屋ごとにある（sharedEdge が位置を拾う）。 */
-    const links = [['liv', 'when'], ['corr', 'docs'],
+    /* 廊下から下段の左右へ開口。上段は今のうち⇔そのとき、
+       そのとき⇔書類（そのときの手続きが書類を使う）。 */
+    const links = [['liv', 'when'], ['when', 'docs'],
       ['corr', 'right'], ['corr', 'party']];
-    /* 壁を置かない境。廊下は上段から下段へ降りる道なので、
-       上端は「今のうち」「そのとき」の両方へ開いている。
-       廊下を中央へ寄せた結果、上端が liv と when に跨るようになった
-       （以前は左寄りで liv だけに接していた）。when 側を閉じると、
-       そのとき側から下段へ降りる動線が途切れる。 */
-    const NOWALL = [['corr', 'gk'], ['corr', 'liv'], ['corr', 'when']];
+    /* 壁を置かない境。廊下は玄関から上段へ上がる道なので、
+       上端は「今のうち」と、そのとき側の下の部屋（書類）の両方へ
+       開いている。書類側を閉じると、そのとき側へ上がる動線が途切れる。 */
+    const NOWALL = [['corr', 'gk'], ['corr', 'liv'], ['corr', 'docs']];
     const OPW = 78;
     const openings = links.map(([i, j]) => {
       const e = sharedEdge(R[i], R[j]); if (!e) return null;
@@ -2147,10 +2313,14 @@
     };
     const covers = (x, y) => rooms.some(o =>
       o.x1 < x - 0.01 && o.x2 > x + 0.01 && o.y1 < y - 0.01 && o.y2 > y + 0.01);
+    /* 辺の中点だけで見ると、中点が向こう側の部屋どうしの境に
+       ちょうど乗ったとき（廊下の上端が今のうち／書類の境の真下）に
+       どちらにも覆われず外壁扱いになる。1/4・3/4 の点でも見る。 */
     const isOuter = (dir, pos, a, b) => {
-      const m = (a + b) / 2, d = 1;
-      return dir === 'h' ? !(covers(m, pos - d) && covers(m, pos + d))
-        : !(covers(pos - d, m) && covers(pos + d, m));
+      const d = 1;
+      const inner = m => dir === 'h' ? covers(m, pos - d) && covers(m, pos + d)
+        : covers(pos - d, m) && covers(pos + d, m);
+      return ![0.5, 0.25, 0.75].some(t => inner(a + (b - a) * t));
     };
     const th = (dir, pos, a, b) => isOuter(dir, pos, a, b) ? TO : TI;
     rooms.forEach(r => {
@@ -2744,7 +2914,7 @@
         }
       };
     }));
-    /* 今のうちの札：同じ部屋（間取りの部屋か、狭い幅の一覧）の行へ飛ぶ。
+    /* 今のうち・そのときの札：同じ部屋（間取りの部屋か、狭い幅の一覧）の行へ飛ぶ。
        張り付いた札の帯の下に、行の頭が来るようにする。 */
     document.querySelectorAll('[data-now-go]').forEach(b => {
       b.onclick = () => {
@@ -2753,11 +2923,16 @@
         if (!row) return;
         const stick = parseFloat(getComputedStyle(nav).top) || 0;
         window.scrollTo({ top: scrollY + row.getBoundingClientRect().top - stick - nav.offsetHeight - 10, behavior: 'smooth' });
-        const nm = row.querySelector('.uh-nm');
-        nm.tabIndex = -1; nm.focus({ preventScroll: true });
+        const nm = row.querySelector('.uh-nm, .procedure-head h5');
+        if (nm) { nm.tabIndex = -1; nm.focus({ preventScroll: true }); }
       };
     });
     spyNow();
+    /* 札の帯（縦積みで横に流すとき）：続きがある側の端を薄くぼかす（navEdges）。 */
+    document.querySelectorAll('.now-nav').forEach(nav => {
+      nav.firstElementChild.addEventListener('scroll', () => navEdges(nav), { passive: true });
+      navEdges(nav);
+    });
     document.querySelectorAll('[data-go]').forEach(b => {
       b.onclick = () => {
         const el = document.getElementById(b.dataset.go);
@@ -2814,6 +2989,12 @@
     });
   }
   addEventListener('scroll', spyNow, { passive: true });
+  /* 札の帯が横にはみ出しているか。左に戻れる／右に続きがある、を別々に。 */
+  function navEdges(nav) {
+    const inn = nav.firstElementChild, max = inn.scrollWidth - inn.clientWidth;
+    nav.classList.toggle('can-l', max > 1 && inn.scrollLeft > 1);
+    nav.classList.toggle('can-r', max > 1 && inn.scrollLeft < max - 1);
+  }
 
   let resizeFrame;
   addEventListener('resize', () => {

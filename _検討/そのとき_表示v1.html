@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>そのとき 相続登記 表示v1</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<link rel="stylesheet" href="../prototype/real-estate/area.css">
+<!--
+  そのとき｜相続登記のカード 見本 v1（2026-09-27）
+
+  指摘：「この家では」を箇条で並べたら、ただテキストが並んでいるだけ。
+  原因：箇条の中に、性格の違う情報（この家の状態／加わる人／用意するもの／
+  順番／頼む先）がコードの積んだ順に同じ重さで混ざっていた。「用意するもの」
+  が3か所に散り、1つの箇条に2つの問いの答えが入っていた。
+
+  直し方：家族の問いごとに置き場所（ラベルの行）を作る。今のうちの
+  「灰色の小さなラベル → 中身」の書き方に揃える。
+    対象       … 何を登記するか（名義のずれ・共有持分・私道持分はここに出る）
+    加わる人   … 協議に誰が加わるか（前の代の名義があると増える）
+    用意するもの … 書類名＋この家での中身（場所が分かっていれば場所）
+    順番       … 先にする手続きと、誰に頼むか
+  「この家の状態」は独立した行にせず、各行の中に理由として出る。
+  どの家でも同じ知識（遺言の確かめ方・広域交付・権利証・税・相続人申告登記）
+  は「補足」の中へ。
+-->
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink)}
+  .wrap{max-width:1500px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:18px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);line-height:1.8;margin:0 0 24px;max-width:760px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(451px,1fr));gap:28px 24px;align-items:start}
+  .case{background:#E9EFE9;padding:14px 14px 16px;border-radius:4px}
+  .case > h2{font-size:11.5px;font-weight:600;color:#4b5f50;margin:0 0 10px;line-height:1.6}
+  .case > h2 small{display:block;font-weight:400;color:var(--ink3);font-size:10.5px}
+  .case .procedure-sheet{max-width:423px}
+
+  /* ── 見本で足すもの（本番へ移すときは area.css へ）────────── */
+  /* 問いごとの行。ラベルは今のうちの .rd-lb 等と同じ灰色の小さな字。 */
+  .sw{margin:12px 0 0;padding:0;border-top:1px solid #e8eee7}
+  .sw-row{display:grid;grid-template-columns:5.6em minmax(0,1fr);gap:0 12px;
+    padding:11px 0;border-bottom:1px solid #eef2ec}
+  .sw-row:last-child{border-bottom:0}
+  /* 用意するものは書類名と中身の2列を持つので、ラベルを上に置いて幅を取る
+     （横に置くと「固定資産評価証明書」が割れ、中身が3〜4行に折れた）。 */
+  .sw-row.wide{grid-template-columns:minmax(0,1fr)}
+  .sw-row.wide > dt{margin-bottom:5px}
+  .sw-row > dt{font-size:10.5px;color:#5c7562;line-height:1.9;letter-spacing:.02em}
+  .sw-row > dd{margin:0;min-width:0;font-size:12px;line-height:1.75;color:var(--ink)}
+  .sw-main{margin:0;font-size:13px;font-weight:600}
+  .sw-plus{margin:1px 0 0;font-size:13px;font-weight:600;color:#355640}
+  .sw-sub{margin:3px 0 0;font-size:11px;color:var(--ink2);line-height:1.7}
+  .sw-why{color:#9A5B12}
+
+  /* 用意するもの：書類名｜この家での中身。書類名は横に揃える。 */
+  .sw-docs{list-style:none;margin:0;padding:0}
+  .sw-docs li{display:grid;grid-template-columns:9.4em minmax(0,1fr);gap:0 10px;padding:0;margin:0}
+  .sw-docs li + li{margin-top:7px}
+  .sw-docs b{font-size:12px;font-weight:600;line-height:1.75}
+  .sw-docs span{font-size:11.5px;color:var(--ink2);line-height:1.75;overflow-wrap:anywhere}
+  .sw-docs .sw-at{display:block;color:#355640;font-weight:600;font-size:11.5px}
+  .sw-docs .sw-miss{color:#9A5B12}
+
+  /* 順番：番号・手続き・頼む先。頼む先は右に寄せる。 */
+  .sw-steps{list-style:none;margin:0;padding:0}
+  .sw-steps li{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:0 8px;align-items:baseline}
+  .sw-steps li + li{margin-top:8px}
+  .sw-n{width:18px;height:18px;border-radius:50%;background:#eaf0e8;color:#41624c;
+    font-size:10px;font-weight:700;line-height:18px;text-align:center;align-self:start;margin-top:1px}
+  .sw-steps b{font-size:12.5px;font-weight:600;line-height:1.7}
+  .sw-steps small{font-size:10.5px;color:#5c7562;white-space:nowrap}
+  .sw-steps .sw-sub{grid-column:2 / -1;margin-top:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>そのとき｜相続登記のカード v1</h1>
+  <p class="lead">箇条をやめ、家族の問いごと（対象／加わる人／用意するもの／順番）に置き場所を作った見本。
+    幅は本番のそのときの部屋（ウィンドウ幅1440で約450px）に合わせてある。答えの組み合わせ6通り。
+    C だけ「補足」を開いた状態。</p>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+/* 登記識別情報通知の書面（本番 render.js GLYPH.toki と同じ）。 */
+const TOKI = '<svg class="gi" viewBox="0 0 30 42.4" width="25" height="35.3" aria-hidden="true">' +
+  '<rect x="1.4" y="1" width="24" height="36" rx="1" fill="#FFFFFF" stroke="#BDB5A0" stroke-width=".9"/>' +
+  '<rect x="4.2" y="5.4" width="13" height="2.4" rx=".5" fill="#BFB49A"/>' +
+  [11.4, 15.4].map(y => '<line x1="4.2" y1="' + y + '" x2="22.6" y2="' + y + '" stroke="#DDD7C7" stroke-width=".9" stroke-linecap="round"/>').join('') +
+  '<line x1="4.2" y1="19.4" x2="17" y2="19.4" stroke="#DDD7C7" stroke-width=".9" stroke-linecap="round"/>' +
+  '<rect x="4.2" y="23" width="18.4" height="8.4" rx=".6" fill="#E4E0D4" stroke="#C4BCA6" stroke-width=".8"/>' +
+  '<path d="M6 31l4-8M11 31l4-8M16 31l4-8" stroke="#C9C1AC" stroke-width=".8" stroke-linecap="round"/>' +
+  '<rect x="18" y="30.4" width="5.6" height="5.6" rx=".6" fill="none" stroke="#C0574E" stroke-width="1" opacity=".85"/></svg>';
+const CAL = '<svg viewBox="0 0 14 14" width="14" height="14"><rect x=".7" y="2.4" width="12.6" height="11" rx="1.4" fill="none" stroke="#B9B2A0" stroke-width="1.1"/><line x1=".7" y1="5.8" x2="13.3" y2="5.8" stroke="#B9B2A0" stroke-width="1.1"/><line x1="4.2" y1=".7" x2="4.2" y2="3.5" stroke="#B9B2A0" stroke-width="1.3" stroke-linecap="round"/><line x1="9.8" y1=".7" x2="9.8" y2="3.5" stroke="#B9B2A0" stroke-width="1.3" stroke-linecap="round"/></svg>';
+
+/* どの家でも同じ知識。補足の中にだけ置く。 */
+const NOTES = [
+  '父の遺言がないか、先に確かめます。公正証書の遺言は公証役場で、法務局に預けた自筆の遺言は法務局で調べられます。',
+  '戸籍は、最寄りの市区町村の窓口でまとめて請求できます（広域交付。請求する人が窓口へ行きます。きょうだいの戸籍は対象外）。',
+  '権利証（登記識別情報）が見つからなくても、相続登記はできます。',
+  '登録免許税は固定資産税評価額の0.4%です。',
+  '3年以内に遺産分割がまとまらなければ、相続人申告登記で義務だけ先に果たせます。名義は移らず、売ることはできません。'
+];
+
+const DOC = {
+  seki1: ['戸籍', '父の出生から死亡まで。相続人全員の今の戸籍'],
+  seki2: ['戸籍', '父と祖父一郎、それぞれ出生から死亡まで。相続人全員の今の戸籍'],
+  kyo:   ['遺産分割協議書', '全員が署名し、実印を押す'],
+  inkan: ['印鑑証明書', '相続人全員'],
+  jumin1: ['住民票', '父の除票と、取得する人の住民票'],
+  jumin2: ['住民票', '祖父一郎と父の除票、取得する人の住民票'],
+  hyoka: ['固定資産評価証明書', '登録免許税の計算に使う（市区町村）']
+};
+
+const CASES = [
+  { h: 'A　事情なし', s: '土地・建物とも父の名義・単独',
+    target: { main: '土地・建物', sub: 'どちらも父の名義' },
+    people: { main: '父の相続人（家族）全員', sub: '遺言がなければ、全員で遺産分割協議をする' },
+    docs: [DOC.seki1, DOC.kyo, DOC.inkan, DOC.jumin1, DOC.hyoka],
+    steps: [{ t: '相続登記', who: '司法書士', sub: '自分で法務局へ申請することもできる' }] },
+
+  { h: 'B　前の代の名義が残る', s: '土地は祖父一郎の名義のまま・父が取得すると口頭で決まっている',
+    target: { main: '土地・建物', sub: '土地は<span class="sw-why">祖父一郎の名義のまま</span>。建物は父の名義' },
+    people: { main: '父の相続人（家族）全員', plus: '＋ 祖父一郎のほかの相続人', sub: '2人分の相続を、1通の協議書にまとめる' },
+    docs: [DOC.seki2,
+      ['遺産分割協議書', '<span class="sw-miss">まだない。</span>父が取得すると口頭で決まっていただけ。全員が署名し、実印を押す'],
+      ['印鑑証明書', '祖父一郎のほかの相続人を含め、全員'], DOC.jumin2, DOC.hyoka],
+    steps: [{ t: '相続登記', who: '司法書士', sub: '土地は祖父一郎→父→家族。父が1人で取得する協議書にすれば、1回の申請で移せることがある' }] },
+
+  { h: 'C　前の代の名義＋登記にない増築（自宅）', s: 'B に加えて、北側の増築（約6畳）が登記に載っていない・工事の書類は分からない', open: true,
+    target: { main: '土地・建物', sub: '土地は<span class="sw-why">祖父一郎の名義のまま</span>。建物は父の名義で、<span class="sw-why">北側の増築が登記に載っていない</span>' },
+    people: { main: '父の相続人（家族）全員', plus: '＋ 祖父一郎のほかの相続人', sub: '2人分の相続を、1通の協議書にまとめる' },
+    docs: [DOC.seki2,
+      ['遺産分割協議書', '<span class="sw-miss">まだない。</span>父が取得すると口頭で決まっていただけ。全員が署名し、実印を押す。増築部分を誰が取得するかも書く'],
+      ['印鑑証明書', '祖父一郎のほかの相続人を含め、全員'],
+      ['工事の書類', '確認済証・工事請負契約書・領収書。見つからなければ、相続人全員が実印を押した上申書で代える'],
+      DOC.jumin2, ['固定資産評価証明書', '登録免許税の計算と、増築が父のものだったことを示すのに使う']],
+    steps: [{ t: '増築の表題変更登記', who: '土地家屋調査士', sub: '相続登記の前か、同時に' },
+      { t: '相続登記', who: '司法書士', sub: '土地は祖父一郎→父→家族' }] },
+
+  { h: 'D　前の代：遺言がある', s: '祖父一郎の自筆の遺言で父が取得・法務局には預けていない',
+    target: { main: '土地・建物', sub: '土地は<span class="sw-why">祖父一郎の名義のまま</span>。建物は父の名義' },
+    people: { main: '父の相続人（家族）全員', sub: '祖父一郎の分は遺言で決まっているので、話し合いは要らない' },
+    docs: [['祖父一郎の遺言書', '家庭裁判所の検認を受けたもの<span class="sw-at">場所：仏間の金庫</span>'],
+      ['戸籍', '祖父一郎の死亡がわかるもの、父の出生から死亡まで。相続人全員の今の戸籍'],
+      DOC.kyo, DOC.inkan, DOC.jumin2, DOC.hyoka],
+    steps: [{ t: '遺言書の検認', who: '家庭裁判所' },
+      { t: '相続登記', who: '司法書士', sub: '土地は祖父一郎→父→家族' }] },
+
+  { h: 'E　前の代：協議書がある', s: '祖父一郎の遺産分割協議書（父が取得）あり・父の印鑑証明書も渡してある',
+    target: { main: '土地・建物', sub: '土地は<span class="sw-why">祖父一郎の名義のまま</span>。建物は父の名義' },
+    people: { main: '父の相続人（家族）全員', sub: '祖父一郎の分は、協議書で父が取得すると決まっている' },
+    docs: [['祖父一郎の遺産分割協議書', '父が取得すると書いたもの<span class="sw-at">場所：書斎のキャビネット上段</span>'],
+      ['印鑑証明書', '祖父一郎の協議書に添える分と、父の相続人全員の分'],
+      DOC.seki2, DOC.kyo, DOC.jumin2, DOC.hyoka],
+    steps: [{ t: '相続登記', who: '司法書士', sub: '土地は祖父一郎→父→家族。父が1人で取得しているので、1回の申請で移せることがある' }] },
+
+  { h: 'F　共有と私道の持分', s: '建物は父と母の共有（1/2）・前の私道に持分がある',
+    target: { main: '土地・建物の父の持分（1/2）・前の私道の持分', sub: '<span class="sw-why">私道は課税明細書に載らないことがある。</span>地番は名寄帳か所有不動産記録証明で確かめる' },
+    people: { main: '父の相続人（家族）全員', sub: '遺言がなければ、全員で遺産分割協議をする' },
+    docs: [DOC.seki1, DOC.kyo, DOC.inkan, DOC.jumin1, DOC.hyoka],
+    steps: [{ t: '相続登記', who: '司法書士', sub: '私道の持分も同じ申請に入れる' }] }
+];
+
+function card(c) {
+  const row = (lb, body, cls) => '<div class="sw-row' + (cls ? ' ' + cls : '') + '"><dt>' + lb + '</dt><dd>' + body + '</dd></div>';
+  const target = '<p class="sw-main">' + c.target.main + '</p>' + (c.target.sub ? '<p class="sw-sub">' + c.target.sub + '</p>' : '');
+  const people = '<p class="sw-main">' + c.people.main + '</p>' +
+    (c.people.plus ? '<p class="sw-plus">' + c.people.plus + '</p>' : '') +
+    (c.people.sub ? '<p class="sw-sub">' + c.people.sub + '</p>' : '');
+  const docs = '<ul class="sw-docs">' + c.docs.map(([n, d]) => '<li><b>' + n + '</b><span>' + d + '</span></li>').join('') + '</ul>';
+  const steps = '<ol class="sw-steps">' + c.steps.map((s, i) =>
+    '<li><span class="sw-n">' + (i + 1) + '</span><b>' + s.t + '</b><small>' + s.who + '</small>' +
+    (s.sub ? '<p class="sw-sub">' + s.sub + '</p>' : '') + '</li>').join('') + '</ol>';
+  return '<section class="case"><h2>' + c.h + '<small>' + c.s + '</small></h2>' +
+    '<article class="procedure-sheet">' +
+    '<header class="procedure-head">' + TOKI + '<div><h5>相続登記</h5></div></header>' +
+    '<div class="procedure-deadline">' + CAL + '<span><b>期限</b> 取得を知った日から3年以内</span></div>' +
+    '<dl class="sw">' + row('対象', target) + row('加わる人', people) + row('用意するもの', docs, 'wide') + row('順番', steps) + '</dl>' +
+    '<button type="button" class="procedure-toggle" aria-expanded="' + !!c.open + '"><span>' + (c.open ? '補足を閉じる' : '補足を見る') +
+    '</span><span aria-hidden="true">' + (c.open ? '−' : '＋') + '</span></button>' +
+    (c.open ? '<div class="procedure-detail"><div class="procedure-cautions" style="margin:0"><ul>' +
+      NOTES.map(t => '<li>' + t + '</li>').join('') + '</ul></div>' +
+      '<p class="procedure-note">申請書の書き方は、法務局の登記手続案内（予約制）で相談できます。</p></div>' : '') +
+    '</article></section>';
+}
+document.getElementById('grid').innerHTML = CASES.map(card).join('');
+</script>
+</body>
+</html>

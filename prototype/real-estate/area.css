@@ -151,13 +151,15 @@
 .pl-north text{font-size:15px;fill:#6E6A60;font-family:var(--font)}
 
 .layer{position:absolute;inset:0}
-.cell{position:absolute;overflow:hidden;display:flex;flex-direction:column}
+/* 部屋は中身の高さまで伸びる（buildPlan が実測して壁を置く）ので、
+   部屋の中はスクロールさせない。以前の overflow:auto が残っていると、
+   「記録」ボタンが文字の右端を揃えるために外へ出している 8px で
+   書類・ローン契約の部屋が横スクロールになった（2026-09-26）。
+   はみ出した 8px は部屋の内側の余白（PADIN）に収まる。 */
+.cell{position:absolute;overflow:visible;display:flex;flex-direction:column}
 .cell > h4{font-size:11.5px;margin:0 0 6px;color:var(--ink2);font-weight:600;
   letter-spacing:.04em;flex:none}
-.body{flex:1;overflow-y:auto;min-height:0}
-.body::-webkit-scrollbar{width:4px}
-.body::-webkit-scrollbar-thumb{background:#DCD6C8;border-radius:2px}
-.cell.c-when .body{overflow-y:visible}
+.body{flex:1;min-height:0}
 
 /* ══ 今のうち／そのとき｜v27 の器（2026-09-20 移植）══════
    地（緑／砂）→ 白いカード → その中のブロック、の3段。
@@ -220,15 +222,29 @@
 .now-nav.is-stuck{box-shadow:0 6px 8px -6px #6a512033}
 /* ウィンドウ幅 1200px 以下は上部バー（shell.css の .appbar、実測 60px）が張り付くので、その下に。 */
 @media (max-width:1200px){ .now-nav{top:60px} }
-.now-nav-in{display:flex;flex-wrap:wrap;gap:6px}
-.now-go{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:3px 10px 3px 5px;
+/* 札の数は物件で変わる（今のうち3〜5枚・そのとき0〜5枚）ので、部屋の中央に寄せる
+   （表札と同じ軸）。5枚でも1行に収まるよう、余白・間・絵を詰めてある。 */
+.now-nav-in{display:flex;flex-wrap:wrap;justify-content:center;gap:5px}
+.now-go{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:3px 8px 3px 4px;
   background:var(--card);border:1px solid #EADFCB;border-radius:7px;box-shadow:0 1px 2px #6a51200a;
   font:600 11.5px/1.3 var(--font);color:var(--ink);cursor:pointer;white-space:nowrap}
 .now-go:hover{border-color:#D5C19E}
 .now-go:focus-visible{outline:2px solid #B08440;outline-offset:2px}
 /* 読んでいる行の札。タブの下線の位置に、部屋の色（表札の文字色）で線を引く。 */
 .now-go[aria-current]{border-color:#D5C19E;box-shadow:inset 0 -2px 0 #B98A45}
-.now-go .matter-icon{display:block;flex:none;width:22px;height:24px}
+.now-go .matter-icon{display:block;flex:none;width:18px;height:20px}
+/* そのときの札（whenNav）。仕組みは今のうちと同じで、色だけその部屋のもの
+   （地＝床 #E9EFE9、印＝表札の文字色 #35604a）。絵はカードの頭と同じ書面。 */
+.cell.c-when{overflow:clip}
+.when-nav{background:#E9EFE9}
+.when-nav.is-stuck{box-shadow:0 6px 8px -6px #2f4a3a33}
+/* 5枚でも1行に収める（横スクロールだと端の札が隠れて何枚あるか分からず、
+   2行に折ると張り付く帯が厚くなる）。詰め方は今のうちと共通（.now-go）。 */
+.when-nav .now-go{padding-left:5px;border-color:#D3DFD4;box-shadow:0 1px 2px #2f4a3a0a}
+.when-nav .now-go:hover{border-color:#AFC4B2}
+.when-nav .now-go:focus-visible{outline-color:#527b5b}
+.when-nav .now-go[aria-current]{border-color:#AFC4B2;box-shadow:inset 0 -2px 0 #35604a}
+.when-nav .now-go .gi{display:block;flex:none}
 .uh-nm:focus{outline:none}
 
 /* 第2段｜白いカード。地の上に載る記録物。flex で伸ばさない
@@ -409,7 +425,6 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .procedure-head{display:flex;align-items:center;gap:12px;min-height:36px}
 .procedure-head .gi{flex:none}
 .procedure-head h5{font-size:15px;font-weight:600;line-height:1.5;margin:0;color:var(--ink)}
-.procedure-sheet.primary .procedure-head h5{font-size:19px}
 .procedure-eyebrow{font-size:10px;line-height:1.5;color:var(--ink2);letter-spacing:.06em}
 .procedure-purpose{font-size:12px;line-height:1.75;color:var(--ink2);margin:8px 0 12px}
 .procedure-entry{display:grid;grid-template-columns:3em minmax(0,1fr);gap:6px 10px;
@@ -433,18 +448,76 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .procedure-detail ol>li:before{content:counter(procedure);position:absolute;left:0;top:2px;
   width:18px;height:18px;border-radius:50%;background:#eaf0e8;color:#41624c;
   text-align:center;font-size:10px;line-height:18px;font-weight:700}
-.procedure-context{margin:0 0 13px;padding:9px 11px;background:#f3f6ef;color:#3d5b44}
-.procedure-context b{display:block;font-size:10px;margin-bottom:3px}
-/* この物件では／気をつけること：短い箇条。手順の番号付きとは見た目を分ける。 */
-.procedure-context ul,.procedure-cautions ul{margin:0;padding:0;list-style:none}
-.procedure-context li,.procedure-cautions li{position:relative;padding-left:12px;margin:0}
-.procedure-context li+li,.procedure-cautions li+li{margin-top:5px}
-.procedure-context li:before,.procedure-cautions li:before{content:"";position:absolute;left:1px;top:.78em;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.55}
+.procedure-detail > .procedure-de:first-child{margin:0 0 12px}
+/* この家では（表）／気をつけること（中）：短い箇条。手順の番号付きとは見た目を分ける。
+   この家では＝カードの主役なので、本文の色と大きさで置く。 */
+.procedure-here{margin:10px 0 12px;font-size:12.5px;line-height:1.8;color:var(--ink)}
+.procedure-here,.procedure-cautions ul{padding:0;list-style:none}
+.procedure-cautions ul{margin:0}
+.procedure-here li,.procedure-cautions li{position:relative;padding-left:12px;margin:0;overflow-wrap:anywhere}
+.procedure-here li+li{margin-top:7px}
+.procedure-cautions li+li{margin-top:5px}
+.procedure-here li:before,.procedure-cautions li:before{content:"";position:absolute;left:1px;top:.78em;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.55}
 .procedure-cautions{margin:13px 0 0;font-size:11.5px;color:var(--ink2)}
 .procedure-cautions b{display:block;font-size:10px;color:#6E6A60;margin-bottom:4px}
 .procedure-note{font-size:11px;line-height:1.8;color:var(--ink2);margin:11px 0 0}
 .procedure-source{display:inline-block;margin-top:11px;color:#42674e;font-size:11px;
   text-decoration:underline;text-underline-offset:3px}
+
+/* ── そのとき｜相続登記（2026-09-27、見本 `_検討/そのとき_表示v4.html`）──
+   一文（この家の事情）→ そろえる書類（書面の絵）→ 順番／頼む先 → くわしく。 */
+.sw-say{margin:12px 0 0;font-size:12.25px;line-height:1.85;color:#3F3B34}
+.sw-say b{font-weight:600;color:var(--ink)}
+.sw-sec{margin:14px 0 0;padding-top:12px;border-top:1px solid #e8eee7}
+.sw-lb{font-size:10.5px;color:#5c7562;letter-spacing:.02em;margin:0 0 8px}
+/* そろえる書類：どこから来るか（家にある／家族で作る／役所で取る）で分ける。
+   役所で取るものはどの家でも同じなので、名前だけ小さく並べる。 */
+.dk{display:grid;grid-template-columns:5.2em minmax(0,1fr);gap:10px;align-items:start}
+.dk-h{font-size:10.5px;color:var(--ink2);line-height:1.5;padding-top:4px}
+.dk-h small{display:block;color:var(--ink3);font-size:9.5px}
+.dk-row{display:flex;flex-wrap:wrap;gap:10px 12px;min-width:0}
+.dk-doc{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 7px;align-items:start;max-width:100%}
+.dk-p{display:block;flex:none;overflow:visible}
+.dk-t{font-size:12px;font-weight:600;line-height:1.45;color:var(--ink);overflow-wrap:anywhere}
+.dk-s{display:block;font-size:10.5px;font-weight:400;color:var(--ink2);line-height:1.55}
+.dk-at{display:block;font-size:10.5px;font-weight:600;color:#355640;line-height:1.55}
+.dk-no{color:#8f6227}
+.dk-row.big .dk-doc{flex:1 1 100%}
+.dk-row.small{gap:6px 12px}
+.dk-row.small .dk-t{font-size:11.5px;font-weight:500}
+.dk-not{margin:10px 0 0;font-size:11px;color:var(--ink2);line-height:1.7}
+.dk-not b{color:var(--ink);font-weight:600}
+/* 順番：手続きが2つ以上あるときだけ札で「1 → 2」。 */
+.sq{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap}
+.sq-step{flex:1 1 0;min-width:0;border:1px solid #dfe6dd;border-radius:6px;padding:7px 9px}
+.sq-step b{display:block;font-size:12px;line-height:1.5}
+.sq-step small{display:block;font-size:10.5px;color:#5c7562}
+.sq-ar{align-self:center;color:#9B988E;font-size:13px}
+.sq-one{font-size:11.5px;color:var(--ink2);line-height:1.7;margin:0}
+/* 相続登記以外の4枚。縦の順番（相手が変わる手続き）：番号｜すること｜相手。
+   時期が違うときは頭に「すぐ／4か月以内／分割のあと」。 */
+.sv{list-style:none;margin:0;padding:0}
+.sv li{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:0 9px;align-items:baseline}
+.sv li + li{margin-top:9px}
+.sv-n{width:18px;height:18px;border-radius:50%;background:#eaf0e8;color:#41624c;font-size:10px;font-weight:700;
+  line-height:18px;text-align:center;align-self:start;margin-top:1px}
+.sv b{font-size:12.5px;font-weight:600;line-height:1.65}
+.sv small{font-size:10.5px;color:#5c7562;white-space:nowrap}
+.sv .sv-s{grid-column:2 / -1;font-size:11px;color:var(--ink2);line-height:1.7;margin-top:1px}
+.sv .sv-s b{font-size:inherit}
+.sv .sv-when{font-size:10.5px;color:#8f6227;font-weight:600;margin-right:6px}
+/* 相手（借主・地主）。家族が連絡する先。 */
+.sw-who{border:1px solid #e3e9e1;border-radius:6px;padding:9px 11px}
+.sw-who + .sw-who{margin-top:8px}
+.sw-who b{display:block;font-size:13px;font-weight:600}
+.sw-who .tel{display:block;font-size:12px;font-weight:600;color:#355640;margin-top:2px}
+.sw-who small{display:block;font-size:11px;color:var(--ink2);line-height:1.65;margin-top:2px}
+.sw-line{margin:0;font-size:11.5px;color:var(--ink2);line-height:1.75}
+.sw-line + .sw-line{margin-top:6px}
+.sw-line b{color:var(--ink);font-weight:600}
+/* くわしく：今のうちの .pr-dt をそのときのカードの下端に付ける。 */
+.procedure-sheet .pr-dt{margin:14px -18px 0}
+.procedure-sheet .pr-dt-b p{margin:0 0 6px;font-size:11.5px;line-height:1.8;color:#514B42}
 
 /* ══ 部屋の中身（事情・権利関係・ローン契約・書類・玄関）══════
    foreignObject を使わない別レイヤーの div。文字は小さめ・
@@ -488,6 +561,11 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
   column-gap:16px;font-size:11.5px;line-height:1.65}
 .deeds > *{min-width:0;padding:8px 0;border-top:1px solid #EAE4D6}
 .deeds > .dg-corner,.deeds > .dg-head{border-top:0;padding-top:0;padding-bottom:10px}
+/* 列の見出し（土地・建物）。下段で廊下の片側に置くと列が狭く、
+   1行に収めると「土地」が割れる／片方の列だけ折り返して見出しの
+   高さが揃わない。名前の下に状態と「記録」を置く形に揃える。 */
+.deeds .dg-head .uh{flex-direction:column;align-items:flex-start;gap:6px}
+.deeds .dg-head .uh-r{margin:0}
 .dg-lb{font-size:10.5px;color:var(--ink3);letter-spacing:.02em}
 .dg-v{color:var(--ink);overflow-wrap:anywhere;white-space:pre-line}
 .dg-main{font-size:13px;font-weight:600}
@@ -534,7 +612,28 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
   /* 札の帯は部屋の枠の内側いっぱいに（左右の padding ぶん外へ）。横に流し、はみ出しは横スクロール。 */
   .stack .now-nav{margin:0 -15px 10px;padding:6px 15px 8px;background:#FEFBF6}
   .stack .now-nav-in{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  /* 横に流すときの中央寄せ。justify-content:center だと、はみ出した左端が
+     スクロールで届かない位置に切れる。端の札の auto margin で寄せる
+     （収まるときは中央、はみ出すときは左から流れる）。 */
+  .stack .now-nav-in{justify-content:flex-start}
   .stack .now-go{flex:none}
+  .stack .now-go:first-child{margin-left:auto}
+  .stack .now-go:last-child{margin-right:auto}
+  /* 横に流せることを見せる（2026-09-27）。矢印のボタンは「押すと次へ切り替わる」
+     と読まれ、流せる帯には見えなかった。手がかりは、端で途中まで見えて切れている札。
+     そのため余白を帯の外側（.now-nav）から流れる中身（.now-nav-in）へ移し、札が
+     部屋の枠の際まで流れて切れるようにする。続きがある側の端だけ、ごく薄くぼかす
+     （切れ目が偶然の端ではなく、奥へ続いていると見えるように。navEdges が can-l／can-r）。 */
+  .stack .now-nav{padding-left:0;padding-right:0}
+  .stack .now-nav-in{padding:0 15px}
+  .stack .now-nav.can-r .now-nav-in{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),rgba(0,0,0,.2));
+    mask-image:linear-gradient(90deg,#000 calc(100% - 26px),rgba(0,0,0,.2))}
+  .stack .now-nav.can-l .now-nav-in{-webkit-mask-image:linear-gradient(270deg,#000 calc(100% - 26px),rgba(0,0,0,.2));
+    mask-image:linear-gradient(270deg,#000 calc(100% - 26px),rgba(0,0,0,.2))}
+  .stack .now-nav.can-l.can-r .now-nav-in{
+    -webkit-mask-image:linear-gradient(90deg,rgba(0,0,0,.2),#000 26px,#000 calc(100% - 26px),rgba(0,0,0,.2));
+    mask-image:linear-gradient(90deg,rgba(0,0,0,.2),#000 26px,#000 calc(100% - 26px),rgba(0,0,0,.2))}
+  .stack .when-nav{background:var(--paper)}
   .stack .card{padding:16px 16px 18px}
 }
 

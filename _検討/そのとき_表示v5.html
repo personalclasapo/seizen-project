@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>そのとき 4枚 表示v5</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<link rel="stylesheet" href="../prototype/real-estate/area.css">
+<!--
+  そのとき｜相続登記以外の4枚 見本 v5（2026-09-27）
+
+  相続登記の組み方（一文・そろえる書類・順番）は当てはめない。
+  カードごとに「家族がここで知って振る舞いが変わること」から形を決めた。
+
+  現所有者の申告 … 要るかどうかが主役。一文で要否と理由（今のうちの答え）。
+                  添える書類は相続登記と同じなので、書類の絵は出さず
+                  「相続登記でそろえるものと同じ」と言う（1回で済む）。
+  住宅ローン     … 主役は「家族が返すのか」。団信ありなら返さない、
+                  なしなら引き継ぐ（相続放棄は3か月）。相手が 銀行 → 銀行
+                  → 法務局 と変わる手続きなので、縦の順番（相手つき）。
+                  隠れている3段目（抵当権の抹消）がこのカードの要。
+  貸している契約 … 主役は「貸主の立場は自動で移る」ことと、借主。借主は
+                  記録どおり相手ごとに並べる（家族が連絡する先）。
+                  すること3つは時期が違う（すぐ／4か月／分割のあと）。
+  借地           … 主役は「承諾も名義書換料も要らない」（求められたときに
+                  家族が払ってしまうのを防ぐ）。地主と地代、契約書のありか。
+  図は、どのカードにも置かない（形を持つ中身がない）。
+  くわしくは今のうちと同じ形で、場面ごとの見出し。
+-->
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink)}
+  .wrap{max-width:1500px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:18px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);line-height:1.8;margin:0 0 24px;max-width:820px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(451px,1fr));gap:28px 24px;align-items:start}
+  .case{background:#E9EFE9;padding:14px 14px 16px;border-radius:4px}
+  .case > h2{font-size:11.5px;font-weight:600;color:#4b5f50;margin:0 0 10px;line-height:1.6}
+  .case > h2 small{display:block;font-weight:400;color:var(--ink3);font-size:10.5px}
+  .case .procedure-sheet{max-width:423px}
+
+  /* 見本で足すもの */
+  /* 縦の順番（相手が変わる手続き）。番号｜すること｜相手。 */
+  .sv{list-style:none;margin:0;padding:0}
+  .sv li{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:0 9px;align-items:baseline}
+  .sv li + li{margin-top:9px}
+  .sv-n{width:18px;height:18px;border-radius:50%;background:#eaf0e8;color:#41624c;font-size:10px;font-weight:700;
+    line-height:18px;text-align:center;align-self:start;margin-top:1px}
+  .sv b{font-size:12.5px;font-weight:600;line-height:1.65}
+  .sv small{font-size:10.5px;color:#5c7562;white-space:nowrap}
+  .sv .sv-s{grid-column:2 / -1;font-size:11px;color:var(--ink2);line-height:1.7;margin-top:1px}
+  .sv .sv-when{font-size:10.5px;color:#8f6227;font-weight:600;margin-right:6px}
+  /* 相手（借主・地主）。下段のローン・契約の部屋の単位と同じ手つき。 */
+  .who{border:1px solid #e3e9e1;border-radius:6px;padding:9px 11px}
+  .who + .who{margin-top:8px}
+  .who b{display:block;font-size:13px;font-weight:600}
+  .who .tel{display:block;font-size:12px;font-weight:600;color:#355640;margin-top:2px}
+  .who small{display:block;font-size:11px;color:var(--ink2);line-height:1.65;margin-top:2px}
+  .line1{margin:0;font-size:11.5px;color:var(--ink2);line-height:1.75}
+  .line1 b{color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>そのとき｜相続登記以外の4枚 v5</h1>
+  <p class="lead">相続登記の組み方は当てはめず、カードごとに中身から決めた。現所有者の申告（要否が主役）・住宅ローン（家族が返すのか、隠れた抹消登記）・
+    貸している契約（貸主の立場は自動で移る）・借地（承諾も名義書換料も要らない）。「くわしく」は押して開け閉めできる。</p>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const sheet = inner => '<svg class="gi" viewBox="0 0 30 42.4" width="25" height="35.3" aria-hidden="true">' +
+  '<rect x="1.4" y="1" width="24" height="36" rx="1" fill="#FFFFFF" stroke="#BDB5A0" stroke-width=".9"/>' + inner + '</svg>';
+const rule = (y, a, b) => '<line x1="' + a + '" y1="' + y + '" x2="' + b + '" y2="' + y + '" stroke="#DDD7C7" stroke-width=".9" stroke-linecap="round"/>';
+const G = {
+  todoke: sheet('<rect x="8.4" y="5.4" width="10" height="2.2" rx=".5" fill="#CFC7B2"/><rect x="19.6" y="4.6" width="4.4" height="4.4" rx=".5" fill="none" stroke="#D8D2C2" stroke-width=".8"/>' + rule(13.4, 4.2, 22.6) + rule(17.4, 4.2, 22.6) + rule(21.4, 4.2, 22.6) + rule(25.4, 4.2, 15)),
+  tsushin: sheet('<rect x="4" y="5.4" width="11" height="2.2" rx=".5" fill="#CFC7B2"/>' + rule(11.4, 4, 21) + rule(15.4, 4, 21) + rule(19.4, 4, 21) + rule(23.4, 4, 14) + '<line x1="4" y1="31.4" x2="21" y2="31.4" stroke="#C4BCA6" stroke-width=".9"/>'),
+  keiyaku: sheet('<rect x="4.2" y="5.4" width="12" height="2.2" rx=".5" fill="#CFC7B2"/>' + rule(11.4, 4.2, 22.6) + rule(15.4, 4.2, 22.6) + rule(19.4, 4.2, 22.6) + '<circle cx="20.4" cy="28.6" r="2.6" fill="none" stroke="#C0574E" stroke-width=".9" opacity=".75"/><circle cx="20.4" cy="33.2" r="2.6" fill="none" stroke="#C0574E" stroke-width=".9" opacity=".55"/>')
+};
+const CAL = '<svg viewBox="0 0 14 14" width="14" height="14"><rect x=".7" y="2.4" width="12.6" height="11" rx="1.4" fill="none" stroke="#B9B2A0" stroke-width="1.1"/><line x1=".7" y1="5.8" x2="13.3" y2="5.8" stroke="#B9B2A0" stroke-width="1.1"/><line x1="4.2" y1=".7" x2="4.2" y2="3.5" stroke="#B9B2A0" stroke-width="1.3" stroke-linecap="round"/><line x1="9.8" y1=".7" x2="9.8" y2="3.5" stroke="#B9B2A0" stroke-width="1.3" stroke-linecap="round"/></svg>';
+const DOWN = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="m2 3.5 3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const paper = w => '<svg class="dk-p" width="' + w + '" height="' + (w * 1.414).toFixed(1) + '" viewBox="0 0 20 28.3" aria-hidden="true"><rect x=".6" y=".6" width="18.8" height="27.1" rx=".8" fill="#FBFAF6" stroke="#9C9584" stroke-width="1"/><path d="M4 6h8M4 10h12M4 13.5h12M4 17h8" stroke="#D6D0C1" stroke-width="1" stroke-linecap="round"/></svg>';
+
+const sec = (lb, body) => '<div class="sw-sec"><p class="sw-lb">' + lb + '</p>' + body + '</div>';
+const steps = xs => '<ol class="sv">' + xs.map((s, i) => '<li><span class="sv-n">' + (i + 1) + '</span><b>' +
+  (s.when ? '<span class="sv-when">' + s.when + '</span>' : '') + s.t + '</b><small>' + (s.w || '') + '</small>' +
+  (s.s ? '<span class="sv-s">' + s.s + '</span>' : '') + '</li>').join('') + '</ol>';
+const home = d => '<div class="dk"><div class="dk-h">家にある<small>家族が取り出す</small></div><div class="dk-row big"><div class="dk-doc">' + paper(20) +
+  '<div class="dk-t">' + d.t + (d.s ? '<span class="dk-s">' + d.s + '</span>' : '') + (d.at ? '<span class="dk-at">' + d.at + '</span>' : '<span class="dk-at dk-no">場所は記録されていない</span>') + '</div></div></div></div>';
+const who = w => '<div class="who"><b>' + w.n + '</b>' + (w.tel ? '<span class="tel">' + w.tel + '</span>' : '') + (w.s ? '<small>' + w.s + '</small>' : '') + '</div>';
+const h6 = (i, t) => '<section><h6><i>' + i + '</i>' + t + '</h6>';
+
+const CASES = [
+  /* ── 現所有者の申告 ─────────────────────── */
+  { h: '現所有者の申告　自宅', s: '前の代の名義が残り、増築が登記にない（相続登記は3か月で済まない）',
+    g: 'todoke', eb: '固定資産税', nm: '現所有者の申告', lim: '現所有者と知った日の翌日から3か月以内',
+    body: '<p class="sw-say">土地は祖父一郎の名義のままで、北側の増築も登記に載っていないので、相続登記は3か月では済まない見込みです。<b>この申告を出します。</b></p>' +
+      sec('出す先', '<p class="line1"><b>青葉区役所 税務課</b>　申告書に、相続登記でそろえる書類（戸籍・住民票。協議書がまとまっていれば協議書と印鑑証明書）を添える。原則は原本</p>'),
+    toc: '出さないとき・その年の固定資産税',
+    detail: h6(1, '出さないとき') + '<p>市は、申告の内容で次の年からの固定資産税を誰に課すかを決めます。申告がなければ、市が相続人の中から納税する人を決めて、納税通知書を送ります。</p></section>' +
+      h6(2, 'その年の固定資産税') + '<p>固定資産税は1月1日の所有者に1年分かかります。' + '亡くなった年の分は父に課されたもので、残りの納期の分は相続人が納めます。</p></section>' +
+      '<p><a class="procedure-source" href="https://www.city.yokohama.lg.jp/kurashi/koseki-zei-hoken/zeikin/y-shizei/koteishisan-toshikeikakuzei/kotei-gensyoyu.html" target="_blank" rel="noopener">横浜市｜現所有者申告 ↗</a></p>' },
+
+  { h: '現所有者の申告　長岡の家', s: '前の代の名義・増築の問題はない',
+    g: 'todoke', eb: '固定資産税', nm: '現所有者の申告', lim: '自治体に申告期限を確かめる（多くは3か月）',
+    body: '<p class="sw-say">3か月以内に相続登記が済めば、<b>この申告は要りません</b>。済まなければ出します。</p>' +
+      sec('出す先', '<p class="line1"><b>長岡市 資産税課</b>　添える書類は相続登記でそろえるものとほぼ同じ。細かい決まりは市の案内で確かめる</p>'),
+    toc: '出さないとき・その年の固定資産税',
+    detail: h6(1, '出さないとき') + '<p>申告がなければ、市が相続人の中から納税する人を決めて、納税通知書を送ります。</p></section>' +
+      h6(2, 'その年の固定資産税') + '<p>固定資産税は1月1日の所有者に1年分かかります。亡くなった年の分は父に課されたもので、残りの納期の分は相続人が納めます。</p></section>' },
+
+  /* ── 住宅ローン ─────────────────────────── */
+  { h: '住宅ローン　団信あり（自宅）', s: '○○銀行 青葉台支店・父単独・団信あり・抵当権は○○銀行',
+    g: 'tsushin', eb: '団信', nm: '住宅ローン',
+    body: '<p class="sw-say">団信が付いているので、父が亡くなると保険金で残りが返され、<b>家族が返す必要はありません</b>。保険金は家族ではなく銀行へ払われます。</p>' +
+      sec('順番', steps([
+        { t: '銀行へ連絡し、団信の手続きをする', w: '○○銀行 青葉台支店', s: '出す書類は銀行が案内する（死亡診断書の写しなど）' },
+        { t: '完済の書類を受け取る', w: '○○銀行', s: '解除証書・委任状など。抵当権の抹消に使う' },
+        { t: '抵当権の抹消登記', w: '司法書士', s: '完済されても抵当権の登記は<b>自動では消えない</b>。相続登記に続けて申請する' }])),
+    toc: '手続き中の引き落とし・抹消をしないと・請求の期限',
+    detail: h6(1, '手続き中の引き落とし') + '<p>銀行が死亡を知ると、父の口座は入出金が止まります。手続きが終わるまでの返済の扱いは、最初の連絡のときに銀行に確かめます。</p></section>' +
+      h6(2, '抹消をしないと') + '<p>抹消の登記に期限はありませんが、残ったままだと売るときの決済に間に合わないことがあり、銀行が合併すると書類の取り直しに手間がかかります。</p></section>' +
+      h6(3, '請求の期限') + '<p>団信の保険金の請求は、亡くなった日の翌日から3年で時効になります（保険法95条）。</p></section>' },
+
+  { h: '住宅ローン　団信なし', s: '△△信用金庫・リフォームローン・父単独・団信なし',
+    g: 'tsushin', eb: '', nm: 'リフォームローン',
+    body: '<p class="sw-say">団信は付いていないので、残っている借入は<b>相続人が法定相続分で引き継ぎます</b>。</p>' +
+      sec('順番', steps([
+        { t: '銀行へ連絡し、残高を確かめる', w: '△△信用金庫' },
+        { when: '3か月以内', t: '引き継ぐか、相続放棄するかを決める', w: '家庭裁判所', s: '相続を知った日から数える。放棄すると、この家も受け取れない' },
+        { t: '誰が返すかを決め、銀行と話す', w: '△△信用金庫', s: '相続人の間で1人が返すと決めても、銀行の承諾がないと他の相続人の返す義務は残る' },
+        { t: '返し終えたら、抵当権の抹消登記', w: '司法書士' }])),
+    toc: '相続放棄',
+    detail: h6(1, '相続放棄') + '<p>放棄はローンだけを選べず、預貯金やこの家を含む全部を受け取らないことになります。3か月で決められないときは、家庭裁判所に期間を延ばすよう申し立てられます。</p></section>' },
+
+  /* ── 貸している契約 ─────────────────────── */
+  { h: '貸している契約', s: '離れを△△さんに賃貸・家賃 月5万円・敷金10万円',
+    g: 'keiyaku', eb: '賃貸', nm: '貸している契約',
+    body: '<p class="sw-say"><b>貸主の立場は、そのまま相続人へ移ります</b>。借主の同意も、契約の結び直しも要りません。</p>' +
+      sec('借主', who({ n: '△△さん', tel: '090-0000-0000', s: '離れを賃貸。家賃 月5万円・敷金10万円' })) +
+      sec('すること', steps([
+        { when: 'すぐ', t: '借主へ知らせ、家賃の振込先を変える', w: '△△さん', s: '父の口座は、銀行が死亡を知ると入出金が止まる' },
+        { when: '4か月以内', t: '父の分の確定申告（準確定申告）', w: '税務署', s: 'その年の家賃収入を含めて、相続人が出す' },
+        { when: '分割のあと', t: '継いだ人を借主へ知らせる', w: '△△さん' }])) +
+      sec('そろえる書類', home({ t: '賃貸借契約書', s: '家賃・敷金・契約期間を確かめる' })),
+    toc: '分割までの家賃・敷金・準確定申告',
+    detail: h6(1, '分割までの家賃') + '<p>遺産分割がまとまるまでの家賃は、相続人それぞれが法定相続分で受け取ります。あとで分割がまとまっても、この分は分け直しません（最高裁 平成17年9月8日）。</p></section>' +
+      h6(2, '敷金') + '<p>借主が出るときに返す敷金は、この家を継いだ人が返します。</p></section>' +
+      h6(3, '準確定申告') + '<p>1月1日から亡くなった日までの父の所得を、相続人が申告します。</p>' +
+      '<p><a class="procedure-source" href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2022.htm" target="_blank" rel="noopener">国税庁｜準確定申告 ↗</a></p></section>' },
+
+  /* ── 借地 ──────────────────────────────── */
+  { h: '借地', s: '土地は□□さんから借りている・地代 年24万円（12月に一括）',
+    g: 'keiyaku', eb: '借地', nm: '借地',
+    body: '<p class="sw-say">相続人が引き継ぐなら、<b>地主の承諾も、名義書換料も要りません</b>。求められても、払う義務はありません。</p>' +
+      sec('地主', who({ n: '□□さん', tel: '03-0000-0000', s: '地代 年24万円（12月に一括）' })) +
+      sec('すること', steps([
+        { when: 'すぐ', t: '地主へ知らせ、地代の払い方を確かめる', w: '□□さん', s: '父の口座からの引き落としは、銀行が死亡を知ると止まる' },
+        { when: '分割のあと', t: '継いだ人を地主へ知らせる', w: '□□さん', s: '承諾をもらう手続きではない。建物の相続登記で借地権も一緒に引き継ぐ' }])) +
+      sec('そろえる書類', home({ t: '借地契約書', s: '地代・契約期間・更新の時期を確かめる' })),
+    toc: '相続人以外に遺すとき・建物の登記',
+    detail: h6(1, '相続人以外に遺すとき') + '<p>孫や相続人の配偶者など、相続人ではない人に遺言で渡すときは、地主の承諾が要ります。</p></section>' +
+      h6(2, '建物の登記') + '<p>建物が父の名義のままでも、土地が売られたとき新しい地主に借地権を主張できます。それでも相続登記の義務（3年）はかかります。</p></section>' }
+];
+
+const OPEN = new Set();
+function card(c, i) {
+  const open = OPEN.has(i);
+  return '<section class="case"><h2>' + c.h + '<small>' + c.s + '</small></h2><article class="procedure-sheet">' +
+    '<header class="procedure-head">' + G[c.g] + '<div>' + (c.eb ? '<div class="procedure-eyebrow">' + c.eb + '</div>' : '') + '<h5>' + c.nm + '</h5></div></header>' +
+    (c.lim ? '<div class="procedure-deadline">' + CAL + '<span><b>期限</b> ' + c.lim + '</span></div>' : '') + c.body +
+    '<div class="pr-dt' + (open ? ' open' : '') + '"><button type="button" class="pr-dt-t" data-i="' + i + '" aria-expanded="' + open + '">' +
+    '<span class="pr-dt-k">くわしく</span><span class="pr-dt-s">' + c.toc + '</span>' + DOWN + '</button>' +
+    (open ? '<div class="pr-dt-b">' + c.detail + '</div>' : '') + '</div></article></section>';
+}
+const grid = document.getElementById('grid');
+const paint = () => { grid.innerHTML = CASES.map(card).join(''); };
+grid.addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (!b) return; const i = +b.dataset.i; OPEN.has(i) ? OPEN.delete(i) : OPEN.add(i); paint(); });
+paint();
+</script>
+</body>
+</html>
