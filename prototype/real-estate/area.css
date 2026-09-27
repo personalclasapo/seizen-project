@@ -418,7 +418,7 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .pr-two .ok{color:var(--gr);font-weight:600}
 .pr-two .ng{color:var(--rd);font-weight:600}
 
-/* ── そのとき｜書面ごとに入口を揃え、詳細だけを開く ── */
+/* ── そのとき｜カードの外殻（中身の組み方はカードごと。下の「そのとき｜相続登記」以降）── */
 .procedure-sheets{display:flex;flex-direction:column;gap:12px}
 .procedure-sheet{background:var(--card);padding:16px 18px 0;border-radius:7px;
   box-shadow:0 1px 1px #354d3c0a;min-width:0}
@@ -426,41 +426,10 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .procedure-head .gi{flex:none}
 .procedure-head h5{font-size:15px;font-weight:600;line-height:1.5;margin:0;color:var(--ink)}
 .procedure-eyebrow{font-size:10px;line-height:1.5;color:var(--ink2);letter-spacing:.06em}
-.procedure-purpose{font-size:12px;line-height:1.75;color:var(--ink2);margin:8px 0 12px}
-.procedure-entry{display:grid;grid-template-columns:3em minmax(0,1fr);gap:6px 10px;
-  font-size:12px;line-height:1.75;margin:0;padding-top:10px;border-top:1px solid #e8eee7}
-.procedure-entry dt{color:#5c7562;font-size:10.5px;padding-top:1px}
-.procedure-entry dd{margin:0;overflow-wrap:anywhere}
-.procedure-entry dd:first-of-type{font-weight:600;color:#355640}
 .procedure-deadline{display:flex;align-items:flex-start;gap:7px;margin-top:11px;
   font-size:11px;line-height:1.7;color:#8f6227}
 .procedure-deadline svg{flex:none;margin-top:2px}
 .procedure-deadline b{font-size:10px;font-weight:500;margin-right:5px}
-.procedure-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  width:100%;border:0;border-top:1px solid #e8eee7;background:none;
-  padding:10px 0;margin-top:12px;color:#41624c;font:600 11.5px/1.5 var(--font);cursor:pointer;text-align:left}
-.procedure-toggle:hover{color:#234c32;background:#f7faf5}
-.procedure-toggle:focus-visible{outline:2px solid #527b5b;outline-offset:3px}
-.procedure-toggle > span:last-child{font-size:17px;font-weight:400}
-.procedure-detail{border-top:1px solid #e8eee7;padding:13px 0 17px;font-size:12px;line-height:1.8}
-.procedure-detail ol{list-style:none;counter-reset:procedure;margin:0;padding:0}
-.procedure-detail ol>li{counter-increment:procedure;position:relative;padding-left:27px;margin-bottom:11px}
-.procedure-detail ol>li:before{content:counter(procedure);position:absolute;left:0;top:2px;
-  width:18px;height:18px;border-radius:50%;background:#eaf0e8;color:#41624c;
-  text-align:center;font-size:10px;line-height:18px;font-weight:700}
-.procedure-detail > .procedure-de:first-child{margin:0 0 12px}
-/* この家では（表）／気をつけること（中）：短い箇条。手順の番号付きとは見た目を分ける。
-   この家では＝カードの主役なので、本文の色と大きさで置く。 */
-.procedure-here{margin:10px 0 12px;font-size:12.5px;line-height:1.8;color:var(--ink)}
-.procedure-here,.procedure-cautions ul{padding:0;list-style:none}
-.procedure-cautions ul{margin:0}
-.procedure-here li,.procedure-cautions li{position:relative;padding-left:12px;margin:0;overflow-wrap:anywhere}
-.procedure-here li+li{margin-top:7px}
-.procedure-cautions li+li{margin-top:5px}
-.procedure-here li:before,.procedure-cautions li:before{content:"";position:absolute;left:1px;top:.78em;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.55}
-.procedure-cautions{margin:13px 0 0;font-size:11.5px;color:var(--ink2)}
-.procedure-cautions b{display:block;font-size:10px;color:#6E6A60;margin-bottom:4px}
-.procedure-note{font-size:11px;line-height:1.8;color:var(--ink2);margin:11px 0 0}
 .procedure-source{display:inline-block;margin-top:11px;color:#42674e;font-size:11px;
   text-decoration:underline;text-underline-offset:3px}
 
@@ -616,7 +585,8 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
      スクロールで届かない位置に切れる。端の札の auto margin で寄せる
      （収まるときは中央、はみ出すときは左から流れる）。 */
   .stack .now-nav-in{justify-content:flex-start}
-  .stack .now-go{flex:none}
+  .stack .now-go{flex:none;padding-left:calc(4px + var(--chip-pad, 0px));padding-right:calc(8px + var(--chip-pad, 0px))}
+  .stack .when-nav .now-go{padding-left:calc(5px + var(--chip-pad, 0px))}
   .stack .now-go:first-child{margin-left:auto}
   .stack .now-go:last-child{margin-right:auto}
   /* 横に流せることを見せる（2026-09-27）。矢印のボタンは「押すと次へ切り替わる」

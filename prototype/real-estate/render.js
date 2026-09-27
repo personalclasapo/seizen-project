@@ -2931,6 +2931,7 @@
     /* 札の帯（縦積みで横に流すとき）：続きがある側の端を薄くぼかす（navEdges）。 */
     document.querySelectorAll('.now-nav').forEach(nav => {
       nav.firstElementChild.addEventListener('scroll', () => navEdges(nav), { passive: true });
+      navPeek(nav);
       navEdges(nav);
     });
     document.querySelectorAll('[data-go]').forEach(b => {
@@ -2989,6 +2990,35 @@
     });
   }
   addEventListener('scroll', spyNow, { passive: true });
+  /* 横に流せる手がかりは、右端で途中まで見えて切れている札。画面の幅によっては
+     札がちょうど収まり、次の札が数pxしか覗かない（ウィンドウ幅400で今のうち5枚）。
+     札の間（3〜12px）と札の左右の余白（+0〜6px）を振り、右端で切れる札が
+     3割〜7割見える組み合わせのうち、元の形（間5px・余白+0）に一番近いものを選ぶ。
+     間だけで合わせると、幅によって札の間が16pxまで開いて間延びした。どれも外れる
+     ときは、見える割合が5割に一番近いものにする。描いた直後に一度だけ測る。 */
+  function navPeek(nav) {
+    const inn = nav.firstElementChild;
+    inn.style.columnGap = ''; inn.style.removeProperty('--chip-pad');
+    if (!nav.closest('.stack') || inn.scrollWidth - inn.clientWidth <= 1) return;
+    const seen = (g, pad) => {
+      inn.style.columnGap = g + 'px'; inn.style.setProperty('--chip-pad', pad + 'px');
+      const R = inn.getBoundingClientRect().right;
+      const cut = Array.from(inn.children).find(b => { const r = b.getBoundingClientRect(); return r.left < R && r.right > R; });
+      if (!cut) return -1;
+      const r = cut.getBoundingClientRect();
+      return (R - r.left) / r.width;
+    };
+    let best = null;
+    for (let pad = 0; pad <= 6; pad++) for (let g = 3; g <= 12; g++) {
+      const f = seen(g, pad);
+      if (f < 0) continue;
+      const ok = f >= 0.3 && f <= 0.7;
+      const score = ok ? Math.abs(g - 5) + pad * 1.5 : 100 + Math.abs(f - 0.5) * 100;
+      if (!best || score < best.score) best = { g, pad, score };
+    }
+    inn.style.columnGap = best ? best.g + 'px' : '';
+    if (best) inn.style.setProperty('--chip-pad', best.pad + 'px'); else inn.style.removeProperty('--chip-pad');
+  }
   /* 札の帯が横にはみ出しているか。左に戻れる／右に続きがある、を別々に。 */
   function navEdges(nav) {
     const inn = nav.firstElementChild, max = inn.scrollWidth - inn.clientWidth;
