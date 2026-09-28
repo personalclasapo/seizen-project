@@ -1299,10 +1299,10 @@
 
     /* 団信の加入状況は、借入ありで団信が不明のときだけ立つ。事実は下段の
        借入（loan.gteeStatus）にあり、ここは同じ事実から出る今のうちの行動。 */
-    const l = p.loan || {};
-    if (l.has === true && l.gteeStatus === 'unknown') {
-      out.push({ key: 'loan', type: 'loan', icon: 'loan', nm: '住宅ローンの団信加入状況', status: 'unknown',
-        summary: (l.bank || '金融機関') + '｜住宅ローンあり。団信加入の有無が確認できていない。',
+    const gl = loanItems(p).find(it => it.who !== 'other' && !it.paid && it.gtee === 'unknown');
+    if (gl) {
+      out.push({ key: 'loan', type: 'loan', icon: 'loan', nm: (gl.type || '住宅ローン') + 'の団信加入状況', status: 'unknown',
+        summary: (gl.bank || '金融機関') + '｜' + (gl.type || '住宅ローン') + 'あり。団信加入の有無が確認できていない。',
         next: '契約書類または金融機関で、団信加入の有無と保障内容を確認する。' });
     }
     return out;
@@ -1501,11 +1501,11 @@
        なしなら相続人が法定相続分で引き継ぐ（放棄は3か月・債務を1人に寄せるには
        債権者の承諾）。相手が 借入先 → 借入先 → 法務局 と変わるので縦の順番。
        隠れているのは抵当権の抹消（自動では消えない。解除証書で相続登記に続けて）。 */
-    if (p.loan && p.loan.has) {
-      const l = p.loan, s = p.security || {};
-      const insured = l.gteeStatus === 'yes', uninsured = l.gteeStatus === 'no';
+    /* 父（と母）が借りていて返している途中の借入ごとに1枚（1件ずつ持つ：2026-09-28）。 */
+    loanItems(p).filter(it => it.who !== 'other' && !it.paid).forEach((l, li) => {
+      const insured = l.gtee === 'yes', uninsured = l.gtee === 'no';
       const bank = l.bank || '借入先', kind = l.type || '住宅ローン';
-      const lien = s.has === 'yes' && s.whose === 'self', lienMaybe = s.has !== 'no' && !lien;
+      const lien = l.lien === 'yes', lienMaybe = l.lien !== 'no' && !lien, noLien = l.lien === 'no';
       const drop = (after) => ({ t: '抵当権の抹消登記', w: '司法書士', s: (lienMaybe ? 'この家に抵当権が付いていれば、' : '') +
         after + '抵当権の登記は<b>自動では消えない</b>。相続登記に続けて申請する' });
       let say, steps, toc, detail;
@@ -1513,30 +1513,30 @@
       const claim = i => h6(i, '請求の期限') + '<p>団信の保険金の請求は、亡くなった日の翌日から3年で時効になります（保険法95条）。</p></section>';
       if (insured) {
         say = '団信が付いているので、' + WHO + 'が亡くなると保険金で残りが返され、<b>家族が返す必要はありません</b>。保険金は家族ではなく借入先へ払われます。' +
-          (l.debtor && !/単独/.test(l.debtor) ? '借入は「' + esc(l.debtor) + '」なので、団信で返されるのが' + WHO + 'の分だけのことがあります。借入先に確かめます。' : '');
+          (l.who === 'pair' ? '借入は' + WHO + 'と' + SPOUSE + 'なので、団信で返されるのが' + WHO + 'の分だけのことがあります。借入先に確かめます。' : '');
         steps = [{ t: '借入先へ連絡し、団信の手続きをする', w: bank, s: '出す書類は借入先が案内する（死亡診断書の写しなど）' }]
-          .concat(s.has === 'no' ? [] : [{ t: '完済の書類を受け取る', w: bank, s: '解除証書・委任状など。抵当権の抹消に使う' }, drop('完済されても、')]);
-        toc = '手続き中の引き落とし' + (s.has === 'no' ? '' : '・抹消をしないと') + '・請求の期限';
+          .concat(noLien ? [] : [{ t: '完済の書類を受け取る', w: bank, s: '解除証書・委任状など。抵当権の抹消に使う' }, drop('完済されても、')]);
+        toc = '手続き中の引き落とし' + (noLien ? '' : '・抹消をしないと') + '・請求の期限';
         detail = h6(1, '手続き中の引き落とし') + '<p>銀行が死亡を知ると、' + WHO + 'の口座は入出金が止まります。手続きが終わるまでの返済の扱いは、最初の連絡のときに借入先に確かめます。</p></section>' +
-          (s.has === 'no' ? '' : h6(2, '抹消をしないと') + '<p>抹消の登記に期限はありませんが、残ったままだと売るときの決済に間に合わないことがあり、借入先が合併すると書類の取り直しに手間がかかります。</p></section>') +
-          claim(s.has === 'no' ? 2 : 3);
+          (noLien ? '' : h6(2, '抹消をしないと') + '<p>抹消の登記に期限はありませんが、残ったままだと売るときの決済に間に合わないことがあり、借入先が合併すると書類の取り直しに手間がかかります。</p></section>') +
+          claim(noLien ? 2 : 3);
       } else if (uninsured) {
         say = '団信は付いていないので、残っている借入は<b>相続人が法定相続分で引き継ぎます</b>。';
         steps = [{ t: '借入先へ連絡し、残高を確かめる', w: bank },
           { when: '3か月以内', t: '引き継ぐか、相続放棄するかを決める', w: '家庭裁判所', s: '相続を知った日から数える。放棄すると、この家も受け取れない' },
           { t: '誰が返すかを決め、借入先と話す', w: bank, s: '相続人の間で1人が返すと決めても、借入先の承諾がないと他の相続人の返す義務は残る' }]
-          .concat(s.has === 'no' ? [] : [drop('返し終えても、')]);
+          .concat(noLien ? [] : [drop('返し終えても、')]);
         toc = '相続放棄'; detail = renounce;
       } else {
         say = '団信が付いているかの記録がありません。付いていれば家族は返さず、付いていなければ<b>相続人が引き継ぎます</b>。';
         steps = [{ t: '借入先へ連絡し、団信が付いているか確かめる', w: bank },
           { when: '付いていなければ3か月以内', t: '引き継ぐか、相続放棄するかを決める', w: '家庭裁判所', s: '放棄すると、この家も受け取れない' }]
-          .concat(s.has === 'no' ? [] : [drop('返し終えても、')]);
+          .concat(noLien ? [] : [drop('返し終えても、')]);
         toc = '相続放棄・請求の期限'; detail = renounce + claim(2);
       }
-      out.push({ id: 'loan', ord: 36.5, icon: 'tsushin', nm: kind, eyebrow: insured ? '団信' : '',
+      out.push({ id: li ? 'loan' + (li + 1) : 'loan', ord: 36.5 + li / 100, icon: 'tsushin', nm: kind, eyebrow: insured ? '団信' : '',
         card: { say, secs: [{ lb: '順番', html: sv(steps) }], toc, detail } });
-    }
+    });
 
     /* 貸している（正本 §3-6）… 主役は「貸主の立場は自動で移る」（借主の同意・
        結び直し不要）と、連絡する借主。すること3つは時期が違う。遺産分割までの
@@ -1544,7 +1544,23 @@
        人が返す、家賃収入があれば準確定申告4か月（所得税法125条）。 */
     const deals = p.deals || [];
     const lend = deals.filter(d => d.kind === 'lend');
-    if (owns && lend.length) {
+    /* 無償で使わせている（使用貸借）だけなら、家賃・敷金・準確定申告の話は無い。
+       貸主が亡くなっても使用貸借は終わらず、相続人へ移る（終わるのは借主の死亡：
+       民法597条3項）。期間・目的を決めていなければ、貸主はいつでも終わらせられる（598条2項）。 */
+    const lendFree = lend.length && lend.every(d => d.flow === 'none');
+    if (owns && lendFree) {
+      const who = lend.map(d => d.who || '借主').join('・');
+      out.push({ id: 'lend', ord: 4, icon: 'keiyaku', nm: '無償で使わせている', eyebrow: '使用貸借',
+        card: {
+          say: '無償で使わせている関係（使用貸借）は、' + WHO + 'が亡くなっても終わらず、<b>貸す側の立場が相続人へ移ります</b>。',
+          secs: [{ lb: '使っている人', html: lend.map(unit).join('') },
+            { lb: 'すること', html: sv([
+              { when: 'すぐ', t: WHO + 'が亡くなったことを知らせる', w: who },
+              { when: '分割のあと', t: 'このまま使わせるかを、継いだ人が決めて伝える', w: who, s: '期間も使い道も決めていなければ、貸す側はいつでも終わらせられる' }]) },
+            lend.some(d => d.paper !== 'none') ? { lb: 'そろえる書類', html: homeDoc('使用貸借の契約書', '期間・使い道の取り決めを確かめる', docAt('lend')) } : null].filter(Boolean),
+          toc: '使用貸借が終わるとき',
+          detail: h6(1, '使用貸借が終わるとき') + '<p>使っている人が亡くなると終わります（民法597条3項）。期間や使い道を決めていなければ、貸す側はいつでも終わらせられます（民法598条2項）。</p></section>' } });
+    } else if (owns && lend.length) {
       const who = lend.map(d => d.who || '借主').join('・');
       out.push({ id: 'lend', ord: 4, icon: 'keiyaku', nm: '貸している契約', eyebrow: '賃貸',
         card: {
@@ -1554,7 +1570,7 @@
               { when: 'すぐ', t: '借主へ知らせ、家賃の振込先を変える', w: who, s: WHO + 'の口座は、銀行が死亡を知ると入出金が止まる' },
               { when: '4か月以内', t: WHO + 'の分の確定申告（準確定申告）', w: '税務署', s: 'その年の家賃収入を含めて、相続人が出す' },
               { when: '分割のあと', t: '継いだ人を借主へ知らせる', w: who }]) },
-            { lb: 'そろえる書類', html: homeDoc('賃貸借契約書', '家賃・敷金・契約期間を確かめる', docAt('lend')) }],
+            lend.some(d => d.paper !== 'none') ? { lb: 'そろえる書類', html: homeDoc('賃貸借契約書', '家賃・敷金・契約期間を確かめる', docAt('lend')) } : null].filter(Boolean),
           toc: '分割までの家賃・敷金・準確定申告',
           detail: h6(1, '分割までの家賃') + '<p>遺産分割がまとまるまでの家賃は、相続人それぞれが法定相続分で受け取ります。あとで分割がまとまっても、この分は分け直しません（最高裁 平成17年9月8日）。</p></section>' +
             h6(2, '敷金') + '<p>借主が出るときに返す敷金は、この家を継いだ人が返します。</p></section>' +
@@ -1566,7 +1582,20 @@
        しまうのを防ぐ。民法612条は譲渡・転貸で、相続は含まない）。相続人以外への
        遺贈は承諾が要る。建物が故人名義でも借地権は対抗できるが登記義務はかかる。 */
     const borrow = deals.filter(d => d.kind === 'borrow');
-    if (borrow.length) {
+    /* 地代を払わず無償で借りている土地（使用貸借）は、借りている父が亡くなると終わる
+       のが原則（民法597条3項）。借地権ではないので、承諾不要・引き継げるの話にならない。 */
+    if (borrow.length && borrow.every(d => d.flow === 'none')) {
+      const who = borrow.map(d => d.who || '地主').join('・');
+      out.push({ id: 'borrow', ord: 99, icon: 'keiyaku', nm: '無償で借りている土地', eyebrow: '使用貸借',
+        card: {
+          say: '無償で借りている土地（使用貸借）は、<b>借りている' + WHO + 'が亡くなると終わるのが原則です</b>。地代を払う借地と違い、相続人はそのまま引き継げません。',
+          secs: [{ lb: '地主', html: borrow.map(unit).join('') },
+            { lb: 'すること', html: sv([
+              { when: 'すぐ', t: '地主へ知らせ、建物と土地をどうするか話す', w: who, s: '使い続けるなら、地主と改めて取り決める' }]) },
+            borrow.some(d => d.paper !== 'none') ? { lb: 'そろえる書類', html: homeDoc('使用貸借の契約書', '期間・使い道の取り決めを確かめる', docAt('borrow')) } : null].filter(Boolean),
+          toc: '終わるのが原則',
+          detail: h6(1, '終わるのが原則') + '<p>使用貸借は、借りている人が亡くなると終わります（民法597条3項）。ただ、建物を建てるための土地の貸し借りでは、事情から続くと判断された裁判例もあります。地主とよく話し合います。</p></section>' } });
+    } else if (borrow.length) {
       const who = borrow.map(d => d.who || '地主').join('・');
       out.push({ id: 'borrow', ord: 99, icon: 'keiyaku', nm: '借地', eyebrow: '借地',
         card: {
@@ -1575,7 +1604,7 @@
             { lb: 'すること', html: sv([
               { when: 'すぐ', t: '地主へ知らせ、地代の払い方を確かめる', w: who, s: WHO + 'の口座からの引き落としは、銀行が死亡を知ると止まる' },
               { when: '分割のあと', t: '継いだ人を地主へ知らせる', w: who, s: '承諾をもらう手続きではない。建物の相続登記で借地権も一緒に引き継ぐ' }]) },
-            { lb: 'そろえる書類', html: homeDoc('借地契約書', '地代・契約期間・更新の時期を確かめる', docAt('borrow')) }],
+            borrow.some(d => d.paper !== 'none') ? { lb: 'そろえる書類', html: homeDoc('借地契約書', '地代・契約期間・更新の時期を確かめる', docAt('borrow')) } : null].filter(Boolean),
           toc: '相続人以外に遺すとき・建物の登記',
           detail: h6(1, '相続人以外に遺すとき') + '<p>孫や相続人の配偶者など、相続人ではない人に遺言で渡すときは、地主の承諾が要ります。</p></section>' +
             h6(2, '建物の登記') + '<p>建物が' + WHO + 'の名義のままでも、土地が売られたとき新しい地主に借地権を主張できます。それでも相続登記の義務（3年）はかかります。</p></section>' } });
@@ -1973,40 +2002,36 @@
                （いちばん先に目に入るべきもの。点つきの字で、枠の札にしない）
        問い   … 名義／登記を見ても分からないこと／名義を得たときの紙
      登記を見ても分からないことは、今のうち・そのときの行の答えを映すだけで、
-     説明は向こうのカードが持つ（↑で飛ぶ）。紙の有無は物件に1つ
+     説明は向こうのカードが持つ。紙の有無は物件に1つ
      （docs.at.deed・acquire、書類のありかのフォームで聞く）なので2列をまたぐ。 */
-  /* 建物の変更が登記に載っていないとき（今のうちの「建物の変更・登記」の答えを映す）。 */
-  function bldgGap(p) {
-    if (p.kind === 'land') return '';
-    const gap = chGap(p), t = [];
-    if (gap.grow.length) t.push(gap.grow.map(chName).join('・') + 'が登記に載っていない');
-    if (gap.gone.length) t.push(gap.gone.map(chName).join('・') + 'が登記に残っている');
-    if (gap.diff) t.push('課税明細書と登記で床面積が違う');
-    return t.join('。');
-  }
+  /* 登記と違うところの文（2026-09-28）。何が違うかは state.js の rightCheck が
+     答えから決める（権利関係のフォーム・前の代の相続登記・建物の変更・登記のどれで
+     答えても同じ記録）。文はそれだけで読めるように書き、上段の行へ飛ぶ行き先は
+     付けない ―― 名義の下に何が違うかが書いてあれば、飛ぶ先は要らなかった。 */
   function rightGap(p, k, r) {
-    const out = [];
-    if (r.hold === 'lease') out.push({ t: '借地権は登記されないことが多く、登記を見ても' + WHO + 'が借りていることは分からない。', zone: 'when', key: 'borrow', nm: '借地' });
-    if (S.priorPending(p, k)) out.push({ t: priorStageLine(priorCase(p))[1] + '。', zone: 'now', key: 'prior', nm: '前の代の相続登記' });
-    if (k === 'bldg' && bldgGap(p)) out.push({ t: bldgGap(p) + '。', zone: 'now', key: 'changed', nm: '建物の変更・登記' });
-    if (!out.length && r.match === 'differ') out.push({ t: '登記の名義と、実際の権利関係が違う。' });
+    if (r.hold === 'lease') return ['借地権は登記されないことが多く、登記を見ても' + WHO + 'が借りていることは分からない。'];
+    const { gaps } = S.rightCheck(p, k), out = [];
+    if (gaps.some(g => g.key === 'prior')) out.push('前の代の名義のまま。' + priorStageLine(priorCase(p))[1] + '。');
+    const grow = gaps.filter(g => g.c && S.chGrow(g.c.what)).map(g => chName(g.c));
+    const gone = gaps.filter(g => g.c && !S.chGrow(g.c.what)).map(g => chName(g.c));
+    if (grow.length) out.push(grow.join('・') + 'が登記に載っていない。');
+    if (gone.length) out.push(gone.join('・') + 'が登記に残っている。');
+    if (gaps.some(g => g.diff)) out.push('課税明細書と登記で床面積が違う。');
     return out;
   }
   function rightMark(p, k, r) {
     if (r.hold === 'lease') return ['登記に出ない', 1];
-    if (rightGap(p, k, r).length) return ['登記と違う', 1];
-    if (!r.match || r.match === 'unknown') return ['未確認', 1];
-    return ['登記どおり', 0];
+    const c = S.rightCheck(p, k);
+    if (c.gaps.length) return ['登記と違う', 1];
+    if (c.unsure) return ['未確認', 1];
+    return ['登記どおり', 'ok'];
   }
-  const mark = (t, warn) => '<span class="mk' + (warn ? ' warn' : '') + '">' + esc(t) + '</span>';
-  /* 上段の行への行き先。行き先の行が上段にあるときだけ出す。 */
-  function upLink(p, zone, key, nm) {
-    const has = zone === 'now' ? nowRows(p).some(x => x.key === key) : goneRows(p).some(x => x.id === key);
-    if (!has) return '';
-    return '<button type="button" class="up-go ' + zone + '" data-up-go="' + esc(key) + '" data-up-zone="' + zone + '">' +
-      '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.5v-9M2.5 5 6 1.5 9.5 5"/></svg>' +
-      '<i>' + (zone === 'now' ? '今のうち' : 'そのとき') + '</i><span>' + esc(nm) + '</span></button>';
-  }
+  /* 点つきの字。tone＝'ok'（済み：緑）／1（気をつける：橙）／0（途中：灰）。
+     以前は橙とそれ以外の2つで、登記どおり・ある（済み）が確認中と同じ灰に見えていた。
+     ページのほかの「済み」（確認済み・登記済み）と同じく緑にする（2026-09-28）。 */
+  /* この家のローン・借入（1件ずつ）。「ある」と答えたときだけ。 */
+  const loanItems = p => p.loan && p.loan.has === 'yes' ? p.loan.items || [] : [];
+  const mark = (t, tone) => '<span class="mk' + (tone === 'ok' ? ' ok' : tone ? ' warn' : '') + '">' + esc(t) + '</span>';
   /* 部屋の中の見出し（権利関係・ローン・契約）。白い小枠の絵＋題＋一言＋入口。 */
   function sceneHead(icon, title, lead, right) {
     return '<div class="sc-h"><span class="sc-ic">' + (ICONS[icon] || '') + '</span><h4>' + esc(title) + '</h4>' +
@@ -2017,7 +2042,7 @@
     return '<button type="button" class="pen-edit" data-edit-p="' + esc(p.id) + '" data-edit-type="' + esc(type) +
       '" data-edit-key="' + esc(key) + '" aria-label="' + esc(what + 'を記録') + '">' + PEN_SM + '</button>';
   }
-  const PAPER_ST = { have: ['ある', 0], lost: ['見つからない', 1], unknown: ['未確認', 1] };
+  const PAPER_ST = { have: ['ある', 'ok'], lost: ['見つからない', 1], unknown: ['未確認', 1] };
   function roomRights(p) {
     const keys = (p.kind === 'condo' ? ['bldg'] : p.kind === 'land' ? ['land'] : ['land', 'bldg'])
       .filter(k => p.rights[k]);
@@ -2032,15 +2057,17 @@
     };
     const owner = ({ k, r }) => {
       const lease = r.hold === 'lease';
-      const sub = lease ? '登記の名義は地主' + (r.owner ? '（' + r.owner + '）' : '')
+      /* 地主は契約の相手（借りている）が持つ（権利関係のフォームで書いても、そこへ入る）。 */
+      const lord = (p.deals || []).filter(d => d.kind === 'borrow' && d.who).map(d => d.who).join('・') || r.owner;
+      const sub = lease ? '登記の名義は地主' + (lord ? '（' + lord + '）' : '')
         : [(HOLD[r.hold] || HOLD.own).label, r.shares].filter(Boolean).join('・') + (k === 'bldg' && p.built ? '・' + p.built + '築' : '');
       return '<div class="rk-nm">' + esc(lease ? '借地' : r.owner || '未記録') + '</div><div class="rk-sub">' + esc(sub) + '</div>' +
         (r.memo ? '<div class="rk-memo">' + esc(r.memo) + '</div>' : '');
     };
     const gap = ({ k, r }) => {
       const g = rightGap(p, k, r);
-      if (g.length) return g.map(x => '<p class="rk-tx">' + esc(x.t) + '</p>' + (x.zone ? upLink(p, x.zone, x.key, x.nm) : '')).join('');
-      return '<p class="rk-tx none">' + (!r.match || r.match === 'unknown' ? 'まだ確かめていない' : 'ない') + '</p>';
+      if (g.length) return g.map(t => '<p class="rk-tx">' + esc(t) + '</p>').join('');
+      return '<p class="rk-tx none">' + (S.rightCheck(p, k).unsure ? 'まだ確かめていない' : 'ない') + '</p>';
     };
     const at = p.docs.at || {};
     const papers = ['deed', 'acquire'].map(key => {
@@ -2051,8 +2078,8 @@
     return sceneHead('right', '権利関係', '土地と建物の名義') +
       '<div class="rk" style="--n:' + cols.length + '">' + cols.map(head).join('') +
         q('名義') + two(owner) +
-        q('登記を見ても分からないこと') + two(gap) +
-        q('名義を得たときの紙') + '<div class="rk-c rk-span">' + papers + '</div>' +
+        q('登記内容と違うところ') + two(gap) +
+        q('書類') + '<div class="rk-c rk-span">' + papers + '</div>' +
       '</div>';
   }
 
@@ -2070,48 +2097,46 @@
     return '<div class="lc"><div class="lc-h">' + BAND + '<span class="lc-k">' + esc(c.band) + '</span>' + (c.right || '') + '</div>' +
       '<div class="lc-b"><div class="lc-nm">' + esc(c.nm) + '</div>' + (c.sub ? '<div class="lc-sub">' + esc(c.sub) + '</div>' : '') +
       (c.kv && c.kv.length ? '<dl class="lc-kv">' + c.kv.map(([k, v, cls]) => '<dt>' + esc(k) + '</dt><dd' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</dd>').join('') + '</dl>' : '') +
-      (c.go || '') + '</div></div>';
+      '</div></div>';
   }
   const telDD = t => TEL_IC + esc(t);
   const DEAL_BAND = { manage: '管理を頼んでいる', lend: '貸している', borrow: '借りている（地主）' };
   function roomParty(p) {
-    const l = p.loan || {}, s = p.security || {};
-    const secMine = s.has === 'yes' && s.whose === 'self', secOther = s.has === 'yes' && s.whose === 'other';
-    const secText = secMine ? 'この家に抵当権' + (s.order ? '（' + s.order + '）' : '')
-      : s.has === 'no' ? 'この家は担保になっていない' : s.has === 'yes' ? '誰の借入の担保か、まだ確かめていない' : 'まだ確かめていない';
-    const secBtn = '<button type="button" class="lc-sec" data-edit-p="' + esc(p.id) + '" data-edit-type="security" data-edit-key="security" aria-label="担保を記録">担保を記録</button>';
+    /* ローンの部屋（2026-09-28）。借入1件に1枚。見出しは種類、名前は借入先、その下に
+       借りている人。会社・親族の借入にこの家を担保として入れているものも同じ形の1枚
+       （借りている人がその名前になるだけ。別の呼び名を付けない）。
+       返し終えて抵当権が残っていれば、次にすることまで言う（自動では消えない）。 */
+    const l = p.loan || {};
     let loan = '';
-    if (l.has === true) {
-      const g = { yes: ['団信あり', 0], no: ['団信なし', 1] }[l.gteeStatus] || ['団信 未確認', 1];
-      const kv = [['担保', esc(secText) + secBtn, s.has === 'yes' && !secMine ? 'q' : '']];
-      if (l.tel) kv.push(['電話', telDD(l.tel), 'tel']);
-      if (l.memo) kv.push(['メモ', esc(l.memo)]);
-      loan += lcCard({ band: l.type || '借入', right: mark(g[0], g[1]), nm: l.bank || '借入先が未記録',
-        sub: l.debtor ? l.debtor.replace(/単独$/, '（単独）') + 'が借りている' : '', kv,
-        go: upLink(p, 'now', 'loan', '団信の加入状況') + upLink(p, 'when', 'loan', l.type || '住宅ローン') });
-    } else {
-      const t = l.has === false ? WHO + 'の借入はない' + (s.has === 'no' ? '。この家は担保になっていない' : '')
-        : '借入があるか、まだ確かめていない';
-      loan += '<div class="lc-note"><p>' + esc(t + '。') + (l.memo ? '<small>' + esc(l.memo) + '</small>' : '') + '</p>' +
-        (l.has === false && s.has !== 'no' && !secOther ? '<p class="lc-note-s">担保：' + esc(secText) + secBtn + '</p>' : '') + '</div>';
-    }
-    if (secOther) loan += lcCard({ band: 'この家が担保になっている借入', right: mark(WHO + 'の借入ではない', 1), nm: s.bank || '借入先が未記録',
-      sub: s.what || '', kv: [['担保', 'この家に抵当権' + (s.order ? '（' + esc(s.order) + '）' : '') + secBtn],
-        ['注意', '返すのは借りた人。返されないと、この家が競売にかけられることがある。', 'q']] });
+    const WHO_LN = { self: WHO + '（単独）が借りている', pair: WHO + 'と' + SPOUSE + 'が借りている' };
+    loanItems(p).forEach(it => {
+      const mine = it.who !== 'other';
+      const right = it.paid ? mark('返し終えた', 0) : !mine ? '' :
+        mark(...({ yes: ['団信あり', 'ok'], no: ['団信なし', 1] }[it.gtee] || ['団信 未確認', 1]));
+      const lien = it.paid
+        ? ({ no: ['抹消した', ''], yes: ['まだ登記に残っている。借入先から解除証書を受け取り、抹消の登記をする', 'q'] }[it.lien] || ['抹消したか、まだ確かめていない', 'q'])
+        : ({ yes: ['この家に抵当権', ''], no: ['付いていない（この家は担保ではない）', ''] }[it.lien] || ['まだ確かめていない', 'q']);
+      const kv = [['抵当権', esc(lien[0]), lien[1]]];
+      if (it.tel && !it.paid) kv.push(['電話', telDD(it.tel), 'tel']);
+      loan += lcCard({ band: it.type || '借入', right, nm: it.bank || '借入先が未記録',
+        sub: it.who === 'other' ? (it.whoName || '誰の借入か未記録') + 'が借りている' : WHO_LN[it.who] || '借りている人をまだ確かめていない', kv });
+    });
+    if (l.has !== 'yes') loan += '<div class="lc-note"><p>' + (l.has === 'no' ? 'この家のローン・借入はない。' : 'ローン・借入があるか、まだ確かめていない。') + '</p></div>';
+    if (l.memo) loan += '<div class="lc-note"><p><small>' + esc(l.memo) + '</small></p></div>';
     const deals = (p.deals || []).map((d, i) => {
-      const flow = { pay: WHO + 'が払う', recv: WHO + 'が受け取る' }[d.flow];
-      const st = d.st === 'done' ? '' : d.who ? mark('確認中', 0) : mark('未確認', 1);
+      const flow = ({ lend: { recv: '家賃を受け取っている', none: '無償で使わせている（使用貸借）' },
+        borrow: { pay: '地代を払っている', none: '無償で借りている（使用貸借）' } }[d.kind] || {})[d.flow];
+      /* 状態は、家族が連絡できるか（相手と電話）。足りないものをそのまま言う。 */
+      const st = !d.who ? mark('相手が未記録', 1) : !d.tel ? mark('電話が未記録', 1) : '';
       const kv = [];
       if (d.tel) kv.push(['電話', telDD(d.tel), 'tel']);
       if (flow) kv.push(['お金', esc(flow)]);
       return lcCard({ band: DEAL_BAND[d.kind] || (DEALS[d.kind] || DEALS.manage).label, nm: d.who || '相手が未記録', sub: d.what || '', kv,
-        right: st + penButton(p, 'deal', String(i), d.who || '契約の相手'),
-        go: d.kind === 'lend' ? upLink(p, 'when', 'lend', '貸している契約') : d.kind === 'borrow' ? upLink(p, 'when', 'borrow', '借地') : '' });
+        right: st + penButton(p, 'deal', String(i), d.who || '契約の相手') });
     }).join('');
-    /* 部屋の右下に方位マーク（間取り図の約束）が載るので、その高さぶん下を空ける（.lc-room）。 */
-    return '<div class="lc-room"><div class="lc-sc">' + sceneHead('loan', 'ローン', 'この家に付いている借入', penButton(p, 'loan', 'loan', '借入')) + loan + '</div>' +
+    return '<div class="lc-room"><div class="lc-sc">' + sceneHead('loan', 'ローン・借入', 'この家に付いている借入', penButton(p, 'loan', 'loan', '借入')) + loan + '</div>' +
       '<div class="lc-sc">' + sceneHead('deal', '契約', '続いている相手',
-        '<button type="button" class="lc-add" data-edit-p="' + esc(p.id) + '" data-edit-type="deal" data-edit-key="new">＋ 足す</button>') +
+        '<button type="button" class="lc-add" data-edit-p="' + esc(p.id) + '" data-edit-type="deal" data-edit-key="new">＋ 追加</button>') +
       (deals || '<p class="lc-none">記録されている契約はない。</p>') + '</div></div>';
   }
 
@@ -2225,8 +2250,11 @@
     rights.push({ key: 'deed', fig: 'deed', n: '権利証', q: '登記済証・登記識別情報', own: true });
     rights.push({ key: 'acquire', fig: 'contract', n: '買ったとき・建てたときの契約書・領収書', own: true });
     const who = kind => (p.deals || []).filter(d => d.kind === kind).map(d => d.who).filter(Boolean).join('・');
-    if ((p.deals || []).some(d => d.kind === 'lend')) deals.push({ key: 'lend', fig: 'lease', n: '賃貸借契約書', q: who('lend') });
-    if ((p.deals || []).some(d => d.kind === 'borrow')) deals.push({ key: 'borrow', fig: 'lease', n: '借地契約書', q: who('borrow') });
+    /* 契約書は、契約のフォームで「口約束のまま」と答えた相手だけのときは出さない。 */
+    const paper = kind => (p.deals || []).some(d => d.kind === kind && d.paper !== 'none');
+    const free = kind => (p.deals || []).filter(d => d.kind === kind).every(d => d.flow === 'none');
+    if (paper('lend')) deals.push({ key: 'lend', fig: 'lease', n: free('lend') ? '使用貸借の契約書' : '賃貸借契約書', q: who('lend') });
+    if (paper('borrow')) deals.push({ key: 'borrow', fig: 'lease', n: free('borrow') ? '使用貸借の契約書' : '借地契約書', q: who('borrow') });
     return [{ label: '今のうち', rows: now }, { label: '権利関係', rows: rights }, { label: 'ローン・契約', rows: deals }].filter(x => x.rows.length);
   }
   /* 役所で取る書類（そのときの相続登記がそろえるもの）。取ったあとは家のどこかに
@@ -2643,14 +2671,8 @@
       'dominant-baseline': 'middle', class: 'pl-gk-label' });
     gkT.textContent = '玄関'; svg.appendChild(gkT);
 
-    /* 方位（北）。間取り図の約束。建物の右下の外に置く。 */
-    const north = el('g', { class: 'pl-north',
-      transform: 'translate(' + (W_ - 62) + ',' + (H - 58) + ')' });
-    north.appendChild(el('circle', { r: 25 }));
-    north.appendChild(el('path', { class: 'pl-n-arrow', d: 'M0 -18 L7 8 L0 2 L-7 8 Z' }));
-    const northT = el('text', { y: -25, 'text-anchor': 'middle' });
-    northT.textContent = 'N'; north.appendChild(northT);
-    svg.appendChild(north);
+    /* 方位マークは置かない ―― 右下の部屋の下に、その高さぶんの空きができていた
+       （2026-09-28）。この間取りは物件の実際の向きを描いていない。 */
 
     const layer = document.createElement('div');
     layer.className = 'layer';
@@ -3121,21 +3143,6 @@
         if (!row) return;
         const stick = parseFloat(getComputedStyle(nav).top) || 0;
         window.scrollTo({ top: scrollY + row.getBoundingClientRect().top - stick - nav.offsetHeight - 10, behavior: 'smooth' });
-        const nm = row.querySelector('.uh-nm, .procedure-head h5');
-        if (nm) { nm.tabIndex = -1; nm.focus({ preventScroll: true }); }
-      };
-    });
-    /* 下段（権利関係・ローン・契約）から上段の行へ。今のうちとそのときに同じ鍵（loan）が
-       あるので、部屋を決めてから探す。間取りと狭い幅の一覧の2か所にあるので、見えているほう。 */
-    document.querySelectorAll('[data-up-go]').forEach(b => {
-      b.onclick = () => {
-        const sec = b.closest('.prop'), zone = b.dataset.upZone === 'now' ? 'liv' : 'when';
-        const room = Array.from(sec.querySelectorAll('.c-' + zone + ', .rm-' + zone)).find(el => el.getBoundingClientRect().height);
-        const row = room && room.querySelector('[data-now-row="' + CSS.escape(b.dataset.upGo) + '"]');
-        if (!row) return;
-        const nav = room.querySelector('.now-nav');
-        const stick = nav ? (parseFloat(getComputedStyle(nav).top) || 0) + nav.offsetHeight : 0;
-        window.scrollTo({ top: scrollY + row.getBoundingClientRect().top - stick - 10, behavior: 'smooth' });
         const nm = row.querySelector('.uh-nm, .procedure-head h5');
         if (nm) { nm.tabIndex = -1; nm.focus({ preventScroll: true }); }
       };

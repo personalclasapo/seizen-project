@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>権利関係フォーム 案v1</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<link rel="stylesheet" href="../prototype/real-estate/area.css">
+<style>
+/* 見本：本番のダイアログの部品（.re-opts・.re-q-in 等）をそのまま使い、並べ方だけを3通りにする。 */
+body{margin:0;padding:24px;background:#8d938a;font-family:var(--font);display:flex;flex-direction:column;align-items:center;gap:28px}
+.cap{color:#fff;font:600 14px/1.5 var(--font);width:860px}
+.dlg{width:860px;background:#fffdf8;border-radius:14px;box-shadow:0 20px 50px #0003;overflow:hidden}
+.dlg-h{padding:24px 28px 18px;border-bottom:1px solid #e5dfd3}
+.dlg-h p{font-size:12px;letter-spacing:.08em;color:#8d7653;margin:0 0 7px}
+.dlg-h h2{font-size:21px;font-weight:650;margin:0;color:#2f352c}
+.dlg-b{padding:22px 28px 26px}
+.dlg-f{display:flex;justify-content:flex-end;gap:10px;padding:14px 28px;background:#f6f3ec;border-top:1px solid #e5dfd3}
+.dlg-f button{font:600 13px/1.5 var(--font);padding:10px 15px;border:1px solid #cbd0bf;border-radius:5px;background:#fffef9;color:#55634d}
+.dlg-f .sv{background:#3f5f47;color:#fff;border-color:#3f5f47}
+.ln{display:grid;grid-template-columns:11em minmax(0,1fr);gap:10px 16px;align-items:center}
+.ln>span{font-size:13.5px;font-weight:600;color:#56604F}
+.ln>span small{display:block;font-size:11.5px;font-weight:500;color:#858978}
+.ln .re-opts{gap:6px}.ln .re-opt>span{padding:6px 14px}
+.ln .re-q-in{width:min(280px,100%)}
+.hint{margin:8px 0 0;font-size:12px;color:#858978;line-height:1.65}
+
+/* A：問いごとの白い札（床→白い札→中身。建物の変更の件の札と同じ層） */
+.A .dlg-b{background:#f4f1e9}
+.A .qcard{background:#fff;border:1px solid #e0dccf;border-radius:10px;box-shadow:0 1px 2px #3f5c4b12}
+.A .qcard+.hint{margin:8px 4px 0}
+.A .blk+.blk{margin-top:18px}
+.A .card-h{padding:12px 18px;border-bottom:1px solid #ece8dd;font-size:15px;font-weight:650;color:#3C4437}
+.A .card-b{padding:14px 18px 16px}
+.A textarea{width:100%;box-sizing:border-box}
+
+/* B：左に問い、右に答え（2段組。問いの間に1本の線） */
+.B .blk{display:grid;grid-template-columns:200px minmax(0,1fr);gap:0 24px;padding:18px 0}
+.B .blk+.blk{border-top:1px solid #e8e5da}
+.B .blk:first-child{padding-top:4px}
+.B .qt{font-size:15px;font-weight:650;color:#3C4437;line-height:1.55}
+.B .qt+.hint{margin-top:6px}
+.B .ln{grid-template-columns:9.5em minmax(0,1fr)}
+.B textarea{width:100%;box-sizing:border-box}
+
+/* C：表の形（ページの権利関係の表と同じ：灰色の帯の見出し＋行） */
+.C .tbl{background:#fff;border:1px solid #d9d3c4;border-radius:8px;overflow:hidden}
+.C .bar{background:#f4f1e9;border-top:1px solid #e6e1d4;border-bottom:1px solid #e6e1d4;padding:7px 18px;font-size:12.5px;font-weight:700;color:#5d6652;letter-spacing:.04em}
+.C .bar:first-child{border-top:0}
+.C .row{padding:12px 18px}
+.C .row .hint{margin-top:10px}
+.C textarea{width:100%;box-sizing:border-box}
+/* D：Aの札の並べ方＋Cの帯の見出し・文字（名詞の見出し、説明は札の中） */
+.D .dlg-b{background:#f4f1e9}
+.D .qcard{background:#fff;border:1px solid #d9d3c4;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px #3f5c4b12}
+.D .qcard+.qcard{margin-top:14px}
+.D .bar{background:#f4f1e9;border-bottom:1px solid #e6e1d4;padding:7px 18px;font-size:12.5px;font-weight:700;color:#5d6652;letter-spacing:.04em}
+.D .row{padding:12px 18px}
+.D .row .hint{margin-top:10px}
+.D textarea{width:100%;box-sizing:border-box}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+let VK = '';
+const pill = (name, cur, opts) => '<div class="re-opts pill">' + opts.map(o => '<label class="re-opt"><input type="radio" name="' + VK + name + '"' + (o === cur ? ' checked' : '') + '><span><b>' + o + '</b></span></label>').join('') + '</div>';
+const inp = v => '<input class="re-q-in" value="' + v + '">';
+const lines = rows => '<div class="ln">' + rows.map(([l, v]) => '<span>' + l + '</span><div>' + v + '</div>').join('') + '</div>';
+const Q = () => { const q = [
+  { t: '誰が、どう持っていますか', rows: [['持ち方', pill('a', '所有', ['所有', '共有', 'その他'])], ['名義人', inp('父')]], h: '登記事項証明書のとおりに。' },
+  { t: '登記内容と違うところはありますか', bar: '登記内容と違うところ', rows: [
+      ['前の代の名義', pill('b', '残っていない', ['残っている', '残っていない', 'まだ確かめていない'])],
+      ['増築<small>奥・2015年ごろ</small>', pill('c', '載っていない', ['載っている', '載っていない', 'まだ確かめていない'])]], h: '登記事項証明書で分かります。' },
+  { t: '書類はありますか', bar: '書類', rows: [
+      ['権利証<small>登記識別情報など</small>', pill('d', 'ある', ['ある', '探したが無い', 'まだ確かめていない'])],
+      ['契約書・領収書<small>買った・建てたとき</small>', pill('e', '探したが無い', ['ある', '探したが無い', 'まだ確かめていない'])]], h: 'どこにあるかは「書類のありか」で記録します。' },
+  { t: '登記に出ない事情', memo: true, h: '父しか知らないことを。例：共有している叔父とは、固定資産税を父が払う約束。' }];
+q[0].bar = '名義'; return q; };
+const body = (q) => q.memo ? '<textarea class="re-q-in" rows="3">2004年6月に保存登記。</textarea>' : lines(q.rows);
+const build = {
+  A: () => ['A｜問いごとに白い札で囲む', Q().map(q => '<div class="blk"><div class="qcard"><div class="card-h">' + q.t + '</div><div class="card-b">' + body(q) + '</div></div><p class="hint">' + q.h + '</p></div>').join('')],
+  B: () => ['B｜左に問い、右に答え（2段組）', Q().map(q => '<div class="blk"><div><div class="qt">' + q.t + '</div><p class="hint">' + q.h + '</p></div><div>' + body(q) + '</div></div>').join('')],
+  D: () => ['D｜Aの札 ＋ Cの見出しと文字', Q().map(q => '<div class="qcard"><div class="bar">' + (q.bar || q.t) + '</div><div class="row">' + body(q) + '<p class="hint">' + q.h + '</p></div></div>').join('')],
+  C: () => ['C｜表の形（ページの権利関係の表と同じ組み方）', '<div class="tbl">' + Q().map(q => '<div class="bar">' + (q.bar || q.t) + '</div><div class="row">' + body(q) + '<p class="hint">' + q.h + '</p></div>').join('') + '</div>']
+};
+const V = Object.fromEntries(Object.keys(build).map(k => { VK = k; return [k, build[k]()]; }));
+document.getElementById('root').outerHTML = Object.entries(V).map(([k, [cap, html]]) =>
+  '<div class="cap">' + cap + '</div><div class="dlg ' + k + '" id="v' + k + '"><div class="dlg-h"><p>自宅 ／ 確認と記録</p><h2>建物の権利関係</h2></div>' +
+  '<div class="dlg-b">' + html + '</div><div class="dlg-f"><button>キャンセル</button><button class="sv">記録を保存</button></div></div>').join('');
+</script>
+</body>
+</html>

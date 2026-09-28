@@ -146,9 +146,6 @@
 .pl-w-line{stroke:#6E6A60;stroke-linecap:square}
 .pl-kama{stroke:#B9B3A4;stroke-width:1.6}
 .pl-gk-label{font-size:16px;fill:#8C8779;font-family:var(--font)}
-.pl-north circle{fill:none;stroke:#B9B3A4;stroke-width:1.4}
-.pl-n-arrow{fill:#6E6A60}
-.pl-north text{font-size:15px;fill:#6E6A60;font-family:var(--font)}
 
 .layer{position:absolute;inset:0}
 /* 部屋は中身の高さまで伸びる（buildPlan が実測して壁を置く）ので、
@@ -274,9 +271,7 @@
 .record-edit .re-pen{width:13px;height:13px;flex:none}
 .record-edit:hover{background:#F3F7F2;border-color:#C9D3C7;color:#284C32}
 .record-edit:focus-visible,.record-add:focus-visible{outline:2px solid #64886B;outline-offset:2px}
-/* 追加＝空いている枠。既存を直すボタンと形を分ける（点線）。
-   全幅にしない ―― 最後の部屋の右下には方位マーク（SVG）が
-   あり、全幅だと重なる（ローン・契約の部屋で実測）。 */
+/* 追加＝空いている枠。既存を直すボタンと形を分ける（点線）。 */
 .record-add{display:inline-flex;align-items:center;gap:6px;
   min-height:36px;margin-top:12px;padding:0 16px 0 13px;border:1px dashed #BFC9BC;border-radius:7px;background:none;
   color:#4F6B56;font:600 11.5px/1.4 var(--font);cursor:pointer}
@@ -573,19 +568,11 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .pen-edit:focus-visible{outline:2px solid #64886B;outline-offset:2px}
 /* 状態は点つきの字（枠の札にすると押せるボタンに見える）。橙＝気にすること、薄緑＝片付いている。 */
 .mk{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--ink2);white-space:nowrap}
-.mk::before{content:"";width:6px;height:6px;border-radius:50%;background:#A8B8A6}
+.mk::before{content:"";width:6px;height:6px;border-radius:50%;background:#B9B3A4}
+.mk.ok{color:var(--gr)}
+.mk.ok::before{background:#5E8F6E}
 .mk.warn{color:#8f6227}
 .mk.warn::before{background:#D39A4A}
-/* 上段の行への行き先。部屋の語だけ色を持つ。 */
-.up-go{display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;margin:4px 0 0;padding:0;border:0;background:none;cursor:pointer;
-  font:600 11px/1.6 var(--font);color:var(--ink);text-align:left}
-.up-go svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-.up-go i{font-style:normal;white-space:nowrap}
-.up-go.now svg,.up-go.now i{color:#9A6A2A}
-.up-go.when svg,.up-go.when i{color:#35604a}
-.up-go:hover span{text-decoration:underline;text-underline-offset:2px}
-.up-go:focus-visible{outline:2px solid #64886B;outline-offset:2px}
-
 /* ── 権利関係：土地｜建物を見比べる1枚。問いの見出しは2列をまたいで1回だけ。 ── */
 .rk{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));background:#fff;border:1px solid #d9d3c4;
   border-radius:8px;overflow:hidden;box-shadow:0 1px 2px #3f5c4b14}
@@ -608,17 +595,14 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .rk-sub{margin-top:1px;font-size:11px;line-height:1.55;color:var(--ink2)}
 .rk-memo{margin-top:3px;font-size:11px;line-height:1.55;color:var(--ink3)}
 .rk-tx{margin:0;font-size:12px;line-height:1.7;color:#3F3B34}
-.rk-tx + .up-go + .rk-tx,.up-go + .rk-tx{margin-top:6px}
 .rk-tx.none{color:var(--ink3)}
+.rk-tx + .rk-tx{margin-top:6px}
 .rk-pp{display:flex;align-items:baseline;gap:8px;font-size:12px;line-height:1.6}
 .rk-pp + .rk-pp{margin-top:4px}
 .rk-pp .mk{margin-left:auto}
 
 /* ── ローン・契約：1件＝相手のカード。頭に帯（薄い緑の地に濃い緑の字）。 ── */
 .lc-sc + .lc-sc{margin-top:22px}
-/* 方位マーク（半径25＋余白）の上で部屋が終わるように。狭い幅の一覧には方位マークが無い。 */
-.lc-room{padding-bottom:62px}
-.stack .lc-room{padding-bottom:0}
 .lc{position:relative;border-radius:8px;overflow:hidden;background:#fff;border:1px solid #d9d3c4;border-top:0;
   box-shadow:0 1px 2px #3f5c4b1c,0 4px 9px -4px #3f5c4b26}
 .lc + .lc{margin-top:10px}
@@ -638,16 +622,11 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .lc-kv dd.q{color:#8f6227;font-weight:600}
 .lc-kv dd.tel{display:flex;align-items:center;gap:5px;color:var(--gr2);font-weight:700;font-variant-numeric:tabular-nums}
 .lc-kv dd.tel svg{width:12px;height:12px;flex:none;fill:currentColor}
-.lc-b .up-go{margin-top:8px}
-.lc-b .up-go + .up-go{margin-top:2px}
-/* 担保の入口（担保は借入と別のフォーム）。値の後ろに小さな字のボタン。 */
-.lc-sec{margin-left:8px;padding:0;border:0;background:none;cursor:pointer;font:600 10.5px/1.6 var(--font);color:#6B7F6E;
-  text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
-.lc-sec:hover{color:#284C32}
 .lc-note{padding:2px 2px 0}
 .lc-note p{margin:0;font-size:12.5px;line-height:1.7;color:var(--ink2)}
 .lc-note small{display:block;font-size:11px;color:var(--ink3)}
 .lc-note .lc-note-s{margin-top:4px;font-size:12px}
+.lc-note .lc-note-s.warn{color:#8f6227}
 .lc-note + .lc{margin-top:10px}
 .lc-add{display:inline-flex;align-items:center;height:28px;padding:0 10px;flex:none;margin-left:auto;border:1px solid var(--line);
   border-radius:7px;background:#fff;color:var(--gr2);font:600 11px/1 var(--font);cursor:pointer}
@@ -802,7 +781,7 @@ button.bdg.status-pick{font-size:10.5px;padding:3px 9px 3px 10px}
    1列で上から答える。プルダウンにしない（開くまで選択肢が見えない）。
    pill＝短い選択肢を横に、row＝説明の要る選択肢を縦に。 */
 .re-q{margin:0 0 22px}
-.re-q:last-child{margin-bottom:0}
+.re-q:last-child,.re-q:not(:has(~ .re-q:not([hidden]))){margin-bottom:0}
 .re-q-t{margin:0 0 10px;font-size:15px;font-weight:600;line-height:1.6;color:#3C4437}
 .re-q-h{margin:8px 0 0;font-size:12px;color:#858978;line-height:1.65}
 .re-q-in{box-sizing:border-box;width:min(340px,100%);border:1px solid #cccfc0;background:#fff;border-radius:6px;
@@ -989,3 +968,26 @@ textarea.re-q-in{width:100%;resize:vertical;display:block}
 .cg-v.ok{color:var(--gr);background:var(--gr-bg)}
 .cg-v.or{color:var(--or);background:var(--or-bg)}
 .cg-g.uk{background:repeating-linear-gradient(135deg,#fff 0 2px,#CFC8BA 2px 3px);border-color:#A39B8A}
+
+/* 権利関係のフォーム：行の名前に添える小さな補足（建物の変更の、場所・年）。 */
+.re-ln-lb small.re-ln-z{display:block;font-size:11px;font-weight:500;color:#858978;margin-top:1px;white-space:normal;line-height:1.45}
+/* 契約の相手のフォーム：いちばん下に、この相手を削除する入口（吹き出しで確かめる）。 */
+.re-deal-del{display:flex;justify-content:flex-end;margin-top:26px;padding-top:16px;border-top:1px solid #e3e5d9}
+.re-deal-del .re-entry-delw{margin-left:0}
+/* フォームの底にあるので、吹き出しは入口の上に出す（下に出すと本文の外にはみ出す）。 */
+.re-deal-del .re-entry-ask{top:auto;bottom:calc(100% + 9px)}
+.re-deal-del .re-entry-ask::before{top:auto;bottom:-5px;transform:rotate(225deg)}
+/* 件の一覧の帯の右端に置く追加の入口（ローン・借入の「＋ 借入を追加」）。件の札と形を分ける（点線）。 */
+.re-toc .re-toc-add{margin-left:auto;gap:6px;padding:4px 13px 4px 11px;border:1px dashed #BFC9BC;background:none;color:#4F6B56;font-weight:600}
+.re-toc .re-toc-add span{font-size:14px;font-weight:400}
+.re-toc .re-toc-add:hover{background:#F5F8F3;border-color:#8EA88F;color:#284C32}
+/* 話題ごとの白い札（権利関係のフォーム。見本 _検討/権利関係フォーム_案v1.html の D）。
+   床はダイアログと同じクリームのまま、札を枠と影で浮かせる（床を別の色にすると、
+   頭・本文・札の3色になって落ち着かなかった）。帯と文字はページの権利関係の表にそろえる。 */
+.re-card{background:#fff;border:1px solid #d9d3c4;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px #3f5c4b14}
+.re-card+.re-card{margin-top:14px}
+.re-card-h{background:#f4f1e9;border-bottom:1px solid #e6e1d4;padding:7px 18px;font-size:12.5px;font-weight:700;color:#5d6652;letter-spacing:.04em}
+.re-card-b{padding:13px 18px 14px}
+.re-card-b .re-q-h{margin-top:10px}
+.re-card .re-lines{grid-template-columns:10em minmax(0,1fr)}
+@media (max-width:520px){.re-card .re-lines{grid-template-columns:1fr;gap:4px}.re-card-b{padding:12px 14px}}
