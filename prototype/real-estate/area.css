@@ -514,16 +514,6 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .t-gy{color:var(--gy);background:#F1EFE9;border-color:var(--line2)}
 .t-bl{color:var(--bl);background:#EDF1F6;border-color:#C6D3E0}
 
-/* ── 下段の単位（借入・契約の相手）。罫で区切る。 ── */
-.unit{padding:13px 0;border-top:1px solid #EAE4D6;min-width:0}
-.grp-h + .unit{border-top:0;padding-top:4px}
-/* 家族が使う1行（場所・連絡先）を太く、残りを従にする。 */
-.u-main{margin-top:8px;font-size:13px;font-weight:600;line-height:1.6;color:#2F4A37;
-  overflow-wrap:anywhere;white-space:pre-line}
-.u-tel{font-variant-numeric:tabular-nums;letter-spacing:.02em}
-.u-sub{margin-top:5px;font-size:11px;line-height:1.7;color:var(--ink2);
-  overflow-wrap:anywhere;white-space:pre-line}
-
 /* ── 書類のありか：区分の段に、紙を1枚1行で並べる（見本 _検討/書類のありか_表示v4.html）。
    1行＝紙の絵（A4・30px）｜名前（どれのものか）／所在の札（絵＋場所＋記録）。
    2列にしない ―― 幅が足りず名前が折れ、所在の札が別段になって場所を取った（v3）。 ── */
@@ -567,32 +557,102 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .dc-qw:hover .dc-q[data-shut] + .dc-pop{display:none}
 .dc-l .record-edit{min-height:26px;margin:0 -4px 0 0;padding:0 5px;font-size:11px}
 
-/* ── 権利：見比べる表。項目名は左に1回、行を揃える。 ── */
-.deeds{display:grid;grid-template-columns:5.6em repeat(var(--n,2),minmax(0,1fr));
-  column-gap:16px;font-size:11.5px;line-height:1.65}
-.deeds > *{min-width:0;padding:8px 0;border-top:1px solid #EAE4D6}
-.deeds > .dg-corner,.deeds > .dg-head{border-top:0;padding-top:0;padding-bottom:10px}
-/* 列の見出し（土地・建物）。下段で廊下の片側に置くと列が狭く、
-   1行に収めると「土地」が割れる／片方の列だけ折り返して見出しの
-   高さが揃わない。名前の下に状態と「記録」を置く形に揃える。 */
-.deeds .dg-head .uh{flex-direction:column;align-items:flex-start;gap:6px}
-.deeds .dg-head .uh-r{margin:0}
-.dg-lb{font-size:10.5px;color:var(--ink3);letter-spacing:.02em}
-.dg-v{color:var(--ink);overflow-wrap:anywhere;white-space:pre-line}
-.dg-main{font-size:13px;font-weight:600}
-/* 登記と違う・相続登記が未了＝この表で気づかせたい値。 */
-.dg-warn{color:#9A5B12;font-weight:600}
-.dg-empty{color:var(--ink3)}
+/* ── 下段の部屋の中の見出し（権利関係・ローン・契約）。白い小枠の絵＋題＋一言＋入口。
+   2026-09-28 見本 _検討/権利関係とローン契約_表示v9.html（手本は医療の右面の見出し）。 ── */
+.sc-h{display:flex;align-items:center;gap:9px;margin:0 0 10px}
+.sc-h h4{margin:0;font-size:14px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.sc-h small{flex:1;min-width:0;font-size:11px;color:var(--ink3)}
+.sc-ic{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:8px;
+  background:#fff;border:1px solid #cbdfd1;color:var(--gr);box-shadow:0 1px 2px #1e5a3d1f}
+.sc-ic svg{width:16px;height:16px;display:block}
+/* 記録の入口（鉛筆だけの四角いボタン）。見出し・列の頭・帯の右端に1つずつ。 */
+.pen-edit{display:grid;place-items:center;width:28px;height:28px;flex:none;margin-left:auto;padding:0;
+  border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink3);cursor:pointer}
+.pen-edit svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.pen-edit:hover{border-color:#a9c0ac;color:var(--gr2)}
+.pen-edit:focus-visible{outline:2px solid #64886B;outline-offset:2px}
+/* 状態は点つきの字（枠の札にすると押せるボタンに見える）。橙＝気にすること、薄緑＝片付いている。 */
+.mk{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--ink2);white-space:nowrap}
+.mk::before{content:"";width:6px;height:6px;border-radius:50%;background:#A8B8A6}
+.mk.warn{color:#8f6227}
+.mk.warn::before{background:#D39A4A}
+/* 上段の行への行き先。部屋の語だけ色を持つ。 */
+.up-go{display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;margin:4px 0 0;padding:0;border:0;background:none;cursor:pointer;
+  font:600 11px/1.6 var(--font);color:var(--ink);text-align:left}
+.up-go svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.up-go i{font-style:normal;white-space:nowrap}
+.up-go.now svg,.up-go.now i{color:#9A6A2A}
+.up-go.when svg,.up-go.when i{color:#35604a}
+.up-go:hover span{text-decoration:underline;text-underline-offset:2px}
+.up-go:focus-visible{outline:2px solid #64886B;outline-offset:2px}
 
-/* ── ローン・契約：借入・担保／契約している相手 の2つの塊 ── */
-.grp + .grp{margin-top:18px}
-.grp-h{margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid #DED5C4;
-  font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#8A7555}
-/* 担保は借入に従う1行。名前・状態・値・入口を横に並べる。 */
-.unit-line{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;
-  align-items:center;gap:8px;padding:10px 0}
-.unit-line .uh-nm{font-size:11.5px;font-weight:600;color:var(--ink2)}
-.ul-v{font-size:11px;line-height:1.6;color:var(--ink2);overflow-wrap:anywhere}
+/* ── 権利関係：土地｜建物を見比べる1枚。問いの見出しは2列をまたいで1回だけ。 ── */
+.rk{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));background:#fff;border:1px solid #d9d3c4;
+  border-radius:8px;overflow:hidden;box-shadow:0 1px 2px #3f5c4b14}
+.rk > *{min-width:0}
+.rk .c2{border-left:1px solid #EFEAE0}
+/* 列の頭：絵＋名前（中央）、その下に登記と合っているか。入口は右上の角。 */
+.rk-h{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 10px 10px;
+  border-bottom:1px solid #E7E1D4;text-align:center}
+.rk-h .pen-edit{position:absolute;top:7px;right:7px;width:26px;height:26px}
+.rk-ht{display:flex;align-items:center;gap:7px}
+.rk-ht b{font-size:14px;font-weight:700;letter-spacing:.12em}
+.rk-ic{display:block;color:#5E7A66}
+.rk-ic svg{display:block;width:20px;height:20px}
+.rk-q{grid-column:1/-1;padding:5px 12px 4px;background:#F7F5EF;border-bottom:1px solid #EFEAE0;text-align:center;
+  font-size:10.5px;font-weight:600;color:var(--ink2);letter-spacing:.08em}
+.rk-c{padding:9px 12px 11px;border-bottom:1px solid #EFEAE0}
+.rk-c:last-child{border-bottom:0}
+.rk-span{grid-column:1/-1}
+.rk-nm{font-size:14px;font-weight:700;line-height:1.45;overflow-wrap:anywhere}
+.rk-sub{margin-top:1px;font-size:11px;line-height:1.55;color:var(--ink2)}
+.rk-memo{margin-top:3px;font-size:11px;line-height:1.55;color:var(--ink3)}
+.rk-tx{margin:0;font-size:12px;line-height:1.7;color:#3F3B34}
+.rk-tx + .up-go + .rk-tx,.up-go + .rk-tx{margin-top:6px}
+.rk-tx.none{color:var(--ink3)}
+.rk-pp{display:flex;align-items:baseline;gap:8px;font-size:12px;line-height:1.6}
+.rk-pp + .rk-pp{margin-top:4px}
+.rk-pp .mk{margin-left:auto}
+
+/* ── ローン・契約：1件＝相手のカード。頭に帯（薄い緑の地に濃い緑の字）。 ── */
+.lc-sc + .lc-sc{margin-top:22px}
+/* 方位マーク（半径25＋余白）の上で部屋が終わるように。狭い幅の一覧には方位マークが無い。 */
+.lc-room{padding-bottom:62px}
+.stack .lc-room{padding-bottom:0}
+.lc{position:relative;border-radius:8px;overflow:hidden;background:#fff;border:1px solid #d9d3c4;border-top:0;
+  box-shadow:0 1px 2px #3f5c4b1c,0 4px 9px -4px #3f5c4b26}
+.lc + .lc{margin-top:10px}
+.lc-h{position:relative;height:30px;display:flex;align-items:center;gap:8px;padding:0 8px 0 12px;border-bottom:1px solid #D6E1D7}
+.lc-band{position:absolute;inset:0;width:100%;height:100%;fill:#E7EEE7}
+.lc-k{position:relative;flex:1;min-width:0;font-size:11px;font-weight:700;letter-spacing:.05em;color:#3E5E4A;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lc-h .mk,.lc-h .pen-edit{position:relative}
+.lc-h .pen-edit{width:24px;height:24px;margin-left:0}
+.lc-h .pen-edit svg{width:13px;height:13px}
+.lc-b{padding:10px 13px 12px}
+.lc-nm{font-size:14px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+.lc-sub{margin-top:1px;font-size:11.5px;line-height:1.6;color:var(--ink2)}
+.lc-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:9px 0 0;padding-top:9px;border-top:1px solid #e7e0d0;font-size:12px;line-height:1.6}
+.lc-kv dt{color:var(--ink3);font-size:11px}
+.lc-kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.lc-kv dd.q{color:#8f6227;font-weight:600}
+.lc-kv dd.tel{display:flex;align-items:center;gap:5px;color:var(--gr2);font-weight:700;font-variant-numeric:tabular-nums}
+.lc-kv dd.tel svg{width:12px;height:12px;flex:none;fill:currentColor}
+.lc-b .up-go{margin-top:8px}
+.lc-b .up-go + .up-go{margin-top:2px}
+/* 担保の入口（担保は借入と別のフォーム）。値の後ろに小さな字のボタン。 */
+.lc-sec{margin-left:8px;padding:0;border:0;background:none;cursor:pointer;font:600 10.5px/1.6 var(--font);color:#6B7F6E;
+  text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+.lc-sec:hover{color:#284C32}
+.lc-note{padding:2px 2px 0}
+.lc-note p{margin:0;font-size:12.5px;line-height:1.7;color:var(--ink2)}
+.lc-note small{display:block;font-size:11px;color:var(--ink3)}
+.lc-note .lc-note-s{margin-top:4px;font-size:12px}
+.lc-note + .lc{margin-top:10px}
+.lc-add{display:inline-flex;align-items:center;height:28px;padding:0 10px;flex:none;margin-left:auto;border:1px solid var(--line);
+  border-radius:7px;background:#fff;color:var(--gr2);font:600 11px/1 var(--font);cursor:pointer}
+.lc-add:hover{border-color:#a9c0ac}
+.lc-none{margin:0;font-size:12.5px;color:var(--ink2)}
 
 /* ── 玄関（基本情報の表札）── */
 .gk{height:100%;display:flex;flex-direction:column;justify-content:center}
@@ -665,13 +725,6 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
   .stack .pr-dt{margin:14px -14px -14px}
   .stack .pr-dt-t{padding:10px 14px 11px}
   .stack .pr-dt-b{padding:2px 14px 14px}
-  .stack .deeds{grid-template-columns:4.6em repeat(var(--n,2),minmax(0,1fr));column-gap:10px}
-  .stack .dg-head .uh{flex-direction:column;align-items:flex-start;gap:8px}
-  /* 列の頭では入口を名前の下に置くので、引き上げを外し、文字の左端を名前に揃える。 */
-  .stack .dg-head .record-edit{margin:0 0 0 -8px}
-  /* 担保の1行：1段目に名前と（右端に）状態・入口、2段目に値。 */
-  .stack .unit-line{grid-template-columns:minmax(0,1fr) auto auto;row-gap:4px}
-  .stack .unit-line .ul-v{grid-column:1 / -1;grid-row:2}
 }
 
 .re-editing{overflow:hidden}
@@ -741,8 +794,6 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
   .re-field input,.re-field textarea,.re-field select{font-size:16px}
   .re-discard{padding:12px 18px}.re-discard p{width:100%}.re-discard button{flex:1}
 }
-/* 担保の1行は縦中央で揃えるので、入口の引き上げを打ち消す。 */
-.unit-line .record-edit{margin-top:0}
 /* 選べるバッジ（今のうち）。押すとポップアップが開く入口を兼ねるので、
    読むだけのバッジより一回り大きくする。 */
 button.bdg.status-pick{font-size:10.5px;padding:3px 9px 3px 10px}

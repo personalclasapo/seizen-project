@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>権利関係とローン・契約 表示v9</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<!--
+  権利関係とローン・契約 見本 v9（2026-09-28）
+  v8 案A を土台に（「ベースは良さそう。見づらいのは変わらない」）：
+    ・見出しを中央揃え（列の頭＝土地｜建物、問いの帯）。中身の文は左揃えのまま
+    ・土地・建物に絵（render.js の ICONS.land・house と同じ線）。枠なし（小枠は部屋の見出しの印）
+    ・紙の有無は四角い札をやめ、点つきの字にする（札がボタンに見え、幅を取って名前を折っていた）
+    ・列の頭の「登記と違う」も枠を外し、名前の下に点つきの字で置く
+  ── 以下 v8 の記録 ──
+  権利関係とローン・契約 見本 v8（2026-09-28）
+  v7 への指摘：ローン・契約と全く同じUIにしたのは検討済みか → していなかった。帯のカードは「相手」の形。
+  権利関係は「土地と建物を同じ問いで見比べる」形。2列を土台に、問いの見出しは1回だけ出し、値を横に並べる。
+  いちばん目に入るべきは「登記と合っているか」→ 列の頭（土地｜建物）に置く。
+  ローン・契約とそろえるのは部屋の見出し・字の組・しるし・上段への行き先の書き方まで。中の組みはそろえない。
+    案A … 問いを列の上に横帯で通す（見出し → 土地｜建物の値）
+    案B … 問いを左の細い列に置く表（項目名｜土地｜建物）
+  ── 以下 v7 の記録 ──
+  権利関係とローン・契約 見本 v7（2026-09-28）
+  v6 への指摘：ローン・契約はこの方向でよい。権利関係はダメ ―― 医療のどれかに合わせるとは言っていない、
+  見づらい、2列はどうしたのか。
+  → 権利関係は医療の行（体に合わないもの）を当てはめていた。2列をやめたのは v4 の狭い列の組み方の失敗を
+    2列のせいにしたから。v7 は2列に戻し、ローン・契約（帯のあるカード）と同じ言葉で組む：
+    土地｜建物＝帯のあるカード2枚を横に並べ、中の3段（名義／登記を見ても分からないこと／名義を得たときの紙）を
+    subgrid で横にそろえる。2部屋が1組に見える。ローン・契約は v6 のまま。
+  ── 以下 v6 の記録 ──
+  権利関係とローン・契約 見本 v6（2026-09-28）｜手本＝医療の右面
+  v1〜v5 は毎回組み立てから作り直し、SeiZen の調子から離れて管理画面の一覧になった（v5）。
+  v6 は SeiZen 内で良しとされている医療の右面を手本にし、その組み方（文法）だけを持ち込む。
+  医療の造形（十字・建物の絵・手帳）は持ち込まない（§13）。
+    ・部屋の中に白い面を敷かない。床の上に見出しと行を直に置く（医療の右面は紙面に直）
+    ・見出し＝白い小枠の緑の線の絵＋14px 太字＋灰色の一言＋右端の四角い鉛筆（.scene-h・.i-secedit）
+    ・行＝細い罫で区切る。太字の名前 → 灰色の中身、右端に小さな四角いしるし（.vv-row・.vv-tag）
+    ・相手（銀行・管理会社・地主・借主）＝頭に色の帯を持つカード（.cg）。帯に関係、体に名前・理由・項目名｜値
+    ・編集の入口は見出しの鉛筆1つ（行ごとの「記録」はやめる）
+  値は医療の CSS から写した（見出し 14px／行 12.5px／しるし 9.5px／カード名 14px／項目名 11px・値 12px）。
+-->
+<style>
+  :root{--rule:#d7dcd0;--rule2:#e6e3d8}
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink)}
+  .wrap{max-width:1500px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:18px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);line-height:1.85;margin:0 0 8px;max-width:900px}
+  .case{margin-top:34px}
+  .case > h2{font-size:12.5px;font-weight:700;color:#4b5f50;margin:0 0 2px}
+  .case > p{font-size:11px;color:var(--ink2);margin:0 0 10px}
+  .pair{display:grid;grid-template-columns:var(--rw,451px) 60px var(--rw,451px);align-items:start}
+  .pair > .hall{align-self:stretch;background:#EAE6DB}
+  .pair.one{grid-template-columns:var(--rw,451px)}
+
+  /* 部屋。床（本番の FLOOR に近い紙の地）に直に置く。 */
+  .room{box-sizing:border-box;background:#FCFBF6;border:6px solid #E0DACB;padding:18px 20px 20px}
+
+  /* ── 見出し（医療 .scene-h と同じ値） ── */
+  .scene + .scene{margin-top:26px}
+  .scene-h{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+  .scene-h h5{margin:0;font-size:14px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+  .scene-h small{flex:1;min-width:0;font-size:11px;color:var(--ink3)}
+  .scene-ic{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:8px;
+    background:#fff;border:1px solid #cbdfd1;color:var(--gr);box-shadow:0 1px 2px #1e5a3d1f}
+  .scene-ic svg{width:16px;height:16px;display:block}
+  .i-secedit{display:grid;place-items:center;width:28px;height:28px;flex:none;margin-left:auto;
+    border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink3);cursor:pointer}
+  .i-secedit:hover{border-color:#a9c0ac;color:var(--gr2)}
+  .i-secedit svg{width:15px;height:15px}
+  .i-add{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;flex:none;
+    border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--gr2);font:600 11px/1 var(--font);cursor:pointer}
+
+  /* ── 行（医療 .vv-row と同じ値） ── */
+  .vv{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule2)}
+  .vv-row{padding:8px 0 9px;font-size:12.5px;line-height:1.6;border-bottom:1px solid var(--rule2)}
+  .vv-1{display:flex;align-items:baseline;gap:6px}
+  .vv-k{flex:none;width:2.6em;font-size:11px;color:var(--ink3)}
+  .vv-nm{font-weight:600;color:var(--ink)}
+  .vv-arw{flex:none;color:var(--rule);font-size:11px}
+  .vv-arw::before{content:"→"}
+  .vv-v{color:var(--ink2);min-width:0}
+  .vv-tag{flex:none;margin-left:auto;align-self:center;padding:1px 7px;border-radius:2px;font-size:9.5px;font-weight:700;
+    letter-spacing:.04em;border:1px solid var(--rule);color:var(--ink3);background:#fffdf6;white-space:nowrap}
+  .vv-tag.warn{border-color:#dcc9b3;color:#8f6227;background:#fffaf0}
+  /* 行の2段目：登記を見ても分からないこと。頭を下げて続きと分かるように。 */
+  .vv-2{margin:3px 0 0 calc(2.6em + 6px);font-size:12px;line-height:1.7;color:#4A463E}
+  .go{display:inline-flex;align-items:center;gap:4px;margin:2px 0 0 calc(2.6em + 6px);padding:0;border:0;background:none;cursor:pointer;
+    font:600 11px/1.6 var(--font);color:var(--ink2)}
+  .go svg{width:10px;height:10px}
+  .go.now{color:#9A6A2A}.go.when{color:#35604a}
+  .go span{color:var(--ink)}
+  .go:hover span{text-decoration:underline;text-underline-offset:2px}
+  .vv-note{margin:0;padding:8px 0;font-size:12.5px;color:var(--ink2);border-bottom:1px solid var(--rule2)}
+
+  /* ── 相手のカード（医療 .cg と同じ組み方。帯は SVG で描く） ── */
+  .cgs{display:grid;gap:10px}
+  .cg{position:relative;display:flex;flex-direction:column;border-radius:8px;overflow:hidden;background:#fff;
+    border:1px solid #d9d3c4;border-top:0;box-shadow:0 1px 2px #3f5c4b1c,0 4px 9px -4px #3f5c4b26}
+  .cg-head{position:relative;height:30px;display:flex;align-items:center;gap:8px;padding:0 10px 0 12px}
+  .cg-head svg{position:absolute;inset:0;width:100%;height:100%}
+  /* 帯は薄い緑の地に濃い緑の字（濃い地だと部屋でいちばん強い面になり、中身より先に目に入った）。 */
+  .cg-head{border-bottom:1px solid #D6E1D7}
+  .cg-dept{position:relative;flex:1;min-width:0;font-size:11px;font-weight:700;letter-spacing:.05em;color:#3E5E4A;white-space:nowrap}
+  .cg-head .dot{position:relative}
+  .cg-head .vv-tag{position:relative;background:#fff;color:var(--ink2);border-color:#CFDCD0}
+  .cg-head .vv-tag.warn{background:#fffaf0;color:#8f6227;border-color:#dcc9b3}
+  .cg-body{padding:10px 13px 12px}
+  .cg-name{font-size:14px;font-weight:700;line-height:1.4}
+  .cg-reason{font-size:11.5px;color:var(--ink2);margin-top:1px}
+  .cg-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:9px 0 0;padding-top:9px;border-top:1px solid #e7e0d0;font-size:12px}
+  .cg-kv dt{color:var(--ink3);font-size:11px}
+  .cg-kv dd{margin:0;min-width:0}
+  .cg-kv dd.q{color:#8f6227;font-weight:600}
+  .cg-tel{display:flex;align-items:center;gap:5px;color:var(--gr2);font-weight:700}
+  .cg-tel svg{width:12px;height:12px;flex:none}
+  .cg .go{margin:8px 0 0}
+  .cg .go + .go{margin-left:12px}
+
+  /* ── v8 権利関係：見比べる1枚。帯のカードにはしない ── */
+  .cmp{background:#fff;border:1px solid #d9d3c4;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px #3f5c4b14}
+  .ca{display:grid;grid-template-columns:1fr 1fr}
+  .ca > *{min-width:0}
+  .ca .c2{border-left:1px solid #EFEAE0}
+  /* 列の頭：土地｜建物と、登記と合っているか（しるし）。 */
+  .ch{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 10px 10px;border-bottom:1px solid #E7E1D4;text-align:center}
+  .ch-t{display:flex;align-items:center;gap:7px}
+  .ch-t b{font-size:14px;font-weight:700;letter-spacing:.12em}
+  /* 土地・建物の絵は枠なしの線だけ。白い角丸の小枠は部屋の見出し（権利関係・ローン・契約）の印なので使わない。 */
+  .ch-ic{display:block;color:#5E7A66}
+  .ch-ic svg{display:block;width:20px;height:20px}
+  /* 状態は枠なしの点つきの字（札がボタンに見えないように）。 */
+  .dot{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--ink2);white-space:nowrap}
+  .dot::before{content:"";width:6px;height:6px;border-radius:50%;background:#A8B8A6}
+  .dot.warn{color:#8f6227}
+  .dot.warn::before{background:#D39A4A}
+  /* 問いの見出し。1回だけ、2列をまたいで通す。 */
+  .cq{grid-column:1/-1;padding:5px 12px 4px;background:#F7F5EF;border-bottom:1px solid #EFEAE0;text-align:center;
+    font-size:10.5px;font-weight:600;color:var(--ink2);letter-spacing:.08em}
+  .cc{padding:9px 12px 11px}
+  .cq ~ .cc{border-bottom:1px solid #EFEAE0}
+  .cc.last{border-bottom:0}
+  .cc .ps-nm{font-size:14px}
+  .cc .go{margin:4px 0 0;display:flex;flex-wrap:wrap;gap:0 4px}
+  .cb .go{margin:4px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;text-align:left}
+  .go i.z{font-style:normal;white-space:nowrap}
+  /* 案B：左に問いの細い列 */
+  .cb{display:grid;grid-template-columns:3.9em 1fr 1fr}
+  .cb > *{min-width:0;border-bottom:1px solid #EFEAE0}
+  .cb > .endrow{border-bottom:0}
+  .cb .ql{padding:10px 0 10px 12px;font-size:10.5px;font-weight:600;color:var(--ink2);line-height:1.5;background:#F7F5EF}
+  .cb .ql.corner{background:#F7F5EF}
+  .cb .v{padding:9px 11px 11px}
+  .cb .v + .v{border-left:1px solid #EFEAE0}
+  .cb .ch{border-bottom:1px solid #E7E1D4;padding:10px 11px 9px}
+  .cb .ch + .ch{border-left:1px solid #EFEAE0}
+  .var-h{margin:42px 0 0;font-size:15px}
+  .var-p{margin:4px 0 0;font-size:12px;color:var(--ink2)}
+
+  /* ── 権利関係：土地｜建物のカード2枚。中の段を subgrid で横にそろえる ── */
+  .pc{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto auto;gap:0 10px}
+  .pc > .cg{display:grid;grid-row:span 4;grid-template-rows:subgrid;row-gap:0}
+  .pc .cg-dept{font-size:12px;letter-spacing:.1em}
+  .ps{padding:9px 12px 10px;min-width:0}
+  .ps + .ps{border-top:1px solid #EFEAE0}
+  .ps-lb{margin:0 0 3px;font-size:10.5px;color:var(--ink3)}
+  .ps-nm{font-size:14px;font-weight:700;line-height:1.45}
+  .ps-sub{font-size:11px;color:var(--ink2);line-height:1.55;margin-top:1px}
+  .ps-tx{margin:0;font-size:12px;line-height:1.7;color:#3F3B34}
+  .ps-tx.none{color:var(--ink3)}
+  .ps .go{margin:4px 0 0;display:flex;flex-wrap:wrap;gap:0 4px}
+  .pr{display:flex;align-items:baseline;gap:6px;font-size:12px;line-height:1.55}
+  .pr + .pr{margin-top:5px}
+  .pr small{display:block;font-size:10.5px;color:var(--ink3)}
+  .pr .vv-tag,.pr .dot{margin-left:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>権利関係とローン・契約 v9</h1>
+  <p class="lead">権利関係は「土地と建物を同じ問いで見比べる」形から作る（ローン・契約の帯のカードは写さない）。2列が土台。問いの見出しは1回だけ、
+    登記と合っているかは列の頭。ローン・契約は v6 のまま。2案を並べる。</p>
+  <div id="cases"></div>
+</div>
+<script>
+const ic = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+const I = {
+  owner: ic('<path d="M5.5 3.5h13v17h-13Z"/><path d="M8.5 7.5h7M8.5 10.5h7M8.5 13.5h3.5"/><circle cx="15" cy="16.2" r="2"/>'),
+  paper: ic('<path d="M6.5 3.5H14l4 4v12.4a.6.6 0 0 1-.6.6H6.5a.6.6 0 0 1-.6-.6V4.1a.6.6 0 0 1 .6-.6Z"/><path d="M14 3.5V8h4"/><path d="M9 12h6M9 15.5h6"/>'),
+  loan:  ic('<circle cx="12" cy="12" r="8.5"/><path d="M8.8 7.4 12 12l3.2-4.6M12 12v5.2M9.2 12.6h5.6M9.2 15h5.6"/>'),
+  /* 土地＝四角の区画と、角に立てた旗。家の絵が正面から見た平らな絵なので、地面も斜めのひし形にせず四角。
+     旗を真ん中に立てると郵便受けに見えるので角に。 */
+  land:  ic('<rect x="4" y="11" width="16" height="10" rx="1"/><path d="M4 11V3.5"/><path d="M4 3.5l6 2.6-6 2.6"/>'),
+  house: ic('<path d="M3.5 11.5 12 4.2l8.5 7.3"/><path d="M5.8 10.8V19a1 1 0 0 0 1 1h10.4a1 1 0 0 0 1-1v-8.2"/><path d="M9.8 20v-5.4a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1V20"/>'),
+  deal:  ic('<path d="M4 7.5h16v11H4Z"/><path d="M9 7.5V5.8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.7"/><path d="M4 12h16"/>')
+};
+const PEN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l.6-2.9L10.8 2.9a1.2 1.2 0 0 1 1.7 0l.6.6a1.2 1.2 0 0 1 0 1.7L5.9 12.4Z"/><path d="M9.6 4.1l2.3 2.3M3 13h10"/></svg>';
+const TEL = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.6a1 1 0 0 1-.25 1Z"/></svg>';
+const UP = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 10.5v-9M2.5 5 6 1.5 9.5 5"/></svg>';
+/* 帯。色地を SVG で敷き、上の角の丸めはカード（.cg の overflow と角丸）に任せる
+   （SVG で角を描くと、横に伸ばしたとき角がゆがむ）。色は不動産の緑を落としたもの。 */
+const BAND = '<svg viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true"><rect width="120" height="40" fill="#E7EEE7"/></svg>';
+
+const scene = (icon, t, lead, body, right) => '<section class="scene"><div class="scene-h"><span class="scene-ic">' + I[icon] + '</span><h5>' + t + '</h5>' +
+  '<small>' + lead + '</small>' + (right || '<button type="button" class="i-secedit" aria-label="' + t + 'を記録">' + PEN + '</button>') + '</div>' + body + '</section>';
+const tag = (t, warn) => '<span class="vv-tag' + (warn ? ' warn' : '') + '">' + t + '</span>';
+const go = (zone, name) => '<button type="button" class="go ' + zone + '">' + UP + '<i class="z">' + (zone === 'now' ? '今のうち' : 'そのとき') + '</i><span>' + name + '</span></button>';
+
+/* v8 権利関係：見比べる1枚。 */
+const gapCell = c => c.gap ? '<p class="ps-tx">' + c.gap + '</p>' + (c.go || '') : '<p class="ps-tx none">ない</p>';
+const paperCell = c => c.papers.length ? c.papers.map(p => '<div class="pr"><span>' + p.t + (p.s ? '<small>' + p.s + '</small>' : '') + '</span>' + dot(p.st, p.warn) + '</div>').join('') : '<p class="ps-tx none">' + (c.noPaper || 'ない') + '</p>';
+const nameCell = c => '<div class="ps-nm">' + c.nm + '</div><div class="ps-sub">' + c.v + '</div>';
+const dot = (t, warn) => '<span class="dot' + (warn ? ' warn' : '') + '">' + t + '</span>';
+const colHead = c => '<div class="ch-t"><span class="ch-ic">' + I[c.k === '土地' ? 'land' : 'house'] + '</span><b>' + c.k + '</b></div>' + dot(c.tag, c.warn);
+/* 案A：問いを横帯で通す */
+function rightsA(r) {
+  const [a, b] = r.parcels;
+  const two = (f, last) => '<div class="cc' + (last ? ' last' : '') + '">' + f(a) + '</div><div class="cc c2' + (last ? ' last' : '') + '">' + f(b) + '</div>';
+  return '<div class="room">' + scene('owner', '権利関係', '土地と建物の名義', '<div class="cmp"><div class="ca">' +
+    '<div class="ch">' + colHead(a) + '</div><div class="ch c2">' + colHead(b) + '</div>' +
+    '<div class="cq">名義</div>' + two(nameCell) +
+    '<div class="cq">登記を見ても分からないこと</div>' + two(gapCell) +
+    '<div class="cq">名義を得たときの紙</div>' + two(paperCell, 1) + '</div></div>') + '</div>';
+}
+/* 案B：問いを左の細い列に */
+function rightsB(r) {
+  const [a, b] = r.parcels;
+  const row = (lb, f, last) => '<div class="ql' + (last ? ' endrow' : '') + '">' + lb + '</div><div class="v' + (last ? ' endrow' : '') + '">' + f(a) + '</div><div class="v' + (last ? ' endrow' : '') + '">' + f(b) + '</div>';
+  return '<div class="room">' + scene('owner', '権利関係', '土地と建物の名義', '<div class="cmp"><div class="cb">' +
+    '<div class="ql corner"></div><div class="ch">' + colHead(a) + '</div><div class="ch">' + colHead(b) + '</div>' +
+    row('名義', nameCell) + row('登記と<br>違う点', gapCell) + row('名義を<br>得た紙', paperCell, 1) + '</div></div>') + '</div>';
+}
+
+/* ローン・契約 */
+const card = c => '<div class="cg"><div class="cg-head">' + BAND + '<span class="cg-dept">' + c.band + '</span>' + (c.tag ? dot(c.tag, c.warn) : '') + '</div>' +
+  '<div class="cg-body"><div class="cg-name">' + c.nm + '</div>' + (c.reason ? '<div class="cg-reason">' + c.reason + '</div>' : '') +
+  (c.kv ? '<dl class="cg-kv">' + c.kv.map(([k, v, q]) => '<dt>' + k + '</dt><dd' + (q ? ' class="q"' : '') + '>' + v + '</dd>').join('') + '</dl>' : '') +
+  (c.go || []).join('') + '</div></div>';
+const tel = t => '<span class="cg-tel">' + TEL + t + '</span>';
+const party = x => '<div class="room">' +
+  scene('loan', 'ローン', 'この家に付いている借入', x.loans.length ? '<div class="cgs">' + x.loans.map(card).join('') + '</div>' : '<p class="vv-note">' + x.noLoan + '</p>') +
+  scene('deal', '契約', '続いている相手', x.deals.length ? '<div class="cgs">' + x.deals.map(card).join('') + '</div>' : '<p class="vv-note">記録されている契約はありません。</p>',
+    '<button type="button" class="i-add">＋ 足す</button><button type="button" class="i-secedit" style="margin-left:0" aria-label="契約を記録">' + PEN + '</button>') + '</div>';
+
+const CASES = [
+  { h: '自宅｜今の答え', s: '土地は祖父名義のまま（父が取得すると口頭で決まった）・北側の増築が未登記・住宅ローン（団信あり）・管理会社',
+    rights: { parcels: [
+      { k: '土地', nm: '祖父 一郎（故人）', v: '所有・単独', tag: '登記と違う', warn: 1,
+        gap: '父が取得すると、口頭で決まっている。協議書はまだない。', go: go('now', '前の代の相続登記'),
+        papers: [{ t: '祖父の権利証', s: '登記済証', st: 'ある' }] },
+      { k: '建物', nm: '父', v: '所有・単独・2004年に建てた', tag: '登記と違う', warn: 1,
+        gap: '2015年の北側の増築（約6畳）が、登記に載っていない。', go: go('now', '建物の変更・登記'),
+        papers: [{ t: '権利証', s: '登記済証・2004年', st: 'ある' }, { t: '工事請負契約書・領収書', st: 'ある' }] }] },
+    party: {
+      loans: [{ band: '住宅ローン', tag: '団信あり', nm: '○○銀行 青葉台支店', reason: '父（単独）が借りている',
+        kv: [['担保', 'この家に抵当権（第1順位）'], ['返済', '2044年3月まで。残高は銀行に照会']], go: [go('when', '住宅ローン')] }],
+      deals: [{ band: '管理を頼んでいる', nm: '○○管理株式会社', reason: '建物の管理',
+        kv: [['電話', tel('045-123-4567')], ['お金', '父が払う　月12,000円（毎月27日）']] }] } },
+
+  { h: '長岡の家｜今の答え', s: '土地・建物とも父の名義で登記のとおり・権利証はまだ確かめていない・借入なし・見回りを頼んでいる',
+    rights: { parcels: [
+      { k: '土地', nm: '父', v: '所有・単独', tag: '登記どおり',
+        papers: [{ t: '権利証', st: '未確認', warn: 1 }, { t: '手に入れたときの資料', st: '未確認', warn: 1 }] },
+      { k: '建物', nm: '父', v: '所有・単独・1971年に建った家', tag: '登記どおり',
+        papers: [{ t: '権利証', st: '未確認', warn: 1 }, { t: '手に入れたときの資料', st: '未確認', warn: 1 }] }] },
+    party: {
+      loans: [], noLoan: '借入はなく、この家は担保になっていません（完済済み）。',
+      deals: [{ band: '見回りを頼んでいる', nm: '近所の□□さん', reason: '月1回ほど、見回りと郵便物の確認',
+        kv: [['電話', tel('0258-00-0000')]] }] } },
+
+  { h: '例｜借地・共有・貸している・団信が分からない', s: '答えが変わると、しるしと行き先がどう変わるか',
+    rights: { parcels: [
+      { k: '土地', nm: '借地', v: '登記の名義は地主（△△地所）', tag: '登記に出ない', warn: 1,
+        gap: '借地権は登記されていない。登記を見ても、父が借りていることは分からない。', go: go('when', '借地'),
+        papers: [], noPaper: '借地契約書は、契約の地主のカードで' },
+      { k: '建物', nm: '父 1/2・母 1/2', v: '共有・2012年に買った', tag: '登記どおり',
+        papers: [{ t: '権利証', s: '登記識別情報通知・2012年', st: '見つからない', warn: 1 }, { t: '売買契約書', st: 'ある' }] }] },
+    party: {
+      loans: [{ band: '住宅ローン（フラット35）', tag: '団信 未確認', warn: 1, nm: '△△銀行 長岡支店', reason: '父と母（連帯債務）が借りている',
+        kv: [['担保', 'この家に抵当権（第1順位）'], ['団信', '入っているか分からない', 1]], go: [go('now', '団信の加入状況'), go('when', '住宅ローン')] }],
+      deals: [
+        { band: '地主', nm: '△△地所', reason: '土地を借りている',
+          kv: [['電話', tel('0258-11-2222')], ['お金', '父が払う　地代 月25,000円（毎月末）']], go: [go('when', '借地')] },
+        { band: '貸している', nm: '◇◇さん', reason: '駐車場1台',
+          kv: [['電話', tel('090-0000-0000')], ['お金', '父が受け取る　月8,000円（毎月25日）']], go: [go('when', '貸している契約')] }] } }
+];
+
+const block = (title, lead, fn) => '<h2 class="var-h">' + title + '</h2><p class="var-p">' + lead + '</p>' + CASES.map(c =>
+  '<section class="case"><h2>' + c.h + '</h2><p>' + c.s + '</p><div class="pair">' + fn(c.rights) + '<div class="hall"></div>' + party(c.party) + '</div></section>').join('');
+document.getElementById('cases').innerHTML = CASES.map(c =>
+  '<section class="case"><h2>' + c.h + '</h2><p>' + c.s + '</p><div class="pair">' + rightsA(c.rights) + '<div class="hall"></div>' + party(c.party) + '</div></section>').join('');
+const w = +new URLSearchParams(location.search).get('w');
+if (w) document.documentElement.style.setProperty('--rw', (w + 52) + 'px');
+</script>
+</body>
+</html>
