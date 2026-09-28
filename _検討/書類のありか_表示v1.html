@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>書類のありか 表示v1</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<link rel="stylesheet" href="../prototype/real-estate/area.css">
+<!--
+  書類のありか 見本 v1（2026-09-27）
+
+  暫定版は「書類名・ある／見つからない・場所の字」を同じ形で並べ、他の部屋の
+  答えを読んでいなかった（自宅の土地は祖父名義なのに「権利証 ある」の1行、
+  2004年の登記なのに登記識別情報の前提、など）。
+
+  この部屋は「探す紙の一覧」。立つ紙は答えから決まり、追加ボタンは置かない。
+
+  権利証       … 土地・建物ごと。名義と登記の年から、探す紙の形を SeiZen が出す。
+                  2005年3月より前＝登記済証（冊子・「登記済」の朱印）
+                  2005〜2008年7月＝登記所によってどちらも
+                  それ以降＝登記識別情報通知（A4。2020年12月ごろまで目隠しシール、以後は折り込み）
+                  図は見分けのための紙の絵（家族が文から思い浮かべにくいのは紙の見た目）。
+                  相続登記には要らない。使うのは、父が生きているうちに売る・担保に入れる
+                  ときと、登記の住所が最後の住所とつながらないとき（平成29年 民二第175号）。
+  取得時の資料 … 土地・建物ごと。手に入れ方で探す紙が変わる。受け継いだものは
+                  前の持ち主が買った額を引き継ぐ（国税庁 No.3270）。無いと売った額の5%。
+                  木造の建物は35年で、資料があっても建てた額の5%まで下がる（No.3261：
+                  取得価額×0.9×0.031×年数、95%が限度）→ 古い建物は探さなくてよい。
+  答えから出る紙 … 前の代の協議書・遺言書、境界・私道の書面、工事の書類、借地・賃貸借の
+                  契約書。使うとき（どの手続きか）と場所だけ。
+  場所         … 家の中／貸金庫／預けている ＋ 場所の1行（唯一の自由記入）。
+                  貸金庫は、亡くなると開けるのに相続人全員の同意が要る。
+-->
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink)}
+  .wrap{max-width:1500px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:18px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);line-height:1.8;margin:0 0 24px;max-width:860px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(451px,100%),451px));justify-content:start;gap:28px 40px;align-items:start}
+  .case > h2{font-size:11.5px;font-weight:600;color:#4b5f50;margin:0 0 8px;line-height:1.6}
+  .case > h2 small{display:block;font-weight:400;color:var(--ink3);font-size:10.5px}
+  /* 部屋（床の色・内壁）。本番では間取りの SVG が受け持つ。 */
+  .room{max-width:451px;box-sizing:border-box;background:#FDFCF8;border:6px solid #E6E1D4;padding:16px 18px 18px}
+
+  /* ── 見本で足すもの ── */
+  .why{margin:2px 0 10px;font-size:11.5px;line-height:1.8;color:var(--ink2)}
+  .why b{color:var(--ink);font-weight:600}
+  /* 土地・建物ごとの行：紙の絵｜探す紙と場所 */
+  .pc{display:grid;grid-template-columns:46px minmax(0,1fr);gap:0 12px;padding:11px 0}
+  .pc + .pc{border-top:1px dashed #E7E1D2}
+  .pc.nofig{grid-template-columns:minmax(0,1fr)}
+  .pc-k{font-size:10.5px;color:var(--ink3);line-height:1.5}
+  .pc-k b{color:var(--ink2);font-weight:600}
+  .pc-t{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
+  .pc-n{font-size:13px;font-weight:650;line-height:1.5}
+  .pc-s{margin-top:3px;font-size:11px;line-height:1.7;color:var(--ink2)}
+  .pc-at{margin-top:6px;font-size:13px;font-weight:600;line-height:1.55;color:#2F4A37}
+  .pc-at .kind{display:inline-block;margin-right:6px;padding:0 6px;border:1px solid #CFD9CC;border-radius:3px;
+    font-size:10px;font-weight:600;color:#4F7358;vertical-align:1px}
+  .pc-note{margin-top:4px;font-size:10.5px;line-height:1.7;color:#8f6227}
+  .pc-next{margin-top:8px;padding:8px 10px;background:#FBF6EC;border-radius:6px}
+  .pc-next b{display:block;font-size:12.5px;font-weight:700;line-height:1.6}
+  .pc-next small{display:block;font-size:10.5px;color:var(--ink2);line-height:1.7;margin-top:2px}
+  .fig{display:block;overflow:visible}
+  /* 経緯がまだ分からないときの頭の一手 */
+  .first{margin:0 0 12px;padding:10px 12px;background:#FBF6EC;border-radius:6px}
+  .first p{margin:0;font-size:13.5px;font-weight:700;line-height:1.6}
+  .first small{display:block;margin-top:3px;font-size:11px;color:var(--ink2);line-height:1.7}
+  .wait{margin:4px 0 0;font-size:11px;color:var(--ink3);line-height:1.7}
+  /* 答えから出る紙：名前・使うとき・場所 */
+  .grp-l{margin:14px 0 2px;padding-top:12px;border-top:1px solid #EAE4D6;font-size:10.5px;font-weight:600;color:var(--ink3);letter-spacing:.04em}
+  .ex{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 10px;padding:9px 0}
+  .ex + .ex{border-top:1px dashed #E7E1D2}
+  .ex-n{font-size:12.5px;font-weight:650;line-height:1.5}
+  .ex-u{font-size:10.5px;color:var(--ink2);line-height:1.65;margin-top:1px}
+  .ex-u i{font-style:normal;color:var(--ink3);margin-right:4px}
+  .ex .pc-at{grid-column:1/-1;margin-top:4px;font-size:12.5px}
+  .ex .pc-note{grid-column:1/-1}
+  .room .unit:first-of-type{border-top:0;padding-top:2px}
+  .room .pr-dt{margin:12px -18px -13px}
+
+  .forms{display:flex;flex-wrap:wrap;gap:14px 28px;margin:0 0 26px;padding:14px 16px;background:#FDFCF8;border:1px solid #E6E1D4;border-radius:6px;max-width:900px}
+  .forms > div{display:grid;grid-template-columns:46px 200px;gap:0 10px;align-items:center}
+  .forms b{display:block;font-size:12px;font-weight:650}
+  .forms small{display:block;font-size:10.5px;color:var(--ink2);line-height:1.6}
+  /* フォームの見本（ダイアログを開いた形で置く） */
+  .fm{margin-top:44px}
+  .fm > h2{font-size:14px;margin:0 0 4px}
+  .fm > p{font-size:12px;color:var(--ink2);margin:0 0 14px;line-height:1.8}
+  .fm .re-dialog{position:static;display:block;max-height:none;width:min(860px,100%);border:1px solid #DDD7C8;border-radius:12px;background:#fff;box-shadow:0 8px 28px #2b35291a}
+  .fm .re-dialog form{max-height:none}
+  .fm .re-dialog-body{overflow:visible}
+  .given{margin:0 0 20px;padding:10px 13px;background:#F6F4EE;border-radius:7px;font-size:13px;line-height:1.8;color:#58604f}
+  .given b{color:#333c32;font-weight:600}
+  .derive{margin:10px 0 0;display:flex;gap:10px;align-items:center;font-size:12.5px;color:#58604f;line-height:1.6}
+  .derive b{color:#333c32}
+  .re-place{display:grid;gap:10px;margin-top:10px}
+  .re-place input{box-sizing:border-box;width:min(420px,100%);border:1px solid #cccfc0;border-radius:6px;padding:10px 11px;font:14px/1.6 var(--font)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>書類のありか v1</h1>
+  <p class="lead">「探す紙の一覧」にした。どの紙が出るかは答えから決まる（追加ボタンなし）。権利証は名義と登記の年から紙の形を出し、見分け方を絵で示す。
+    取得時の資料は手に入れ方で誰の・どの紙かが変わる。場所は 家の中／貸金庫／預けている ＋1行。「くわしく」は押して開け閉めできる。</p>
+  <div class="forms" id="forms"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="fm">
+    <h2>フォーム（自宅・権利証と取得時の資料）</h2>
+    <p>土地・建物ごとに「どうやって手に入れたか・いつか」を1回聞けば、権利証の形と、取得時の資料が誰の・どの紙かが両方決まる。名義は権利関係の記録から読んで聞き直さない。</p>
+    <div id="form"></div>
+  </div>
+</div>
+
+<script>
+/* ── 紙の絵（A4 ＝ 1:1.414。viewBox 32×44、用紙は 24×34） ── */
+const RED = '#C0574E';
+const rules = (ys, a, b) => ys.map(y => '<line x1="' + a + '" y1="' + y + '" x2="' + b + '" y2="' + y + '" stroke="#D9D3C4" stroke-width=".8" stroke-linecap="round"/>').join('');
+const svg = (inner, w) => '<svg class="fig" viewBox="0 0 32 44" width="' + (w || 46) + '" height="' + ((w || 46) * 44 / 32).toFixed(1) + '" aria-hidden="true">' + inner + '</svg>';
+const sheet = (x, y, fill) => '<rect x="' + x + '" y="' + y + '" width="24" height="34" rx=".8" fill="' + (fill || '#FFFFFF') + '" stroke="#A8A08C" stroke-width=".8"/>';
+/* 登記済証：司法書士の表紙で綴じた束。左に綴じ、上の紙に「登記済」の朱印（二重枠の角印）。 */
+const KIZUMI = svg(
+  sheet(6, 7, '#F4F1E8') + sheet(4.5, 5.5, '#F8F6EF') + sheet(3, 4) +
+  '<rect x="3" y="4" width="3.2" height="34" fill="#ECE6D6"/>' +
+  '<line x1="4.6" y1="9" x2="4.6" y2="12" stroke="#8E8676" stroke-width=".9"/><line x1="4.6" y1="30" x2="4.6" y2="33" stroke="#8E8676" stroke-width=".9"/>' +
+  '<rect x="9" y="7.6" width="9" height="1.8" rx=".4" fill="#CFC7B2"/>' +
+  rules([13, 16, 19, 22.5, 26, 29.5], 9, 24) +
+  '<rect x="18.4" y="7" width="6.4" height="6.4" fill="#FFFFFF" stroke="' + RED + '" stroke-width=".9"/>' +
+  '<rect x="19.3" y="7.9" width="4.6" height="4.6" fill="none" stroke="' + RED + '" stroke-width=".5"/>' +
+  '<line x1="20.3" y1="9.4" x2="22.9" y2="9.4" stroke="' + RED + '" stroke-width=".7"/><line x1="20.3" y1="11" x2="22.9" y2="11" stroke="' + RED + '" stroke-width=".7"/>');
+/* 登記識別情報通知（シール式）：A4 1枚。表の罫、法務局の角印、下に目隠しシール。 */
+const SEAL = svg(
+  '<defs><pattern id="ht" width="1.6" height="1.6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="1.6" stroke="#B9B09A" stroke-width=".7"/></pattern></defs>' +
+  sheet(4, 5) + '<rect x="11" y="8" width="10" height="1.8" rx=".4" fill="#CFC7B2"/>' +
+  '<rect x="7" y="12" width="18" height="10" fill="none" stroke="#D9D3C4" stroke-width=".7"/>' + rules([15.3, 18.6], 7, 25) +
+  '<rect x="21" y="23.6" width="4" height="4" fill="none" stroke="' + RED + '" stroke-width=".8"/>' +
+  '<rect x="7" y="30" width="18" height="5.6" rx=".8" fill="url(#ht)" stroke="#A8A08C" stroke-width=".7"/>');
+/* 登記識別情報通知（折り込み式）：下の部分を内側へ折り、糊で閉じてある。 */
+const FOLD = svg(
+  sheet(4, 5) + '<rect x="11" y="8" width="10" height="1.8" rx=".4" fill="#CFC7B2"/>' +
+  '<rect x="7" y="12" width="18" height="8" fill="none" stroke="#D9D3C4" stroke-width=".7"/>' + rules([14.7, 17.4], 7, 25) +
+  '<rect x="21" y="21.4" width="3.6" height="3.6" fill="none" stroke="' + RED + '" stroke-width=".8"/>' +
+  '<path d="M4 27.4H28V39H4Z" fill="#F1EDE2" stroke="#A8A08C" stroke-width=".8"/>' +
+  '<path d="M4 27.4H28" stroke="#8E8676" stroke-width=".9"/>' +
+  '<path d="M24.6 39 28 35.6V39Z" fill="#E2DCCC" stroke="#A8A08C" stroke-width=".6"/>');
+
+const DOWN = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="m2 3.5 3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const PEN = '<svg class="re-pen" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l.6-2.9L10.8 2.9a1.2 1.2 0 0 1 1.7 0l.6.6a1.2 1.2 0 0 1 0 1.7L5.9 12.4Z"/><path d="M9.6 4.1l2.3 2.3M3 13h10"/></svg>';
+const DOCIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5H14l4 4v12.4a.6.6 0 0 1-.6.6H6.5a.6.6 0 0 1-.6-.6V4.1a.6.6 0 0 1 .6-.6Z"/><path d="M14 3.5V8h4"/><path d="M9 12h6M9 15.5h6"/></svg>';
+
+const ST = { have: ['ある', 'gr'], lost: ['探したが無い', 'or'], unasked: ['まだ探していない', 'bl'], skip: ['探さなくてよい', 'gy'] };
+const bdg = s => '<span class="bdg ' + ST[s][1] + '">' + ST[s][0] + '</span>';
+const edit = '<button type="button" class="record-edit">' + PEN + '<span>記録</span></button>';
+const head = (nm, kicker) => '<div class="uh"><div class="uh-t">' + (kicker ? '<span class="uh-k">' + kicker + '</span>' : '') + '<span class="uh-nm">' + nm + '</span></div><div class="uh-r">' + edit + '</div></div>';
+const KIND = { home: '', safe: '貸金庫', kept: '預けている' };
+const at = a => a ? '<div class="pc-at">' + (KIND[a.kind] ? '<span class="kind">' + KIND[a.kind] + '</span>' : '') + a.t + '</div>' +
+  (a.kind === 'safe' ? '<div class="pc-note">' + a.who + 'が亡くなると、開けるのに相続人全員の同意（実印と印鑑証明書）が要ります。</div>' : '') : '';
+/* 土地・建物ごとの行 */
+const pc = r => '<div class="pc' + (r.fig ? '' : ' nofig') + '">' + (r.fig || '') + '<div>' +
+  '<div class="pc-k"><b>' + r.part + '</b>　' + r.how + '</div>' +
+  '<div class="pc-t"><span class="pc-n">' + r.paper + '</span>' + bdg(r.st) + '</div>' +
+  (r.s ? '<div class="pc-s">' + r.s + '</div>' : '') + at(r.at) +
+  (r.next ? '<div class="pc-next"><b>' + r.next.t + '</b>' + (r.next.s ? '<small>' + r.next.s + '</small>' : '') + '</div>' : '') + '</div></div>';
+const dt = (toc, body) => '<div class="pr-dt"><button type="button" class="pr-dt-t" aria-expanded="false"><span class="pr-dt-k">くわしく</span><span class="pr-dt-s">' + toc + '</span>' + DOWN + '</button><div class="pr-dt-b" hidden>' + body + '</div></div>';
+const h6 = (i, t) => '<section><h6><i>' + i + '</i>' + t + '</h6>';
+const ex = e => '<div class="ex"><div><div class="ex-n">' + e.n + '</div><div class="ex-u"><i>使うとき</i>' + e.use + '</div></div>' + '<div class="uh-r">' + edit + '</div>' + at(e.at) + '</div>';
+
+const DEED_WHY = '<p class="why">相続登記には要りません。使うのは、<b>父が生きているうちに売る・担保に入れるとき</b>と、<b>登記の住所が最後の住所とつながらないとき</b>です。</p>';
+const DEED_DT = dt('見つからないとき・盗み見られたかもしれないとき',
+  h6(1, '見つからないとき') + '<p>権利証をなくしても、登記上の権利には何も影響しません（法務局）。再発行はされません。</p>' +
+  '<p>売る・担保に入れるときは、法務局からの<b>事前通知</b>（手数料なし。本人限定受取郵便に2週間以内に答える）か、司法書士が作る<b>本人確認情報</b>（報酬がかかる）で代わりにできます。決済の日に合わせるなら本人確認情報です。</p></section>' +
+  h6(2, '盗み見られたかもしれないとき') + '<p>登記識別情報は、名義人か相続人が<b>失効の申出</b>をできます。一度失効させると元に戻りません。勝手に登記するには実印と印鑑証明書も要るので、印鑑の管理ができていれば慌てなくて大丈夫です。</p>' +
+  '<p><a class="procedure-source" href="https://houmukyoku.moj.go.jp/homu/content/000130972.pdf" target="_blank" rel="noopener">法務局｜登記識別情報を紛失したとき ↗</a></p></section>');
+const ACQ_WHY = '<p class="why">売ったときの税は、売った額から<b>買った額</b>を差し引いて計算します。示す資料が無いと、差し引けるのは<b>売った額の5%</b>だけです。受け継いだ土地・建物は、前の持ち主が買った額をそのまま引き継ぎます。</p>';
+const ACQ_DT = dt('契約書が無いとき・建物は年数で減る',
+  h6(1, '契約書が無いとき') + '<p>売買契約書がなくても、買った額が分かる<b>通帳の振込の記録</b>、<b>ローンの契約書</b>、分譲のときの<b>パンフレット</b>などで、実際の額が認められることがあります。</p></section>' +
+  h6(2, '建物は年数で減る') + '<p>建物の買った額（建てた額）は、住んでいた年数に応じて減らして計算します。木造なら35年たつと、資料があっても<b>建てた額の5%</b>まで下がります。</p>' +
+  '<p><a class="procedure-source" href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/joto/3270.htm" target="_blank" rel="noopener">国税庁｜相続・贈与で取得した土地・建物の取得費 ↗</a>　<a class="procedure-source" href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/joto/3261.htm" target="_blank" rel="noopener">建物の取得費の計算 ↗</a></p></section>');
+
+const ROOM = (inner) => '<div class="room"><div class="rm-h"><span class="rm-ic">' + DOCIC + '</span><h4>書類のありか</h4></div>' + inner + '</div>';
+const unit = (nm, why, rows, detail) => '<div class="unit">' + head(nm) + why + rows.map(pc).join('') + (detail || '') + '</div>';
+
+const CAB = { kind: 'home', t: '書斎のキャビネット上段' };
+
+/* 自宅の、ふだんの2つ（1・2で共通） */
+const jitakuDeed = unit('権利証', DEED_WHY, [
+  { fig: KIZUMI, part: '土地', how: '祖父 一郎の名義のまま', paper: '祖父の登記済証', st: 'have', at: CAB,
+    s: '祖父の登記の住所が最後の住所とつながらないとき、祖父が名義人本人だと示すのに使えます（古い住民票の除票は捨てられていることがあります）。相続登記をすると、取得する人に新しく登記識別情報通知が届きます。' },
+  { fig: KIZUMI, part: '建物', how: '2004年に父の名義で登記', paper: '登記済証（冊子）', st: 'have', at: CAB,
+    s: '司法書士の表紙で綴じた紙の束。中の紙に法務局の「登記済」の朱印があります。2005年3月より前の登記なので、登記識別情報ではありません。' }
+], DEED_DT);
+const jitakuAcq = unit('取得時の資料', ACQ_WHY, [
+  { part: '土地', how: '祖父が買った（年は分からない）', paper: '祖父が買ったときの売買契約書・領収書', st: 'lost',
+    next: { t: '父に、祖父がいつ・いくらで買ったかを確かめる', s: '契約書がなくても、買った額が分かる通帳の記録や当時の書類があれば、実際の額で計算できることがあります。何も残っていなければ、売るときは売った額の5%で計算します。' } },
+  { part: '建物', how: '2004年に父が建てた', paper: '工事請負契約書・領収書', st: 'have', at: CAB,
+    s: '2015年の増築の費用も差し引けます。増築の書類は「建物の変更・登記」で探しています。' }
+], ACQ_DT);
+
+const CASES = [
+  { h: '自宅｜今の答え', s: '土地は祖父名義（協議はまだ）・建物は2004年に父が建てた・増築の書類はまだ探していない',
+    body: jitakuDeed + jitakuAcq },
+
+  { h: '自宅｜協議書に全員が署名し、増築の工事の書類が見つかったあと', s: '答えから出る紙が2つ立つ（上の2つは1と同じなので畳んだ）',
+    body: '<div class="unit">' + head('権利証') + '<p class="wait">1と同じ（土地：祖父の登記済証／建物：登記済証。書斎のキャビネット上段）</p></div>' +
+      '<div class="unit">' + head('取得時の資料') + '<p class="wait">1と同じ</p></div>' +
+      '<p class="grp-l">答えから出る書類</p>' +
+      ex({ n: '祖父の遺産分割協議書', use: '祖父名義の土地の相続登記。父が登記の前に亡くなったら、家族が印鑑証明書と一緒に司法書士へ渡す',
+        at: { kind: 'safe', t: '○○銀行 青葉台支店の貸金庫', who: '父' } }) +
+      ex({ n: '増築の工事の書類', use: '増築の登記（表題変更登記）と、売るときの取得費', at: CAB }) },
+
+  { h: '長岡の家｜まだ聞いていない', s: '父の名義になった経緯が分からない（今の仮データ）',
+    body: '<div class="first"><p>父に、長岡の家をいつ・どうやって父の名義にしたかを確かめる</p><small>それで、探す権利証の形と、取得時の資料が誰の・どの紙かが決まります。</small></div>' +
+      '<div class="unit">' + head('権利証') + DEED_WHY + '<p class="wait">経緯が分かってから、土地・建物ごとに探す紙を出します。</p>' + DEED_DT + '</div>' +
+      '<div class="unit">' + head('取得時の資料') + ACQ_WHY + '<p class="wait">経緯が分かってから、土地・建物ごとに探す紙を出します。</p>' + ACQ_DT + '</div>' },
+
+  { h: '長岡の家｜答えたあと', s: '1998年に祖父から相続（土地・建物を一緒に登記）・祖父は1971年に土地を買って家を建てた・私道の覚書あり',
+    body: unit('権利証', DEED_WHY, [
+      { fig: KIZUMI, part: '土地・建物', how: '1998年に父の名義で登記（一緒に登記したので1冊）', paper: '登記済証（冊子）', st: 'have',
+        at: { kind: 'safe', t: '○○銀行 青葉台支店の貸金庫', who: '父' },
+        s: '司法書士の表紙で綴じた紙の束。中の紙に法務局の「登記済」の朱印があります。' }
+      ], DEED_DT) +
+      unit('取得時の資料', ACQ_WHY, [
+        { part: '土地', how: '祖父が1971年に買った', paper: '祖父が買ったときの売買契約書・領収書', st: 'lost',
+          next: { t: '父に、祖父がいくらで買ったか、払った記録が残っていないかを確かめる', s: '何も残っていなければ、売るときは売った額の5%で計算します。' } },
+        { part: '建物', how: '祖父が1971年に建てた', paper: '工事請負契約書・領収書', st: 'skip',
+          s: '建ててから55年たっているので、木造なら資料があっても差し引けるのは建てた額の5%までです。探す手間はかけなくて大丈夫です。' }
+      ], ACQ_DT) +
+      '<p class="grp-l">答えから出る書類</p>' +
+      ex({ n: '私道の舗装の覚書（向かいの3軒と）', use: '私道を直すとき・売るとき', at: { kind: 'home', t: '長岡の家 仏間の箪笥の上の引き出し' } }) }
+];
+
+document.getElementById('forms').innerHTML = [
+  [KIZUMI, '登記済証（冊子）', '2005年3月より前の登記。司法書士の表紙で綴じた束、中の紙に「登記済」の朱印'],
+  [SEAL, '登記識別情報通知（シール式）', '2005〜2020年ごろ。A4の1枚、下に目隠しシール'],
+  [FOLD, '登記識別情報通知（折り込み式）', '2020年12月ごろから。下の部分を折り込んで閉じてある']
+].map(([g, n, t]) => '<div>' + g + '<div><b>' + n + '</b><small>' + t + '</small></div></div>').join('');
+document.getElementById('grid').innerHTML = CASES.map(c =>
+  '<div class="case"><h2>' + c.h + '<small>' + c.s + '</small></h2>' + ROOM(c.body) + '</div>').join('');
+
+/* ── フォーム（自宅） ── */
+const opt = (name, v, label, sub, on) => '<label class="re-opt"><input type="radio" name="' + name + '" value="' + v + '"' + (on ? ' checked' : '') + '><span><b>' + label + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</span></label>';
+const q = (t, body, hint) => '<div class="re-q"><p class="re-q-t">' + t + '</p>' + body + (hint ? '<p class="re-q-h">' + hint + '</p>' : '') + '</div>';
+const opts = (name, xs, on, row) => '<div class="re-opts ' + (row ? 'row' : 'pill') + '">' + xs.map(([v, l, s]) => opt(name, v, l, s, v === on)).join('') + '</div>';
+const years = (sel) => '<span class="re-yr"><select class="re-yr-sel"><option>分からない</option>' + [2004, 2003, 2002].map(y => '<option' + (y === sel ? ' selected' : '') + '>' + y + '年（平成' + (y - 1988) + '年）</option>').join('') + '</select></span>';
+/* 場所：家の中／貸金庫／預けている ＋ 1行。2つ目からは「権利証と同じ場所」を先に出す（同じ字を打たせない）。 */
+const where = (name, on, text, same) => '<div class="re-place">' + (same
+  ? opts(name + 's', [['same', '権利証と同じ場所'], ['other', '別の場所']], 'same')
+  : opts(name, [['home', '家の中'], ['safe', '貸金庫'], ['kept', '預けている']], on) + '<input type="text" value="' + text + '" aria-label="場所" placeholder="例：書斎のキャビネット上段／○○銀行 ○○支店の貸金庫">') + '</div>';
+const HAVE = [['have', 'ある'], ['lost', '探したが無い'], ['unasked', 'まだ探していない']];
+
+document.getElementById('form').innerHTML = '<div class="re-dialog"><form><header class="re-dialog-head"><div><p class="re-eyebrow">自宅 ／ 確認と記録</p><h2>権利証と取得時の資料</h2></div><button type="button" class="re-close" aria-label="閉じる">×</button></header>' +
+  '<div class="re-dialog-body">' +
+  '<fieldset><legend>土地</legend>' +
+    '<p class="given">名義は<b>祖父 一郎（故人）</b>のまま（権利関係の記録から）。父の権利証はまだないので、祖父の権利証を聞きます。</p>' +
+    q('祖父は、この土地をどうやって手に入れましたか', opts('lh', [['buy', '買った'], ['inherit', '受け継いだ・もらった'], ['unknown', '分からない']], 'buy')) +
+    q('祖父の権利証（登記済証）はありますか', opts('ld', HAVE, 'have') + where('lda', 'home', '書斎のキャビネット上段'), '預けているときは、司法書士・親族など相手の名前を書きます。目隠しシールや折り込みは開けずに、紙があるかどうかだけ確かめます。') +
+    q('祖父が買ったときの売買契約書・領収書はありますか', opts('la', HAVE, 'lost')) +
+  '</fieldset>' +
+  '<fieldset><legend>建物</legend>' +
+    '<p class="given">名義は<b>父</b>（権利関係の記録から）。</p>' +
+    q('父は、この建物をどうやって手に入れましたか', opts('bh', [['build', '建てた'], ['buy', '買った'], ['inherit', '受け継いだ・もらった'], ['unknown', '分からない']], 'build')) +
+    q('父の名義で登記したのはいつですか', years(2004) + '<p class="derive">→ 探す権利証は <b>登記済証（冊子）</b>　2005年3月より前の登記</p>') +
+    q('権利証（登記済証）はありますか', opts('bd', HAVE, 'have') + where('bda', 'home', '書斎のキャビネット上段')) +
+    q('建てたときの工事請負契約書・領収書はありますか', opts('ba', HAVE, 'have') + where('baa', 'home', '', true)) +
+  '</fieldset></div>' +
+  '<footer class="re-dialog-foot"><span>分かったところまで残せます</span><button type="button">キャンセル</button><button class="re-save" type="button">記録を保存</button></footer></form></div>';
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('.pr-dt-t'); if (!t) return;
+  const box = t.parentElement, open = !box.classList.contains('open');
+  box.classList.toggle('open', open); t.setAttribute('aria-expanded', open); box.querySelector('.pr-dt-b').hidden = !open;
+});
+</script>
+</body>
+</html>

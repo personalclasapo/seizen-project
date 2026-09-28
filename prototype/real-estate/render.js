@@ -1328,7 +1328,7 @@
        flags  … くわしくの中身を家ごとに変えるところ                  */
   function tokiParts(p) {
     const pr = p.priorInheritance || {};
-    const docAt = key => { const d = (p.docs.at || {})[key] || {}; return d.st === 'have' && d.place ? d.place : ''; };
+    const docAt = key => docPlace(p, key);
     const gap = chGap(p), names = cs => cs.map(chName).join('・');
     const noWill = WHO + 'の遺言がなければ、';
     const say = [], home = [], make = [];
@@ -1391,7 +1391,7 @@
     if (gap.annex.length) { say.push('<b>' + names(gap.annex) + 'は登記がありません</b>。相続登記では名義が移りません。'); post.push({ t: names(gap.annex) + 'の表題登記', w: '取得した人・1か月以内' }); }
     if (gap.grow.length) {
       const has = gap.grow.some(x => x.docs === 'yes'), none = gap.grow.every(x => x.docs === 'no');
-      if (!none) home.push({ t: '工事の書類', s: '確認済証・工事請負契約書・領収書', at: has ? docAt('changed') : '', no: has ? '' : '場所は分からない' });
+      if (!none) home.push({ t: '工事の書類', s: '確認済証・工事請負契約書・領収書', at: has ? changedPlace(p) : '', no: has ? '' : '場所は分からない' });
       if (!has) make.push({ t: '上申書', s: (none ? '工事の書類がないので、' : '工事の書類が見つからないとき。') + '相続人全員が実印を押す' });
       kyoNote = [kyoNote, '登記に載っていない部分を誰が取得するかも書く'].filter(Boolean).join('。');
     }
@@ -1438,7 +1438,7 @@
     const out = [];
     const owns = fatherStake(p);
     const pr = p.priorInheritance || {};
-    const docAt = key => { const d = (p.docs.at || {})[key] || {}; return d.st === 'have' && d.place ? d.place : ''; };
+    const docAt = key => docPlace(p, key);
     const gap = chGap(p);
     if (owns) {
       out.push({ id: 'toki', ord: 36, icon: 'toki', nm: '相続登記', lim: '取得を知った日から3年以内',
@@ -2084,57 +2084,202 @@
     return roomHead('loan', 'ローン・契約') + h;
   }
 
-  /* 書類：**所在**だけを持つ（調査 §10-3）。
-
-     以前は neededDocs() の11種を「確認済み／対応が必要／該当なし」で
-     並べていたが、項目設計 §6 が明示的に否定している ――
-     「不動産カテゴリ内にもう一つ書類管理機能を作らない」。
-     揃い具合の管理は書類管理であって、辿り着けるようにすることではない。
-
-     載せるのは **家の中を探さないと出てこないもの** だけ。
-
-       常に        権利証・取得時の資料
-                   （再発行されない／取り直せない。本人しか在り処を知らない）
-       従属        境界の書面・借地契約書
-                   （事情・契約で「書面あり」になったときだけ現れる）
-
-     役所で取れるもの（戸籍・除票・印鑑証明・課税明細）は載せない。
-     手続きごとに要るものが違うので、**上段の各手続きに付いている**。 */
-
-  /* どこにあるか。ある／無い／分からない を §11 の状態として持つ。 */
-  const WHERE_ST = {
-    have:    { label: 'ある',       tone: 'gr' },
-    lost:    { label: '見つからない', tone: 'or' },
-    unknown: { label: '分からない',   tone: 'bl' }
+  /* ══ 書類のありか（2026-09-28 見本 `_検討/書類のありか_表示v4.html`）══════════
+     このページの区分が「書面がある」と言った紙を集め、どこにあるかを示す一覧。
+     なぜ要るか・いつ使うかは紙を使う側の行（今のうち・そのとき）が言っているので、
+     ここでは言わない（v1 で説明・くわしくを載せて、部屋の役目を取り違えた）。
+       段 … 紙が生まれた区分（有無を答えた区分）：今のうち／権利関係／ローン・契約。
+            そのときは紙を使う側なので段にしない（段にすると協議書・工事の書類が2か所に出る）。
+       行 … 束ごと（隣ごと・相手ごと・工事ごと）。紙の絵｜名前（どれのものか）／所在。
+            1列で並べる（v3 の2列は幅が足りず、名前が折れて所在の札が別段になった）。
+     権利証・買ったときの契約書は権利関係の紙として置く。有無を権利関係で答える形はまだ
+     無いので、それまではここのフォームで有無も聞く。
+     束の記録は docs.at に「区分:束の中身」の鍵で持つ（隣の向き・相手・工事の中身。
+     並び順の番号にすると、件を消したときに別の束の場所になる）。 */
+  const DC_RED = '#C0574E', DC_LINE = '#D9D3C4', DC_EDGE = '#A8A08C';
+  const dcR = (ys, a, b) => ys.map(y => '<line x1="' + a + '" y1="' + y + '" x2="' + b + '" y2="' + y + '" stroke="' + DC_LINE + '" stroke-width=".8" stroke-linecap="round"/>').join('');
+  const dcSvg = inner => '<svg class="dc-fig" viewBox="0 0 32 44" width="30" height="41.3" aria-hidden="true">' + inner + '</svg>';
+  /* 用紙は A4（1:1.414）＝ 24×34 を (4,5) に。 */
+  const dcSheet = (x, y, fill) => '<rect x="' + x + '" y="' + y + '" width="24" height="34" rx=".8" fill="' + (fill || '#FFFFFF') + '" stroke="' + DC_EDGE + '" stroke-width=".8"/>';
+  const dcTitle = (x, w) => '<rect x="' + x + '" y="8" width="' + w + '" height="1.8" rx=".4" fill="#CFC7B2"/>';
+  const dcSeal = (cx, cy, r, op) => '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r || 1.7) + '" fill="none" stroke="' + DC_RED + '" stroke-width=".8" opacity="' + (op || .85) + '"/>';
+  /* 紙の種類ごとに、実物で見分けがつく印を入れる。 */
+  const DC_PAPER = {
+    /* 権利証：綴じた束＋「登記済」の二重枠の朱印 */
+    deed: dcSvg(dcSheet(8, 8, '#F4F1E8') + dcSheet(6, 6.5, '#F8F6EF') + dcSheet(4, 5) +
+      '<rect x="4" y="5" width="3" height="34" fill="#ECE6D6"/><line x1="5.5" y1="9" x2="5.5" y2="12" stroke="#8E8676" stroke-width=".9"/><line x1="5.5" y1="31" x2="5.5" y2="34" stroke="#8E8676" stroke-width=".9"/>' +
+      '<rect x="9.5" y="8" width="8" height="1.8" rx=".4" fill="#CFC7B2"/>' + dcR([14, 17, 20, 23.5, 27, 30.5], 9.5, 25) +
+      '<rect x="19.2" y="7.4" width="6" height="6" fill="#FFF" stroke="' + DC_RED + '" stroke-width=".9"/><rect x="20" y="8.2" width="4.4" height="4.4" fill="none" stroke="' + DC_RED + '" stroke-width=".5"/>' +
+      '<line x1="21" y1="9.7" x2="23.4" y2="9.7" stroke="' + DC_RED + '" stroke-width=".7"/><line x1="21" y1="11.2" x2="23.4" y2="11.2" stroke="' + DC_RED + '" stroke-width=".7"/>'),
+    /* 遺産分割協議書：本文の下に、相続人全員の実印が横一列 */
+    split: dcSvg(dcSheet(4, 5) + dcTitle(10, 12) + dcR([13, 16, 19, 22, 28], 7, 25) +
+      dcSeal(9, 32.5) + dcSeal(14, 32.5) + dcSeal(19, 32.5) + dcSeal(24, 32.5, 1.7, .6)),
+    /* 遺言書：封筒の表書きと、閉じ目の封印 */
+    will: dcSvg('<rect x="3" y="7" width="26" height="31" rx=".8" fill="#FBF9F3" stroke="' + DC_EDGE + '" stroke-width=".8"/>' +
+      '<path d="M3 13.5 16 20.5 29 13.5" fill="none" stroke="' + DC_EDGE + '" stroke-width=".8"/>' +
+      '<line x1="16" y1="24" x2="16" y2="34" stroke="#8E8676" stroke-width="1.2" stroke-linecap="round"/>' + dcSeal(16, 20.5, 1.6)),
+    /* 契約書（工事請負・売買）：左上に収入印紙（ギザ縁）、下に甲乙の丸印 */
+    contract: dcSvg(dcSheet(4, 5) + dcTitle(12, 10) +
+      '<path d="M6.6 7.4h.6l.4-.5.4.5h.6l.4-.5.4.5h.6v5.4h-.6l-.4.5-.4-.5h-.6l-.4.5-.4-.5h-.6Z" fill="#E4DCC6" stroke="#B3A987" stroke-width=".5"/>' +
+      dcR([15, 18, 21, 24, 27], 7, 25) + dcSeal(20, 32, 1.8) + dcSeal(24.4, 32, 1.8, .6)),
+    /* 境界確認書・測量図：区画の線と境界点、隣と2つの印 */
+    survey: dcSvg(dcSheet(4, 5) + dcTitle(10, 12) +
+      '<path d="M8.5 13.5 21 12.5 23 24 9.5 25.5Z" fill="none" stroke="#8E8676" stroke-width=".8"/>' +
+      '<line x1="15" y1="13" x2="16.3" y2="25" stroke="#8E8676" stroke-width=".8" stroke-dasharray="1.4 .9"/>' +
+      '<circle cx="15" cy="13" r=".9" fill="#8E8676"/><circle cx="16.3" cy="25" r=".9" fill="#8E8676"/>' + dcSeal(10, 33) + dcSeal(22, 33)),
+    /* 覚書・承諾書：短い本文と、当事者の署名と印 */
+    memo: dcSvg(dcSheet(4, 5) + dcTitle(11, 10) + dcR([13, 16, 19], 7, 25) +
+      dcR([25, 30], 7, 19) + dcSeal(22.4, 24.8, 1.5) + dcSeal(22.4, 29.8, 1.5)),
+    /* 役所の証明書：本文の下に認証文と、市区町村長の角印 */
+    cert: dcSvg(dcSheet(4, 5) + dcTitle(11, 10) + dcR([13, 16, 19, 22], 7, 25) + dcR([28.5], 7, 17) +
+      '<rect x="19.5" y="26.5" width="5" height="5" fill="none" stroke="' + DC_RED + '" stroke-width=".8" opacity=".85"/>'),
+    /* 賃貸借・借地の契約書：甲乙の丸印が縦に2つ */
+    lease: dcSvg(dcSheet(4, 5) + dcTitle(10, 12) + dcR([13, 16, 19, 22, 25], 7, 25) + dcR([30, 34], 7, 17) + dcSeal(21.5, 30, 1.8) + dcSeal(21.5, 34, 1.8, .6))
   };
-
-  function placedDocs(p) {
+  /* 所在の札の絵：家の中＝家／貸金庫＝金庫の扉／預けている＝人／まだ＝？ */
+  const dcIc = inner => '<svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true">' + inner + '</svg>';
+  const DC_AT = {
+    home: { label: '家の中', ic: dcIc('<path d="M3.5 9.2 10 3.6l6.5 5.6V16.4H3.5Z" fill="#F3F6F1" stroke="#4F7358" stroke-width="1.3" stroke-linejoin="round"/><rect x="8.3" y="11.2" width="3.4" height="5.2" fill="none" stroke="#4F7358" stroke-width="1.1"/>') },
+    safe: { label: '貸金庫', ic: dcIc('<rect x="3" y="3.5" width="14" height="13" rx="1.2" fill="#F3F6F1" stroke="#4F7358" stroke-width="1.3"/><circle cx="11" cy="10" r="3" fill="none" stroke="#4F7358" stroke-width="1.1"/><line x1="11" y1="7" x2="11" y2="8.3" stroke="#4F7358" stroke-width="1"/><line x1="5.6" y1="8" x2="5.6" y2="12" stroke="#4F7358" stroke-width="1.4" stroke-linecap="round"/><line x1="5" y1="16.5" x2="5" y2="17.8" stroke="#4F7358" stroke-width="1.2"/><line x1="15" y1="16.5" x2="15" y2="17.8" stroke="#4F7358" stroke-width="1.2"/>') },
+    kept: { label: '預けている', ic: dcIc('<circle cx="10" cy="6.6" r="3" fill="#F3F6F1" stroke="#4F7358" stroke-width="1.3"/><path d="M4 17c.4-3.6 3-5.6 6-5.6s5.6 2 6 5.6Z" fill="#F3F6F1" stroke="#4F7358" stroke-width="1.3" stroke-linejoin="round"/>') },
+    blank: { ic: dcIc('<path d="M6.5 5h10v10h-10L3 10Z" fill="#FBF8F1" stroke="#B8AD95" stroke-width="1.2" stroke-linejoin="round"/><circle cx="7.4" cy="10" r="1.2" fill="none" stroke="#B8AD95" stroke-width="1"/>') },
+    none: { ic: dcIc('<circle cx="10" cy="10" r="7" fill="#FBF6EC" stroke="#C9A36A" stroke-width="1.2"/><path d="M8 8.2a2 2 0 1 1 2.8 1.9c-.5.3-.8.6-.8 1.3" fill="none" stroke="#A7792F" stroke-width="1.2" stroke-linecap="round"/><circle cx="10" cy="13.6" r=".8" fill="#A7792F"/>') }
+  };
+  const DC_CH = { confirm: '確認済証', inspect: '検査済証', contract: '工事請負契約書', receipt: '領収書', handover: '工事完了引渡証明書' };
+  /* 束の鍵（区分:中身）。 */
+  const dcKey = {
+    boundary: e => 'boundary:' + (e.side || '') + ':' + (e.who || ''),
+    road: l => 'road:' + l.land + ':' + (l.who || ''),
+    changed: c => 'changed:' + c.what + ':' + (c.when || '') + ':' + (c.side || '') + ':' + (c.where || '')
+  };
+  /* 記録（束の鍵に無ければ、以前の区分ごとの1件を読む）。 */
+  function docRec(p, key) {
     const at = p.docs.at || {};
-    const keys = new Set(['deed', 'acquire']);
-    Object.keys(p.matters || {}).forEach(key => { if (S.matterPaper(p, key)) keys.add(key); });
-    Object.keys(at).forEach(key => { if (S.DOC_KINDS[key] && key !== 'prior' && key !== 'priorWill') keys.add(key); });
-    /* 前の代の協議書・遺言書は、父が取得する側で登記がまだのときだけ。
-       父が先に亡くなると、家族がこれを司法書士に渡して登記に使う。 */
+    return at[key] || (key.includes(':') ? at[key.split(':')[0]] : null) || {};
+  }
+  /* 場所の字（そのときの「家にある」が読む）。探したが無い・未確認は空。 */
+  function docPlace(p, key) {
+    const d = docRec(p, key);
+    return d.place && (d.st === 'have' || key.includes(':')) ? d.place : '';
+  }
+  /* 工事の書類の場所（書類がある増える変更のうち、場所が分かっている最初の1件）。 */
+  function changedPlace(p) {
+    const m = p.matters.changed || {};
+    const c = (m.has === 'yes' ? m.changes || [] : []).find(c => S.chGrow(c.what) && c.reg !== 'yes' && c.docs === 'yes' && docPlace(p, dcKey.changed(c)));
+    return c ? docPlace(p, dcKey.changed(c)) : '';
+  }
+
+  /* 段ごとの紙。{ label, rows:[{ key, fig, n, q, own }] }（own＝有無もここで聞く紙）。 */
+  function docShelves(p) {
+    const now = [], rights = [], deals = [];
     const pr = p.priorInheritance || {};
     if (pr.remains === 'yes' && pr.taker !== 'other' && pr.stage !== 'registered' && S.priorParty(pr) === WHO) {
-      if (S.priorRoute(pr) === 'split' && pr.stage === 'signed') keys.add('prior');
-      if (S.priorRoute(pr) === 'will') keys.add('priorWill');
+      const owner = (S.priorOwner(p) || '前の代').replace(/（故人）$/, '');
+      if (S.priorRoute(pr) === 'split' && pr.stage === 'signed') now.push({ key: 'prior', fig: 'split', n: owner + 'の遺産分割協議書・印鑑証明書' });
+      if (S.priorRoute(pr) === 'will') now.push({ key: 'priorWill', fig: 'will', n: owner + 'の遺言書' });
     }
-    (p.deals || []).forEach(d => { if (d.kind === 'borrow') keys.add('borrow'); });
-    return Array.from(keys).map(key => ({ key, label: S.DOC_KINDS[key].label, ...(at[key] || {}) }));
+    const b = p.matters.boundary || {};
+    const bdFig = kinds => (kinds || []).some(k => k === 'confirm' || k === 'map') ? 'survey' : 'memo';
+    if (b.deal === 'unknown' && b.paper === 'yes') now.push({ key: 'boundary', fig: bdFig(b.docKinds), n: docName(b.docKinds), q: '境界' });
+    if (b.deal === 'yes') (b.entries || []).filter(e => e.paper === 'yes').forEach(e =>
+      now.push({ key: dcKey.boundary(e), fig: bdFig(e.docKinds), n: docName(e.docKinds), q: (SIDE[e.side] || '隣') + (e.who ? ' ' + e.who : '') }));
+    const r = p.matters.road || {};
+    if (r.has === 'yes') (r.links || []).filter(l => l.pact === 'paper').forEach(l =>
+      now.push({ key: dcKey.road(l), fig: 'memo', n: '承諾書・覚書', q: rdName(l) }));
+    const m = p.matters.changed || {};
+    if (m.has === 'yes') (m.changes || []).filter(c => S.chGrow(c.what) && c.reg !== 'yes' && c.docs === 'yes').forEach(c => {
+      const k = (c.kinds || []).map(x => DC_CH[x]).filter(Boolean);
+      now.push({ key: dcKey.changed(c), fig: 'contract', n: k.length ? k.join('・') : '工事の書類', q: chName(c) });
+    });
+    rights.push({ key: 'deed', fig: 'deed', n: '権利証', q: '登記済証・登記識別情報', own: true });
+    rights.push({ key: 'acquire', fig: 'contract', n: '買ったとき・建てたときの契約書・領収書', own: true });
+    const who = kind => (p.deals || []).filter(d => d.kind === kind).map(d => d.who).filter(Boolean).join('・');
+    if ((p.deals || []).some(d => d.kind === 'lend')) deals.push({ key: 'lend', fig: 'lease', n: '賃貸借契約書', q: who('lend') });
+    if ((p.deals || []).some(d => d.kind === 'borrow')) deals.push({ key: 'borrow', fig: 'lease', n: '借地契約書', q: who('borrow') });
+    return [{ label: '今のうち', rows: now }, { label: '権利関係', rows: rights }, { label: 'ローン・契約', rows: deals }].filter(x => x.rows.length);
   }
+  /* 役所で取る書類（そのときの相続登記がそろえるもの）。取ったあとは家のどこかに
+     しまうので、ほかの紙と同じく場所を記録する（取る先を出していたのは、保管場所を
+     「家の中を探す紙」に限ると取り違えたため）。記録が無いうちは「まだ取っていない」
+     ―― 父の除票のように、父が亡くなるまで存在しない紙もある。
+     どの家でも同じ紙なので、段は開閉にして最初は閉じる。 */
+  const openDocOffice = new Set();          // 役所で取る書類を開いている物件 id
+  /* 取り方（まだ取っていない行の「？」から吹き出しで出す）。
+     戸籍は2024年3月から最寄りの市区町村でまとめて取れる（広域交付。直系の家族が請求でき、
+     郵送は不可）。除票は最後の住所の市区町村（郵送可）。印鑑証明書は各自の住所の市区町村
+     （マイナンバーカードでコンビニ交付）。評価証明書は登録免許税の計算に使うので、
+     申請する年度のもの。評価証明書・名寄帳は物件のある市区町村（東京23区は都税事務所）。 */
+  function officeHow(p, n) {
+    const addr = p.addr || '';
+    const ward = (addr.match(/横浜市(.+?区)/) || [])[1];
+    const here = /^東京都.+?区/.test(addr) ? '物件のある区の都税事務所'
+      : ward ? ward + '役所' : /長岡市/.test(addr) ? '長岡市役所' : '物件のある市区町村';
+    if (/^戸籍/.test(n)) return '最寄りの市区町村の窓口で、まとめて取れます（広域交付。請求する人が窓口へ行きます）。郵送で頼むときは本籍地の市区町村へ。';
+    if (/^住民票の除票/.test(n)) return '亡くなった人の最後の住所の市区町村で取ります。郵送でも頼めます。';
+    if (/^印鑑証明書/.test(n)) return '相続人がそれぞれ、自分の住所の市区町村で取ります。マイナンバーカードがあればコンビニでも取れます。';
+    if (/^固定資産評価証明書/.test(n)) return here + 'で取ります。登記を申請する年度のものを使います。';
+    if (/^名寄帳/.test(n)) return here + 'の固定資産税の窓口で取ります。';
+    return '';
+  }
+  function officeDocs(p) {
+    if (!fatherStake(p)) return [];
+    return tokiParts(p).docs.office.map(n => ({ key: 'office:' + n.replace(/（.*$/, ''), fig: 'cert', n, office: true, how: officeHow(p, n) }));
+  }
+  /* 権利証・買ったときの契約書の「？」から出すこと。紙の説明で止めず、どう手に入れるか
+     （誰に聞く・どこに頼む・何で代わりにする）を先に書く。
+     まだ確かめていない … 父に聞いて探す＋探す紙の見た目／写しを頼む先
+     探したが無い       … 代わりの手に入れ方
+     権利証は再発行されない。売る・担保に入れるときは司法書士の本人確認情報か法務局の
+     事前通知で代わりにする（法務局「登記識別情報を紛失したとき」）。売買契約書は、買った
+     不動産会社・売主に写しが残っていればもらえる。無ければ通帳の振込記録・ローンの書類・
+     抵当権設定登記の債権額・購入時のパンフレットで代わりにし、何もなければ売った額の5%
+     （国税庁 No.3258）。 */
+  const DC_TIP = {
+    deed: {
+      look: '父に、しまった場所を聞いて探します。2005年3月より前の登記なら、司法書士の表紙で綴じた冊子で、中の紙に「登記済」の朱印があります。2008年7月より後はA4の登記識別情報通知で、その間はどちらもあります。目隠しシールや折り込みは開けません。',
+      lost: '再発行はされません。売る・担保に入れるときに、司法書士に本人確認情報を作ってもらいます（報酬がかかります）。法務局から届く事前通知に答える方法もあります（手数料なし・2週間以内に答える）。相続登記には使いません。' },
+    acquire: {
+      look: '父に、しまった場所を聞いて探します。見つからなければ、買った不動産会社（建てた家なら建築会社）に写しが残っていないか頼みます。相続で受け継いだ家なら、前の持ち主が買ったときのものを探します。',
+      lost: '買った不動産会社（建てた家なら建築会社）に、写しが残っていないか頼みます。無ければ、代金を払った通帳の記録、住宅ローンの契約書、登記に載っている抵当権の債権額、分譲のときのパンフレットを集めて代わりにします。何もなければ、売った額の5%で計算します。' }
+  };
+  let dcPopN = 0;                           // 吹き出しの id（間取りと狭い幅の一覧で同じ行を2回描く）
   function roomDocs(p) {
-    /* 主役は保管場所の字。書類名は単位の名前として頭に置き、
-       場所はその下に太く出す（家族が読みに来るのは場所）。 */
-    const h = placedDocs(p).map(d => {
-      const located = d.st === 'have' && d.place;
-      const st = located ? 'have' : d.st === 'lost' ? 'lost' : 'unknown';
-      return '<div class="unit">' + unitHead(d.label, badge(null, WHERE_ST[st]),
-          editButton(p, 'doc', d.key, d.label + 'の所在')) +
-        (located ? line('u-main', d.place) : '') + line('u-sub', d.note) + '</div>';
-    }).join('');
-    return roomHead('doc', '書類のありか') + '<p class="record-lead">家族が取り出せる場所を残す</p>' + h +
-      (Object.keys(S.DOC_KINDS).some(k => !p.docs.at[k]) ? addButton(p, 'doc', '別の書類を追加') : '');
+    const row = d => {
+      const rec = docRec(p, d.key);
+      const at = DC_AT[rec.kind] ? rec.kind : 'home';
+      const placed = d.own ? rec.st === 'have' && rec.place : rec.place;
+      /* 場所が無いときの状態と、「？」から出すこと（カーソルを合わせる・押す・
+         キーボードで選ぶ、のどれでも開く）。
+           まだ取っていない（役所）     … 取り方
+           あるか、まだ確かめていない   … 誰に聞いて探すか・頼む先（DC_TIP）
+           探したが無い                 … 代わりの手に入れ方
+           場所がまだ（書面はある紙）   … 言えるのは「父に聞く」だけなので、「？」に
+                                          せず空の札の印にする */
+      const lost = d.own && rec.st === 'lost', unsure = d.own && rec.st !== 'have' && !lost;
+      const text = d.office ? 'まだ取っていない' : lost ? '探したが無い' : unsure ? 'あるか、まだ確かめていない' : '場所がまだ';
+      const tip = d.office ? d.how : lost ? DC_TIP[d.key].lost : unsure ? DC_TIP[d.key].look : '';
+      const pid = 'dcp' + (++dcPopN);
+      const mark = tip
+        ? '<span class="dc-qw"><button type="button" class="dc-q" aria-expanded="false" aria-describedby="' + pid + '" aria-label="' + esc(d.n) +
+          (d.office ? 'の取り方' : lost ? 'が無いときの手に入れ方' : 'の探し方') + '">' + DC_AT.none.ic + '</button>' +
+          '<span class="dc-pop" role="tooltip" id="' + pid + '">' + esc(tip) + '</span></span>'
+        : DC_AT.blank.ic;
+      const tag = placed
+        ? '<span class="dc-at" title="' + DC_AT[at].label + '">' + DC_AT[at].ic + '<span class="dc-at-t">' + esc(rec.place) + '</span></span>'
+        : '<span class="dc-at no' + (tip ? '' : ' blank') + '">' + mark + '<span class="dc-at-t">' + text + '</span></span>';
+      const name = d.n + (d.q ? '（' + d.q + '）' : '');
+      /* フォームの見出しに紙の名前を出すので、ボタンに持たせる（editButton と同じ形）。 */
+      const btn = '<button type="button" class="record-edit" data-edit-p="' + esc(p.id) + '" data-edit-type="doc" data-edit-key="' + esc(d.key) +
+        '" data-doc-name="' + esc(name) + '"' + (d.own ? ' data-doc-own' : '') + ' aria-label="' + esc(name + 'のありかを記録') + '">' + PEN + '<span>記録</span></button>';
+      return '<li class="dc">' + DC_PAPER[d.fig] + '<div class="dc-b"><p class="dc-n">' + esc(d.n) +
+        (d.q ? '<small>（' + esc(d.q) + '）</small>' : '') + '</p><div class="dc-l">' + tag + btn + '</div></div></li>';
+    };
+    const offs = officeDocs(p), open = openDocOffice.has(p.id);
+    const office = offs.length ? '<section class="dc-shelf dc-office' + (open ? ' open' : '') + '">' +
+      '<h5 class="dc-h"><button type="button" class="dc-hl dc-tg" data-doc-office="' + esc(p.id) + '" aria-expanded="' + open + '">役所で取る書類' + PG.down + '</button></h5>' +
+      (open ? '<ul class="dc-list">' + offs.map(row).join('') + '</ul>' : '') + '</section>' : '';
+    return roomHead('doc', '書類のありか') + docShelves(p).map(s =>
+      '<section class="dc-shelf"><h5 class="dc-h"><span class="dc-hl">' + s.label + '</span></h5><ul class="dc-list">' + s.rows.map(row).join('') + '</ul></section>').join('') + office;
   }
 
   function roomHead(icon, title) {
@@ -2875,7 +3020,29 @@
     wire();
   }
 
+  /* 取り方の吹き出し：押して開け閉めする（スマホにはカーソルを合わせる操作がない）。
+     ほかを押す・Esc で閉じる。 */
+  const closePops = except => document.querySelectorAll('.dc-qw.open').forEach(w => {
+    if (w === except) return;
+    w.classList.remove('open'); w.querySelector('.dc-q').setAttribute('aria-expanded', 'false');
+  });
+  document.addEventListener('click', e => { if (!e.target.closest('.dc-qw')) closePops(); });
+  /* Esc はフォーカスが残っていても閉じる（キーボードで選んで開いた吹き出しは、
+     フォーカスが外れるまで data-shut で止める）。 */
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    closePops();
+    const q = document.activeElement && document.activeElement.closest && document.activeElement.closest('.dc-q');
+    if (q) { q.setAttribute('data-shut', ''); q.addEventListener('blur', () => q.removeAttribute('data-shut'), { once: true }); }
+  });
   function wire() {
+    document.querySelectorAll('.dc-q').forEach(b => {
+      b.onclick = () => {
+        const w = b.parentElement, open = !w.classList.contains('open');
+        closePops(w);
+        w.classList.toggle('open', open); b.setAttribute('aria-expanded', String(open));
+      };
+    });
     /* 境界：越境が複数の隣で、図に出すものを切り替える。図の枠は同じ大きさなので
        描き直さず、表示だけ切り替える（選んだものは描き直し後も残す）。 */
     document.querySelectorAll('[data-bd-pick]').forEach(button => {
@@ -2888,7 +3055,7 @@
     });
     /* 開閉は表示中だけの状態。押したら間取りごと描き直す（部屋の深さは
        中身の実測で決まる）。押したボタンを同じ画面位置に留める。 */
-    [['data-procedure', 'procedure', openProcedures], ['data-prior-open', 'priorOpen', openPrior], ['data-matter-open', 'matterOpen', openMatter], ['data-bd-nb', 'bdNb', null, bdNb], ['data-rd-nb', 'rdNb', null, rdNb]].forEach(([sel, attr, set, pick]) =>
+    [['data-procedure', 'procedure', openProcedures], ['data-prior-open', 'priorOpen', openPrior], ['data-matter-open', 'matterOpen', openMatter], ['data-doc-office', 'docOffice', openDocOffice], ['data-bd-nb', 'bdNb', null, bdNb], ['data-rd-nb', 'rdNb', null, rdNb]].forEach(([sel, attr, set, pick]) =>
       document.querySelectorAll('[' + sel + ']').forEach(button => {
       button.onclick = () => {
         const key = button.dataset[attr];

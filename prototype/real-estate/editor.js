@@ -23,7 +23,6 @@
   const section = (title, html, attr) => '<fieldset' + (attr || '') + '><legend>' + esc(title) + '</legend>' + html + '</fieldset>';
   const group = (title, html, note) => '<fieldset><legend>' + esc(title) + '</legend>' + (note ? '<p class="re-group-note">' + esc(note) + '</p>' : '') + '<div class="re-fields">' + html + '</div></fieldset>';
   const nextFields = v => group('残っている確認・対応', field('next', '次にすること', v.next, true, '分かったところまで保存できます。残る確認があれば書き留めてください。') + field('assignee', '確認する人', v.assignee) + field('timing', '確認する時期・きっかけ', v.timing));
-  const docOptions = [['unknown', '所在が分からない'], ['have', '所在が分かる'], ['lost', '探したが見つからない']];
   const known = [['unknown', '分からない'], ['yes', 'あり'], ['no', 'なし']];
   const titles = { boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
   /* 1件ぶんのブロックの頭：番号・名前・答えの要約（右端に削除の入口が続く）。
@@ -403,10 +402,18 @@
         field('who', '相手の名前・会社名', d.who) + field('tel', '連絡先', d.tel) + select('flow', 'お金のやり取り', d.flow || 'none', [['none', 'なし'], ['pay', '支払う'], ['recv', '受け取る']]) +
         field('what', '頼んでいること・契約や取り決め', d.what, true) + field('source', '確認した資料・相手', d.source)) + nextFields(d);
     } else if (type === 'doc') {
-      const d = p.docs.at[key] || {};
-      title = key === 'new' ? '別の書類の所在を記録' : S.DOC_KINDS[key].label;
-      lead = '家族が実際に取り出せる場所や、預けている相手を残します。';
-      body = group('書類のありか', (key === 'new' ? select('docKind', '書類の種類', 'build', Object.entries(S.DOC_KINDS).filter(([k]) => k !== 'prior' && k !== 'priorWill' && !p.docs.at[k]).map(([k,v]) => [k,v.label])) : '') + select('st', '書類の所在', d.st || 'unknown', docOptions) + field('place', '保管場所・取り出し方', d.place) + field('note', '探した場所・補足', d.note, true));
+      /* 書類のありか：聞くのは場所だけ。紙があるかどうかは、その紙が生まれた区分で
+         答えている。権利証・買ったときの契約書だけは、有無を答える場所が権利関係にまだ
+         無いので、ここで聞く（data-doc-own）。 */
+      const own = trigger && trigger.hasAttribute('data-doc-own');
+      const at = p.docs.at || {};
+      const d = at[key] || (String(key).includes(':') ? at[String(key).split(':')[0]] : null) || {};
+      title = (trigger && trigger.dataset.docName) || S.DOC_KINDS[String(key).split(':')[0]].label;
+      body = (own ? question('ありますか', choice('st', d.st || 'unknown', [['have', 'ある'], ['lost', '探したが無い'], ['unknown', 'まだ確かめていない']])) : '') +
+        question('どこにありますか', choice('kind', d.kind || 'home', [['home', '家の中'], ['safe', '貸金庫'], ['kept', '預けている']]) +
+          '<div class="re-q-sub"><input class="re-q-in re-doc-place" name="place" value="' + esc(d.place || '') + '" aria-label="場所" placeholder="例：書斎のキャビネット上段"></div>',
+          '家の中なら部屋と棚、貸金庫なら銀行と支店、預けているなら相手の名前を書きます。貸金庫は、' + WHO + 'が亡くなると開けるのに相続人全員の同意が要ります。',
+          ' data-doc-where');
     }
     dialog.innerHTML = '<form><header class="re-dialog-head"><div><p class="re-eyebrow">' + esc(p.name) + ' ／ 確認と記録</p><h2 id="re-dialog-title" tabindex="-1">' + esc(title) + '</h2></div><button type="button" class="re-close" aria-label="閉じる">×</button></header>' +
       '<nav class="re-toc" aria-label="件の一覧" hidden></nav>' +
@@ -528,6 +535,8 @@
         });
         dialog.querySelector('[data-entry-add]').hidden = items.length >= 5;
       }
+      const docWhere = dialog.querySelector('[data-doc-where]');
+      if (docWhere && form.elements.st) docWhere.hidden = form.elements.st.value !== 'have';
       const loanFields = dialog.querySelector('[data-loan-details]');
       if (loanFields) loanFields.hidden = form.elements.has.value === 'no';
       if (form.elements.remains) {

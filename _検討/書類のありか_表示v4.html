@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>書類のありか 表示v4</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<link rel="stylesheet" href="../prototype/real-estate/area.css">
+<!--
+  書類のありか 見本 v4（2026-09-28）
+
+  v3（紙の札＋所在の札・2列）は場所を取りすぎた。原因は2列：1枚が約190px幅しかなく、
+  名前も「使う」も2行に折れ、所在の札を横に置けずに段を分けていた（1枚 約150px）。
+  同じ段の2枚は高いほうにそろい、奇数だと右半分が空く。
+
+  v4 … 1列。1枚＝2行：紙の絵｜名前／所在（絵＋場所＋記録）。
+        「使う」は外した ―― どの手続きにどの紙を使うかは、そのときのカードの「家にある」が
+        先に言っていて、家族はそこから来る。ここで言い直しても振る舞いは変わらない。
+        項目名の小見出しも外し、どの隣・相手・工事かは名前の後ろに付ける。
+        「家の中」の字は家の絵と同じことを言うので外した。
+        紙の絵は 30×41px（字の2行の高さに合わせる）。
+-->
+<style>
+  body{margin:0;background:var(--page);font-family:var(--font);color:var(--ink)}
+  .wrap{max-width:1500px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:18px;margin:0 0 6px}
+  .lead{font-size:12.5px;color:var(--ink2);line-height:1.8;margin:0 0 24px;max-width:860px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(451px,100%),451px));justify-content:start;gap:28px 40px;align-items:start}
+  .case > h2{font-size:11.5px;font-weight:600;color:#4b5f50;margin:0 0 8px;line-height:1.6}
+  .case > h2 small{display:block;font-weight:400;color:var(--ink3);font-size:10.5px}
+  .room{box-sizing:border-box;background:#FDFCF8;border:6px solid #E6E1D4;padding:16px 16px 16px;container-type:inline-size}
+
+  /* 区分の段：白い板に、1枚＝1行で縦に並べる */
+  .shelf + .shelf{margin-top:14px}
+  .shelf-h{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-size:11px;font-weight:700;color:var(--ink2);letter-spacing:.04em}
+  .shelf-h::after{content:"";flex:1;height:1px;background:#E6E0D1}
+  .papers{background:#fff;border:1px solid #ECE6D8;border-radius:7px;padding:0 10px}
+  /* 1枚＝2行：紙の絵｜名前／所在 */
+  .pp{display:grid;grid-template-columns:30px minmax(0,1fr);gap:0 10px;align-items:center;padding:8px 0}
+  .pp + .pp{border-top:1px dashed #E8E2D3}
+  .pp-fig{display:block}
+  .pp-n{font-size:12.5px;font-weight:650;line-height:1.5;overflow-wrap:anywhere}
+  .pp-n small{font-size:11px;font-weight:500;color:var(--ink2);margin-left:2px}
+  .tag{display:flex;align-items:center;gap:6px;margin-top:2px;min-height:26px}
+  .tag svg{flex:none;display:block}
+  .tag-t{flex:1;min-width:0;font-size:12.5px;font-weight:650;line-height:1.45;color:#2F4A37;overflow-wrap:anywhere}
+  .tag.no .tag-t{color:#8f6227;font-size:12px}
+  .tag .record-edit{flex:none;min-height:26px;margin:0 -4px 0 0;padding:0 5px;font-size:11px}
+  .empty{margin:4px 0 2px;font-size:11.5px;color:var(--ink2);line-height:1.8}
+
+  /* フォームの見本 */
+  .fm{margin-top:44px}
+  .fm > h2{font-size:14px;margin:0 0 4px}
+  .fm > p{font-size:12px;color:var(--ink2);margin:0 0 14px;line-height:1.8}
+  .fm .re-dialog{position:static;display:block;max-height:none;width:min(700px,100%);border:1px solid #DDD7C8;border-radius:12px;background:#fff;box-shadow:0 8px 28px #2b35291a}
+  .fm .re-dialog form{max-height:none}
+  .fm .re-dialog-body{overflow:visible}
+  .re-place{display:grid;gap:10px}
+  .re-place input{box-sizing:border-box;width:min(420px,100%);border:1px solid #cccfc0;border-radius:6px;padding:10px 11px;font:14px/1.6 var(--font)}
+  .re-opt .ic{display:inline-flex;vertical-align:-3px;margin-right:6px}
+  .re-opt > span{flex-direction:row!important;align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>書類のありか v4</h1>
+  <p class="lead">1列にし、1枚＝2行（紙の絵｜名前／所在）にした。「使う」・項目名の小見出し・「家の中」の字を外した。どの隣・相手・工事かは名前の後ろに付ける。</p>
+  <div class="grid" id="grid"></div>
+
+  <div class="fm">
+    <h2>フォーム（場所だけ）</h2>
+    <p>紙があるかどうかは、その紙が生まれた区分で答えている。ここで聞くのは場所だけ。選択肢にも札と同じ絵を付ける。</p>
+    <div id="form"></div>
+  </div>
+</div>
+
+<script>
+/* ── 紙（A4 ＝ 1:1.414。viewBox 32×44、用紙は 24×34 を (4,5) に） ── */
+const RED = '#C0574E', LINE = '#D9D3C4', EDGE = '#A8A08C';
+const R = (ys, a, b) => ys.map(y => '<line x1="' + a + '" y1="' + y + '" x2="' + b + '" y2="' + y + '" stroke="' + LINE + '" stroke-width=".8" stroke-linecap="round"/>').join('');
+const svgP = inner => '<svg class="pp-fig" viewBox="0 0 32 44" width="30" height="41.3" aria-hidden="true">' + inner + '</svg>';
+const sheet = (x, y, fill) => '<rect x="' + x + '" y="' + y + '" width="24" height="34" rx=".8" fill="' + (fill || '#FFFFFF') + '" stroke="' + EDGE + '" stroke-width=".8"/>';
+const title = (x, w) => '<rect x="' + x + '" y="8" width="' + w + '" height="1.8" rx=".4" fill="#CFC7B2"/>';
+const seal = (cx, cy, r, op) => '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r || 1.7) + '" fill="none" stroke="' + RED + '" stroke-width=".8" opacity="' + (op || .85) + '"/>';
+const P = {
+  /* 登記済証：綴じた束＋「登記済」の二重枠の朱印 */
+  kizumi: svgP(sheet(8, 8, '#F4F1E8') + sheet(6, 6.5, '#F8F6EF') + sheet(4, 5) +
+    '<rect x="4" y="5" width="3" height="34" fill="#ECE6D6"/><line x1="5.5" y1="9" x2="5.5" y2="12" stroke="#8E8676" stroke-width=".9"/><line x1="5.5" y1="31" x2="5.5" y2="34" stroke="#8E8676" stroke-width=".9"/>' +
+    '<rect x="9.5" y="8" width="8" height="1.8" rx=".4" fill="#CFC7B2"/>' + R([14, 17, 20, 23.5, 27, 30.5], 9.5, 25) +
+    '<rect x="19.2" y="7.4" width="6" height="6" fill="#FFF" stroke="' + RED + '" stroke-width=".9"/><rect x="20" y="8.2" width="4.4" height="4.4" fill="none" stroke="' + RED + '" stroke-width=".5"/>' +
+    '<line x1="21" y1="9.7" x2="23.4" y2="9.7" stroke="' + RED + '" stroke-width=".7"/><line x1="21" y1="11.2" x2="23.4" y2="11.2" stroke="' + RED + '" stroke-width=".7"/>'),
+  /* 遺産分割協議書：本文の下に、相続人全員の署名と実印が横一列 */
+  kyogi: svgP(sheet(4, 5) + title(10, 12) + R([13, 16, 19, 22], 7, 25) +
+    R([28], 7, 25) + seal(9, 32.5) + seal(14, 32.5) + seal(19, 32.5) + seal(24, 32.5, 1.7, .6)),
+  /* 工事請負契約書：左上に収入印紙（ギザ縁）、下に甲乙の丸印 */
+  kouji: svgP(sheet(4, 5) + title(12, 10) +
+    '<path d="M6.6 7.4h.6l.4-.5.4.5h.6l.4-.5.4.5h.6v5.4h-.6l-.4.5-.4-.5h-.6l-.4.5-.4-.5h-.6Z" fill="#E4DCC6" stroke="#B3A987" stroke-width=".5"/>' +
+    R([15, 18, 21, 24, 27], 7, 25) + seal(20, 32, 1.8) + seal(24.4, 32, 1.8, .6)),
+  /* 境界確認書・測量図：区画の線と境界点、隣と2つの印 */
+  kyokai: svgP(sheet(4, 5) + title(10, 12) +
+    '<path d="M8.5 13.5 21 12.5 23 24 9.5 25.5Z" fill="none" stroke="#8E8676" stroke-width=".8"/>' +
+    '<line x1="15" y1="13" x2="16.3" y2="25" stroke="#8E8676" stroke-width=".8" stroke-dasharray="1.4 .9"/>' +
+    '<circle cx="15" cy="13" r=".9" fill="#8E8676"/><circle cx="16.3" cy="25" r=".9" fill="#8E8676"/>' +
+    seal(10, 33) + seal(22, 33)),
+  /* 覚書（私道・4軒）：短い本文と、当事者の数だけの署名と印 */
+  oboe: n => svgP(sheet(4, 5) + title(11, 10) + R([13, 16, 19], 7, 25) +
+    Array.from({ length: n }, (_, i) => R([23.5 + i * 3.3], 7, 19) + seal(22.4, 23.5 + i * 3.3 - .2, 1.3)).join('')),
+  /* 賃貸借契約書：甲乙の丸印が縦に2つ */
+  chintai: svgP(sheet(4, 5) + title(10, 12) + R([13, 16, 19, 22, 25], 7, 25) + R([30, 34], 7, 17) + seal(21.5, 30, 1.8) + seal(21.5, 34, 1.8, .6))
+};
+
+/* ── 所在の札の絵（16px） ── */
+const IC = {
+  home: '<svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true"><path d="M3.5 9.2 10 3.6l6.5 5.6V16.4H3.5Z" fill="#F3F6F1" stroke="#4F7358" stroke-width="1.3" stroke-linejoin="round"/><rect x="8.3" y="11.2" width="3.4" height="5.2" fill="none" stroke="#4F7358" stroke-width="1.1"/></svg>',
+  safe: '<svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true"><rect x="3" y="3.5" width="14" height="13" rx="1.2" fill="#F3F6F1" stroke="#4F7358" stroke-width="1.3"/><circle cx="11" cy="10" r="3" fill="none" stroke="#4F7358" stroke-width="1.1"/><line x1="11" y1="7" x2="11" y2="8.3" stroke="#4F7358" stroke-width="1"/><line x1="5.6" y1="8" x2="5.6" y2="12" stroke="#4F7358" stroke-width="1.4" stroke-linecap="round"/><line x1="5" y1="16.5" x2="5" y2="17.8" stroke="#4F7358" stroke-width="1.2"/><line x1="15" y1="16.5" x2="15" y2="17.8" stroke="#4F7358" stroke-width="1.2"/></svg>',
+  kept: '<svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true"><circle cx="10" cy="6.6" r="3" fill="#F3F6F1" stroke="#4F7358" stroke-width="1.3"/><path d="M4 17c.4-3.6 3-5.6 6-5.6s5.6 2 6 5.6Z" fill="#F3F6F1" stroke="#4F7358" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  none: '<svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="#FBF6EC" stroke="#C9A36A" stroke-width="1.2"/><path d="M8 8.2a2 2 0 1 1 2.8 1.9c-.5.3-.8.6-.8 1.3" fill="none" stroke="#A7792F" stroke-width="1.2" stroke-linecap="round"/><circle cx="10" cy="13.6" r=".8" fill="#A7792F"/></svg>'
+};
+const KIND = { home: '家の中', safe: '貸金庫', kept: '預けている' };
+const PEN = '<svg class="re-pen" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l.6-2.9L10.8 2.9a1.2 1.2 0 0 1 1.7 0l.6.6a1.2 1.2 0 0 1 0 1.7L5.9 12.4Z"/><path d="M9.6 4.1l2.3 2.3M3 13h10"/></svg>';
+const DOCIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5H14l4 4v12.4a.6.6 0 0 1-.6.6H6.5a.6.6 0 0 1-.6-.6V4.1a.6.6 0 0 1 .6-.6Z"/><path d="M14 3.5V8h4"/><path d="M9 12h6M9 15.5h6"/></svg>';
+const btn = '<button type="button" class="record-edit">' + PEN + '<span>記録</span></button>';
+
+const tag = at => at
+  ? '<div class="tag" title="' + KIND[at.kind] + '">' + IC[at.kind] + '<span class="tag-t">' + at.t + '</span>' + btn + '</div>'
+  : '<div class="tag no">' + IC.none + '<span class="tag-t">場所がまだ</span>' + btn + '</div>';
+const paper = d => '<div class="pp">' + P[d.p] + '<div><div class="pp-n">' + d.n + (d.q ? '<small>（' + d.q + '）</small>' : '') + '</div>' + tag(d.at) + '</div></div>';
+const shelf = (label, ds) => ds.length ? '<section class="shelf"><p class="shelf-h">' + label + '</p><div class="papers">' + ds.map(paper).join('') + '</div></section>' : '';
+const room = shelves => '<div class="room"><div class="rm-h"><span class="rm-ic">' + DOCIC + '</span><h4>書類のありか</h4></div>' +
+  (shelves.join('') || '<p class="empty">書面があると答えた紙は、まだありません。権利証があるかどうかは「権利関係」で確かめます。</p>') + '</div>';
+
+P.oboe4 = P.oboe(4);
+const CAB = { kind: 'home', t: '書斎のキャビネット上段' };
+const SAFE = { kind: 'safe', t: '○○銀行 青葉台支店の貸金庫' };
+const jitakuRights = [
+  { p: 'kizumi', n: '権利証', q: '建物・登記済証', at: CAB },
+  { p: 'kizumi', n: '祖父の権利証', q: '土地', at: CAB },
+  { p: 'kouji', n: '工事請負契約書・領収書', q: '建てたとき', at: CAB }
+];
+
+const CASES = [
+  { h: '自宅｜今の答え', s: '今のうちで書面ありの答えはない',
+    body: room([shelf('権利関係', jitakuRights)]) },
+
+  { h: '自宅｜協議書に全員が署名し、増築の工事の書類が見つかったあと', s: '今のうちから2枚。工事の書類は場所がまだ',
+    body: room([
+      shelf('今のうち', [
+        { p: 'kyogi', n: '祖父の遺産分割協議書・印鑑証明書', at: SAFE },
+        { p: 'kouji', n: '確認済証・工事請負契約書', q: '北側の増築' }]),
+      shelf('権利関係', jitakuRights)]) },
+
+  { h: '長岡の家｜今の答え', s: '私道の取り決めは口頭・権利証はまだ確かめていない',
+    body: room([]) },
+
+  { h: '長岡の家｜書面がそろっているとき', s: '境界確認書・私道の覚書・権利証・駐車場の契約書',
+    body: room([
+      shelf('今のうち', [
+        { p: 'kyokai', n: '境界確認書・測量図', q: '右隣 ○○さん', at: { kind: 'home', t: '長岡の家 仏間の箪笥' } },
+        { p: 'oboe4', n: '私道の舗装の覚書', q: '向かいの3軒', at: { kind: 'kept', t: '向かいの□□さん（原本）' } }]),
+      shelf('権利関係', [
+        { p: 'kizumi', n: '権利証', q: '土地・建物・登記済証1冊', at: SAFE }]),
+      shelf('ローン・契約', [
+        { p: 'chintai', n: '賃貸借契約書', q: '駐車場・△△さん', at: CAB }])]) }
+];
+
+document.getElementById('grid').innerHTML = CASES.map(c =>
+  '<div class="case"><h2>' + c.h + '<small>' + c.s + '</small></h2>' + c.body + '</div>').join('');
+
+/* フォーム：場所だけ。選択肢に札と同じ絵。 */
+const opts = (xs, on) => '<div class="re-opts pill">' + xs.map(([v, l]) => '<label class="re-opt"><input type="radio" name="k" value="' + v + '"' + (v === on ? ' checked' : '') + '><span><span class="ic">' + IC[v] + '</span><b>' + l + '</b></span></label>').join('') + '</div>';
+document.getElementById('form').innerHTML = '<div class="re-dialog"><form><header class="re-dialog-head"><div><p class="re-eyebrow">自宅 ／ 書類のありか</p><h2>祖父の遺産分割協議書・印鑑証明書</h2></div><button type="button" class="re-close" aria-label="閉じる">×</button></header>' +
+  '<div class="re-dialog-body"><div class="re-q"><p class="re-q-t">どこにありますか</p><div class="re-place">' +
+  opts([['home', '家の中'], ['safe', '貸金庫'], ['kept', '預けている']], 'safe') +
+  '<input type="text" value="○○銀行 青葉台支店" aria-label="場所"></div>' +
+  '<p class="re-q-h">家の中なら部屋と棚、貸金庫なら銀行と支店、預けているなら相手の名前を書きます。貸金庫は、父が亡くなると開けるのに相続人全員の同意が要ります。</p></div></div>' +
+  '<footer class="re-dialog-foot"><span>分かったところまで残せます</span><button type="button">キャンセル</button><button class="re-save" type="button">記録を保存</button></footer></form></div>';
+</script>
+</body>
+</html>

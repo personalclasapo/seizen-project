@@ -514,16 +514,58 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .t-gy{color:var(--gy);background:#F1EFE9;border-color:var(--line2)}
 .t-bl{color:var(--bl);background:#EDF1F6;border-color:#C6D3E0}
 
-/* ── 下段の単位（書類・借入・契約の相手）。罫で区切る。 ── */
+/* ── 下段の単位（借入・契約の相手）。罫で区切る。 ── */
 .unit{padding:13px 0;border-top:1px solid #EAE4D6;min-width:0}
-.rm-h + .record-lead + .unit,.grp-h + .unit{border-top:0;padding-top:4px}
+.grp-h + .unit{border-top:0;padding-top:4px}
 /* 家族が使う1行（場所・連絡先）を太く、残りを従にする。 */
 .u-main{margin-top:8px;font-size:13px;font-weight:600;line-height:1.6;color:#2F4A37;
   overflow-wrap:anywhere;white-space:pre-line}
 .u-tel{font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .u-sub{margin-top:5px;font-size:11px;line-height:1.7;color:var(--ink2);
   overflow-wrap:anywhere;white-space:pre-line}
-.record-lead{font-size:10.5px;color:#81786A;margin:-2px 0 8px}
+
+/* ── 書類のありか：区分の段に、紙を1枚1行で並べる（見本 _検討/書類のありか_表示v4.html）。
+   1行＝紙の絵（A4・30px）｜名前（どれのものか）／所在の札（絵＋場所＋記録）。
+   2列にしない ―― 幅が足りず名前が折れ、所在の札が別段になって場所を取った（v3）。 ── */
+.dc-shelf + .dc-shelf{margin-top:14px}
+/* 段の見出しは中央に置き、左右に細い線（境界の家の見出しと同じ置き方）。 */
+.dc-h{display:flex;align-items:center;gap:10px;margin:0 0 6px;font-size:11px;font-weight:700;color:var(--ink2);letter-spacing:.04em}
+.dc-h::before,.dc-h::after{content:"";flex:1;height:1px;background:#E6E0D1}
+/* 役所で取る書類：見出しの札そのものが開閉のボタン。最初は閉じている。 */
+/* 見出しの札。どの段も同じ丸い札で囲み、役所の段だけが開閉のボタンになる。 */
+.dc-hl{display:inline-flex;align-items:center;gap:5px;min-height:26px;padding:0 10px;border:1px solid #E1DACB;border-radius:999px;
+  background:#FDFCF8;font:inherit;color:var(--ink2)}
+.dc-tg{min-height:28px;padding:0 8px 0 10px;cursor:pointer}
+.dc-tg svg{width:10px;height:10px;transition:transform .15s}
+.dc-office.open .dc-tg svg{transform:rotate(180deg)}
+.dc-tg:hover{background:#F6F3EB}
+.dc-tg:focus-visible{outline:2px solid #64886B;outline-offset:2px}
+.dc-office:not(.open) .dc-h{margin-bottom:0}
+.dc-list{list-style:none;margin:0;padding:0 10px;background:#fff;border:1px solid #ECE6D8;border-radius:7px}
+.dc{display:grid;grid-template-columns:30px minmax(0,1fr);gap:0 10px;align-items:center;padding:8px 0}
+.dc + .dc{border-top:1px dashed #E8E2D3}
+.dc-fig{display:block}
+.dc-b{min-width:0}
+.dc-n{margin:0;font-size:12.5px;font-weight:650;line-height:1.5;color:var(--ink);overflow-wrap:anywhere}
+.dc-n small{margin-left:2px;font-size:11px;font-weight:500;color:var(--ink2)}
+.dc-l{display:flex;align-items:center;gap:6px;margin-top:2px;min-height:26px}
+.dc-at{flex:1;min-width:0;display:flex;align-items:center;gap:6px}
+.dc-at svg{flex:none;display:block}
+.dc-at-t{min-width:0;font-size:12.5px;font-weight:650;line-height:1.45;color:#2F4A37;overflow-wrap:anywhere}
+.dc-at.no .dc-at-t{font-size:12px;color:#8f6227}
+/* 取り方の吹き出し（役所の書類がまだのとき）。「？」の下に開く。 */
+.dc-qw{position:relative;display:inline-flex;flex:none}
+.dc-q{display:grid;place-items:center;width:25px;height:25px;margin:-4px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer}
+.dc-q:hover,.dc-qw.open .dc-q{background:#F6EEDD}
+.dc-q:focus-visible{outline:2px solid #C9A36A;outline-offset:1px}
+.dc-pop{display:none;position:absolute;left:-10px;top:calc(100% + 7px);z-index:30;width:max-content;max-width:min(280px,72vw);
+  padding:9px 11px;background:#fff;border:1px solid #E1DACB;border-radius:8px;box-shadow:0 6px 18px #2b352921;
+  font-size:11.5px;font-weight:500;line-height:1.75;color:#514B42;text-align:left}
+.dc-pop::before{content:"";position:absolute;left:14px;top:-5px;width:8px;height:8px;background:#fff;
+  border-left:1px solid #E1DACB;border-top:1px solid #E1DACB;transform:rotate(45deg)}
+.dc-qw:hover .dc-pop,.dc-q:focus-visible:not([data-shut]) + .dc-pop,.dc-qw.open .dc-pop{display:block}
+.dc-qw:hover .dc-q[data-shut] + .dc-pop{display:none}
+.dc-l .record-edit{min-height:26px;margin:0 -4px 0 0;padding:0 5px;font-size:11px}
 
 /* ── 権利：見比べる表。項目名は左に1回、行を揃える。 ── */
 .deeds{display:grid;grid-template-columns:5.6em repeat(var(--n,2),minmax(0,1fr));
@@ -614,6 +656,7 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 @media (max-width:900px){
   .record-edit{min-height:40px}
   .uh-r{margin:-10px 0}
+  .dc-l .record-edit{min-height:40px;margin:-7px -4px -7px 0}
 }
 @media (max-width:430px){
   .stack .rw{padding:14px}

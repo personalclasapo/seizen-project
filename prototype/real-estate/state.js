@@ -872,9 +872,16 @@
       assign(d, ['kind', 'who', 'what', 'tel', 'flow', 'source', 'next', 'assignee', 'timing']);
       d.st = d.who && d.what && d.source && !d.next ? 'done' : 'doing';
       p.deals[index] = d;
-    } else if (type === 'doc' && DOC_KINDS[key]) {
+    } else if (type === 'doc' && DOC_KINDS[String(key).split(':')[0]]) {
+      /* 書類のありか。束（隣・相手・工事ごと）は「区分:中身」の鍵で持つ（render.js の dcKey）。
+         場所は 家の中／貸金庫／預けている＋1行。有無をここで聞くのは権利証・買ったときの契約書
+         だけで、ほかは区分の側で「書面がある」と答えた紙なので、あるものとして持つ。 */
+      const own = key === 'deed' || key === 'acquire';
       const d = p.docs.at[key] || {};
-      assign(d, ['st', 'place', 'note']);
+      d.kind = ['home', 'safe', 'kept'].includes(values.kind) ? values.kind : 'home';
+      d.place = String(values.place || '').trim();
+      d.st = own ? (['have', 'lost', 'unknown'].includes(values.st) ? values.st : 'unknown') : 'have';
+      if (d.st !== 'have') d.place = '';
       p.docs.at[key] = d;
       const m = p.matters[key];
       if (m && key === 'boundary') {
@@ -926,7 +933,7 @@
      残りは「その関係が実際にあるとき」だけ必要になる。          */
   const DOC_KINDS = {
     deed:     { label: '権利証・登記識別情報', base: true },
-    acquire:  { label: '取得時の資料（売買・贈与・相続）', base: true },
+    acquire:  { label: '買ったとき・建てたときの契約書・領収書', base: true },
     build:    { label: '建築・図面の資料', base: 'bldg' },
     manage:   { label: '管理委託契約', from: 'deal:manage' },
     lend:     { label: '賃貸借契約',   from: 'deal:lend' },
@@ -938,7 +945,9 @@
     changed:  { label: '増築・別棟の工事の書類',     from: 'matter:changed' },
     /* 前の代の協議書・遺言書は、当事者が取得する側で登記がまだのときだけ。 */
     prior:    { label: '前の代の遺産分割協議書',     from: 'prior' },
-    priorWill: { label: '前の代の遺言書',            from: 'prior' }
+    priorWill: { label: '前の代の遺言書',            from: 'prior' },
+    /* 役所で取る書類（戸籍・除票・印鑑証明書など）。取ったあとの保管場所を「office:書類名」で持つ。 */
+    office:   { label: '役所で取る書類',             from: 'office' }
   };
 
   function neededDocs(p) {
