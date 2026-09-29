@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産v32｜透けの段比べ</title>
+<!--
+  v32 の H（トレペ：ぼかさない＋文字の縁取り）を、紙の不透明度だけ変えて
+  縦に並べる。2026-09-29：H の方向で決まり、「少しだけ透けを減らす」ために .50〜.72 に刻み直した（前回は .25/.40/.55）。各段は v32.html を iframe で読み、1件目の見出しへ送ってある。
+  判定は「外から続く瓦の縦筋・段・破風の輪郭線が、紙の内側でも1本ずつ追えるか」。
+-->
+<style>
+body{margin:0;background:#EBE8E0;font-family:"Noto Sans JP",system-ui,sans-serif;color:#32322E}
+.row{margin:0 0 18px}
+.row h2{margin:0;padding:10px 16px 6px;font-size:13px;font-weight:700}
+.row h2 small{font-weight:500;color:#6B6963;margin-left:8px}
+iframe{display:block;width:100%;height:230px;border:0;background:#fff}
+</style>
+</head>
+<body>
+<div class="row"><h2>紙の不透明度 .50<small>ぼかし 0／文字の縁取りあり</small></h2><iframe src="不動産v32.html?v=H&a=.50&focus=1"></iframe></div>
+<div class="row"><h2>紙の不透明度 .58<small>ぼかし 0／文字の縁取りあり</small></h2><iframe src="不動産v32.html?v=H&a=.58&focus=1"></iframe></div>
+<div class="row"><h2>紙の不透明度 .65<small>ぼかし 0／文字の縁取りあり</small></h2><iframe src="不動産v32.html?v=H&a=.65&focus=1"></iframe></div>
+<div class="row"><h2>紙の不透明度 .72<small>ぼかし 0／文字の縁取りあり</small></h2><iframe src="不動産v32.html?v=H&a=.72&focus=1"></iframe></div>
+
+</body>
+</html>
