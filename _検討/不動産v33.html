@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産v33｜狭い幅でも間取りのまま（1列）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<link rel="stylesheet" href="../prototype/shared/shell.css">
+<link rel="stylesheet" href="../prototype/real-estate/area.css?v=v33">
+<!--
+  不動産v33｜狭い幅でも間取りのまま見せる（2026-09-29）
+
+  本番（prototype/real-estate）の CSS・state.js・editor.js をそのまま読み込み、
+  render.js だけ写し（不動産v33.render.js）を使う。変えたのは buildPlan1
+  （1列の部屋定義）と、draw() が部屋定義から読むようにした数か所だけ。
+
+  ■ なぜ
+    ウィンドウ幅 900 以下では間取り（.plan-stage）を隠し、部屋の中身を
+    白いカードの縦積み（.stack）に差し替えていた。家の形が消え、屋根だけが浮く。
+    しかも外殻（shared/shell.css）が 900 以下で中身を 600px に抑えるので、
+    901 で 799px あった中身が 900 で急に 600px になる。
+
+  ■ このページでしていること
+    ・外殻の 600px の上限を、このページでだけ外す（本番の外殻は未変更。
+      各領域の実測は会話の記録。銀行・保険・医療は自分の幅で畳む作りがあり、
+      上限は早めに狭い形へ押し込んでいるだけだった）
+    ・ウィンドウ幅 760 までは2列の間取り。実測で、760 は札1行・見出しほぼ1行、
+      740 で今のうちの札が2段、600 で見出し2〜3行、500 で見出しが縦1文字
+    ・759 以下は1列の間取り＝長い1棟（render.js の buildPlan1 の注記）
+
+  ■ URL で振れるもの
+    ?s=0.5    1列の縮尺（px／単位。既定は 760 幅の2列と同じ ≒0.614）
+-->
+<style>
+@media (max-width:900px){
+  /* 外殻の上限（max-width:640px）を外す。中身の幅は各領域が決める。 */
+  .inner{max-width:none}
+  /* 縦積みをやめ、間取りを出す（760 までは2列、759 以下は1列）。器は
+     .inner の左右 padding（20px）まで広げる。屋根も同じ幅（軒が外壁に載るように）。 */
+  .prop .plan-stage{display:block;margin-left:-20px;margin-right:-20px}
+  .prop .stack{display:none}
+  .prop .ph{margin-left:-20px;margin-right:-20px}
+
+  /* 以下は縦積み（.stack）に効いていたものを1列の間取りへ移したもの。値は同じ。
+     札は収まる幅では1行、はみ出す幅では横に流す。 */
+  .plan1 .rt-nm{font-size:17px}
+  .plan1 .now-nav-in{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;justify-content:flex-start}
+  .plan1 .now-go{flex:none;padding-left:calc(4px + var(--chip-pad, 0px));padding-right:calc(8px + var(--chip-pad, 0px))}
+  .plan1 .when-nav .now-go{padding-left:calc(5px + var(--chip-pad, 0px))}
+  .plan1 .now-go:first-child{margin-left:auto}
+  .plan1 .now-go:last-child{margin-right:auto}
+  .plan1 .now-nav.can-r .now-nav-in{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),rgba(0,0,0,.2));
+    mask-image:linear-gradient(90deg,#000 calc(100% - 26px),rgba(0,0,0,.2))}
+  .plan1 .now-nav.can-l .now-nav-in{-webkit-mask-image:linear-gradient(270deg,#000 calc(100% - 26px),rgba(0,0,0,.2));
+    mask-image:linear-gradient(270deg,#000 calc(100% - 26px),rgba(0,0,0,.2))}
+  .plan1 .now-nav.can-l.can-r .now-nav-in{
+    -webkit-mask-image:linear-gradient(90deg,rgba(0,0,0,.2),#000 26px,#000 calc(100% - 26px),rgba(0,0,0,.2));
+    mask-image:linear-gradient(90deg,rgba(0,0,0,.2),#000 26px,#000 calc(100% - 26px),rgba(0,0,0,.2))}
+  .plan1 .card{padding:16px 16px 18px}
+  /* ローン・借入・契約は、1列では最大 300px（ユーザー指示、2026-09-29）。
+     カードだけでなく見出しの行ごと絞る（編集・追加のボタンをカードの右端に留める）。
+     部屋の中央に置く。 */
+  .plan1 .lc-room{max-width:300px;margin-left:auto;margin-right:auto}
+}
+@media (max-width:430px){
+  .plan1 .rw{padding:14px}
+  .plan1 .rh{grid-template-columns:36px minmax(0,1fr);gap:10px}
+  .plan1 .rh .matter-icon{width:36px;height:39px}
+  .plan1 .pr-dt{margin:14px -14px -14px}
+  .plan1 .pr-dt-t{padding:10px 14px 11px}
+  .plan1 .pr-dt-b{padding:2px 14px 14px}
+}
+</style>
+</head>
+<body data-area="real-estate" data-root="../prototype/">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+    <div class="sec-h">
+      <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 11.5 12 4.2l8.5 7.3"/><path d="M5.8 10.8V19a1 1 0 0 0 1 1h10.4a1 1 0 0 0 1-1v-8.2"/><path d="M9.8 20v-5.4a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1V20"/></svg></span>
+      <h3>持っている不動産</h3><span class="cnt" id="cntShelf"></span>
+      <button class="addbtn" id="addProp">＋ 物件を登録</button>
+    </div>
+    <p class="sec-lead">自宅・実家・土地など、名義や持分に関わる不動産を並べています。</p>
+    <div class="sec"><div class="shelf" id="shelf"></div></div>
+    <div class="sec"><div id="plans"></div></div>
+  </div></main>
+</div>
+<div class="toast" id="toast"></div>
+<script src="../prototype/shared/areas.js"></script>
+<script src="../prototype/shared/shell.js"></script>
+<script src="../prototype/real-estate/state.js?v=v33"></script>
+<script src="../prototype/real-estate/editor.js?v=v33"></script>
+<script src="不動産v33.render.js?v=v33"></script>
+</body>
+</html>

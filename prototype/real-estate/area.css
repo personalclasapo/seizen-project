@@ -626,62 +626,52 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .lc-add:hover{border-color:#a9c0ac}
 .lc-none{margin:0;font-size:12.5px;color:var(--ink2)}
 
-/* ── 玄関（基本情報の表札）── */
-.gk{height:100%;display:flex;flex-direction:column;justify-content:center}
-.gk-plate{display:flex;align-items:center;gap:8px}
-.gk-plate b{font-size:14px;font-weight:700}
-.gk-use{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px}
-.gk-sub{font-size:10.5px;color:var(--ink3);margin-top:3px}
-
-/* ══ 画面幅（外殻と同じ 1200 / 900 の境目に寄せる）══════
-   間取りは横に広い造形なので、狭い画面では「家の形のまま縮める」
-   のではなく、部屋を縦に積み替える。造形を保つために内容を
-   読めなくしない――物の形より、家族が読めることを優先する。   */
-
-/* 900px 以下：間取りをやめ、部屋を縦に積む（render.js の stackOf）。
-   別レイヤーの div は画面幅に合わせて折り返せないので、
-   ここで間取りごと差し替える。造形は「家の輪郭を持った枠」に
-   退き、中身の読みやすさを優先する。                          */
-.stack{display:none}
+/* ══ 画面幅 ══════════════════════════════════════════
+   間取りは狭い画面でも間取りのまま見せる（2026-09-29、`_検討/不動産v33.html`）。
+   以前は 900px 以下で間取りを隠し、白いカードの縦積みに差し替えていた。
+   家の形が消え、屋根だけが浮いていた（CLAUDE.md の「物の輪郭を CSS の
+   矩形で代用しない」にも当たる）。
+     ・ウィンドウ幅 760 まで … 2列の間取り（受け入れ済みの形のまま持つ）
+     ・759 以下 … 1列の間取り＝長い1棟（render.js の buildPlan1）
+   切り替えの幅は実測から（760 は札1行・見出しほぼ1行、740 で今のうちの
+   札が2段、500 で見出しが縦1文字）。 */
 @media (max-width:900px){
-  .plan-stage{display:none}
-  .stack{display:flex;flex-direction:column;gap:12px}
-  .stack .rm{padding:14px 15px;background:var(--paper);
-    border:1px solid var(--line);border-radius:10px}
-  .stack .rm-liv{border-color:#E3CBA1;background:#FEFBF6}
-  .stack .rm-when{border-color:#CCD9CE}
-  /* 縦積みでは室名札を一回り小さく。引き出し線も詰める。 */
-  .stack .rt-nm{font-size:17px}
-  /* 札の帯は部屋の枠の内側いっぱいに（左右の padding ぶん外へ）。横に流し、はみ出しは横スクロール。 */
-  .stack .now-nav{margin:0 -15px 10px;padding:6px 15px 8px;background:#FEFBF6}
-  .stack .now-nav-in{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
-  /* 横に流すときの中央寄せ。justify-content:center だと、はみ出した左端が
-     スクロールで届かない位置に切れる。端の札の auto margin で寄せる
-     （収まるときは中央、はみ出すときは左から流れる）。 */
-  .stack .now-nav-in{justify-content:flex-start}
-  .stack .now-go{flex:none;padding-left:calc(4px + var(--chip-pad, 0px));padding-right:calc(8px + var(--chip-pad, 0px))}
-  .stack .when-nav .now-go{padding-left:calc(5px + var(--chip-pad, 0px))}
-  .stack .now-go:first-child{margin-left:auto}
-  .stack .now-go:last-child{margin-right:auto}
+  /* 外殻（shared/shell.css）は 900px 以下で .inner を 640px に抑える。
+     901 で 799px あった中身が 900 で急に 600px になるので、この領域では
+     外す。中身の幅は間取りが決める。 */
+  .inner{max-width:none}
+  /* 器は .inner の左右 padding（20px）まで広げる。屋根も同じ幅
+     （軒が外壁に載るように。広い画面の -44px と同じ考え）。 */
+  .plan-stage,.ph{margin-left:-20px;margin-right:-20px}
+
+  /* 1列の間取り（.plan1）。部屋が全幅になるので室名札を一回り小さく。 */
+  .plan1 .rt-nm{font-size:17px}
+  /* 札は収まる幅では1行、はみ出す幅（スマホ）では横に流す。
+     中央寄せは端の札の auto margin で（justify-content:center だと、
+     はみ出した左端がスクロールで届かない位置に切れる）。 */
+  .plan1 .now-nav-in{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;justify-content:flex-start}
+  .plan1 .now-go{flex:none;padding-left:calc(4px + var(--chip-pad, 0px));padding-right:calc(8px + var(--chip-pad, 0px))}
+  .plan1 .when-nav .now-go{padding-left:calc(5px + var(--chip-pad, 0px))}
+  .plan1 .now-go:first-child{margin-left:auto}
+  .plan1 .now-go:last-child{margin-right:auto}
   /* 横に流せることを見せる（2026-09-27）。矢印のボタンは「押すと次へ切り替わる」
      と読まれ、流せる帯には見えなかった。手がかりは、端で途中まで見えて切れている札。
-     そのため余白を帯の外側（.now-nav）から流れる中身（.now-nav-in）へ移し、札が
-     部屋の枠の際まで流れて切れるようにする。続きがある側の端だけ、ごく薄くぼかす
-     （切れ目が偶然の端ではなく、奥へ続いていると見えるように。navEdges が can-l／can-r）。 */
-  .stack .now-nav{padding-left:0;padding-right:0}
-  .stack .now-nav-in{padding:0 15px}
-  .stack .now-nav.can-r .now-nav-in{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),rgba(0,0,0,.2));
+     続きがある側の端だけ、ごく薄くぼかす（navEdges が can-l／can-r）。 */
+  .plan1 .now-nav.can-r .now-nav-in{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),rgba(0,0,0,.2));
     mask-image:linear-gradient(90deg,#000 calc(100% - 26px),rgba(0,0,0,.2))}
-  .stack .now-nav.can-l .now-nav-in{-webkit-mask-image:linear-gradient(270deg,#000 calc(100% - 26px),rgba(0,0,0,.2));
+  .plan1 .now-nav.can-l .now-nav-in{-webkit-mask-image:linear-gradient(270deg,#000 calc(100% - 26px),rgba(0,0,0,.2));
     mask-image:linear-gradient(270deg,#000 calc(100% - 26px),rgba(0,0,0,.2))}
-  .stack .now-nav.can-l.can-r .now-nav-in{
+  .plan1 .now-nav.can-l.can-r .now-nav-in{
     -webkit-mask-image:linear-gradient(90deg,rgba(0,0,0,.2),#000 26px,#000 calc(100% - 26px),rgba(0,0,0,.2));
     mask-image:linear-gradient(90deg,rgba(0,0,0,.2),#000 26px,#000 calc(100% - 26px),rgba(0,0,0,.2))}
-  .stack .when-nav{background:var(--paper)}
-  .stack .card{padding:16px 16px 18px}
+  .plan1 .card{padding:16px 16px 18px}
+  /* ローン・借入・契約は、1列では最大 300px で部屋の中央に（ユーザー指示、
+     2026-09-29）。カードだけでなく見出しの行ごと絞る（編集・追加のボタンを
+     カードの右端に留める）。 */
+  .plan1 .lc-room{max-width:300px;margin-left:auto;margin-right:auto}
 }
 
-/* 狭い画面（ウィンドウ幅 900px 以下で縦積み、その中でも 430px 以下）。
+/* 狭い画面（ウィンドウ幅 900px 以下、その中でも 430px 以下）。
    ボタンは指で押す大きさに。入口は右端に留め、名前のほうを折り返す
    （入口を名前の下へ回すと、カードごとに入口の位置が変わる）。
    権利の表だけは列が狭いので、入口を列の頭の名前・状態の下に置く。 */
@@ -691,12 +681,12 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
   .dc-l .record-edit{min-height:40px;margin:-7px -4px -7px 0}
 }
 @media (max-width:430px){
-  .stack .rw{padding:14px}
-  .stack .rh{grid-template-columns:36px minmax(0,1fr);gap:10px}
-  .stack .rh .matter-icon{width:36px;height:39px}
-  .stack .pr-dt{margin:14px -14px -14px}
-  .stack .pr-dt-t{padding:10px 14px 11px}
-  .stack .pr-dt-b{padding:2px 14px 14px}
+  .plan1 .rw{padding:14px}
+  .plan1 .rh{grid-template-columns:36px minmax(0,1fr);gap:10px}
+  .plan1 .rh .matter-icon{width:36px;height:39px}
+  .plan1 .pr-dt{margin:14px -14px -14px}
+  .plan1 .pr-dt-t{padding:10px 14px 11px}
+  .plan1 .pr-dt-b{padding:2px 14px 14px}
 }
 
 .re-editing{overflow:hidden}

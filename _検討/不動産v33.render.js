@@ -2287,7 +2287,7 @@
       look: '父に、しまった場所を聞いて探します。見つからなければ、買った不動産会社（建てた家なら建築会社）に写しが残っていないか頼みます。相続で受け継いだ家なら、前の持ち主が買ったときのものを探します。',
       lost: '買った不動産会社（建てた家なら建築会社）に、写しが残っていないか頼みます。無ければ、代金を払った通帳の記録、住宅ローンの契約書、登記に載っている抵当権の債権額、分譲のときのパンフレットを集めて代わりにします。何もなければ、売った額の5%で計算します。' }
   };
-  let dcPopN = 0;                           // 吹き出しの id（物件ごと・行ごとに振る）
+  let dcPopN = 0;                           // 吹き出しの id（間取りと狭い幅の一覧で同じ行を2回描く）
   function roomDocs(p) {
     const row = d => {
       const rec = docRec(p, d.key);
@@ -2330,6 +2330,18 @@
   function roomHead(icon, title) {
     return '<div class="rm-h"><span class="rm-ic">' + (ICONS[icon] || '') +
       '</span><h4>' + esc(title) + '</h4></div>';
+  }
+
+  /* 玄関に基本情報（表札）。家の入口に、その家が何かを置く。 */
+  function roomGenkan(p) {
+    const k = KINDS[p.kind] || KINDS.other;
+    const u = USES[p.use] || USES.self;
+    return '<div class="gk">' +
+      '<div class="gk-plate"><b>' + esc(p.name) + '</b>' +
+      '<span class="gk-use t-' + u.tone + '">' + esc(u.label) + '</span></div>' +
+      '<div class="gk-sub">' + esc(k.label) +
+      (p.built ? '｜' + esc(p.built) + '築' : '') + '</div>' +
+      '</div>';
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -2380,9 +2392,7 @@
     return e;
   };
 
-  /* ══ ウィンドウ幅 759px 以下は1列の間取り（2026-09-29、`_検討/不動産v33.html`）══
-     それまでは 900px 以下で間取りを隠し、白いカードの縦積みに差し替えて
-     いた。家の形が消え、屋根だけが浮いていた。
+  /* ══ v33｜ウィンドウ幅 759px 以下は1列の間取り ══════════════
      2列の間取りは、ウィンドウ幅 760 までは受け入れ済みの形のまま持つ
      （今のうちの札が1行・見出しはほぼ1行）。それより狭いと札が2段に折れ、
      500 では見出しが1文字ずつ縦に並ぶ。そこから1列に組み替える。
@@ -2747,6 +2757,21 @@
     return wrap;
   }
 
+  /* 狭い画面用。間取りを畳んで、部屋を縦に積む。
+     中身は同じ関数から作るので、広い画面と文言がずれない。 */
+  function stackOf(p) {
+    const box = (key, inner) =>
+      '<div class="rm rm-' + key + '">' + inner + '</div>';
+    return '<div class="stack">' +
+      box('genkan', roomGenkan(p)) +
+      box('liv', roomLiv(p)) +
+      box('when', roomWhen(p)) +
+      box('docs', roomDocs(p)) +
+      box('rights', roomRights(p)) +
+      box('party', roomParty(p)) +
+      '</div>';
+  }
+
   /* ══════════════════════════════════════════════════════════
      ■ 物件の見出し｜屋根の帯＋トレペの札（2026-09-29、`_検討/不動産v32.html` の H）
 
@@ -3004,6 +3029,9 @@
       const stageDiv = document.createElement('div');
       stageDiv.className = 'plan-stage';
       sec.appendChild(stageDiv);
+      const stack = document.createElement('div');
+      stack.innerHTML = stackOf(p);
+      sec.appendChild(stack.firstChild);
       host.appendChild(sec);
     });
 
@@ -3072,9 +3100,10 @@
         const stage = section.querySelector('.plan-stage');
         const width = stage.getBoundingClientRect().width;
         if (width) stage.replaceChildren(planOf(p, width));
+        section.querySelector('.stack').outerHTML = stackOf(p);
         drawRoofs();
         wire();
-        /* 描き直したあとの同じボタンへ戻す。 */
+        /* 同じ行のボタンは間取りの部屋と狭い幅の一覧の2か所にある。見えているほうへ戻す。 */
         const current = Array.from(section.querySelectorAll('[' + sel + ']'))
           .find(el => el.dataset[attr] === key && el.getBoundingClientRect().width);
         if (current) {
@@ -3083,7 +3112,7 @@
         }
       };
     }));
-    /* 今のうち・そのときの札：同じ部屋の行へ飛ぶ。
+    /* 今のうち・そのときの札：同じ部屋（間取りの部屋か、狭い幅の一覧）の行へ飛ぶ。
        張り付いた札の帯の下に、行の頭が来るようにする。 */
     document.querySelectorAll('[data-now-go]').forEach(b => {
       b.onclick = () => {
@@ -3168,7 +3197,7 @@
   function navPeek(nav) {
     const inn = nav.firstElementChild;
     inn.style.columnGap = ''; inn.style.removeProperty('--chip-pad');
-    if (!nav.closest('.plan1') || inn.scrollWidth - inn.clientWidth <= 1) return;
+    if (!nav.closest('.stack, .plan1') || inn.scrollWidth - inn.clientWidth <= 1) return;
     const seen = (g, pad) => {
       inn.style.columnGap = g + 'px'; inn.style.setProperty('--chip-pad', pad + 'px');
       const R = inn.getBoundingClientRect().right;
