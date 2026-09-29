@@ -2847,7 +2847,7 @@
 
   /* 戸建て｜平側から見た切妻＋中央の千鳥破風。幅 w、帯の高さ band（px）。
      上から 棟包み → 瓦の面 → 鼻隠し → 軒樋 → 軒天 → 陰。 */
-  function houseRoof(w, band) {
+  function houseRoof(w, band, edge) {
     const { HAFU, MUNE, KAWARA, TOI, PITCH, END, PEAK } = RF;
     /* 帯＝棟包みの頭から軒樋の下端まで。瓦の面の見えの高さをここから決める */
     const DEPTH = Math.max(30, band - (MUNE * .45 + HAFU + TOI * .55));
@@ -2857,7 +2857,9 @@
     const yF = yE + HAFU;                    /* 鼻隠しの下端 */
     const yG = yF + TOI * .55;               /* 軒樋の下端＝帯の下端 */
     const H = yG + 5 + 8;
-    const xL = END, xR = w - END, cx = w / 2;
+    /* 左右の端：ケラバの小口の外端（xL − END/2）を外壁の外面（edge）に揃える */
+    const EW = END * .5;
+    const xL = (edge != null ? edge : END - EW) + EW, xR = w - xL, cx = w / 2;
     const g = el('svg', { viewBox: '0 0 ' + w + ' ' + H, class: 'rf', height: H,
       role: 'img', 'aria-label': '屋根（戸建て）' });
     const add = (n, a) => g.appendChild(el(n, a));
@@ -2887,7 +2889,6 @@
     add('path', { class: 'r-sub', d: 'M ' + xL + ' ' + yF + ' L ' + xR + ' ' + yF });
 
     /* 妻側の端（ケラバ）。層ごとに小口を見せて終わる（1枚で塗り潰さない）。 */
-    const EW = END * .5;
     [[xL, -1], [xR, 1]].forEach(([x, s]) => {
       const dx = s * EW, dy = EW * .3;
       add('path', { class: 'r-end-d', d: P([[x, yR], [x + dx, yR + dy], [x + dx, yE + dy], [x, yE]]) });
@@ -2906,7 +2907,7 @@
 
     /* 千鳥破風。裾は軒樋の下端、勾配 4/10（実寸）。頂点は帯の上へ PEAK 出す。
        狭い幅では半幅を帯の内側に収め、勾配を保ったまま頂点を下げる。 */
-    const hw = Math.min((yG - 2) / PITCH, w / 2 - END - 16);
+    const hw = Math.min((yG - 2) / PITCH, w / 2 - xL - 16);
     const yA = yG - hw * PITCH;
     const vt = d => d * Math.sqrt(1 + PITCH * PITCH);
     const yAi = yA + vt(HAFU);               /* 破風の内側の頂点 */
@@ -2933,12 +2934,13 @@
 
   /* マンション｜陸屋根。上から 笠木 → パラペット（二丁掛タイルの目地・
      伸縮目地）→ 水切り → 陰。 */
-  function condoRoof(w, band) {
+  function condoRoof(w, band, edge) {
     const { END } = RF;
     const KASA = 7, MIZU = 4, FACE = Math.max(30, band - KASA - MIZU);
     const y0 = 3, yK = y0 + KASA, yP = yK + FACE, yM = yP + MIZU;
     const H = yM + 8;
-    const xL = END, xR = w - END;
+    /* 左右の端：笠木の外端（xL − 4）を外壁の外面（edge）に揃える */
+    const xL = (edge != null ? edge : END - 4) + 4, xR = w - xL;
     const g = el('svg', { viewBox: '0 0 ' + w + ' ' + H, class: 'rf', height: H,
       role: 'img', 'aria-label': '屋根（マンション）' });
     const add = (n, a) => g.appendChild(el(n, a));
@@ -2996,7 +2998,22 @@
       if (addr && kind && kind.offsetTop > addr.offsetTop + 2) ph.classList.add('rf-wrap');
       /* 帯の高さ＝札の高さ＋上下 6px（札の上下に屋根の縁が見える） */
       const ch = card.getBoundingClientRect().height;
-      const svg = ph.dataset.kind === 'condo' ? condoRoof(w, ch + 12) : houseRoof(w, ch + 12);
+      const prop = ph.closest('.prop');
+      const plan = prop && prop.querySelector('.plan-stage svg.plan');
+      /* 屋根の左右の端＝間取り図の外壁の外面。器（.ph と .plan-stage）は
+         同じ幅だが、間取り図は左右に敷地の余白を持つので、外壁はその内側に
+         ある。器の端に置くと、屋根が外壁より 9〜14px はみ出していた。 */
+      let edge = null;
+      if (plan) {
+        const vb = plan.viewBox.baseVal, pr = plan.getBoundingClientRect();
+        if (vb.width && pr.width) {
+          const wallL = Math.min(...Array.from(plan.querySelectorAll('.pl-w-line'), line =>
+            Math.min(Number(line.getAttribute('x1')), Number(line.getAttribute('x2'))) -
+            Number(line.getAttribute('stroke-width')) / 2));
+          edge = pr.left + (wallL - vb.x) / vb.width * pr.width - slot.getBoundingClientRect().left;
+        }
+      }
+      const svg = ph.dataset.kind === 'condo' ? condoRoof(w, ch + 12, edge) : houseRoof(w, ch + 12, edge);
       slot.replaceChildren(svg);
       card.style.top = (svg._mid - ch / 2) + 'px';
 
@@ -3004,8 +3021,6 @@
          間取り図は上に敷地の余白（SITE_U＝草地の縁）を持つので、見出しを
          そのぶん（＋軒天より下の陰の高さ）間取り図に重ねる。 */
       ph.style.setProperty('--rf-site', '0px');
-      const prop = ph.closest('.prop');
-      const plan = prop && prop.querySelector('.plan-stage svg.plan');
       if (plan) {
         const vb = plan.viewBox.baseVal;
         const pw = plan.getBoundingClientRect().width;
