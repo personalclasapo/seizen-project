@@ -820,19 +820,25 @@ button.bdg.status-pick{font-size:10.5px;padding:3px 9px 3px 10px}
    見せる：頭に帯（番号・名前・答えの要約）を敷き、問いより強い見出しにする。
    以前は見出しが問いより小さい灰色で、地もダイアログとほぼ同じ色だったため、
    件の境目が読めず、2件目があることにも気づけなかった（2026-09-26）。 */
-.re-entry{margin:0 0 16px;padding:0 18px 18px;border:1px solid #CFCBBB;border-radius:10px;background:#fff}
+.re-entry{margin:0 0 16px;padding:0 14px 14px;border:1px solid #BDB7A6;border-radius:10px}
 .re-entry[data-invalid]{border-color:#B5533F;box-shadow:0 0 0 1px #B5533F}
-.re-entry-h{display:flex;align-items:center;gap:10px;margin:0 -18px 16px;padding:11px 18px;
-  background:#F4F2EA;border-bottom:1px solid #E3DFD2;border-radius:9px 9px 0 0}
-.re-entry-h b{font-size:15px;font-weight:700;color:#3C4437;outline:none;white-space:nowrap}
-.re-entry-sub{min-width:0;font-size:13px;color:#6F735F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.re-entry-h{display:flex;align-items:center;gap:10px;margin:0 -14px 14px;padding:10px 16px;
+  background:#4A5044;border-radius:9px 9px 0 0}
+.re-entry-h b{font-size:15px;font-weight:700;color:#fff;outline:none;white-space:nowrap}
+.re-entry-sub{min-width:0;font-size:13px;color:#E8EAE0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .re-entry-no{flex:none;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;
   background:#56604F;color:#fff;font-size:12.5px;font-weight:700;line-height:1}
+.re-entry-h .re-entry-no{background:#fff;color:#4A5044}
+.re-entry .re-card+.re-card{margin-top:12px}
 .re-entry-delw{position:relative;margin-left:auto;flex:none}
 .re-entry-del{display:block;padding:4px 12px;border:1px solid #D6D3C6;border-radius:6px;background:#fff;
   font:500 13px/1.5 var(--font);color:#6F735F;cursor:pointer}
 .re-entry-del:hover,.re-entry-del[aria-expanded="true"]{border-color:#D9ACA2;color:#A34333}
 .re-entry-del:focus-visible{outline:2px solid #64886B;outline-offset:2px}
+/* 件の頭（墨の帯）の上では、地を抜いて明るい字にする。 */
+.re-entry-h .re-entry-del{background:none;border-color:#858B7B;color:#E8EAE0}
+.re-entry-h .re-entry-del:hover,.re-entry-h .re-entry-del[aria-expanded="true"]{border-color:#D9ACA2;color:#F6D3CB}
+.re-entry-h .re-entry-del:focus-visible{outline-color:#fff}
 /* 削除の確認。医療・介護の .rowdel-ask と同じ吹き出し（地・枠・影・尖り、問い1行＋
    ボタン2つの縦積み）。入口の真下に右寄せで浮かせ、下の問いは押し下げない
    （以前は件の中に橙の箱を差し込み、下の問いを押し下げていた）。 */
@@ -873,12 +879,22 @@ button.bdg.status-pick{font-size:10.5px;padding:3px 9px 3px 10px}
   .re-toc{flex-wrap:nowrap;overflow-x:auto;padding:9px 18px}
   .re-toc-lb,.re-toc button small{display:none}
   .re-toc button{flex:none;max-width:70vw}
-  .re-entry{padding:0 14px 16px}.re-entry-h{flex-wrap:wrap;row-gap:2px;margin:0 -14px 14px;padding:10px 14px}
+  .re-entry{padding:0 10px 12px}.re-entry-h{flex-wrap:wrap;row-gap:2px;margin:0 -10px 12px;padding:10px 14px}
   .re-entry-sub{order:3;flex-basis:100%;padding-left:34px}
   .re-entry-sub:empty{display:none}
   .re-entry-no[hidden]~.re-entry-sub{padding-left:0}
 }
-.re-entry-add{margin:0 0 22px}
+/* 件のある問い（境界・私道・建物の変更・ローン）：追加の入口は問いの右端、件の目次は問いの下（本文の中）に置き、
+   スクロールしたら上端に貼り付く。上端では目次の上の線を隠し、頭の区切り線と二重にしない
+   （本文の上の余白 20px＋線 1px ぶん上へずらす）。地は本文と同じ（2026-09-29）。 */
+[data-entry-q] .re-q-t{display:flex;align-items:center;justify-content:space-between;gap:16px}
+/* 後ろの問いが隠れていても、件（と目次）が続くときは余白を残す（.re-q の最後の余白0を打ち消す）。 */
+.re-q[data-entry-q]:has(+ :not([hidden])){margin-bottom:22px}
+.re-q-add{margin:0;flex:none}
+.re-dialog-body .re-toc{position:sticky;top:-21px;z-index:2;margin:0 -28px 16px;background:#fffdf8;border-top:1px solid #e5dfd3}
+@media(max-width:600px){.re-dialog-body .re-toc{top:-19px;margin:0 -18px 14px}}
+/* いくつでも選べる問いの「当てはまるものをすべて」。問いの見出しの横に添える。 */
+.re-q-note{margin-left:10px;font-size:12px;font-weight:500;color:#858978}
 /* 選べない選択肢（同じ塀を目印と越境の両方にはできない）。 */
 .re-opt input:disabled+span{opacity:.4;cursor:not-allowed;background:#F4F3EE}
 .re-opt:has(input:disabled){cursor:not-allowed}
@@ -977,17 +993,20 @@ textarea.re-q-in{width:100%;resize:vertical;display:block}
 /* フォームの底にあるので、吹き出しは入口の上に出す（下に出すと本文の外にはみ出す）。 */
 .re-deal-del .re-entry-ask{top:auto;bottom:calc(100% + 9px)}
 .re-deal-del .re-entry-ask::before{top:auto;bottom:-5px;transform:rotate(225deg)}
-/* 件の一覧の帯の右端に置く追加の入口（ローン・借入の「＋ 借入を追加」）。件の札と形を分ける（点線）。 */
-.re-toc .re-toc-add{margin-left:auto;gap:6px;padding:4px 13px 4px 11px;border:1px dashed #BFC9BC;background:none;color:#4F6B56;font-weight:600}
-.re-toc .re-toc-add span{font-size:14px;font-weight:400}
-.re-toc .re-toc-add:hover{background:#F5F8F3;border-color:#8EA88F;color:#284C32}
 /* 話題ごとの白い札（権利関係のフォーム。見本 _検討/権利関係フォーム_案v1.html の D）。
+   帯は L*93（#EFEBE0）。白い札と ΔL* 5 以上離す（以前の #f4f1e9 は L*95 で差 4.8）。
+   境界の件の頭（L*33）より弱く、話題の見出しとして読める強さ（見本 _検討/境界フォーム_案v8.html の B）。
    床はダイアログと同じクリームのまま、札を枠と影で浮かせる（床を別の色にすると、
    頭・本文・札の3色になって落ち着かなかった）。帯と文字はページの権利関係の表にそろえる。 */
 .re-card{background:#fff;border:1px solid #d9d3c4;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px #3f5c4b14}
 .re-card+.re-card{margin-top:14px}
-.re-card-h{background:#f4f1e9;border-bottom:1px solid #e6e1d4;padding:7px 18px;font-size:12.5px;font-weight:700;color:#5d6652;letter-spacing:.04em}
+.re-card-h{background:#EFEBE0;border-bottom:1px solid #E1DCCE;padding:7px 18px;font-size:12.5px;font-weight:700;color:#5d6652;letter-spacing:.04em}
 .re-card-b{padding:13px 18px 14px}
 .re-card-b .re-q-h{margin-top:10px}
 .re-card .re-lines{grid-template-columns:10em minmax(0,1fr)}
 @media (max-width:520px){.re-card .re-lines{grid-template-columns:1fr;gap:4px}.re-card-b{padding:12px 14px}}
+/* 件の頭は墨の帯（.re-entry-h #4A5044・L*33、白字）。面の組は明度で決めた：地 L*99 ／ 件の頭 L*33
+   ／ 話題の帯 L*93 ／ 札 L*100。隣り合う面は ΔL* 5 以上、件の頭は話題の帯より強い。字は各面で
+   4.5:1 以上。緑は選択、橙は急ぎに取ってあるので件には使わない。枠の色を1枚ずつ淡い色で差し替えた
+   v1〜v7 は、どれも L*95〜96.5 で帯・選択の地と ΔL* 1.3 以内だった（2026-09-29 見本 _検討/境界フォーム_案v8.html の B）。 */
+.re-dialog-body .re-toc .re-entry-no{background:#4A5044}

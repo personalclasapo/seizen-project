@@ -15,12 +15,27 @@
       ((type === 'checkbox' ? (value || []).includes(v) : v === value) ? ' checked' : '') + '><span><b>' + esc(label) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span></label>').join('') + '</div>';
   const question = (title, body, hint, attr) => '<div class="re-q"' + (attr || '') + '><p class="re-q-t">' + title + '</p>' + body +
     (hint ? '<p class="re-q-h">' + esc(hint) + '</p>' : '') + '</div>';
-  /* 話題ひとつ＝白い札（頭は灰色の帯に名詞の見出し、説明は札の中）。権利関係から使う。 */
-  const card = (title, body, hint, attr) => '<div class="re-card"' + (attr || '') + '><div class="re-card-h">' + esc(title) + '</div>' +
+  /* 話題ひとつ＝白い札（頭は灰色の帯に名詞の見出し、説明は札の中）。権利関係・境界の件の中から使う。
+     見出しは HTML のまま入れる（境界の「当てはまるものをすべて」を添えるため。呼び出しは固定の文言）。 */
+  const card = (title, body, hint, attr) => '<div class="re-card"' + (attr || '') + '><div class="re-card-h">' + title + '</div>' +
     '<div class="re-card-b">' + body + (hint ? '<p class="re-q-h">' + esc(hint) + '</p>' : '') + '</div></div>';
+  /* いくつでも選べる問い：「当てはまるものをすべて」は問いの見出しの横に添える。
+     問いの下に置くと、選択肢の下に開く入れ子の問いを並べ終えた後に出て、選ぶ前に読む指示が
+     選んだ後の位置に来ていた（境界：2026-09-29）。 */
+  const allOf = title => esc(title) + '<small class="re-q-note">当てはまるものをすべて</small>';
+  /* 件を足す問い（境界・私道・建物の変更・ローン）：追加の入口は問いの右端。「ある」のときだけ出す（conditionals）。
+     件の下に置くと、1件目を読み終えて最後までスクロールしないと見つからなかった（2026-09-29）。 */
+  const withAdd = (title, what) => '<span>' + esc(title) + '</span>' +
+    '<button type="button" class="record-add re-q-add" data-entry-add aria-label="' + esc(what) + 'を追加"><span aria-hidden="true">＋</span>追加</button>';
+  /* 件の目次。件のある問いの下（本文の中）に置き、スクロールしたら上端に貼り付く。 */
+  const tocNav = '<nav class="re-toc" aria-label="件の一覧" hidden></nav>';
   const section = (title, html, attr) => '<fieldset' + (attr || '') + '><legend>' + esc(title) + '</legend>' + html + '</fieldset>';
   const titles = { boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
-  /* 1件ぶんのブロックの頭：番号・名前・答えの要約（右端に削除の入口が続く）。
+  /* 件（境界の隣・私道の相手の土地・建物の変更・借入）は枠で囲み、頭を濃い帯にする。中は
+     話題ごとの白い札（card）で、権利関係の札と同じ形。札の見出しが問いの代わりをする。
+     件の頭と話題の帯が同じ灰色の帯で並び、意味（件／話題）が見分けられなかった
+     （2026-09-29 見本 `_検討/境界フォーム_案v8.html` の B）。
+     1件ぶんのブロックの頭：番号・名前・答えの要約（右端に削除の入口が続く）。
      番号と要約は conditionals が並び順と答えから入れ、頭の目次（renderToc）も同じものを写す。 */
   const entryHead = (attr, title) => '<div class="re-entry-h"><span class="re-entry-no" aria-hidden="true"></span>' +
     '<b ' + attr + ' tabindex="-1">' + esc(title) + '</b><span class="re-entry-sub" data-sub></span>';
@@ -51,12 +66,13 @@
     const nb = html => html.replace(/〈隣〉/g, '<span data-nb>隣</span>');
     /* 見出しは選んだ相手の名前にする（「隣との取り決め」の下で「どの隣ですか」と
        聞くと、同じことを二度言う。裏の家は「隣」とは呼ばない）。 */
+    /* 話題：相手／決めたこと／書面／ほかに決めたこと。 */
     return nb('<div class="re-entry" data-entry="' + i + '">' + entryHead('data-e-title', entryTitle(e.side)) +
       entryDel + '</div>' +
-      question('相手はどの家ですか', choice(n('side'), e.side || '', [['right', '右隣'], ['left', '左隣'], ['back', '裏の家']]) +
+      card('相手', choice(n('side'), e.side || '', [['right', '右隣'], ['left', '左隣'], ['back', '裏の家']]) +
         '<div class="re-q-sub"><input class="re-q-in" name="' + n('who') + '" value="' + esc(e.who) + '" placeholder="相手の名前（分かれば）" autocomplete="off" aria-label="相手の名前"></div>',
         '玄関を出て見た向きで。裏の家は、玄関の反対側の家。') +
-      question('決めたこと',
+      card(allOf('決めたこと'),
         choice(n('kind-'), kinds, [['line', '境界の位置', '塀の中心を境界にした、など']], 'row multi', 'checkbox') +
         '<div class="re-sub" data-e-line><p class="re-sub-t">何を目印に決めましたか</p>' +
           choice(n('mark'), ['wall', 'stake'].includes(e.mark) ? e.mark : 'none', [['wall', '塀'], ['stake', '境界標（杭・金属の鋲など）'], ['none', '目印はない']]) +
@@ -71,16 +87,19 @@
           '<p class="re-why" data-e-why="over" hidden></p>' +
           BD_OVER.map(([k]) => '<div data-e-own="' + k + '"><p class="re-sub-t">' + BD_THING[k] + 'は誰のものですか</p>' +
             choice(n('oo-' + k), ownerOf(k), [['ours', P + 'のもの'], ['theirs', '〈隣〉のもの']]) +
-            (k === 'footing' ? '<p class="re-why" data-e-why="owner" hidden></p>' : '') + '</div>').join('') + '</div>',
-        '当てはまるものをすべて。') +
-      question('書面にしてありますか', choice(n('paper'), e.paper || 'unknown', [['yes', '覚書・境界確認書がある'], ['no', '口頭のまま'], ['unknown', '分からない']])) +
-      question('どんな書類ですか', choice(n('doc-'), e.docKinds || [], [
-        ['confirm', '境界確認書', '隣と境界を確かめ、双方が署名したもの'], ['memo', '越境などの覚書'],
-        ['map', '測量図', '地積測量図・確定測量図など']], 'row multi', 'checkbox'), '当てはまるものをすべて。', ' data-e-doc') +
-      question('図面の作成日', choice(n('docAge'), e.docAge || 'unknown', [['after', '2005年3月以降'], ['before', 'それより前'], ['unknown', '分からない']]),
-        '2005年3月以降の図面は、境界点の座標が入っています。', ' data-e-age') +
+            (k === 'footing' ? '<p class="re-why" data-e-why="owner" hidden></p>' : '') + '</div>').join('') + '</div>') +
+      /* 書類の種類と図面の作成日は、「覚書・境界確認書がある」を選んだすぐ下に開く（決めたことの
+         入れ子の問いと同じ形）。 */
+      card('書面', choice(n('paper'), e.paper || 'unknown', [['yes', '覚書・境界確認書がある'], ['no', '口頭のまま'], ['unknown', '分からない']]) +
+        '<div class="re-sub" data-e-doc><p class="re-sub-t">' + allOf('どんな書類ですか') + '</p>' +
+          choice(n('doc-'), e.docKinds || [], [
+            ['confirm', '境界確認書', '隣と境界を確かめ、双方が署名したもの'], ['memo', '越境などの覚書'],
+            ['map', '測量図', '地積測量図・確定測量図など']], 'row multi', 'checkbox') +
+          '<div data-e-age><p class="re-sub-t">図面の作成日</p>' +
+            choice(n('docAge'), e.docAge || 'unknown', [['after', '2005年3月以降'], ['before', 'それより前'], ['unknown', '分からない']]) +
+            '<p class="re-q-h">2005年3月以降の図面は、境界点の座標が入っています。</p></div></div>') +
       /* 位置・持ち主は上で選んで答えるので、ここは選べないことだけを書く。 */
-      question('ほかに決めたこと', '<textarea class="re-q-in" rows="2" name="' + n('content') + '">' + esc(e.content) + '</textarea>',
+      card('ほかに決めたこと', '<textarea class="re-q-in" rows="2" name="' + n('content') + '" aria-label="ほかに決めたこと">' + esc(e.content) + '</textarea>',
         '上で選んだこと以外に。例：越えている枝は、毎年秋に隣が切る。') + '</div>');
   }
   /* 私道・通行・配管：相手の土地1件ぶん。名前は l<番号>-…（足した順）。
@@ -96,21 +115,20 @@
     const nb = html => html.replace(/〈相手〉/g, '<span data-rd>相手</span>');
     return nb('<div class="re-entry" data-link="' + i + '">' + entryHead('data-l-title', RD_LAND[l.land] || '相手の土地') +
       entryDel + '</div>' +
-      question('相手はどの土地ですか', choice(n('land'), l.land || '', RD_LAND_OPTS) +
+      card('相手', choice(n('land'), l.land || '', RD_LAND_OPTS) +
         '<div class="re-q-sub"><input class="re-q-in" name="' + n('who') + '" value="' + esc(l.who) + '" placeholder="持ち主の名前・どこの土地か（分かれば）" autocomplete="off" aria-label="持ち主の名前"></div>',
         '隣は、玄関を出て見た向きで。離れた土地や水路の向こうの土地は「ほかの土地」に。') +
-      question('何に使っていますか', choice(n('use-'), uses.map(u => u.what), RD_USE_OPTS, 'pill', 'checkbox') +
+      card(allOf('使い方'), choice(n('use-'), uses.map(u => u.what), RD_USE_OPTS, 'pill', 'checkbox') +
         /* 向き：私道でなければ、選んだ使い方ごとに誰のためかを聞く。 */
         RD_USE_OPTS.map(([k]) => '<div class="re-sub" data-l-by="' + k + '"><p class="re-sub-t">' + (k === 'pass' ? '誰が通りますか' : 'その' + RD_PIPE_NAME[k] + 'の管は誰のものですか') + '</p>' +
           choice(n('by-' + k), byOf(k), k === 'pass'
             ? [['ours', P + 'の人', '〈相手〉の土地を通る'], ['theirs', '〈相手〉の人', P + 'の土地を通る']]
-            : [['ours', P + 'の管', '〈相手〉の土地の下を通っている'], ['theirs', '〈相手〉の管', P + 'の土地の下を通っている']], 'row') + '</div>').join(''),
-        '当てはまるものをすべて。') +
-      question(P + 'も、この私道の持分を持っていますか', choice(n('share'), l.share || 'unknown', [['yes', '持っている'], ['no', '持っていない'], ['unknown', '分からない']]),
+            : [['ours', P + 'の管', '〈相手〉の土地の下を通っている'], ['theirs', '〈相手〉の管', P + 'の土地の下を通っている']], 'row') + '</div>').join('')) +
+      card(esc(P) + 'の私道の持分', choice(n('share'), l.share || 'unknown', [['yes', '持っている'], ['no', '持っていない'], ['unknown', '分からない']]),
         '登記事項証明書で分かります（私道の地番で取ります）。', ' data-l-road') +
-      question('取り決めはありますか', choice(n('pact'), l.pact || 'unknown', [
+      card('取り決め', choice(n('pact'), l.pact || 'unknown', [
         ['paper', '承諾書・覚書がある'], ['oral', '口頭で決めた'], ['none', '特に決めていない'], ['unknown', '分からない']], 'row')) +
-      question('決めた内容', '<textarea class="re-q-in" rows="2" name="' + n('content') + '">' + esc(l.content) + '</textarea>',
+      card('決めた内容', '<textarea class="re-q-in" rows="2" name="' + n('content') + '" aria-label="決めた内容">' + esc(l.content) + '</textarea>',
         '例：私道の舗装を直す費用は、4軒で等分する。建て替えるときは、隣の管を移す費用を隣が持つ。', ' data-l-content') + '</div>');
   }
   /* 建物の変更：変更1件ぶん。名前は c<番号>-…（足した順）。境界・私道のブロックは写さない
@@ -140,18 +158,18 @@
     const n = k => 'c' + i + '-' + k;
     return '<div class="re-entry" data-change="' + i + '">' + entryHead('data-c-title', CH_WHAT[c.what] || '変更') +
       entryDel + '</div>' +
-      question('何をしましたか', choice(n('what'), c.what || '', [
+      card('したこと', choice(n('what'), c.what || '', [
         ['ext', '増築した', '横や上に部屋を足した'], ['annex', '別棟を建てた', '離れ・車庫・物置など'],
         ['cut', '一部を取り壊した', '部屋を減らした'], ['demo', '建物を取り壊した', '離れ・物置や、古い建物など']], 'row'),
         '物置でも、基礎に固定され、屋根と壁があれば建物として登記の対象になります。') +
-      question('場所と時期', '<div class="re-lines">' +
+      card('場所と時期', '<div class="re-lines">' +
         line('玄関から見て', pills(n('side'), c.side || '', [['back', '奥'], ['right', '右'], ['left', '左'], ['front', '玄関側']])) +
         line('階', pills(n('floor'), String(c.floor || 1), [['1', '1階'], ['2', '2階']]), ' data-c-floor') +
         line('何の建物', pills(n('bldg'), c.bldg || '', [['hanare', '離れ'], ['garage', '車庫'], ['shed', '物置'], ['other', 'その他']]), ' data-c-bldg') +
         line('<span data-c-partlb>どの部分</span>', '<input class="re-q-in" name="' + n('where') + '" value="' + esc(c.where) + '" placeholder="例：北側の約6畳" autocomplete="off" aria-label="どの部分">', ' data-c-part') +
         line('いつごろ', '<span class="re-yr">' + yearSelect(n('when'), c.when) + '<span>ごろ</span></span>') + '</div>',
         '分かる範囲で。年が分からなくても登記はできます。') +
-      question('この変更の記録', '<div class="re-lines">' +
+      card('この変更の記録', '<div class="re-lines">' +
         line('登記', pills(n('reg'), c.reg || 'unknown', [['yes', '載っている', '消えている'], ['no', '載っていない', '残っている'], ['unknown', 'まだ確かめていない']])) +
         line('課税明細書', pills(n('tax'), c.tax || '', [['match', '載っている', '消えている'], ['miss', '載っていない', '残っている'], ['', 'まだ見ていない']]), ' data-c-tax') +
         line('工事の書類', pills(n('docs'), c.docs || 'unknown', [['yes', 'ある'], ['no', '見つからない'], ['unknown', 'まだ探していない']]) +
@@ -170,11 +188,11 @@
     const yn = v => ['yes', 'no'].includes(v) ? v : 'unknown';
     const type = LN_TYPES.some(t => t[0] === x.type) ? x.type : x.type ? 'その他の借入' : '住宅ローン';
     return '<div class="re-entry" data-loan="' + i + '">' + entryHead('data-n-title', type === 'その他の借入' ? 'その他の借入' : type) + entryDel + '</div>' +
-      question('どこから借りていますか', '<div class="re-lines">' +
+      card('種類と借入先', '<div class="re-lines">' +
         line('種類', pills(n('type'), type, LN_TYPES)) +
         line('借入先', '<input class="re-q-in" name="' + n('bank') + '" value="' + esc(x.bank) + '" placeholder="例：○○銀行 青葉台支店" autocomplete="off" aria-label="借入先">') +
         line('電話', '<input class="re-q-in" name="' + n('tel') + '" value="' + esc(x.tel) + '" inputmode="tel" autocomplete="off" aria-label="借入先の電話">') + '</div>') +
-      question('借入の中身', '<div class="re-lines">' +
+      card('借入の中身', '<div class="re-lines">' +
         line('借りている人', pills(n('who'), x.who || '', [['self', WHO], ['pair', WHO + 'と' + SPOUSE], ['other', 'そのほか'], ['', 'まだ確かめていない']]) +
           '<div class="re-ln-sub" data-n-other><input class="re-q-in" name="' + n('whoName') + '" value="' + esc(x.whoName) + '" placeholder="例：○○工業（' + esc(WHO) + 'の会社）" autocomplete="off" aria-label="借りている人の名前"></div>') +
         line('返済', pills(n('paid'), x.paid ? 'paid' : 'paying', [['paying', '返している途中'], ['paid', '返し終えた']])) +
@@ -227,16 +245,14 @@
       prompt.querySelector('button').focus();
     } else dialog.close();
   }
-  /* 件の目次。2件以上あるとき、ダイアログの頭（スクロールしない所）に件を並べる。
+  /* 件の目次。2件以上あるとき、件のある問いの下（本文の中）に件を並べ、スクロールしたら
+     上端に貼り付く（2026-09-29。前はダイアログの頭に置いた）。
      1件目だけで本文の見える高さを超えるので、目次がないと2件目があることに
      気づけなかった（2026-09-26）。番号は並び順で振り直す（名前の番号は足した順のまま）。 */
   const entryEls = () => Array.from(dialog.querySelectorAll('.re-entry'));
   function renderToc() {
     const toc = dialog.querySelector('.re-toc'), els = entryEls();
-    /* ローン・借入は、件の一覧の帯の右端に追加の入口を置く（件のすぐ上で、どこまで読んでも
-       見える所）。入口の置き場所なので、1件でも帯を出す。 */
-    const addable = identity.type === 'loan' || identity.type === 'security';
-    const many = els.length > (addable ? 0 : 1) && !els[0].closest('[hidden]');
+    const many = els.length > 1 && !els[0].closest('[hidden]');
     els.forEach((el, i) => {
       const no = el.querySelector('.re-entry-no'); no.textContent = i + 1; no.hidden = els.length < 2;
       el.querySelector('[data-entry-del]').setAttribute('aria-label', el.querySelector('.re-entry-h b').textContent + 'を削除');
@@ -248,8 +264,7 @@
       return '<button type="button" data-jump="' + i + '"' + (bad ? ' data-invalid' : '') +
         ' aria-label="' + esc((i + 1) + '　' + t + (s ? '　' + s : '') + (bad ? '。入力が足りません' : '')) + '">' +
         '<span class="re-entry-no" aria-hidden="true">' + (i + 1) + '</span><span>' + esc(t) + (s ? '<small>' + esc(s) + '</small>' : '') + '</span></button>';
-    }).join('') + (addable && els.length < 5
-      ? '<button type="button" class="re-toc-add" data-entry-add><span aria-hidden="true">＋</span>借入を追加</button>' : '');
+    }).join('');
     spy();
   }
   /* いま見ている件：本文の上から1/3の線を越えた最後の件。 */
@@ -266,7 +281,9 @@
   /* 件の頭を本文の上端へ。フォーカスも件の名前へ移す（読み上げで、どこへ来たか分かる）。 */
   function jump(el) {
     const body = dialog.querySelector('.re-dialog-body');
-    body.scrollTo({ top: body.scrollTop + el.getBoundingClientRect().top - body.getBoundingClientRect().top - 12, behavior: 'smooth' });
+    /* 目次が本文の中にある（境界）ときは、上端に貼り付いた目次の下へ出す。 */
+    const toc = body.querySelector('.re-toc'), under = toc && !toc.hidden ? toc.offsetHeight : 0;
+    body.scrollTo({ top: body.scrollTop + el.getBoundingClientRect().top - body.getBoundingClientRect().top - 12 - under, behavior: 'smooth' });
     el.querySelector('.re-entry-h b').focus({ preventScroll: true });
   }
   /* 保存で足りない件に印を付け、最初の件へ飛ぶ（目次にも同じ印）。
@@ -305,21 +322,27 @@
       const es = (b.entries || []).length ? b.entries : [{}];
       bdCount = es.length; bdName = p.name;
       title = titles.boundary; lead = '';
-      body = section('取り決め',
-        question('隣と、境界や塀・越境について決めたことはありますか', choice('deal', b.deal || 'unasked',
-          [['yes', 'ある'], ['no', 'ない'], ['unasked', 'まだ聞いていない'], ['unknown', WHO + 'も覚えていない']]),
-          '境界標や法務局の地積測量図は家族でも確かめられます。口頭で決めたことは、' + WHO + 'に聞くしかありません。') +
-        '<div data-bd-yes><div data-entries>' + es.map((x, i) => bdEntry(i, x)).join('') + '</div>' +
-          '<button type="button" class="record-add re-entry-add" data-entry-add><span aria-hidden="true">＋</span>別の家との取り決めを追加</button></div>' +
+      /* 節の見出し（legend「取り決め」）は置かない ―― ダイアログの見出しと同じ言葉が並んだ。
+         問いの注記も置かない ―― 問いと選択肢で答え方が決まり、家族でも確かめられる書類の話は
+         「父も覚えていない」の後の問いが受け持つ。
+         追加の入口は問いの右端（「ある」のときだけ）。件の下に置くと、1件目を読み終えて
+         最後までスクロールしないと見つからなかった。件の目次は問いの下（本文の中）に置き、
+         スクロールしたら上端に貼り付く（renderToc・area.css の .re-dialog-body .re-toc）。
+         （2026-09-29 見本 `_検討/境界フォーム_案v1〜v7.html` のうち、色以外で合意したもの） */
+      body =
+        question(withAdd('隣と、境界や塀・越境について決めたことはありますか', '隣との取り決め'),
+          choice('deal', b.deal || 'unasked',
+          [['yes', 'ある'], ['no', 'ない'], ['unasked', 'まだ聞いていない'], ['unknown', WHO + 'も覚えていない']]), '', ' data-entry-q') +
+        '<div data-bd-yes>' + tocNav + '<div data-entries>' + es.map((x, i) => bdEntry(i, x)).join('') + '</div></div>' +
         /* 父が覚えていないときは、書類を探した結果を聞く（保存は paper）。 */
         question('境界確認書や測量図は見つかりましたか', choice('found', b.deal === 'unknown' ? b.paper || 'unknown' : 'unknown',
           [['yes', '見つかった'], ['no', '探したが無い'], ['unknown', 'まだ探していない']]),
           '土地を買ったとき・家を建てたときの書類に入っていることがあります。法務局の地積測量図は家族でも取れます。', ' data-bd-unknown') +
-        question('どんな書類ですか', choice('udoc-', b.docKinds || [], [
+        question(allOf('どんな書類ですか'), choice('udoc-', b.docKinds || [], [
           ['confirm', '境界確認書', '隣と境界を確かめ、双方が署名したもの'], ['memo', '越境などの覚書'],
-          ['map', '測量図', '地積測量図・確定測量図など']], 'row multi', 'checkbox'), '当てはまるものをすべて。', ' data-bd-udoc') +
+          ['map', '測量図', '地積測量図・確定測量図など']], 'row multi', 'checkbox'), '', ' data-bd-udoc') +
         question('図面の作成日', choice('udocAge', b.docAge || 'unknown', [['after', '2005年3月以降'], ['before', 'それより前'], ['unknown', '分からない']]),
-          '2005年3月以降の図面は、境界点の座標が入っています。', ' data-bd-uage'));
+          '2005年3月以降の図面は、境界点の座標が入っています。', ' data-bd-uage');
     } else if (type === 'matter' && key === 'road') {
       /* 私道・通行・配管の取り決め。答えは選ぶだけ（持ち主の名前と、決めた内容を
          除く）。状態・次にすること・くわしくは答えから出す（state.js の roadStatus）。
@@ -328,12 +351,14 @@
       const ls = (r.links || []).length ? r.links : [{}];
       bdCount = ls.length; rdHome = p.name;
       title = titles.road; lead = '';
-      body = section('通る道と管',
-        question(p.name + 'が他人の土地を使っていること、他人が' + p.name + 'の土地を使っていることはありますか', choice('has', r.has || 'unasked',
+      /* 節の見出し・追加の入口・目次は境界と同じ置き方（2026-09-29）。問いの注記は、何が「ある」に
+         入るか（私道・管）を言うので残す。 */
+      body =
+        question(withAdd(p.name + 'が他人の土地を使っていること、他人が' + p.name + 'の土地を使っていることはありますか', '相手の土地'),
+          choice('has', r.has || 'unasked',
           [['yes', 'ある'], ['no', 'ない'], ['unasked', 'まだ聞いていない'], ['unknown', WHO + 'も分からない']]),
-          '前の道が私道なら「ある」です（私道は他人の土地）。水道・下水・ガスの管が隣の土地の下を通っている、隣の管がこの家の土地の下を通っている、なども。') +
-        '<div data-rd-yes><div data-entries>' + ls.map((x, i) => rdLink(i, x)).join('') + '</div>' +
-          '<button type="button" class="record-add re-entry-add" data-entry-add><span aria-hidden="true">＋</span>別の土地を追加</button></div>');
+          '前の道が私道なら「ある」です（私道は他人の土地）。水道・下水・ガスの管が隣の土地の下を通っている、隣の管がこの家の土地の下を通っている、なども。', ' data-entry-q') +
+        '<div data-rd-yes>' + tocNav + '<div data-entries>' + ls.map((x, i) => rdLink(i, x)).join('') + '</div></div>';
     } else if (type === 'matter' && key === 'changed') {
       /* 建物の変更・登記。答えは選ぶだけ（どこを・いつ・頼んだ会社を除く）。状態・次に
          すること・くわしくは答えから出す（state.js の changedStatus）。変更ごとに要る登記と
@@ -343,15 +368,16 @@
       bdCount = cs.length;
       chBuilt = Math.min(Number(String(p.built || '').replace(/[^0-9]/g, '').slice(0, 4)) || 1950, ...cs.map(c => Number(c.when) || 9999));
       title = titles.changed; lead = '';
-      body = section('建物の変更',
-        question('建ててから、増築や取り壊し、離れ・車庫を建てたことはありますか', choice('has', m.has || 'unasked',
-          [['yes', 'ある'], ['no', 'ない'], ['unasked', 'まだ聞いていない'], ['unknown', WHO + 'も覚えていない']]),
-          '市町村が把握している変更は、課税明細書でも分かります。工事を頼んだ会社や書類のありかは、' + WHO + 'に聞くしかありません。') +
-        '<div data-ch-yes><div data-entries>' + cs.map((x, i) => chEntry(i, x)).join('') + '</div>' +
-          '<button type="button" class="record-add re-entry-add" data-entry-add><span aria-hidden="true">＋</span>別の変更を追加</button></div>' +
+      /* 節の見出し・追加の入口・目次は境界と同じ置き方。問いの注記は置かない ―― 家族でも
+         確かめられる課税明細書の話は、「父も覚えていない」の後の問いが受け持つ（2026-09-29）。 */
+      body =
+        question(withAdd('建ててから、増築や取り壊し、離れ・車庫を建てたことはありますか', '建物の変更'),
+          choice('has', m.has || 'unasked',
+          [['yes', 'ある'], ['no', 'ない'], ['unasked', 'まだ聞いていない'], ['unknown', WHO + 'も覚えていない']]), '', ' data-entry-q') +
+        '<div data-ch-yes>' + tocNav + '<div data-entries>' + cs.map((x, i) => chEntry(i, x)).join('') + '</div></div>' +
         question('課税明細書で、登記床面積と現況床面積を比べましたか', choice('check', m.check || '', [
           ['diff', '違いがあった', '現況床面積のほうが大きい・「未登記家屋」の行がある'], ['same', '違いはなかった'], ['', 'まだ比べていない']], 'row'),
-          '家屋の欄の「登記地積又は床面積」と「現況地積又は床面積」を比べます。', ' data-ch-unknown'));
+          '家屋の欄の「登記地積又は床面積」と「現況地積又は床面積」を比べます。', ' data-ch-unknown');
     } else if (type === 'prior') {
       /* 前の代の相続登記。答えは選ぶだけ（名前の欄を除く）。状態・次の
          対応・誰が・期限は SeiZen が答えから出すので、欄を置かない。 */
@@ -374,7 +400,8 @@
       const party = rel => rel === 'spouseParent' ? SPOUSE : rel === 'other' ? '家族側の相続人' : WHO;
       const stage = pr.stage === 'ready' ? 'signed' : pr.stage || 'none';
       const seal = pr.seal || (pr.stage === 'ready' ? 'given' : 'notyet');
-      body = section('名義',
+      /* 節は話題の白い札にする（権利関係・件の中と同じ形。2026-09-29）。 */
+      body = card('名義',
           question('土地・建物の登記に、前の代の名義が残っていますか',
             choice('remains', pr.remains || 'unknown', [['yes', '残っている'], ['no', '残っていない'], ['unknown', 'まだ確かめていない']]),
             '登記事項証明書で分かります。家族でも法務局で取得できます。') +
@@ -384,7 +411,7 @@
             '登記のとおりに。権利関係の「名義」にも反映します。', ' data-prior-yes') +
           question('名義人は、' + WHO + 'から見て', choice('rel', pr.rel || 'parent',
             [['parent', WHO + 'の親'], ['grand', WHO + 'の祖父母'], ['spouseParent', SPOUSE + 'の親'], ['other', 'その他']]), '', ' data-prior-yes')) +
-        section('名義の移し方',
+        card('名義の移し方',
           question('名義を移す方法', choice('route', route, [
             ['split', '話し合いで決める', '相続人が複数いる'],
             ['will', '遺言がある', '遺言で、取得する人が決まっている'],
@@ -405,7 +432,7 @@
             '登記には、協議書と一緒に全員の印鑑証明書が要ります。亡くなった人の印鑑証明書は取れません。', ' data-prior-seal') +
           question('前の代が亡くなったのは', choice('died', pr.died || 'unknown',
             [['before', '2024年4月より前'], ['after', '2024年4月以降'], ['unknown', '分からない']]),
-            '相続登記の期限が、これで決まります。'), ' data-prior-yes');
+            '相続登記の期限が、これで決まります。'), '', ' data-prior-yes');
     } else if (type === 'right') {
       const r = p.rights[key] || {};
       title = (key === 'land' ? '土地' : p.kind === 'condo' ? '専有部分' : '建物') + 'の権利関係';
@@ -464,13 +491,12 @@
       const items = (l.items || []).length ? l.items : [{}];
       bdCount = items.length;
       title = 'ローン・借入'; lead = '';
-      /* 追加の入口は、件の一覧の帯の右端（renderToc）。件の下に置くと、1件目を読み終えて
-         最後までスクロールしないと見つからなかった（2026-09-28）。 */
-      /* 節の見出しは置かない。ダイアログの見出し「ローン・借入」と同じ言葉が並んだ。 */
-      body = question('この家のローン・借入はありますか', choice('has', ['yes', 'no'].includes(l.has) ? l.has : 'unknown',
+      /* 節の見出しは置かない。ダイアログの見出し「ローン・借入」と同じ言葉が並んだ。
+         追加の入口・目次は境界と同じ置き方（2026-09-29。前は件の一覧の帯の右端に置いた）。 */
+      body = question(withAdd('この家のローン・借入はありますか', '借入'), choice('has', ['yes', 'no'].includes(l.has) ? l.has : 'unknown',
           [['yes', 'ある'], ['no', 'ない'], ['unknown', 'まだ確かめていない']]),
-          '返し終えたものも入れます。抵当権が登記に残っていることがあります。') +
-        '<div data-ln-yes><div data-entries>' + items.map((x, i) => lnEntry(i, x)).join('') + '</div></div>' +
+          '返し終えたものも入れます。抵当権が登記に残っていることがあります。', ' data-entry-q') +
+        '<div data-ln-yes>' + tocNav + '<div data-entries>' + items.map((x, i) => lnEntry(i, x)).join('') + '</div></div>' +
         question('残しておくこと', '<textarea class="re-q-in" rows="2" name="memo">' + esc(l.memo) + '</textarea>', '例：返済は2044年3月まで。残高は借入先に聞けば分かる。');
     } else if (type === 'deal') {
       /* 契約の相手（2026-09-28）。1件＝相手。聞くのは、カードとそのとき（貸している・
@@ -519,7 +545,7 @@
           ' data-doc-where');
     }
     dialog.innerHTML = '<form><header class="re-dialog-head"><div><p class="re-eyebrow">' + esc(p.name) + ' ／ 確認と記録</p><h2 id="re-dialog-title" tabindex="-1">' + esc(title) + '</h2></div><button type="button" class="re-close" aria-label="閉じる">×</button></header>' +
-      '<nav class="re-toc" aria-label="件の一覧" hidden></nav>' +
+      (body.includes('class="re-toc"') ? '' : '<nav class="re-toc" aria-label="件の一覧" hidden></nav>') +
       '<div class="re-dialog-body">' + (lead ? '<p class="re-lead">' + esc(lead) + '</p>' : '') + body + '</div>' +
       '<div class="re-discard" hidden><p>保存していない入力があります。</p><button type="button" data-keep>入力に戻る</button><button type="button" data-discard>変更を破棄して閉じる</button></div>' +
       '<footer class="re-dialog-foot"><p class="re-error" role="alert"></p><span>分かったところまで残せます</span><button type="button" data-cancel>キャンセル</button><button class="re-save" type="submit">記録を保存</button></footer></form>';
@@ -584,7 +610,7 @@
           why('owner', footingFixed ? '目印にした塀の基礎なので、持ち主は塀と同じです。' : '');
           why('mark', overWall ? '越境している塀は境界に合わせて建っていないので、目印にはなりません。' : '');
         });
-        dialog.querySelector('[data-entry-add]').hidden = entries.length >= 4;
+        dialog.querySelector('[data-entry-add]').hidden = deal !== 'yes' || entries.length >= 4;
       }
       if (identity.key === 'road' && form.elements.has) {
         dialog.querySelector('[data-rd-yes]').hidden = form.elements.has.value !== 'yes';
@@ -602,7 +628,7 @@
           el.querySelector('[data-l-content]').hidden = !['paper', 'oral'].includes(f('pact').value);
           el.querySelector('[data-entry-del]').hidden = links.length < 2;
         });
-        dialog.querySelector('[data-entry-add]').hidden = links.length >= 5;
+        dialog.querySelector('[data-entry-add]').hidden = form.elements.has.value !== 'yes' || links.length >= 5;
       }
       if (identity.key === 'changed' && form.elements.has) {
         const has = form.elements.has.value;
@@ -636,7 +662,7 @@
             : '取り壊した建物が登記に残っているかは、登記事項証明書で確かめられます。';
           el.querySelector('[data-entry-del]').hidden = items.length < 2;
         });
-        dialog.querySelector('[data-entry-add]').hidden = items.length >= 5;
+        dialog.querySelector('[data-entry-add]').hidden = has !== 'yes' || items.length >= 5;
       }
       const docWhere = dialog.querySelector('[data-doc-where]');
       if (docWhere && form.elements.st) docWhere.hidden = form.elements.st.value !== 'have';
@@ -674,6 +700,7 @@
             : '団信が付いていれば、残りは保険で返され、家族は返しません（フラット35では任意）。' + WHO + 'と' + SPOUSE + 'は、連帯債務・ペアローンのとき。';
           el.querySelector('[data-entry-del]').hidden = items.length < 2;
         });
+        dialog.querySelector('[data-entry-add]').hidden = form.elements.has.value !== 'yes' || items.length >= 5;
       }
       const dealWhat = dialog.querySelector('[data-deal-what]');
       if (dealWhat) {

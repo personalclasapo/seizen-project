@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>境界フォーム 案v8</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../prototype/shared/tokens.css">
+<link rel="stylesheet" href="../prototype/real-estate/area.css">
+<style>
+/* 案v8（2026-09-29）：件の枠の色を1枚ずつ差し替えるのをやめ、面の組を数値の基準から決める。
+   v1〜v7 の枠は、どれも CIELAB の明度 L* が 95.0〜96.5 で、話題の帯（95.2）・選択の地（95.7）と
+   ΔL* 1.3 以内だった。色相を変えても（v5 緑・v7 青灰）見分けられなかったのはこのため。
+   基準：
+   ・隣り合う面（地／件／話題の帯／札）は ΔL* 5 以上離す
+   ・件（大きい単位）の見出しは、話題の帯より強い（白からの ΔL* が大きい）
+   ・字は面の上で 4.5:1 以上（WCAG AA）
+   ・温度はそろえる（暖かい無彩色＋緑1色）。緑は選択と保存、橙は急ぎに取ってあるので件に使わない
+   3組：A＝件の床を濃く・帯は白 ／ B＝件の頭を墨の帯に ／ C＝件の頭を砂色の帯に。
+   手本（建物の権利関係）も同じ組で塗り直して並べる（帯は両方の画面で同じ値）。 */
+body{margin:0;padding:24px;background:#8d938a;font-family:var(--font)}
+.set{display:flex;gap:20px;align-items:flex-start;justify-content:center;margin:0 0 20px}
+.cap{color:#fff;max-width:1740px;margin:30px auto 12px}
+.cap b{display:block;font:700 17px/1.5 var(--font)}
+.cap span{display:block;font:500 13px/1.7 var(--font);opacity:.92}
+.re-dialog{display:block;position:static;width:860px;max-height:none;margin:0;flex:none}
+.re-dialog form{max-height:none}
+.re-dialog-foot>span{margin-right:auto}
+.mk-qt{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 10px}
+.mk-qt .re-q-t{margin:0}
+.mk-qt .record-add{margin:0;flex:none}
+.mk-note{margin-left:10px;font-weight:500;color:#858978;letter-spacing:0}
+.re-card-b>.re-q-h:first-child{margin-top:0}
+.re-card textarea{width:100%;box-sizing:border-box}
+.re-card-b .re-opts.row{max-width:none}
+.re-q+.mk-e{margin-top:28px}
+.re-dialog-body .re-toc{position:static;margin:22px -28px 16px;padding:11px 28px;background:#fffdf8;border-top:1px solid #e5dfd3;border-bottom:1px solid #e5dfd3}
+.re-toc+.mk-e{margin-top:0}
+.mk-e+.mk-e{margin-top:16px}
+.mk-e{border-radius:10px}
+.mk-eh{display:flex;align-items:center;gap:10px}
+.mk-eh b{font-size:15px;font-weight:700;color:#3C4437}
+.mk-eh .re-entry-sub{font-size:13px}
+
+/* 数値の表 */
+.num{background:#fff;border-radius:10px;padding:14px 18px;font:13px/1.6 var(--font);color:#32322E;max-width:1700px;margin:0 auto}
+.num table{border-collapse:collapse;width:100%}
+.num th,.num td{border-bottom:1px solid #eee;padding:5px 10px;text-align:left;white-space:nowrap}
+.num th{font-weight:700;background:#f6f6f2}
+.num .sw{display:inline-block;width:14px;height:14px;border:1px solid #bbb;border-radius:3px;vertical-align:-2px;margin-right:6px}
+.num .ok{color:#2b6a3f;font-weight:700}.num .ng{color:#b5533f;font-weight:700}
+
+/* ─── A：件の床を濃く（L*91）、話題の帯は白（線と字だけ） ─── */
+.A .mk-e{background:#E9E5DB;border:1px solid #D6D0C0;padding:12px 14px 14px}
+.A .mk-eh{margin:0 0 12px;padding:0 4px}
+.A .mk-eh .re-entry-sub{color:#555A49}
+.A .re-card{border-color:#D6D0C0}
+.A .re-card-h{background:#fff;border-bottom-color:#E6E1D4;color:#5d6652}
+
+/* ─── B：件の頭を墨の帯に（L*33・白字）、枠は線だけ。話題の帯は L*93 ─── */
+.B .mk-e{border:1px solid #BDB7A6;padding:0 14px 14px;overflow:visible}
+.B .mk-eh{margin:0 -14px 14px;padding:10px 16px;background:#4A5044;border-radius:9px 9px 0 0}
+.B .mk-eh b{color:#fff}
+.B .mk-eh .re-entry-sub{color:#E8EAE0}
+.B .mk-eh .re-entry-no{background:#fff;color:#4A5044}
+.B .mk-eh .re-entry-del{background:transparent;border-color:#858B7B;color:#E8EAE0}
+.B .re-toc .re-entry-no{background:#4A5044}
+.B .re-card-h{background:#EFEBE0;border-bottom-color:#E1DCCE}
+
+/* ─── C：件の頭を砂色の帯に（L*83）、枠の線も同じ系統。話題の帯は L*93 ─── */
+.C .mk-e{border:1px solid #C9BFA6;padding:0 14px 14px}
+.C .mk-eh{margin:0 -14px 14px;padding:10px 16px;background:#D6CDB8;border-bottom:1px solid #C9BFA6;border-radius:9px 9px 0 0}
+.C .mk-eh .re-entry-sub{color:#4E5344}
+.C .re-card-h{background:#EFEBE0;border-bottom-color:#E1DCCE}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+
+let VK = '';
+let HINT = '境界標や法務局の地積測量図は家族でも確かめられます。口頭で決めたことは、父に聞くしかありません。';
+const esc = s => String(s == null ? '' : s);
+const opt = (type, name, v, label, sub, on) => '<label class="re-opt"><input type="' + type + '" name="' + VK + name + '" value="' + v + '"' + (on ? ' checked' : '') + '><span><b>' + label + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</span></label>';
+const pills = (name, cur, opts) => '<div class="re-opts pill">' + opts.map(([v, l]) => opt('radio', name, v, l, '', v === cur)).join('') + '</div>';
+const rows = (name, cur, opts) => '<div class="re-opts row">' + opts.map(([v, l, s]) => opt('radio', name, v, l, s, v === cur)).join('') + '</div>';
+const multi = (name, on, opts) => '<div class="re-opts row multi">' + opts.map(([v, l, s]) => opt('checkbox', name + v, v, l, s, on.includes(v))).join('') + '</div>';
+const hint = t => '<p class="re-q-h">' + t + '</p>';
+const q = (t, body, h) => '<div class="re-q"><p class="re-q-t">' + t + '</p>' + body + (h ? hint(h) : '') + '</div>';
+const card = (t, body) => '<div class="re-card"><div class="re-card-h">' + t + '</div><div class="re-card-b">' + body + '</div></div>';
+const no = i => '<span class="re-entry-no" aria-hidden="true">' + (i + 1) + '</span>';
+const del = '<span class="re-entry-delw"><button type="button" class="re-entry-del">削除</button></span>';
+
+/* 2件：①左隣（◇◇さん・境界の位置を決めた・口頭のまま） ②右隣（まだ何も選んでいない） */
+const E = [
+  { side: 'left', nb: '左隣', who: '◇◇さん', kinds: ['line'], paper: 'no', memo: '塀を直すときの費用は、半分ずつ出す。' },
+  { side: 'right', nb: '右隣', who: '', kinds: [], paper: 'unknown', memo: '' }];
+const title = e => e.nb + 'との取り決め';
+
+/* 件の中身。parts は話題ごとに [見出し, 本文]。 */
+const parts = (e, i, withNote) => {
+  const n = k => 'e' + i + '-' + k;
+  const line = multi(n('kind-'), e.kinds, [['line', '境界の位置', '塀の中心を境界にした、など']]) +
+    (e.kinds.includes('line') ? '<div class="re-sub"><p class="re-sub-t">何を目印に決めましたか</p>' +
+      pills(n('mark'), 'wall', [['wall', '塀'], ['stake', '境界標（杭・金属の鋲など）'], ['none', '目印はない']]) +
+      '<div data-e-wall><p class="re-sub-t">その塀は誰のものですか</p>' + rows(n('wallOwner'), 'both', [
+        ['both', '両家のもの', '境界の上に建っている'], ['ours', '自宅のもの', '自宅の土地に建っている'], ['theirs', e.nb + 'のもの', e.nb + 'の土地に建っている']]) + '</div></div>' : '') +
+    multi(n('kind-'), e.kinds, [['over', '越境しているものの扱い', '塀・屋根・枝・配管などが境界を越えている']]);
+  return [
+    ['相手', pills(n('side'), e.side, [['right', '右隣'], ['left', '左隣'], ['back', '裏の家']]) +
+      '<div class="re-q-sub"><input class="re-q-in" value="' + e.who + '" placeholder="相手の名前（分かれば）"></div>' + hint('玄関を出て見た向きで。裏の家は、玄関の反対側の家。')],
+    ['決めたこと' + (withNote ? '<span class="mk-note">当てはまるものをすべて</span>' : ''), line],
+    ['書面', pills(n('paper'), e.paper, [['yes', '覚書・境界確認書がある'], ['no', '口頭のまま'], ['unknown', '分からない']])],
+    ['ほかに決めたこと', '<textarea class="re-q-in" rows="2">' + e.memo + '</textarea>' + hint('上で選んだこと以外に。例：越えている枝は、毎年秋に隣が切る。')]];
+};
+
+const topQ = add => '<div class="re-q">' + (add
+    ? '<div class="mk-qt"><p class="re-q-t">隣と、境界や塀・越境について決めたことはありますか</p><button type="button" class="record-add" aria-label="隣との取り決めを追加"><span aria-hidden="true">＋</span>追加</button></div>'
+    : '<p class="re-q-t">隣と、境界や塀・越境について決めたことはありますか</p>') +
+  pills('deal', 'yes', [['yes', 'ある'], ['no', 'ない'], ['unasked', 'まだ聞いていない'], ['unknown', '父も覚えていない']]) +
+  (HINT ? hint(HINT) : '') + '</div>';
+
+const toc = '<nav class="re-toc"><span class="re-toc-lb">隣との取り決め 2件</span>' + E.map((e, i) =>
+  '<button type="button"' + (i ? '' : ' aria-current="true"') + '>' + no(i) + '<span>' + title(e) + (e.who ? '<small>' + e.who + '</small>' : '') + '</span></button>').join('') + '</nav>';
+const head = (e, i) => no(i) + '<b>' + title(e) + '</b><span class="re-entry-sub">' + e.who + '</span>' + del;
+
+
+const rightBody = () =>
+    card('名義', '<div class="re-lines">' +
+      '<div class="re-ln"><span class="re-ln-lb">持ち方</span><div class="re-ln-v">' + pills('hold', 'own', [['own', '所有'], ['share', '共有'], ['other', 'その他']]) + '</div></div>' +
+      '<div class="re-ln"><span class="re-ln-lb">名義人</span><div class="re-ln-v"><input class="re-q-in" value="父"></div></div></div>' + hint('登記事項証明書のとおりに。')) +
+    '<div style="height:14px"></div>' +
+    card('登記内容と違うところ', '<div class="re-lines">' +
+      '<div class="re-ln"><span class="re-ln-lb">前の代の名義</span><div class="re-ln-v">' + pills('prior', 'no', [['yes', '残っている'], ['no', '残っていない'], ['unknown', 'まだ確かめていない']]) + '</div></div>' +
+      '<div class="re-ln"><span class="re-ln-lb">増築<small class="re-ln-z">奥・2015年ごろ</small></span><div class="re-ln-v">' + pills('reg', 'no', [['yes', '載っている'], ['no', '載っていない'], ['unknown', 'まだ確かめていない']]) + '</div></div></div>' + hint('登記事項証明書で分かります。'));
+HINT = '';
+const bdBody = k => topQ(true) + toc + E.map((e, i) => '<div class="mk-e" id="' + k + i + '"><div class="mk-eh">' + head(e, i) + '</div>' +
+      parts(e, i, true).map(([t, b]) => card(t, b)).join('<div style="height:12px"></div>') + '</div>').join('');
+const dlg = (k, h2, body) => { VK = k + h2.length + '-';
+  return '<div class="re-dialog ' + k + '"><form>' +
+    '<header class="re-dialog-head"><div><p class="re-eyebrow">自宅 ／ 確認と記録</p><h2>' + h2 + '</h2></div><button type="button" class="re-close">×</button></header>' +
+    '<div class="re-dialog-body">' + body + '</div>' +
+    '<footer class="re-dialog-foot"><span>分かったところまで残せます</span><button type="button">キャンセル</button><button class="re-save" type="button">記録を保存</button></footer></form></div>'; };
+const SETS = [
+  ['A', 'A｜件の床を濃く、話題の帯は白', '件＝一段濃い床（L*91）に白い札が載る。話題の帯は塗らず、線と字で見出しにする（手本も同じ）。'],
+  ['B', 'B｜件の頭を墨の帯に', '件＝濃い帯（L*33・白字）で始まる囲み。話題の帯は今より一段濃く（L*95→93）して白い札と分ける。'],
+  ['C', 'C｜件の頭を砂色の帯に', '件＝中くらいの濃さの帯（L*83）で始まる囲み。話題の帯（L*93）と10離し、件のほうを強くする。']];
+document.getElementById('root').outerHTML = '<div class="num" id="num"></div>' + SETS.map(([k, cap, sub]) =>
+  '<div class="cap"><b>' + cap + '</b><span>' + sub + '</span></div><div class="set" id="set' + k + '">' +
+  dlg(k, '建物の権利関係', rightBody()) + dlg(k, '境界・越境の取り決め', bdBody(k)) + '</div>').join('');
+
+/* 数値：実際に描かれた色から測る */
+const toRGB = s => s.match(/[\d.]+/g).slice(0, 3).map(Number);
+const lin = c => (c /= 255) <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4;
+const lum = s => { const [r, g, b] = toRGB(s).map(lin); return .2126 * r + .7152 * g + .0722 * b; };
+const Lstar = s => { const y = lum(s); return y > .008856 ? 116 * Math.cbrt(y) - 16 : 903.3 * y; };
+const hex = s => '#' + toRGB(s).map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+const cr = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+const bg = el => getComputedStyle(el).backgroundColor, fg = el => getComputedStyle(el).color;
+const sw = c => '<span class="sw" style="background:' + c + '"></span>' + hex(c);
+const mark = (v, ok) => '<span class="' + (ok ? 'ok' : 'ng') + '">' + v + '</span>';
+let trs = '';
+for (const [k] of SETS) {
+  const d = document.querySelector('#set' + k + ' .re-dialog:last-child');
+  const ground = bg(d), ent = d.querySelector('.mk-e'), eh = d.querySelector('.mk-eh'), band = d.querySelector('.re-card-h'), cardEl = d.querySelector('.re-card');
+  const entrySurf = bg(eh) !== 'rgba(0, 0, 0, 0)' ? bg(eh) : (bg(ent) !== 'rgba(0, 0, 0, 0)' ? bg(ent) : ground);
+  const white = bg(cardEl);
+  const lg = Lstar(ground), le = Lstar(entrySurf), lb = Lstar(bg(band)), lw = Lstar(white);
+  const sel = bg(d.querySelector('.re-opt input:checked+span'));
+  const ls = Lstar(sel);
+  const dEG = Math.abs(le - lg), dEB = Math.abs(le - lb), dBW = Math.abs(lb - lw);
+  const kind = bg(eh) !== 'rgba(0, 0, 0, 0)' ? '件の頭の帯' : '件の床';
+  const strongE = 100 - le, strongB = 100 - lb;
+  const cH = cr(fg(eh.querySelector('b')), entrySurf), cS = cr(fg(eh.querySelector('.re-entry-sub')), entrySurf), cB = cr(fg(band), bg(band));
+  trs += '<tr><td><b>' + k + '</b></td><td>' + sw(ground) + ' ' + lg.toFixed(1) + '</td><td>' + kind + '：' + sw(entrySurf) + ' ' + le.toFixed(1) + '</td><td>' + sw(bg(band)) + ' ' + lb.toFixed(1) + '</td><td>' + sw(sel) + ' ' + ls.toFixed(1) + '</td>' +
+    '<td>' + mark(dEG.toFixed(1), dEG >= 5) + '</td><td>' + mark(dEB.toFixed(1), dEB >= 5) + '</td><td>' + mark(dBW.toFixed(1), dBW >= 5 || lb === lw) + (lb === lw ? '（帯は白・線で区切る）' : '') + '</td>' +
+    '<td>' + mark(strongE.toFixed(1) + ' ＞ ' + strongB.toFixed(1), strongE > strongB) + '</td>' +
+    '<td>' + mark(cH.toFixed(1), cH >= 4.5) + ' / ' + mark(cS.toFixed(1), cS >= 4.5) + ' / ' + mark(cB.toFixed(1), cB >= 4.5) + '</td></tr>';
+}
+document.getElementById('num').innerHTML = '<table><tr><th>組</th><th>地 L*</th><th>件 L*</th><th>話題の帯 L*</th><th>選択の地 L*</th><th>ΔL* 件↔地</th><th>ΔL* 件↔帯</th><th>ΔL* 帯↔白い札</th><th>強さ（白からのΔL*）件＞帯</th><th>字のコントラスト 件名／要約／帯</th></tr>' + trs +
+  '<tr><td colspan="10" style="color:#6B6963">参考：v1〜v7 の枠は L* 95.0〜96.5。話題の帯 95.2・選択の地 95.7 と ΔL* 1.3 以内で、どれも基準（ΔL* 5 以上）を満たしていなかった。</td></tr></table>';
+</script>
+</body>
+</html>

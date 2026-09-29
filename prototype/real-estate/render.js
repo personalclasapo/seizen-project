@@ -98,20 +98,6 @@
      カード全体を押せる形にはしない ―― 押せると見て分からず、
      本文を読んでいるだけで誤って開く。                              */
   const BADGE = Object.assign({ doing: { label: '確認中', tone: 'bl' } }, NOW_STATUS);
-  function badge(st, own) {
-    const b = own || BADGE[st] || BADGE.unknown;
-    return '<span class="bdg ' + b.tone + '">' + esc(b.label) + '</span>';
-  }
-  /* ラベルはこのページの動詞「記録」の1語（見出し「確認と記録」・
-     保存「記録を保存」と揃える）。未確認かどうかはバッジが言うので、
-     ラベルを状態で出し分けない。枠線は付けず控えめに ―― 項目の数だけ
-     並ぶので、主張させると入口が画面の主役になる。何の記録かは
-     aria-label で読み上げに渡す。                                   */
-  function editButton(p, type, key, what) {
-    return '<button type="button" class="record-edit" data-edit-p="' + esc(p.id) +
-      '" data-edit-type="' + esc(type) + '" data-edit-key="' + esc(key) +
-      '" aria-label="' + esc(what + 'を記録') + '">' + PEN + '<span>記録</span></button>';
-  }
   /* 今のうちの状態は選べる。バッジそのものが入口で、押すとポップアップが
      開き、頭の状態欄で選び直して詳細と一緒に保存する。そのため、
      この行には「記録」ボタンを置かない（同じポップアップへの入口が
@@ -1286,19 +1272,20 @@
     const names ={ boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
     const out = ['boundary', 'road', 'changed'].filter(key => !(key === 'changed' && p.kind === 'land')).map(key => {
       const ms = S.matterStatus(p, key), status = ms.status;
-      if (key === 'boundary') return { key, type: 'matter', nm: names[key], status, pick: true, label: ms.label, body: boundaryBody };
-      if (key === 'road') return { key, type: 'matter', nm: names[key], status, pick: true, label: ms.label, body: roadBody };
-      return { key, type: 'matter', nm: names[key], status, pick: true, label: ms.label, body: changedBody };
+      if (key === 'boundary') return { key, type: 'matter', nm: names[key], status, label: ms.label, body: boundaryBody };
+      if (key === 'road') return { key, type: 'matter', nm: names[key], status, label: ms.label, body: roadBody };
+      return { key, type: 'matter', nm: names[key], status, label: ms.label, body: changedBody };
     });
 
     const pr = p.priorInheritance || {};
     const ps = S.priorStatus(p);
-    out.push({ key: 'prior', type: 'prior', icon: 'prior', nm: '前の代の相続登記', status: ps, pick: true,
+    out.push({ key: 'prior', type: 'prior', icon: 'prior', nm: '前の代の相続登記', status: ps,
       label: ps === 'done' ? (pr.stage === 'registered' ? '登記済み'
         : S.priorRoute(pr) === 'will' ? '手続きなし' : (S.priorParty(pr) || '相続人') + 'の分は済み') : '' });
 
     /* 団信の加入状況は、借入ありで団信が不明のときだけ立つ。事実は下段の
-       借入（loan.gteeStatus）にあり、ここは同じ事実から出る今のうちの行動。 */
+       借入（loan.gteeStatus）にあり、ここは同じ事実から出る今のうちの行動。
+       入口はほかの行と同じく状態のバッジ（「記録」ボタンだけ残っていた：2026-09-29）。 */
     const gl = loanItems(p).find(it => it.who !== 'other' && !it.paid && it.gtee === 'unknown');
     if (gl) {
       out.push({ key: 'loan', type: 'loan', icon: 'loan', nm: (gl.type || '住宅ローン') + 'の団信加入状況', status: 'unknown',
@@ -1753,8 +1740,7 @@
       const context = x.context || [x.assignee, x.timing].filter(Boolean).join(' ／ ');
       return '<section class="rw is-' + esc(x.status) + '" data-now-row="' + esc(x.key) + '"><div class="rh">' +
         matterIcon(x.icon || x.key) +
-        (x.pick ? unitHead(x.nm, statusPick(p, x.type, x.key, x.status, x.nm, x.label), '')
-          : unitHead(x.nm, badge(x.status), editButton(p, x.type, x.key, x.nm))) + '</div>' +
+        unitHead(x.nm, statusPick(p, x.type, x.key, x.status, x.nm, x.label), '') + '</div>' +
         (x.type === 'prior' ? priorBody(p) : x.body ? x.body(p) :
         '<div class="rw-record"><p>' + esc(x.summary) + '</p></div>' +
         (active && x.next ? '<div class="record-next"><span>次にすること</span><p>' + esc(x.next) + '</p>' +
@@ -2327,7 +2313,7 @@
         ? '<span class="dc-at" title="' + DC_AT[at].label + '">' + DC_AT[at].ic + '<span class="dc-at-t">' + esc(rec.place) + '</span></span>'
         : '<span class="dc-at no' + (tip ? '' : ' blank') + '">' + mark + '<span class="dc-at-t">' + text + '</span></span>';
       const name = d.n + (d.q ? '（' + d.q + '）' : '');
-      /* フォームの見出しに紙の名前を出すので、ボタンに持たせる（editButton と同じ形）。 */
+      /* フォームの見出しに紙の名前を出すので、ボタンに持たせる。ラベルはこのページの動詞「記録」の1語。 */
       const btn = '<button type="button" class="record-edit" data-edit-p="' + esc(p.id) + '" data-edit-type="doc" data-edit-key="' + esc(d.key) +
         '" data-doc-name="' + esc(name) + '"' + (d.own ? ' data-doc-own' : '') + ' aria-label="' + esc(name + 'のありかを記録') + '">' + PEN + '<span>記録</span></button>';
       return '<li class="dc">' + DC_PAPER[d.fig] + '<div class="dc-b"><p class="dc-n">' + esc(d.n) +
