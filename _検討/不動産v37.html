@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>不動産v37｜一覧を家の正面にする</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../prototype/shared/tokens.css">
+  <link rel="stylesheet" href="../prototype/shared/shell.css">
+  <link rel="stylesheet" href="../prototype/real-estate/area.css?v=v37">
+  <!--
+    不動産v37｜一覧（持っている不動産）を家の正面にする（2026-09-30）
+
+    本番（prototype/real-estate）をそのまま読み込み、一覧の札（.shelf-card）
+    だけをその場で作り替える。物件見出し・間取り・中身は本番。
+    ★このページで編集すると本番と同じ保存先に書かれる。触らない。
+
+    ■ なぜ
+      一覧は「造形を持たせず平たい札」にしていた（area.css の注記）。
+      ユーザー指摘：単なるカードになっている。
+
+    ■ 決まっていること（ここまでの相談）
+      ・載せる中身は今の4つのまま（呼び名・住所・住み方・要確認）。
+        絵を収めるために文字を減らさない
+      ・文字を家の隣や下に置かない（縦 1.5 倍・横は 760〜1280 で入らない、実測）。
+        **文字は壁に書く**。壁の幅＝今の札の幅なので、横は増えない
+      ・手本は下の物件見出し（屋根の帯）。同じ家の索引だと分かるように
+
+    ■ 寸法（1px＝30mm）
+      縮尺は壁の高さから引く：壁の見え（基礎の上端〜軒天）2,800mm が、
+      文字3行＋上下の余白（約 90px）に入る → 約 30mm/px。
+        軒の出      450 → 15   （左右に張り出す。壁の幅は札の幅−30）
+        ケラバの小口            → 3
+        棟包み      120 → 4
+        鼻隠し      180 → 6
+        軒樋        φ105 → 3.5
+        軒天                    → 3
+        基礎の立上り 400 → 13  （地盤面から 400 以上。フラット35 の基準）
+        千鳥破風     半幅 2,400 → 80、勾配 4/10（本番と同じ実寸）
+      ★瓦の面の見えの高さ（12px）だけは器から決める。実寸（4寸で約 1.8m＝60px）
+        だと屋根が壁より高くなる。本番の見出しも同じ例外（屋根の水平化）。
+      ★3種とも縦の割り付けは戸建てに揃える（上の帯＝屋根の帯の高さ、下の帯＝
+        基礎＋地盤の高さ、横枠＝戸建ての外壁の位置、文字の余白も同じ）。
+        ユーザー指摘（2026-09-30）：一軒家とマンションの高さが合っていない／
+        マンション・畑に横枠がない
+      マンションは上の階の手すり（1,100）＋スラブの小口（200）を屋根の帯の高さに
+        入れる（本番の condoFloor と同じく、縮尺は器から）。縦格子のピッチ 110 は
+        この縮尺で 2px を切るので、1本おきに描く（量産線の描き直し）。
+        横枠は外壁の外面、上下は建物が続くので札の下端まで引く
+      土地は建物が無い。横枠は敷地境界線（図面の決まりどおり一点鎖線）で、
+        足元に境界杭（90 角）。地盤面は戸建てと同じ高さ
+
+    ■ 比べるもの（右下の切り替え）
+      今  本番のまま
+      A  家の正面（平入り。屋根の帯＋軒の出＋壁＋基礎）
+      B  A ＋中央の千鳥破風（本番の見出しと同じ部材）
+      「土地の例」 本番に土地の物件が無いので、画面の上だけ1枚足す（押しても動かない）
+  -->
+  <style>
+    /* ── 家の正面の札 ──────────────────────────── */
+    /* button は中身を縦の中央に置くので、上から積む（住所の無い札で呼び名が下がる） */
+    .shelf-card.fc{position:relative;display:flex;flex-direction:column;justify-content:flex-start;
+      background:none;border:0;border-radius:0;
+      padding:var(--fc-t,40px) var(--fc-s,27px) var(--fc-b,27px);box-shadow:none;isolation:isolate}
+    .shelf-card.fc:hover{box-shadow:none}
+    .shelf-card.fc > svg.fc-bg{position:absolute;left:0;top:0;width:100%;height:100%;z-index:-1;
+      overflow:visible;pointer-events:none}
+    .shelf-card.fc .card-ic{display:none}
+    /* 本番の align-self（grid の縦位置）が、flex の縦積みでは横位置に効くので打ち消す */
+    .shelf-card.fc > *{align-self:stretch}
+    .shelf-card.fc b{display:block;line-height:1.5}
+    .shelf-card.fc .card-a{display:block;margin-top:1px}
+    .shelf-card.fc .card-f{margin-top:8px;flex-wrap:wrap}
+    .shelf-card.fc:focus-visible{outline:2px solid var(--gr);outline-offset:3px}
+    /* 壁 */
+    .fc-wall{fill:var(--paper)}
+    .shelf-card.fc:hover .fc-wall{fill:#fff}
+    .shelf-card.fc:hover .r-out{stroke:#4E4B43}
+    /* 基礎・地盤 */
+    .fc-kiso{fill:#E4E0D4}
+    .fc-gl  {stroke:#6E6A60;stroke-width:1.6;fill:none;stroke-linecap:round}
+    .fc-hat {stroke:#B9B2A1;stroke-width:.8;fill:none}
+    .fc-kui {fill:#DCD6C8;stroke:#8C8779;stroke-width:1}
+    .fc-grass{stroke:#9C9584;stroke-width:.9;fill:none;stroke-linecap:round}
+    .fc-post {fill:#B9B2A1;stroke:#8C8779;stroke-width:.8}
+    .fc-sign-h{fill:#E4E0D4}
+    .fc-bolt {fill:#A9A292}
+    .fc-mesh {stroke:#E2DDD0;stroke-width:.6;fill:none}
+    /* 網の上に字が乗るので、紙の色で縁取る（本番の見出し .rf-t と同じ手当て） */
+    .shelf-card.fc[data-fc-kind="land"] b,.shelf-card.fc[data-fc-kind="land"] .card-a{--hl:#FDFCF8;
+      text-shadow:1.5px 0 var(--hl),-1.5px 0 var(--hl),0 1.5px var(--hl),0 -1.5px var(--hl),0 0 3px var(--hl)}
+    /* 本番の見出しの部材（area.css）はそのまま使う：.r-out .r-mem .r-sub .r-tex
+       .r-rib .r-tile .r-hafu .r-tsuma .r-mune .r-noki .r-toi .r-end-* .r-sh .m-* */
+
+    /* 土地の例（仮） */
+    .fc-sample{cursor:default}
+
+    /* 切り替え */
+    .v37-sw{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;gap:4px;flex-wrap:wrap;
+      background:#fff;border:1px solid var(--line2);border-radius:10px;padding:6px;
+      box-shadow:0 4px 14px rgba(0,0,0,.08);font-size:12.5px}
+    .v37-sw button{border:1px solid var(--line);background:#FBFAF6;border-radius:7px;
+      padding:5px 10px;cursor:pointer;font:inherit}
+    .v37-sw button[aria-pressed="true"]{background:#2E4A3A;color:#fff;border-color:#2E4A3A}
+    .v37-sw .h{align-self:center;color:var(--ink3);padding:0 6px 0 4px}
+  </style>
+</head>
+<body data-area="real-estate" data-root="../prototype/">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+
+    <div class="sec-h">
+      <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 11.5 12 4.2l8.5 7.3"/><path d="M5.8 10.8V19a1 1 0 0 0 1 1h10.4a1 1 0 0 0 1-1v-8.2"/><path d="M9.8 20v-5.4a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1V20"/></svg></span>
+      <h3>持っている不動産</h3><span class="cnt" id="cntShelf"></span>
+      <button class="addbtn" id="addProp">＋ 物件を登録</button>
+    </div>
+    <p class="sec-lead">自宅・実家・土地など、名義や持分に関わる不動産を並べています。</p>
+    <div class="sec"><div class="shelf" id="shelf"></div></div>
+
+    <div class="sec"><div id="plans"></div></div>
+
+  </div></main>
+</div>
+<div class="toast" id="toast"></div>
+<div class="v37-sw" id="v37sw"><span class="h">一覧</span></div>
+<script src="../prototype/shared/areas.js"></script>
+<script src="../prototype/shared/shell.js"></script>
+<script src="../prototype/real-estate/state.js?v=v37"></script>
+<script src="../prototype/real-estate/editor.js?v=v37"></script>
+<script src="../prototype/real-estate/render.js?v=v37"></script>
+<script>
+(function () {
+  'use strict';
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const P = pts => 'M ' + pts.map(q => q.join(' ')).join(' L ') + ' Z';
+  const L = (x0, y0, x1, y1) => 'M ' + x0 + ' ' + y0 + ' L ' + x1 + ' ' + y1 + ' ';
+  const S = window.SeiZenRealEstate;
+
+  const V = { now: '今（本番）', A: 'A 家の正面', B: 'B ＋千鳥破風' };
+  const qs = new URLSearchParams(location.search);
+  let cur = V[qs.get('v')] ? qs.get('v') : 'B';
+  let land = qs.get('land') !== '0';
+
+  /* 寸法（px。1px＝30mm。根拠は上の注記） */
+  const D = { OV: 15, EW: 3, MUNE: 4, TILE: 12, HAFU: 6, TOI: 3.5, NOKI: 3,
+    KISO: 13, GL: 5, PAD: 10, SIDE: 12, GABLE: 80, PITCH: .4,
+    C_BAND: 26, C_SLAB: 4, SOIL: 17 };
+
+  /* 帯の上端から軒天の下端まで（＝壁の上端） */
+  function roofGeom(gable) {
+    const band = D.MUNE * .5 + D.TILE + D.HAFU + D.TOI;        /* 棟包みの頭〜軒樋の下端 */
+    const rise = D.GABLE * D.PITCH;                            /* 破風の立ち上がり */
+    const top = gable ? Math.max(2, rise - band + 2) : 2;      /* 破風の頂点が上端に来る */
+    const yB = top, yR = yB + D.MUNE * .5, yE = yR + D.TILE, yF = yE + D.HAFU, yG = yF + D.TOI;
+    return { yB, yR, yE, yF, yG, wallTop: yG + D.NOKI };
+  }
+
+  /* 戸建て：屋根の帯（本番 houseRoof の部材を、この縮尺で描き直す）＋壁＋基礎＋地盤 */
+  function house(w, h, gable) {
+    const g = el('svg', { class: 'fc-bg', viewBox: '0 0 ' + w + ' ' + h, 'aria-hidden': 'true' });
+    const add = (n, a) => g.appendChild(el(n, a));
+    const { yB, yR, yE, yF, yG, wallTop } = roofGeom(gable);
+    const xL = D.EW, xR = w - D.EW, wL = D.OV, wR = w - D.OV, cx = w / 2;
+    const yGL = h - D.GL, yK = yGL - D.KISO;
+
+    /* 地盤：地盤面の線と、その下のハッチ（立面図の GL の記号） */
+    let hat = '';
+    for (let x = 2; x < w; x += 6) hat += L(x, yGL + D.GL, x + 4, yGL + 1);
+    add('path', { class: 'fc-hat', d: hat });
+
+    /* 壁・基礎 */
+    add('path', { class: 'fc-wall', d: P([[wL, wallTop - 1], [wR, wallTop - 1], [wR, yK], [wL, yK]]) });
+    add('path', { class: 'fc-kiso', d: P([[wL - 1.5, yK], [wR + 1.5, yK], [wR + 1.5, yGL], [wL - 1.5, yGL]]) });
+    add('path', { class: 'r-mem', d: L(wL - 1.5, yK, wR + 1.5, yK) });           /* 土台水切り */
+    add('path', { class: 'r-sub', d: L(wL - 1.5, yK + 2, wR + 1.5, yK + 2) });
+    add('path', { class: 'r-out', d: L(wL, wallTop, wL, yK) + L(wR, wallTop, wR, yK) +
+      L(wL - 1.5, yK, wL - 1.5, yGL) + L(wR + 1.5, yK, wR + 1.5, yGL) });
+    add('path', { class: 'fc-gl', d: L(0, yGL, w, yGL) });
+
+    /* 軒天と、壁に落ちる軒の陰 */
+    add('path', { class: 'r-sh', d: P([[wL, yG], [wR, yG], [wR, wallTop + 4], [wL, wallTop + 4]]) });
+    add('path', { class: 'r-noki', d: P([[xL, yG], [xR, yG], [xR, wallTop], [xL, wallTop]]) });
+
+    /* 瓦の面：桟瓦の縦筋（働き幅 235 → 8px）と段（上ほど詰まる） */
+    add('path', { class: 'r-tile', d: P([[xL, yR], [xR, yR], [xR, yE], [xL, yE]]) });
+    let rib = '';
+    for (let x = xL + 8; x < xR - 3; x += 8) rib += L(x, yR, x, yE);
+    add('path', { class: 'r-rib', d: rib });
+    let tex = '';
+    for (let i = 1; i <= 2; i++) { const y = yR + D.TILE * (1 - Math.pow(1 - i / 3, 1.25)); tex += L(xL, y, xR, y); }
+    add('path', { class: 'r-tex', d: tex });
+
+    /* 鼻隠し・軒樋 */
+    add('path', { class: 'r-hafu', d: P([[xL, yE], [xR, yE], [xR, yF], [xL, yF]]) });
+    add('path', { class: 'r-mem', d: L(xL, yE, xR, yE) });
+    add('path', { class: 'r-toi', d: P([[xL, yF], [xR, yF], [xR, yG], [xL, yG]]) });
+    add('path', { class: 'r-sub', d: L(xL, yF, xR, yF) });
+
+    /* ケラバの小口 */
+    [[xL, -1], [xR, 1]].forEach(([x, s]) => {
+      const dx = s * D.EW, dy = D.EW * .3;
+      add('path', { class: 'r-end-d', d: P([[x, yR], [x + dx, yR + dy], [x + dx, yE + dy], [x, yE]]) });
+      add('path', { class: 'r-end-f', d: P([[x, yE], [x + dx, yE + dy], [x + dx, yF + dy], [x, yF]]) });
+      add('path', { class: 'r-end-t', d: P([[x, yF], [x + dx, yF + dy], [x + dx, yG + dy], [x, yG]]) });
+    });
+
+    /* 棟包み */
+    add('path', { class: 'r-mune', d: P([[xL, yB], [xR, yB], [xR, yR + D.MUNE * .5], [xL, yR + D.MUNE * .5]]) });
+    add('path', { class: 'r-out', d: 'M ' + xL + ' ' + yG + ' L ' + xL + ' ' + yB + ' L ' + xR + ' ' + yB + ' L ' + xR + ' ' + yG });
+
+    /* 千鳥破風（B）。裾は軒樋の下端、勾配 4/10、破風板 180 → 6 */
+    if (gable) {
+      const hw = Math.min(D.GABLE, w / 2 - xL - 16), yA = yG - hw * D.PITCH;
+      const yAi = yA + D.HAFU * Math.sqrt(1 + D.PITCH * D.PITCH);
+      const inG = Math.max(0, (yG - yAi) / D.PITCH);
+      add('path', { class: 'r-sh', d: P([[cx, yA + 2], [cx + hw + 3, yG + 1.5], [cx - hw - 3, yG + 1.5]]) });
+      add('path', { class: 'r-tsuma', d: P([[cx, yAi], [cx + inG, yG], [cx - inG, yG]]) });
+      add('path', { class: 'r-hafu', d: P([[cx - hw, yG], [cx, yA], [cx + hw, yG], [cx + inG, yG], [cx, yAi], [cx - inG, yG]]) });
+      add('path', { class: 'r-mem', d: 'M ' + (cx - inG) + ' ' + yG + ' L ' + cx + ' ' + yAi + ' L ' + (cx + inG) + ' ' + yG });
+      const mw = 5;
+      add('path', { class: 'r-mune', d: P([[cx - mw, yA + mw * D.PITCH], [cx, yA - 1.5], [cx + mw, yA + mw * D.PITCH],
+        [cx + mw, yA + mw * D.PITCH + 2.5], [cx, yA + 1], [cx - mw, yA + mw * D.PITCH + 2.5]]) });
+      add('path', { class: 'r-out', d: 'M ' + (cx - hw) + ' ' + (yG + 2) + ' L ' + (cx - hw) + ' ' + yG +
+        ' L ' + cx + ' ' + yA + ' L ' + (cx + hw) + ' ' + yG + ' L ' + (cx + hw) + ' ' + (yG + 2) });
+    }
+    return g;
+  }
+
+  /* 3種の縦の割り付けは戸建てに揃える（2026-09-30 ユーザー指摘：一軒家と
+     マンションの高さが合っていない）。
+       上の帯 ＝ 屋根の帯（棟包みの頭 yB 〜 軒天の下端 wallTop）
+       壁     ＝ wallTop 〜 yK（文字はこの中。余白は3種とも同じ）
+       下の帯 ＝ 基礎＋地盤（yK 〜 札の下端）
+       横枠   ＝ 戸建ての外壁の位置（左右とも OV） */
+  function frame(h) {
+    const r = roofGeom(cur === 'B');
+    const yGL = h - D.GL;
+    return { yB: r.yB, wallTop: r.wallTop, yGL, yK: yGL - D.KISO };
+  }
+
+  /* マンション：上の階の手すり＋スラブ／父の階の外壁／父の階のスラブ＋下の階の手すりの頭。
+     左右の外壁の線（横枠）は戸建ての外壁と同じ位置。スラブの小口は外壁より 1.5 出す。 */
+  function condo(w, h) {
+    const g = el('svg', { class: 'fc-bg', viewBox: '0 0 ' + w + ' ' + h, 'aria-hidden': 'true' });
+    const add = (n, a) => g.appendChild(el(n, a));
+    const R = (x0, y0, x1, y1, c) => add('path', { class: c, d: P([[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) });
+    /* 下端は戸建ての地盤面（yGL）で切る。札の下端まで伸ばすと、戸建て・土地の
+       地盤面より下へはみ出して、並びの下が揃わない（2026-09-30 ユーザー指摘） */
+    const { yB, wallTop, yK, yGL } = frame(h);
+    const wL = D.OV, wR = w - D.OV, sL = wL - 1.5, sR = wR + 1.5;
+    /* 上の帯：手すり 1100＋上の階のスラブの小口 200 を、屋根の帯と同じ高さに入れる */
+    const s = 1300 / (wallTop - yB), m = v => v / s;
+    const fl = yB + m(1100);                           /* 上の階のバルコニーの床 */
+
+    /* 上の階のバルコニー：奥にサッシ、手前に縦格子の手すり */
+    R(wL, yB, wR, fl, 'm-face');
+    const SW = m(1690);
+    const n = Math.max(1, Math.round((wR - wL) / m(6600))), uw = (wR - wL) / n;
+    for (let i = 0; i < n; i++) [.27, .73].forEach(f => {
+      const c = wL + uw * (i + f);
+      R(c - SW / 2, yB, c + SW / 2, fl - m(20), 'm-glass');
+      add('path', { class: 'm-sash-l', d: L(c - SW / 2, yB, c - SW / 2, fl) + L(c + SW / 2, yB, c + SW / 2, fl) + L(c, yB, c, fl) });
+    });
+    let bars = '';
+    for (let x = wL + 3; x < wR - 1; x += 3.2) bars += L(x, yB + 2, x, fl - m(100));
+    add('path', { class: 'm-bar', d: bars });
+    R(wL, yB, wR, yB + 2, 'm-rail');                   /* 笠木 */
+    R(wL, fl - m(100) - 1, wR, fl - m(100), 'm-rail'); /* 下桟 */
+    /* 上の階のスラブの小口 */
+    R(sL, fl, sR, wallTop, 'm-slab');
+    add('path', { class: 'r-mem', d: L(sL, fl, sR, fl) });
+    add('path', { class: 'r-sub', d: L(sL, wallTop, sR, wallTop) });
+
+    /* 父の階の外壁 */
+    R(wL, wallTop, wR, yK, 'fc-wall');
+    R(wL, wallTop, wR, wallTop + 4, 'r-sh');
+
+    /* 下の帯：父の階のスラブの小口（基礎と同じ高さの上端に）＋下の階の手すりの頭 */
+    const ySl = yK + m(200);
+    R(sL, yK, sR, ySl, 'm-slab');
+    add('path', { class: 'r-mem', d: L(sL, yK, sR, yK) });
+    add('path', { class: 'r-sub', d: L(sL, ySl, sR, ySl) });
+    R(wL, ySl, wR, yGL, 'm-face');
+    let bars2 = '';
+    for (let x = wL + 3; x < wR - 1; x += 3.2) bars2 += L(x, ySl + 4, x, yGL);
+    add('path', { class: 'm-bar', d: bars2 });
+    R(wL, ySl + 2, wR, ySl + 4, 'm-rail');
+
+    /* 横枠：外壁の外面。上の帯の頭から地盤面の高さまで */
+    add('path', { class: 'r-out', d: L(wL, yB, wL, yGL) + L(wR, yB, wR, yGL) + L(wL, yB, wR, yB) + L(wL, yGL, wR, yGL) });
+    return g;
+  }
+
+  /* 土地：建物が無い。2026-09-30 ユーザー指摘（一点鎖線と杭の版）：
+     空の枠に見える／上の帯が無い／土地・畑に見えない。
+     → 3段の割り付けは戸建てと同じまま、土地に実際に立っている物で埋める。
+       看板   ：空き地の管理看板。上の帯＝看板の見出し帯、壁＝板面、
+                下の帯＝支柱の脚と草。横枠＝板面の枠
+       フェンス：ブロック2段（190×2＋目地＝400 → 基礎と同じ 13px。実寸で一致）
+                ＋ネットフェンス。上の帯＝上桟と、その下の網の頭。横枠＝支柱
+     地盤面の高さは戸建てと同じ。 */
+  let landV = qs.get('land-v') === 'fence' ? 'fence' : 'sign';
+
+  function ground(add, w, h, yGL) {
+    let hat = '';
+    for (let x = 2; x < w; x += 6) hat += L(x, yGL + D.GL, x + 4, yGL + 1);
+    add('path', { class: 'fc-hat', d: hat });
+  }
+  /* 草の株：長さの違う葉を5枚、根元から扇に。矢印に見えないよう先を揃えない */
+  function grass(add, xs, yGL) {
+    let d = '';
+    xs.forEach((x, i) => {
+      const k = 1 + (i % 3) * .18;
+      d += L(x, yGL, x - 3.2 * k, yGL - 3.5 * k) + L(x, yGL, x - 1.2 * k, yGL - 6 * k) +
+        L(x, yGL, x + .4, yGL - 7.5 * k) + L(x, yGL, x + 2 * k, yGL - 5.2 * k) + L(x, yGL, x + 3.6 * k, yGL - 3 * k);
+    });
+    add('path', { class: 'fc-grass', d });
+  }
+
+  function landLot(w, h) {
+    const g = el('svg', { class: 'fc-bg', viewBox: '0 0 ' + w + ' ' + h, 'aria-hidden': 'true' });
+    const add = (n, a) => g.appendChild(el(n, a));
+    const R = (x0, y0, x1, y1, c) => add('path', { class: c, d: P([[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) });
+    const { yB, wallTop, yK, yGL } = frame(h);
+    const wL = D.OV, wR = w - D.OV;
+    ground(add, w, h, yGL);
+
+    if (landV === 'sign') {
+      /* 支柱：角パイプ 60 角 → 2px を、板の幅の 1/5・4/5 に。板の裏から地面へ */
+      const posts = [wL + (wR - wL) * .2, wL + (wR - wL) * .8];
+      posts.forEach(x => R(x - 2, yK, x + 2, h, 'fc-post'));
+      grass(add, [wL + 6, posts[0] - 9, posts[0] + 10, (wL + wR) / 2 - 20, (wL + wR) / 2 + 14, posts[1] - 11, posts[1] + 9, wR - 7], yGL);
+      /* 板面＋見出し帯（上の帯＝屋根の帯と同じ高さ） */
+      R(wL, yB, wR, yK, 'fc-wall');
+      R(wL, yB, wR, wallTop, 'fc-sign-h');
+      add('path', { class: 'r-mem', d: L(wL, wallTop, wR, wallTop) });
+      /* 支柱に留めるボルト（見出し帯と板の下端に、支柱ごと2本） */
+      posts.forEach(x => [(yB + wallTop) / 2, yK - 5].forEach(y => add('circle', { class: 'fc-bolt', cx: x, cy: y, r: 1.3 })));
+      add('path', { class: 'r-out', d: P([[wL, yB], [wR, yB], [wR, yK], [wL, yK]]) });
+    } else {
+      /* ブロック2段（上端 yK、下端 GL）。長さ 390＋目地 10 → 13px、段ずらしの馬目地 */
+      R(wL - 1, yK, wR + 1, yGL, 'fc-kiso');
+      let j = '', ym = (yK + yGL) / 2;
+      j += L(wL - 1, ym, wR + 1, ym);
+      for (let x = wL + 13; x < wR; x += 13) j += L(x, yK, x, ym);
+      for (let x = wL + 6.5; x < wR; x += 13) j += L(x, ym, x, yGL);
+      add('path', { class: 'r-sub', d: j });
+      add('path', { class: 'r-mem', d: L(wL - 1, yK, wR + 1, yK) });
+      add('path', { class: 'r-out', d: L(wL - 1, yK, wL - 1, yGL) + L(wR + 1, yK, wR + 1, yGL) });
+      /* ネットフェンス：菱形の網（量産線）。上桟は上の帯の頭、網の頭は上の帯の中 */
+      const pid = 'mesh' + Math.round(w) + '_' + Math.round(h);
+      const defs = el('defs', {}), pat = el('pattern', { id: pid, width: 6, height: 6, patternUnits: 'userSpaceOnUse' });
+      pat.appendChild(el('path', { class: 'fc-mesh', d: 'M 0 0 L 6 6 M 6 0 L 0 6' }));
+      defs.appendChild(pat); g.appendChild(defs);
+      R(wL, yB, wR, yK, 'fc-wall');
+      add('path', { d: P([[wL, yB], [wR, yB], [wR, yK], [wL, yK]]), fill: 'url(#' + pid + ')' });
+      R(wL, yB, wR, yB + 3, 'm-rail');                /* 上桟 */
+      add('path', { class: 'r-mem', d: L(wL, yB + 3, wR, yB + 3) });
+      R(wL, wallTop - 2, wR, wallTop, 'm-rail');     /* 上の帯の下端＝胴縁 */
+      /* 支柱 φ60.5 → 2px、間隔 2,000 → 約 67px。両端は横枠として太く */
+      let pl = '';
+      const n = Math.max(1, Math.round((wR - wL) / 67));
+      for (let i = 1; i < n; i++) { const x = wL + (wR - wL) * i / n; pl += L(x, yB, x, yK); }
+      add('path', { class: 'r-mem', d: pl });
+      add('path', { class: 'r-out', d: L(wL, yB - 1, wL, yK) + L(wR, yB - 1, wR, yK) + L(wL, yB, wR, yB) });
+      grass(add, [wL - 6, wL + 30, (wL + wR) / 2 + 8, wR - 34, wR + 6], yGL);
+    }
+    add('path', { class: 'fc-gl', d: L(0, yGL, w, yGL) });
+    return g;
+  }
+
+  /* 札の余白：3種とも同じ（呼び名の高さが並びで揃う） */
+  function pads() {
+    return { t: roofGeom(cur === 'B').wallTop + D.PAD, s: D.OV + D.SIDE, b: D.KISO + D.GL + D.PAD };
+  }
+
+  function dress(btn) {
+    const id = (btn.dataset.go || '').replace(/^p-/, '');
+    const p = S.find(id);
+    const kind = btn.dataset.fcKind || (p && p.kind) || 'house';
+    btn.classList.add('fc');
+    const pd = pads(kind);
+    btn.style.setProperty('--fc-t', pd.t + 'px');
+    btn.style.setProperty('--fc-s', pd.s + 'px');
+    btn.style.setProperty('--fc-b', pd.b + 'px');
+    const r = btn.getBoundingClientRect();
+    const w = Math.round(r.width), h = Math.round(r.height);
+    const svg = kind === 'condo' ? condo(w, h) : kind === 'land' ? landLot(w, h) : house(w, h, cur === 'B');
+    const old = btn.querySelector(':scope > svg.fc-bg');
+    old ? old.replaceWith(svg) : btn.prepend(svg);
+  }
+
+  function undress(btn) {
+    btn.classList.remove('fc');
+    const old = btn.querySelector(':scope > svg.fc-bg'); if (old) old.remove();
+  }
+
+  function sample() {
+    const b = document.createElement('button');
+    b.className = 'shelf-card fc-sample'; b.dataset.fcKind = 'land'; b.type = 'button';
+    b.innerHTML = '<span class="card-ic"></span><b>長岡の畑（例）</b><span class="card-a">新潟県長岡市△△町 字□□123</span>' +
+      '<span class="card-f"><span class="t-bl">家族以外が使っている</span><span class="card-r">要確認 3</span></span>';
+    return b;
+  }
+
+  const shelf = document.getElementById('shelf');
+  let busy = false;
+  function apply() {
+    if (busy) return; busy = true;
+    shelf.querySelectorAll('.fc-sample').forEach(b => b.remove());
+    if (land) shelf.appendChild(sample());
+    const cards = [...shelf.querySelectorAll('.shelf-card')];
+    if (cur === 'now') cards.forEach(undress);
+    else {
+      /* 余白を先に全部当ててから（行の高さが揃ってから）描く */
+      cards.forEach(b => { b.classList.add('fc'); const pd = pads(b.dataset.fcKind || (S.find((b.dataset.go || '').replace(/^p-/, '')) || {}).kind);
+        b.style.setProperty('--fc-t', pd.t + 'px'); b.style.setProperty('--fc-s', pd.s + 'px'); b.style.setProperty('--fc-b', pd.b + 'px'); });
+      cards.forEach(dress);
+    }
+    mo.takeRecords();                    /* 自分で足した土地の例で、また呼ばれないように */
+    busy = false;
+  }
+  const mo = new MutationObserver(() => { if (!busy) apply(); });
+  mo.observe(shelf, { childList: true });
+  addEventListener('resize', () => requestAnimationFrame(apply));
+  document.fonts && document.fonts.ready.then(apply);
+
+  /* 切り替え */
+  const sw = document.getElementById('v37sw');
+  const btns = {};
+  Object.keys(V).forEach(k => {
+    const b = document.createElement('button'); b.textContent = V[k];
+    b.onclick = () => { cur = k; sync(); apply(); };
+    sw.appendChild(b); btns[k] = b;
+  });
+  const lb = document.createElement('button'); lb.textContent = '土地の例';
+  lb.onclick = () => { land = !land; sync(); apply(); };
+  sw.appendChild(lb);
+  const LV = { sign: '看板', fence: 'フェンス' }, lbs = {};
+  Object.keys(LV).forEach(k => {
+    const b = document.createElement('button'); b.textContent = LV[k];
+    b.onclick = () => { landV = k; land = true; sync(); apply(); };
+    sw.appendChild(b); lbs[k] = b;
+  });
+  function sync() {
+    Object.keys(btns).forEach(k => btns[k].setAttribute('aria-pressed', k === cur));
+    lb.setAttribute('aria-pressed', land);
+    Object.keys(lbs).forEach(k => lbs[k].setAttribute('aria-pressed', land && k === landV));
+  }
+  sync(); apply();
+  window.__v37 = { set: (v, l, lv) => { cur = v; if (l != null) land = l; if (lv) landV = lv; sync(); apply(); } };
+})();
+</script>
+</body>
+</html>
