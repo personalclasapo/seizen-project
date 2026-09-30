@@ -138,6 +138,10 @@
 .pl-w{stroke:none}
 .pl-w-line{stroke:#6E6A60;stroke-linecap:square}
 .pl-kama{stroke:#B9B3A4;stroke-width:1.6}
+/* 窓（引違い窓）。壁の切れ目の地・外と内の枠・2枚の障子（render.js の draw）。 */
+.pl-win-bg{fill:#FDFCF8}
+.pl-win-f{stroke:#6E6A60;stroke-width:1}
+.pl-win-s{stroke:#6E6A60;stroke-width:1.6}
 .pl-gk-label{font-size:16px;fill:#8C8779;font-family:var(--font)}
 
 .layer{position:absolute;inset:0}

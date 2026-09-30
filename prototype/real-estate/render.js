@@ -2560,6 +2560,41 @@
       return ![0.5, 0.25, 0.75].some(t => inner(a + (b - a) * t));
     };
     const th = (dir, pos, a, b) => isOuter(dir, pos, a, b) ? TO : TI;
+
+    /* ══ 窓（2026-09-30、`_検討/不動産v34.html` から移植）══════════
+       間取りに足す記号は窓だけ。窓は「この壁が外に面している」ことしか
+       言わないので、どの家に描いても嘘にならない（部屋の中のドア・設備・
+       収納・階段・柱は言いすぎる）。
+       ・外壁に付ける。屋根の真下の外壁（建物の上端）には付けない
+       ・2列：今のうち＝左3、そのとき＝右2、書類＝右1（ユーザー指示）。
+         数が2以上の壁は内法を等分し、それぞれの中ほどに置く
+       ・指定のない外壁は1つ、中ほど。廊下・玄関には付けない
+       幅は引違い窓の既製寸法 1690mm＝169。壁が短く収まらないとき
+       （書類が浅い物件）は小窓 780mm＝78。それも入らなければ数を減らす。 */
+    const WIN = 169, WIN_S = 78;
+    const NOWIN = { corr: 1, gk: 1 };
+    const WIN_N = plan.one ? {} : { liv: { left: 3 }, when: { right: 2 }, docs: { right: 1 } };
+    const wins = [];
+    rooms.forEach(r => {
+      if (NOWIN[r.kind]) return;
+      [['top', 'h', r.y1, r.x1, r.x2], ['bottom', 'h', r.y2, r.x1, r.x2],
+       ['left', 'v', r.x1, r.y1, r.y2], ['right', 'v', r.x2, r.y1, r.y2]].forEach(([side, dir, pos, a, b]) => {
+        if (!isOuter(dir, pos, a, b)) return;
+        if (side === 'top' && pos === 0) return;
+        let n = (WIN_N[r.id] && WIN_N[r.id][side] != null) ? WIN_N[r.id][side] : 1;
+        /* 内法：両端の壁の厚みを除いた長さ */
+        const cross = dir === 'h' ? 'v' : 'h';
+        const lo = dir === 'h' ? [r.y1, r.y2] : [r.x1, r.x2];
+        const a2 = a + th(cross, a, lo[0], lo[1]) / 2, b2 = b - th(cross, b, lo[0], lo[1]) / 2;
+        /* 等分した1区画に収まらなければ小窓、それでも無理なら数を減らす */
+        let len = 0;
+        for (; n > 0 && !len; n--) {
+          const part = (b2 - a2) / n;
+          len = part >= WIN / 0.6 ? WIN : part >= WIN_S / 0.6 ? WIN_S : 0;
+          if (len) for (let i = 0; i < n; i++) wins.push([dir, pos, a2 + part * (i + 0.5), len]);
+        }
+      });
+    });
     rooms.forEach(r => {
       addSeg('h', r.y1, r.x1, r.x2, isOuter('h', r.y1, r.x1, r.x2));
       addSeg('h', r.y2, r.x1, r.x2, isOuter('h', r.y2, r.x1, r.x2));
@@ -2643,7 +2678,7 @@
     }
     const slabs = [];
     segs.forEach(s => {
-      const cuts = openings.filter(o => o[0] === s.dir && o[1] === s.pos)
+      const cuts = openings.concat(wins).filter(o => o[0] === s.dir && o[1] === s.pos)
         .map(o => [o[2] - o[3] / 2, o[2] + o[3] / 2])
         .concat(nowall.filter(e => e.dir === s.dir && e.pos === s.pos)
           .map(e => [e.a, e.b]))
@@ -2698,6 +2733,23 @@
       });
     });
     svg.appendChild(wallG);
+
+    /* 窓の記号（引違い窓）。壁の切れ目の両端は、切れた壁の小口の線が
+       そのまま枠になる。壁厚の中に、外と内の面の細い線（枠）と、
+       中央で重なる2枚の障子の線を引く。 */
+    const winG = el('g', { class: 'pl-win' });
+    wins.forEach(([dir, pos, c, len]) => {
+      const t = TO, s0 = c - len / 2, e0 = c + len / 2, ov = len * 0.06, off = t * 0.18;
+      const L = (p0, p1, q, cls) => winG.appendChild(el('line', dir === 'h'
+        ? { x1: p0, y1: pos + q, x2: p1, y2: pos + q, class: cls }
+        : { x1: pos + q, y1: p0, x2: pos + q, y2: p1, class: cls }));
+      winG.appendChild(el('rect', dir === 'h'
+        ? { x: s0, y: pos - t / 2, width: len, height: t, class: 'pl-win-bg' }
+        : { x: pos - t / 2, y: s0, width: t, height: len, class: 'pl-win-bg' }));
+      L(s0, e0, -t / 2, 'pl-win-f'); L(s0, e0, t / 2, 'pl-win-f');
+      L(s0, c + ov, -off, 'pl-win-s'); L(c - ov, e0, off, 'pl-win-s');
+    });
+    svg.appendChild(winG);
     const G = R.gk;
     if (G) {
     svg.appendChild(el('line', { x1: G.x1 + th('v', G.x1, G.y1, G.y2) / 2, y1: KAMA,
