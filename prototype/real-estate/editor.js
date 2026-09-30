@@ -231,19 +231,36 @@
     dialog.className = 're-dialog';
     dialog.setAttribute('aria-labelledby', 're-dialog-title');
     document.body.appendChild(dialog);
-    dialog.addEventListener('cancel', e => { e.preventDefault(); if (!closeAsk(true)) closeRequest(); });
+    dialog.addEventListener('cancel', e => { e.preventDefault(); if (!closeAsk(true) && !closeDiscard(true)) closeRequest(dialog.querySelector('.re-close')); });
     dialog.addEventListener('close', () => {
       document.body.classList.remove('re-editing');
       if (opener && opener.isConnected) opener.focus({ preventScroll: true });
     });
   }
   const formData = () => Object.fromEntries(new FormData(dialog.querySelector('form')));
-  function closeRequest() {
-    if (JSON.stringify(formData()) !== initial) {
-      const prompt = dialog.querySelector('.re-discard');
-      prompt.hidden = false;
-      prompt.querySelector('button').focus();
-    } else dialog.close();
+  /* 閉じる前の確認。押した入口（右上の ×・キャンセル。Esc は × と同じ）に吹き出しで添える
+     （削除の確認と同じ形。2026-09-30）。以前はフッターの上に帯で出し、× から遠かった。
+     吹き出しは1つで、押した入口の包み（.re-discardw）へ移して出す。 */
+  function closeRequest(trigger) {
+    if (JSON.stringify(formData()) === initial) { dialog.close(); return; }
+    const ask = dialog.querySelector('.re-discard'), wrap = trigger.parentElement, opening = ask.hidden || ask.parentElement !== wrap;
+    closeAsk();
+    closeDiscard();
+    if (!opening) { trigger.focus(); return; }
+    wrap.appendChild(ask);
+    ask.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    ask.querySelector('[data-keep]').focus();
+  }
+  /* 閉じる前の確認を下げる。refocus なら押した入口へフォーカスを戻す。下げたら true。 */
+  function closeDiscard(refocus) {
+    const ask = dialog.querySelector('.re-discard');
+    if (!ask || ask.hidden) return false;
+    ask.hidden = true;
+    const trigger = ask.previousElementSibling;
+    trigger.setAttribute('aria-expanded', 'false');
+    if (refocus) trigger.focus();
+    return true;
   }
   /* 件の目次。2件以上あるとき、件のある問いの下（本文の中）に件を並べ、スクロールしたら
      上端に貼り付く（2026-09-29。前はダイアログの頭に置いた）。
@@ -551,14 +568,15 @@
           '家の中なら部屋と棚、貸金庫なら銀行と支店、預けているなら相手の名前を書きます。貸金庫は、' + WHO + 'が亡くなると開けるのに相続人全員の同意が要ります。',
           ' data-doc-where');
     }
-    dialog.innerHTML = '<form><header class="re-dialog-head"><div><p class="re-eyebrow">' + esc(p.name) + ' ／ 確認と記録</p><h2 id="re-dialog-title" tabindex="-1">' + esc(title) + '</h2></div><button type="button" class="re-close" aria-label="閉じる">×</button></header>' +
+    dialog.innerHTML = '<form><header class="re-dialog-head"><div><p class="re-eyebrow">' + esc(p.name) + ' ／ 確認と記録</p><h2 id="re-dialog-title" tabindex="-1">' + esc(title) + '</h2></div><span class="re-discardw"><button type="button" class="re-close" aria-label="閉じる" aria-expanded="false">×</button>' +
+      '<span class="re-discard" role="alertdialog" aria-label="閉じる前の確認" hidden><span>保存していない入力があります。</span>' +
+      '<span class="re-entry-ask-btns"><button type="button" data-keep>入力に戻る</button><button type="button" data-discard>変更を破棄して閉じる</button></span></span></span></header>' +
       (body.includes('class="re-toc"') ? '' : '<nav class="re-toc" aria-label="件の一覧" hidden></nav>') +
       '<div class="re-dialog-body">' + (lead ? '<p class="re-lead">' + esc(lead) + '</p>' : '') + body + '</div>' +
-      '<div class="re-discard" hidden><p>保存していない入力があります。</p><button type="button" data-keep>入力に戻る</button><button type="button" data-discard>変更を破棄して閉じる</button></div>' +
-      '<footer class="re-dialog-foot"><p class="re-error" role="alert"></p><span>分かったところまで残せます</span><button type="button" data-cancel>キャンセル</button><button class="re-save" type="submit">記録を保存</button></footer></form>';
-    dialog.querySelector('.re-close').onclick = closeRequest;
-    dialog.querySelector('[data-cancel]').onclick = closeRequest;
-    dialog.querySelector('[data-keep]').onclick = () => { dialog.querySelector('.re-discard').hidden = true; dialog.querySelector('input,select,textarea').focus(); };
+      '<footer class="re-dialog-foot"><p class="re-error" role="alert"></p><span>分かったところまで残せます</span><span class="re-discardw"><button type="button" data-cancel aria-expanded="false">キャンセル</button></span><button class="re-save" type="submit">記録を保存</button></footer></form>';
+    dialog.querySelector('.re-close').onclick = e => closeRequest(e.currentTarget);
+    dialog.querySelector('[data-cancel]').onclick = e => closeRequest(e.currentTarget);
+    dialog.querySelector('[data-keep]').onclick = () => closeDiscard(true);
     dialog.querySelector('[data-discard]').onclick = () => dialog.close();
     function conditionals() {
       const form = dialog.querySelector('form');
@@ -755,6 +773,7 @@
       const add = ev.target.closest('[data-entry-add]'), del = ev.target.closest('[data-entry-del]'), to = ev.target.closest('[data-jump]');
       /* 吹き出しの外を押したら、吹き出しだけ閉じる。 */
       if (!ev.target.closest('.re-entry-delw')) closeAsk();
+      if (!ev.target.closest('.re-discardw')) closeDiscard();
       if (to) jump(entryEls()[Number(to.dataset.jump)]);
       const road = identity.key === 'road', ch = identity.key === 'changed', ln = identity.type === 'loan' || identity.type === 'security';
       if (add) { dialog.querySelector('[data-entries]').insertAdjacentHTML('beforeend', ln ? lnEntry(bdCount++, {}) : ch ? chEntry(bdCount++, {}) : road ? rdLink(bdCount++, {}) : bdEntry(bdCount++, {})); conditionals();

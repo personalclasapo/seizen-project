@@ -743,26 +743,31 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .re-doc-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
 .re-dialog [hidden]{display:none!important}
 .re-dialog-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 28px;border-top:1px solid #e5dfd3;background:#f7f5ee;flex:none}
-.re-dialog-foot>span{font-size:12px;color:#818473;margin-right:auto}
-.re-dialog-foot button,.re-discard button{font:600 13px/1.5 var(--font);padding:10px 15px;border:1px solid #cbd0bf;border-radius:5px;background:#fffef9;color:#55634d;cursor:pointer}
+.re-dialog-foot>span:not(.re-discardw){font-size:12px;color:#818473;margin-right:auto}
+.re-dialog-foot>button,.re-dialog-foot>.re-discardw>button{font:600 13px/1.5 var(--font);padding:10px 15px;border:1px solid #cbd0bf;border-radius:5px;background:#fffef9;color:#55634d;cursor:pointer}
 .re-dialog-foot .re-save{background:#41654a;border-color:#41654a;color:white}
 .re-error:empty{display:none}
 .re-error{width:100%;margin:0;color:#a34333;font-size:12px;line-height:1.7}
-/* 保存していない入力の確認。削除の吹き出しと同じ確認の色（地 #fff8ea・枠 #e4d3ab）に揃え、
-   問いと2つのボタンを1行に（以前は橙の地で、ダイアログの色から浮いていた）。 */
-.re-discard{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 28px;
-  background:#fff8ea;border-top:1px solid #e4d3ab;font-size:13px;color:#56604F;flex:none}
-.re-discard p{margin:0 auto 0 0;font-weight:600}
+/* 保存していない入力の確認。押した入口（× ・キャンセル）に添える吹き出しで、形と色は
+   削除の確認（.re-entry-ask）と同じ。× からは下へ、フッターのキャンセルからは上へ出す。
+   以前はフッターの上に帯で出し、右上の × を押したのに離れた所に現れた（2026-09-30）。 */
+.re-discardw{position:relative;flex:none}
+.re-dialog-foot .re-discard{top:auto;bottom:calc(100% + 9px)}
+.re-dialog-foot .re-discard::before{top:auto;bottom:-5px;transform:rotate(225deg)}
+.re-close[aria-expanded="true"]{background:#e6dfd1}
+/* × は丸く小さいので、尖りを × の真下に置く。 */
+.re-dialog-head .re-discard::before{right:12px}
 @media(max-width:600px){
   .re-dialog{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);border-radius:10px}
   .re-dialog form{max-height:calc(100dvh - 18px)}
   .re-dialog-head{padding:18px 18px 14px}.re-dialog h2{font-size:18px}
   .re-dialog-body{padding:18px}.re-dialog-foot{padding:12px 18px;gap:8px}
-  .re-dialog-foot>span{width:100%;font-size:11px}
-  .re-dialog-foot button{flex:1}
+  .re-dialog-foot>span:not(.re-discardw){width:100%;font-size:11px}
+  .re-dialog-foot>button,.re-dialog-foot>.re-discardw{flex:1}.re-dialog-foot>.re-discardw>button{width:100%}
   .re-fields,.re-doc-fields{grid-template-columns:minmax(0,1fr)}
   .re-field input,.re-field textarea,.re-field select{font-size:16px}
-  .re-discard{padding:12px 18px}.re-discard p{width:100%}.re-discard button{flex:1}
+  /* キャンセルは左半分にあるので、吹き出しは左端に揃える（右に揃えるとダイアログの外へ出る）。 */
+  .re-dialog-foot .re-discard{right:auto;left:0}.re-dialog-foot .re-discard::before{right:auto;left:22px}
 }
 /* 選べるバッジ（今のうち）。押すとポップアップが開く入口を兼ねるので、
    読むだけのバッジより一回り大きくする。 */
@@ -833,18 +838,18 @@ button.bdg.status-pick{font-size:10.5px;padding:3px 9px 3px 10px}
 /* 削除の確認。医療・介護の .rowdel-ask と同じ吹き出し（地・枠・影・尖り、問い1行＋
    ボタン2つの縦積み）。入口の真下に右寄せで浮かせ、下の問いは押し下げない
    （以前は件の中に橙の箱を差し込み、下の問いを押し下げていた）。 */
-.re-entry-ask{position:absolute;right:0;top:calc(100% + 9px);z-index:6;display:flex;flex-direction:column;align-items:center;gap:8px;
+.re-entry-ask,.re-discard{position:absolute;right:0;top:calc(100% + 9px);z-index:6;display:flex;flex-direction:column;align-items:center;gap:8px;
   width:max-content;padding:10px 12px;background:#fff8ea;border:1px solid #e4d3ab;border-radius:8px;
   box-shadow:0 3px 10px #6b421f2e;font-size:13px;color:#56604F}
-.re-entry-ask::before{content:"";position:absolute;right:22px;top:-5px;width:9px;height:9px;background:#fff8ea;
+.re-entry-ask::before,.re-discard::before{content:"";position:absolute;right:22px;top:-5px;width:9px;height:9px;background:#fff8ea;
   border-left:1px solid #e4d3ab;border-top:1px solid #e4d3ab;transform:rotate(45deg)}
 .re-entry-ask-btns{display:flex;gap:8px}
 /* 取り返しのつかない側のボタン（削除する・変更を破棄して閉じる）。地は隣のボタンと同じ白で、
    赤は文字と枠だけに持たせる。赤はエラー文と同じ煉瓦色（#A34333）。以前は医療の .rowdel-yes の
    薄いピンク地（#fbeceb）を写したが、確認の地（暖かいクリーム）の上で冷たいピンクが浮いた。 */
-.re-entry-ask button{padding:5px 14px;border:1px solid #D6D3C6;border-radius:6px;background:#fff;
+.re-entry-ask button,.re-discard button{padding:5px 14px;border:1px solid #D6D3C6;border-radius:6px;background:#fff;
   font:700 13px/1.5 var(--font);color:#56604F;cursor:pointer;white-space:nowrap}
-.re-entry-ask button:hover{border-color:#b9b2a0}
+.re-entry-ask button:hover,.re-discard button:hover{border-color:#b9b2a0}
 .re-dialog .re-entry-yes,.re-dialog [data-discard]{background:#fff;border-color:#D9ACA2;color:#A34333}
 .re-dialog .re-entry-yes:hover,.re-dialog [data-discard]:hover{background:#FDF5F0;border-color:#C48B7E}
 /* 件の目次。2件以上のとき、ダイアログの頭（スクロールしない所）に並べる。
