@@ -349,6 +349,39 @@
         },
         st: 'todo'
       }
+    },
+
+    {
+      /* マンション（2026-09-30、`設計/不動産・住まい/マンション_調査と項目.md` §5）。
+         父と母が住む。借りて買い、返し終えたが、抵当権を抹消したかはまだ確かめていない
+         （借りて買うのが多数派で、父の年代では返し終えているのが普通：同 §5-1）。
+         管理組合は契約の相手に持たない（窓口は現地で分かる。そのときのカードが言う）。 */
+      id: 'p3',
+      name: '横浜マンション', kind: 'condo', use: 'self',
+      addr: '神奈川県横浜市港北区新横浜3丁目5-8 ○○新横浜 604号室',
+      built: '1999年', note: '',
+      rights: {
+        bldg: { hold: 'own', owner: WHO, shares: '単独', match: 'same', st: 'done', reach: 'public', memo: '' }
+      },
+      deals: [],
+      loan: { has: 'yes', reach: 'askable', memo: '',
+              items: [{ type: '住宅ローン', bank: '○○銀行 新横浜支店', tel: '', who: 'self', whoName: '', paid: true, gtee: '', lien: 'unknown' }] },
+      matters: {},
+      priorInheritance: { remains: 'no', parcels: [], died: 'unknown', stage: 'none', taker: '', takerName: '' },
+      addrReg: 'same',
+      ownerReport: {
+        state: 'needed',
+        deadline: 'この自治体では、現所有者であることを知った日の翌日から3か月以内'
+      },
+      access: { who: '', key: '', keyKind: '', code: '', how: '', st: 'todo', reach: 'onlyself' },
+      docs: {
+        place: '',
+        at: {
+          deed:    { st: 'have', place: '寝室のクローゼット上段' },
+          acquire: { st: 'unknown', place: '' }
+        },
+        st: 'todo'
+      }
     }
   ];
 
@@ -988,11 +1021,14 @@
         d.st = d.who && d.tel ? 'done' : d.who ? 'doing' : 'todo';
         p.deals[index] = d;
       }
+    } else if (type === 'addr') {
+      /* 登記の住所（マンション、2026-09-30）。父の今の住所と同じか。 */
+      p.addrReg = ['same', 'differ'].includes(values.addrReg) ? values.addrReg : 'unknown';
     } else if (type === 'doc' && DOC_KINDS[String(key).split(':')[0]]) {
       /* 書類のありか。束（隣・相手・工事ごと）は「区分:中身」の鍵で持つ（render.js の dcKey）。
          場所は 家の中／貸金庫／預けている＋1行。有無をここで聞くのは権利証・買ったときの契約書
          だけで、ほかは区分の側で「書面がある」と答えた紙なので、あるものとして持つ。 */
-      const own = key === 'deed' || key === 'acquire';
+      const own = key === 'deed' || key === 'acquire' || key === 'reform';
       const d = p.docs.at[key] || {};
       d.kind = ['home', 'safe', 'kept'].includes(values.kind) ? values.kind : 'home';
       d.place = String(values.place || '').trim();
@@ -1061,6 +1097,10 @@
     boundary: { label: '境界・測量、越境の合意', from: 'matter:boundary' },
     road:     { label: '私道・通行・配管の取り決め', from: 'matter:road' },
     changed:  { label: '増築・別棟の工事の書類',     from: 'matter:changed' },
+    /* マンション（2026-09-30、`_検討/不動産v36.html`）。リフォームの書類は売るときの取得費、
+       抵当権の抹消書類は返し終えて抹消していないとき（render.js の condoShelves）。 */
+    reform:   { label: 'リフォームの工事契約書・領収書', from: 'condo' },
+    release:  { label: '抵当権の抹消書類',           from: 'loan' },
     /* 前の代の協議書・遺言書は、当事者が取得する側で登記がまだのときだけ。 */
     prior:    { label: '前の代の遺産分割協議書',     from: 'prior' },
     priorWill: { label: '前の代の遺言書',            from: 'prior' },

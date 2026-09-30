@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>不動産v36｜マンションの中身と間取り</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../prototype/shared/tokens.css">
+  <link rel="stylesheet" href="../prototype/shared/shell.css">
+  <link rel="stylesheet" href="../prototype/real-estate/area.css?v=v36">
+  <!--
+    不動産v36｜マンションの中身と間取り（2026-09-30）
+
+    本番（prototype/real-estate）の CSS・state.js・editor.js を読み、
+    render.js だけ写し（不動産v36.render.js）を使う。変えたのはマンションのときだけ。
+    調査と判定は `設計/不動産・住まい/マンション_調査と項目.md`。
+
+    ■ 中身（ユーザーと合わせたもの）
+      今のうち … 前の代の名義／登記の住所（2026年4月からの住所変更登記の義務）／
+                 団信（返済中で分からないとき）。境界・私道・建物の変更は出さない
+      そのとき … 管理組合（死亡後の管理費は相続人それぞれが全額）／現所有者の申告／
+                 相続登記（1984年より前の築なら敷地権の一文）／ローン
+                 （返済中なら団信、返し終えて抵当権が残るなら抹消）
+      材料     … 名義（単独か共有か・登記の住所）／ローン／書類のありか
+                 （権利証・買ったときの契約書・リフォームの書類・抹消書類）
+
+    ■ 間取り（左右で釣り合わせる）
+      左 … 今のうち（廊下の上をまたいで、そのときと接する）→ 名義 → ローン → 書類
+      中 … 玄関から今のうちへ上がる廊下。途中で左の材料の部屋へ、右のそのときへ開く
+      右 … そのとき（1室）
+      左右の割りは 0.45（?fl=0.5 などで振れる）。物件ごとには変えない。
+      窓：本番と同じ決まり（上端＝見出しの真下には付けない）。数は本番と同じ見え方になるよう、
+          今のうち（短い）＝左1、そのとき＝右2、ほかは1。
+
+    ■ 見るための仮の手当て（画面の上だけ。保存しない）
+      1件目は本番の自宅（戸建て）。2件目から、マンションの4つの極端な状況。
+      本番の保存先（SeiZenRealEstate.props）への書き込みは、このページでは止めている。
+      「登記の住所」の答え（addrReg）はまだフォームが無い（仮の欄）。
+  -->
+</head>
+<body data-area="real-estate" data-root="../prototype/">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+
+    <div class="sec-h">
+      <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 11.5 12 4.2l8.5 7.3"/><path d="M5.8 10.8V19a1 1 0 0 0 1 1h10.4a1 1 0 0 0 1-1v-8.2"/><path d="M9.8 20v-5.4a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1V20"/></svg></span>
+      <h3>持っている不動産</h3><span class="cnt" id="cntShelf"></span>
+      <button class="addbtn" id="addProp">＋ 物件を登録</button>
+    </div>
+    <p class="sec-lead">自宅・実家・土地など、名義や持分に関わる不動産を並べています。</p>
+    <div class="sec"><div class="shelf" id="shelf"></div></div>
+
+    <div class="sec"><div id="plans"></div></div>
+
+  </div></main>
+</div>
+<div class="toast" id="toast"></div>
+<div id="v36" style="position:fixed;right:12px;bottom:12px;z-index:50;background:#fffdf7;border:1px solid #d9d3c4;border-radius:8px;padding:8px 10px;font:12px/1.5 'Noto Sans JP',sans-serif;color:#3b372e;box-shadow:0 2px 8px rgba(0,0,0,.08);max-width:360px"></div>
+<script>
+  /* 本番の保存先には書かない（このページで触っても本番の記録が変わらないように）。 */
+  (function () {
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) { if (k === 'SeiZenRealEstate.props') return; return set.call(this, k, v); };
+  })();
+</script>
+<script src="../prototype/shared/areas.js"></script>
+<script src="../prototype/shared/shell.js"></script>
+<script src="../prototype/real-estate/state.js?v=v36"></script>
+<script>
+  /* 画面の上だけで物件を並べ替える：自宅（戸建て）＋マンションの4つの極端な状況。 */
+  (function () {
+    const R = window.SeiZenRealEstate, C = o => JSON.parse(JSON.stringify(o));
+    const props = R.all();
+    const house = C(props.find(p => p.id === 'p1') || props[0]);
+    const WHO = '父';
+    Object.assign(R.USES, {
+      parents: { label: '両親が住んでいる', tone: 'gr' },
+      mother:  { label: '母だけが住んでいる', tone: 'gr' }
+    });
+    const it = o => Object.assign({ type: '住宅ローン', bank: '○○銀行 新横浜支店', tel: '', who: 'self', whoName: '', paid: false, gtee: 'yes', lien: 'yes' }, o);
+    const prNo = { remains: 'no', parcels: [], died: 'unknown', stage: 'none', taker: '', takerName: '' };
+    const prYes = { remains: 'yes', parcels: ['bldg'], owner: '祖父 一郎（故人）', rel: 'parent', route: 'split', died: 'before', stage: 'none', taker: 'self', takerName: '' };
+    const condo = (id, name, o) => Object.assign({
+      id, name, kind: 'condo', use: 'parents',
+      addr: '神奈川県横浜市港北区新横浜3丁目5-8 ○○新横浜 604号室', built: '1999年', note: '',
+      rights: { bldg: { hold: 'own', owner: WHO, shares: '単独', match: 'same', st: 'done', reach: 'public', memo: '' } },
+      deals: [], matters: {}, priorInheritance: C(prNo), addrReg: 'same',
+      loan: { has: 'no', items: [], reach: 'public', memo: '' },
+      ownerReport: { state: 'needed', deadline: 'この自治体では、現所有者であることを知った日の翌日から3か月以内' },
+      access: { who: '', key: '', keyKind: '', code: '', how: '', st: 'todo', reach: 'onlyself' },
+      docs: { place: '', at: { deed: { st: 'have', place: '書斎のキャビネット上段' }, acquire: { st: 'unknown', place: '' } }, st: 'todo' }
+    }, o);
+    props.splice(0, props.length,
+      house,
+      condo('m1', '横浜マンション｜現金で購入', {}),
+      condo('m2', '横浜マンション｜完済・抵当権が残る', { loan: { has: 'yes', reach: 'public', memo: '', items: [it({ paid: true, gtee: '', lien: 'yes' })] } }),
+      condo('m3', '横浜マンション｜返済中・団信不明', { loan: { has: 'yes', reach: 'public', memo: '', items: [it({ gtee: 'unknown' })] } }),
+      condo('m4', '横浜マンション｜前の代・住所違う・返済中', { use: 'mother', built: '1979年', addrReg: 'differ', priorInheritance: C(prYes),
+        loan: { has: 'yes', reach: 'public', memo: '', items: [it({ gtee: 'unknown' })] } })
+    );
+    props.forEach(p => { if (p.loan) p.loan.st = p.loan.has === 'no' ? 'none' : 'todo'; });
+    R.save = function () {};
+  })();
+</script>
+<script src="../prototype/real-estate/editor.js?v=v36"></script>
+<script src="不動産v36.render.js?v=v36"></script>
+<script>
+  /* 右下：マンションの左右の深さ（中身の高さ、単位は間取りの寸法）。 */
+  (function () {
+    const box = document.getElementById('v36');
+    const show = () => {
+      const c = window.__cond || {};
+      const fl = new URLSearchParams(location.search).get('fl') || '0.45';
+      box.innerHTML = '<b>v36｜左右の深さ</b>（左の割り ' + fl + '）<br>' + Object.keys(c).map(id => {
+        const x = c[id], d = x.right - x.left, pct = Math.round(Math.abs(d) / Math.max(x.left, x.right) * 100);
+        return x.name.replace('横浜マンション｜', '') + '：左 ' + x.left + '／右 ' + x.right + '（' + (d > 0 ? '左が' : '右が') + Math.abs(d) + '短い・' + pct + '%）';
+      }).join('<br>');
+    };
+    setTimeout(show, 600); addEventListener('resize', () => setTimeout(show, 600));
+  })();
+</script>
+</body>
+</html>

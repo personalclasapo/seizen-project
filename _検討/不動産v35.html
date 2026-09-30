@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>不動産v35｜マンションの屋根</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../prototype/shared/tokens.css">
+  <link rel="stylesheet" href="../prototype/shared/shell.css">
+  <link rel="stylesheet" href="../prototype/real-estate/area.css?v=v35">
+  <!--
+    不動産v35｜マンションの屋根（2026-09-29）
+
+    本番（prototype/real-estate）をそのまま読み込み、マンションの物件見出しの
+    屋根（condoRoof）だけを差し替えて比べる。戸建ての屋根・間取り・中身は本番。
+
+    ■ 見るための仮の手当て（画面の上だけ。保存しない）
+      2件目（長岡の家）を「横浜マンション」の種別マンションにして描く。
+      中身は長岡の家のまま（境界・私道などが出るのはこの検討の対象外）。
+      ★このページで編集すると本番と同じ保存先に書かれる。触らない。
+
+    ■ なぜ
+      本番の condoRoof は v32 の C（笠木とパラペット）をそのまま移したもので、
+      一言で言うと「横線の入った帯」。戸建ての千鳥破風にあたる、
+      マンションと読ませる部材が無い。
+
+    ■ 比べるもの（右下の切り替え）
+      A  本番のまま（笠木＋パラペット＋横目地）
+      B  屋上の中央に塔屋（階段室・EV）。パラペットは 45二丁の馬目地
+      C  B の塔屋を札の右の外へ寄せる（入らない幅では中央）
+      D  B ＋ 塔屋の上の避雷針
+         → A〜D はどれもマンションに見えなかった（塔屋は1倍で煙突に見える）。
+           陸屋根は「ビル」の記号で、マンションと読ませるのは階ごとに積まれた
+           バルコニーと窓。父が持つのは専有部分（1戸）で、その上にあるのは
+           屋根ではなく上の階
+      E  上の階の外壁（ユーザーと方向を合わせた案）。下から 上の階のスラブの
+         小口 → バルコニーの手すり（縦格子）→ 奥のサッシ → さらに上のスラブ。
+         高さは戸建ての見出しより 10px 低い（ユーザー指示：同じ高さ→縦をちょっとだけ小さく）。縮尺はそこから逆算し、
+         寸法の比は実寸（condoFloor の注記）
+
+    ■ 寸法（1px＝10mm。本番 RF と同じ縮尺）
+      塔屋        高さは屋上から約3m＋上部のパラペット（出典は README）。
+                  屋上のパラペットを 600（人が出ない屋上）として、
+                  見えの高さ＝3400−600＝2800 → 28。幅 6000 → 60
+      笠木        70 → 7（本番どおり）
+      45二丁タイル 45×95＋目地5 → 段 5・長さ 10、馬目地
+      伸縮目地     3600 ごと（本番どおり）
+      避雷針       突針の高さ 2500 → 25（支持管込み）
+      パラペットの見えの高さだけは、戸建てと同じく札の高さから逆算する。
+  -->
+  <style>
+    .m-kasagi{fill:#DCD6C8}
+    .m-face {fill:#EDE9DC}
+    .m-meji {stroke:#D6D0C1;stroke-width:.65;fill:none}
+    .m-tile {stroke:#D9D3C4;stroke-width:.5;fill:none}
+    .m-mizu {fill:#E4E0D4}
+    .m-toya {fill:#E7E3D7}
+    .m-rod  {stroke:#8C8779;stroke-width:1.2;fill:none;stroke-linecap:round}
+    /* E｜上の階 */
+    .m-slab  {fill:#E4E0D4}
+    .m-sash  {fill:#DCD6C8}
+    .m-glass {fill:#CFCCC2}
+    .m-sash-l{stroke:#8C8779;stroke-width:1;fill:none}
+    .m-bar   {stroke:#A9A292;stroke-width:.7;fill:none}
+    .m-rail  {fill:#CFC8B6}
+    .m-part  {stroke:#8C8779;stroke-width:2.2;fill:none}
+    /* 切り替え */
+    .v35-sw{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;gap:4px;
+      background:#fff;border:1px solid var(--line2);border-radius:10px;padding:6px;
+      box-shadow:0 4px 14px rgba(0,0,0,.08);font-size:12.5px}
+    .v35-sw button{border:1px solid var(--line);background:#FBFAF6;border-radius:7px;
+      padding:5px 10px;cursor:pointer;font:inherit}
+    .v35-sw button[aria-pressed="true"]{background:#2E4A3A;color:#fff;border-color:#2E4A3A}
+    .v35-sw .h{align-self:center;color:var(--ink3);padding:0 6px 0 4px}
+  </style>
+</head>
+<body data-area="real-estate" data-root="../prototype/">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+
+    <div class="sec-h">
+      <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 11.5 12 4.2l8.5 7.3"/><path d="M5.8 10.8V19a1 1 0 0 0 1 1h10.4a1 1 0 0 0 1-1v-8.2"/><path d="M9.8 20v-5.4a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1V20"/></svg></span>
+      <h3>持っている不動産</h3><span class="cnt" id="cntShelf"></span>
+      <button class="addbtn" id="addProp">＋ 物件を登録</button>
+    </div>
+    <p class="sec-lead">自宅・実家・土地など、名義や持分に関わる不動産を並べています。</p>
+    <div class="sec"><div class="shelf" id="shelf"></div></div>
+
+    <div class="sec"><div id="plans"></div></div>
+
+  </div></main>
+</div>
+<div class="toast" id="toast"></div>
+<div class="v35-sw" id="v35sw"><span class="h">マンションの屋根</span></div>
+<script src="../prototype/shared/areas.js"></script>
+<script src="../prototype/shared/shell.js"></script>
+<script src="../prototype/real-estate/state.js?v=v35"></script>
+<script>
+  /* 2件目を画面の上だけマンションにする（保存しない） */
+  (function () {
+    const p = window.SeiZenRealEstate.find('p2');
+    if (p) { p.kind = 'condo'; p.name = '横浜マンション'; p.addr = '神奈川県横浜市港北区日吉本町3丁目8-15'; p.built = '2004年'; }
+  })();
+</script>
+<script src="../prototype/real-estate/editor.js?v=v35"></script>
+<script src="../prototype/real-estate/render.js?v=v35"></script>
+<script>
+(function () {
+  'use strict';
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const P = pts => 'M ' + pts.map(q => q.join(' ')).join(' L ') + ' Z';
+  const V = { A: 'A 本番', B: 'B 塔屋・中央', C: 'C 塔屋・右', D: 'D 塔屋＋避雷針', E: 'E 上の階' };
+  const q = new URLSearchParams(location.search).get('v');
+  let cur = V[q] ? q : 'E';
+
+  /* E｜上の階の外壁。父の住戸（下の間取り）の上に積まれた、1つ上の階を
+     外から見る。下から 上の階のスラブの小口 → バルコニーの手すり（縦格子）
+     → その奥のサッシと外壁 → さらに上の階のスラブの小口。
+
+     寸法（mm）は実寸：階高 2900・スラブの小口 200・手すり 1100（笠木 60、
+     下桟 40、床から 100 浮かす）・縦格子のピッチ 110（児童が通れない 110 以下）・
+     掃き出し窓 W1690×H2000（枠 50）・住戸の間口 6600・隔て板の高さ 1800。
+     見えるのは 小口200＋階高2900＝3100mm。
+     ★縮尺だけは器から逆算する：全体の高さを戸建ての見出し（PEAK＋2＋帯＋13
+     ＝帯＋37）より 10px 低い 帯＋27 にする（ユーザー指示。はじめ同じ高さに
+     したあと「縦をちょっとだけ小さく」）。 */
+  function condoFloor(w, band, edge) {
+    const H = band + 27, yTop = 3, yBot = H - 8;
+    const s = 3100 / (yBot - yTop);               /* mm／px */
+    const m = v => v / s;
+    const xL = (edge != null ? edge : 10), xR = w - xL;
+    const fl = yBot - m(200);                     /* 上の階のバルコニーの床 */
+    const g = el('svg', { viewBox: '0 0 ' + w + ' ' + H, class: 'rf', height: H,
+      role: 'img', 'aria-label': '上の階（マンション）', 'data-v35': 'E' });
+    const add = (n, a) => g.appendChild(el(n, a));
+    const R = (x0, y0, x1, y1, a) => add('path', Object.assign({ d: P([[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) }, a));
+
+    /* 陰・外壁 */
+    R(xL, yBot, xR, yBot + 7, { class: 'r-sh' });
+    R(xL, yTop, xR, fl, { class: 'm-face' });
+
+    /* 住戸の割り。間口 6600 に近い等分 */
+    const n = Math.max(1, Math.round((xR - xL) / m(6600))), uw = (xR - xL) / n;
+
+    /* サッシ：住戸ごとに掃き出し窓を2つ（間口の 1/4・3/4） */
+    const SW = m(1690), SH = m(2000), FR = m(50);
+    for (let i = 0; i < n; i++) {
+      [.27, .73].forEach(f => {
+        const cx = xL + uw * (i + f), x0 = cx - SW / 2, x1 = cx + SW / 2;
+        const y1 = fl - m(20), y0 = y1 - SH;
+        R(x0, y0, x1, y1, { class: 'm-sash' });
+        R(x0 + FR, y0 + FR, cx - FR / 4, y1 - FR, { class: 'm-glass' });
+        R(cx + FR / 4, y0 + FR, x1 - FR, y1 - FR, { class: 'm-glass' });
+        add('path', { class: 'm-sash-l', d: P([[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) +
+          ' M ' + cx + ' ' + (y0 + FR) + ' L ' + cx + ' ' + (y1 - FR) });
+      });
+    }
+
+    /* 上の階のスラブの小口（いちばん上）。下端に水切りの線 */
+    R(xL, yTop, xR, yTop + m(200), { class: 'm-slab' });
+    add('path', { class: 'r-sub', d: 'M ' + xL + ' ' + (yTop + m(200)) + ' L ' + xR + ' ' + (yTop + m(200)) });
+
+    /* 隔て板（住戸の境）。手すりの面に小口が見える */
+    let wall = '';
+    for (let i = 1; i < n; i++) {
+      const x = xL + uw * i;
+      wall += 'M ' + x + ' ' + fl + ' L ' + x + ' ' + (fl - m(1800)) + ' ';
+    }
+    if (wall) add('path', { class: 'm-part', d: wall });
+
+    /* 手すり：縦格子（ピッチ 110）＋笠木＋下桟 */
+    const yT = fl - m(1100), yB = fl - m(100);
+    let bars = '';
+    for (let x = xL + m(110); x < xR - 1; x += m(110))
+      bars += 'M ' + x + ' ' + yT + ' L ' + x + ' ' + yB + ' ';
+    add('path', { class: 'm-bar', d: bars });
+    R(xL, yB - m(40), xR, yB, { class: 'm-rail' });
+    R(xL, yT, xR, yT + m(60), { class: 'm-rail' });
+    add('path', { class: 'r-mem', d: 'M ' + xL + ' ' + yT + ' L ' + xR + ' ' + yT });
+
+    /* 父の住戸の真上＝上の階のスラブの小口（いちばん下）。外壁に接する */
+    R(xL, fl, xR, yBot, { class: 'm-slab' });
+    add('path', { class: 'r-mem', d: 'M ' + xL + ' ' + fl + ' L ' + xR + ' ' + fl });
+    add('path', { class: 'r-sub', d: 'M ' + xL + ' ' + (yBot - 1.2) + ' L ' + xR + ' ' + (yBot - 1.2) });
+
+    /* 輪郭 */
+    add('path', { class: 'r-out', d: 'M ' + xL + ' ' + yBot + ' L ' + xL + ' ' + yTop +
+      ' L ' + xR + ' ' + yTop + ' L ' + xR + ' ' + yBot });
+    g._mid = (yTop + yBot) / 2;
+    g._eave = yBot;
+    return g;
+  }
+
+  /* 寸法（1px＝10mm） */
+  const KASA = 7, MIZU = 4, TOYA_H = 28, TOYA_W = 60, ROD = 25;
+  const TILE_H = 5, TILE_W = 10, EXP = 360;
+
+  /* マンション｜陸屋根。上から（塔屋）→ 笠木 → パラペット → 水切り → 陰。
+     cardBox＝札の左右（svg 座標）。C で塔屋を札の外へ寄せるのに使う。 */
+  function condoRoof(w, band, edge, v, cardBox) {
+    const toya = v !== 'A', rod = v === 'D';
+    const FACE = Math.max(30, band - KASA - MIZU);
+    const top = 3 + (toya ? TOYA_H : 0) + (rod ? ROD : 0);
+    const y0 = top, yK = y0 + KASA, yP = yK + FACE, yM = yP + MIZU;
+    const H = yM + 8;
+    const xL = (edge != null ? edge : 10) + 4, xR = w - xL;
+    const g = el('svg', { viewBox: '0 0 ' + w + ' ' + H, class: 'rf', height: H,
+      role: 'img', 'aria-label': '屋根（マンション）', 'data-v35': v });
+    const add = (n, a) => g.appendChild(el(n, a));
+
+    /* パラペットの目地。A＝本番の横目地だけ、B〜D＝45二丁の馬目地 */
+    const face = (x0, x1, ya, yb) => {
+      add('path', { class: 'm-face', d: P([[x0, ya], [x1, ya], [x1, yb], [x0, yb]]) });
+      let d = '';
+      if (v === 'A') {
+        for (let y = ya + 5.5; y < yb - 1; y += 5.5) d += 'M ' + x0 + ' ' + y + ' L ' + x1 + ' ' + y + ' ';
+        add('path', { class: 'm-meji', d });
+      } else {
+        let row = 0;
+        for (let y = ya + TILE_H; y < yb - .5; y += TILE_H, row++) {
+          d += 'M ' + x0 + ' ' + y + ' L ' + x1 + ' ' + y + ' ';
+        }
+        row = 0;
+        for (let y = ya; y < yb - .5; y += TILE_H, row++) {
+          const y2 = Math.min(y + TILE_H, yb);
+          for (let x = x0 + (row % 2 ? TILE_W / 2 : TILE_W); x < x1 - 1; x += TILE_W)
+            d += 'M ' + x + ' ' + y + ' L ' + x + ' ' + y2 + ' ';
+        }
+        add('path', { class: 'm-tile', d });
+      }
+      let e = '';
+      for (let x = x0 + EXP; x < x1 - 20; x += EXP) e += 'M ' + x + ' ' + ya + ' L ' + x + ' ' + yb + ' ';
+      if (e) add('path', { class: 'm-meji', d: e, 'stroke-width': 1.1 });
+    };
+
+    /* 塔屋。屋上のパラペットより奥に立つので、見えるのは笠木の上に出た分だけ */
+    if (toya) {
+      let cx = w / 2;
+      if (v === 'C' && cardBox) {
+        const want = cardBox.r + 40 + TOYA_W / 2;
+        if (want + TOYA_W / 2 < xR - 30) cx = Math.max(want, xL + (xR - xL) * .78);
+      }
+      const tx0 = cx - TOYA_W / 2, tx1 = cx + TOYA_W / 2;
+      const ty0 = 3 + (rod ? ROD : 0), tyK = ty0 + KASA;
+      if (rod) {
+        /* 避雷針：塔屋の中ほどに支持管、先に突針 */
+        add('path', { class: 'm-rod', d: 'M ' + cx + ' ' + ty0 + ' L ' + cx + ' ' + (ty0 - ROD + 2) });
+        add('path', { class: 'r-mem', d: 'M ' + (cx - 2.5) + ' ' + ty0 + ' L ' + (cx + 2.5) + ' ' + ty0 });
+        add('path', { class: 'm-rod', d: 'M ' + (cx - 2) + ' ' + (ty0 - ROD + 6) + ' L ' + cx + ' ' + (ty0 - ROD + 1) + ' L ' + (cx + 2) + ' ' + (ty0 - ROD + 6) });
+      }
+      add('path', { class: 'r-sh', d: P([[tx0, y0], [tx1 + 3, y0], [tx1 + 3, y0 + 2], [tx0, y0 + 2]]) });
+      face(tx0, tx1, tyK, y0);
+      add('path', { class: 'm-kasagi', d: P([[tx0 - 3, ty0], [tx1 + 3, ty0], [tx1 + 3, tyK], [tx0 - 3, tyK]]) });
+      add('path', { class: 'r-mem', d: 'M ' + (tx0 - 3) + ' ' + tyK + ' L ' + (tx1 + 3) + ' ' + tyK });
+      add('path', { class: 'r-out', d: 'M ' + tx0 + ' ' + y0 + ' L ' + tx0 + ' ' + tyK + ' L ' + (tx0 - 3) + ' ' + tyK +
+        ' L ' + (tx0 - 3) + ' ' + ty0 + ' L ' + (tx1 + 3) + ' ' + ty0 + ' L ' + (tx1 + 3) + ' ' + tyK +
+        ' L ' + tx1 + ' ' + tyK + ' L ' + tx1 + ' ' + y0 });
+    }
+
+    add('path', { class: 'r-sh', d: P([[xL, yM], [xR, yM], [xR, yM + 7], [xL, yM + 7]]) });
+    face(xL, xR, yK, yP);
+    add('path', { class: 'm-mizu', d: P([[xL - 2, yP], [xR + 2, yP], [xR + 2, yM], [xL - 2, yM]]) });
+    add('path', { class: 'r-sub', d: 'M ' + (xL - 2) + ' ' + yP + ' L ' + (xR + 2) + ' ' + yP });
+    add('path', { class: 'm-kasagi', d: P([[xL - 4, y0], [xR + 4, y0], [xR + 4, yK], [xL - 4, yK]]) });
+    add('path', { class: 'r-mem', d: 'M ' + (xL - 4) + ' ' + yK + ' L ' + (xR + 4) + ' ' + yK });
+    add('path', { class: 'r-out', d: 'M ' + (xL - 2) + ' ' + yM + ' L ' + (xL - 2) + ' ' + yP +
+      ' L ' + xL + ' ' + yP + ' L ' + xL + ' ' + yK + ' L ' + (xL - 4) + ' ' + yK + ' L ' + (xL - 4) + ' ' + y0 +
+      ' L ' + (xR + 4) + ' ' + y0 + ' L ' + (xR + 4) + ' ' + yK + ' L ' + xR + ' ' + yK + ' L ' + xR + ' ' + yP +
+      ' L ' + (xR + 2) + ' ' + yP + ' L ' + (xR + 2) + ' ' + yM });
+    g._mid = (y0 + yM) / 2;
+    g._eave = yM;
+    return g;
+  }
+
+  /* 本番の drawRoofs が描いたマンションの屋根を、選んだ案で描き直す。
+     左右の端（外壁の外面）と札の縦位置・外壁への接し方は本番と同じ計算。 */
+  function redo() {
+    document.querySelectorAll('.ph[data-kind="condo"]').forEach(ph => {
+      const slot = ph.querySelector('.rf-slot'), card = ph.querySelector('.rf-card');
+      const old = slot && slot.querySelector('svg');
+      if (!old || old.dataset.v35 === cur) return;
+      const w = Math.round(slot.getBoundingClientRect().width);
+      const ch = card.getBoundingClientRect().height;
+      const sr = slot.getBoundingClientRect(), cr = card.getBoundingClientRect();
+      const plan = ph.closest('.prop') && ph.closest('.prop').querySelector('.plan-stage svg.plan');
+      let edge = null;
+      if (plan) {
+        const vb = plan.viewBox.baseVal, pr = plan.getBoundingClientRect();
+        const wallL = Math.min(...Array.from(plan.querySelectorAll('.pl-w-line'), l =>
+          Math.min(+l.getAttribute('x1'), +l.getAttribute('x2')) - +l.getAttribute('stroke-width') / 2));
+        edge = pr.left + (wallL - vb.x) / vb.width * pr.width - sr.left;
+      }
+      const svg = cur === 'E' ? condoFloor(w, ch + 12, edge)
+        : condoRoof(w, ch + 12, edge, cur, { l: cr.left - sr.left, r: cr.right - sr.left });
+      slot.replaceChildren(svg);
+      card.style.top = (svg._mid - ch / 2) + 'px';
+      if (plan) {
+        const vb = plan.viewBox.baseVal, pw = plan.getBoundingClientRect().width;
+        const wallTop = Math.min(...Array.from(plan.querySelectorAll('.pl-w-line'), l =>
+          Math.min(+l.getAttribute('y1'), +l.getAttribute('y2')) - +l.getAttribute('stroke-width') / 2));
+        const site = (wallTop - vb.y) / vb.width * pw;
+        ph.style.setProperty('--rf-site', (site + svg.getBoundingClientRect().height - svg._eave) + 'px');
+      }
+    });
+  }
+  new MutationObserver(redo).observe(document.getElementById('plans'), { childList: true, subtree: true });
+
+  const sw = document.getElementById('v35sw');
+  Object.keys(V).forEach(k => {
+    const b = document.createElement('button');
+    b.textContent = V[k]; b.setAttribute('aria-pressed', String(k === cur));
+    b.onclick = () => {
+      cur = k;
+      sw.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      const u = new URL(location.href); u.searchParams.set('v', k); history.replaceState(null, '', u);
+      redo();
+    };
+    sw.appendChild(b);
+  });
+})();
+</script>
+</body>
+</html>

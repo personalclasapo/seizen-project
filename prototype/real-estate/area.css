@@ -39,7 +39,7 @@
    2026-09-29、`_検討/不動産v32.html` の H から移植（切妻からの作り替え。
    理由は render.js の「物件の見出し」の注記）。
 
-   造形（屋根の部材）は SVG が持ち（render.js の houseRoof／condoRoof）、
+   造形（屋根・上の階の部材）は SVG が持ち（render.js の houseRoof／condoFloor）、
    ここが受け持つのは置かれ方と、札の透け・文字の縁取り。
 
    ★幅は間取り図（.plan-stage）に揃える。屋根と間取り図で幅が違うと
@@ -109,11 +109,15 @@
 .r-end-f{fill:#E8E3D5}
 .r-end-t{fill:#CFC8B6}
 .r-sh  {fill:#000;opacity:.045}
-/* マンション（陸屋根）の部材 */
-.m-kasagi{fill:#DCD6C8}
-.m-face {fill:#EDE9DC}
-.m-meji {stroke:#D6D0C1;stroke-width:.65;fill:none}
-.m-mizu {fill:#E4E0D4}
+/* マンション（上の階の外壁）の部材 */
+.m-face  {fill:#EDE9DC}
+.m-slab  {fill:#E4E0D4}                               /* スラブの小口 */
+.m-sash  {fill:#DCD6C8}
+.m-glass {fill:#CFCCC2}
+.m-sash-l{stroke:#8C8779;stroke-width:1;fill:none}
+.m-bar   {stroke:#A9A292;stroke-width:.7;fill:none}   /* 手すりの縦格子＝量産線 */
+.m-rail  {fill:#CFC8B6}
+.m-part  {stroke:#8C8779;stroke-width:2.2;fill:none}  /* 隔て板の小口 */
 
 /* ══ 間取り図｜SVG（壁・建具・床）＋ 別レイヤーの div（中身）══
    render.js の draw() が組む。SVG は下地、.layer はその上に

@@ -402,7 +402,7 @@
       const seal = pr.seal || (pr.stage === 'ready' ? 'given' : 'notyet');
       /* 節は話題の白い札にする（権利関係・件の中と同じ形。2026-09-29）。 */
       body = card('名義',
-          question('土地・建物の登記に、前の代の名義が残っていますか',
+          question((p.kind === 'condo' ? '専有部分' : '土地・建物') + 'の登記に、前の代の名義が残っていますか',
             choice('remains', pr.remains || 'unknown', [['yes', '残っている'], ['no', '残っていない'], ['unknown', 'まだ確かめていない']]),
             '登記事項証明書で分かります。家族でも法務局で取得できます。') +
           (keys.length > 1 ? question('前の代の名義のもの', choice('parcel-', pr.parcels || [], keys.map(k => [k, nm(k)]), 'pill', 'checkbox'), '', ' data-prior-yes')
@@ -484,6 +484,13 @@
           'どこにあるかは「書類のありか」で記録します。') +
         card('登記に出ない事情', '<textarea class="re-q-in" rows="3" name="memo">' + esc(r.memo) + '</textarea>',
           WHO + 'しか知らないことを。例：共有している叔父とは、固定資産税を' + WHO + 'が払う約束。');
+    } else if (type === 'addr') {
+      /* 登記の住所（マンション、2026-09-30）。答えは選ぶだけ。何をするか・期限は render.js の行が出す。 */
+      title = '登記の住所'; lead = '';
+      body = question('登記の住所は、' + WHO + 'の今の住所と同じですか',
+        choice('addrReg', ['same', 'differ'].includes(p.addrReg) ? p.addrReg : 'unknown',
+          [['same', '同じ'], ['differ', '違う'], ['unknown', 'まだ確かめていない']]),
+        '登記事項証明書の住所と、' + WHO + 'の住民票の住所を比べます。家族でも法務局・市区町村で取れます。');
     } else if (type === 'loan' || type === 'security') {
       /* ローン・借入（2026-09-28）。この家のローン・借入を1件ずつ入れるだけ。
          返し終えたものも入れる ―― 抵当権が登記に残っていることがある。 */

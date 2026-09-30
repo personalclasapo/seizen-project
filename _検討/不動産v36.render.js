@@ -1278,7 +1278,7 @@
      ・材料：名義（単独か共有か・登記の住所）／ローン／書類のありか
      ・間取り：左に今のうち（廊下の上をまたいで、そのときと接する）→ 名義 → ローン → 書類、
        中に玄関から今のうちへ上がる廊下、右にそのとき。左右の割りは 0.45（?fl= で振れる）
-     調査と判定は `設計/不動産・住まい/マンション_調査と項目.md`、検討は `_検討/不動産v36.html`。 */
+     調査と判定は `設計/不動産・住まい/マンション_調査と項目.md`。 */
   function nowRows(p) {
     const names ={ boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
     const out = ['boundary', 'road', 'changed'].filter(key => p.kind !== 'condo' && !(key === 'changed' && p.kind === 'land')).map(key => {
@@ -1294,7 +1294,7 @@
       label: ps === 'done' ? (pr.stage === 'registered' ? '登記済み'
         : S.priorRoute(pr) === 'will' ? '手続きなし' : (S.priorParty(pr) || '相続人') + 'の分は済み') : '' });
 
-    /* v36｜登記の住所（マンション）。答え p.addrReg：same／differ／unknown（editor.js の addr）。 */
+    /* v36｜登記の住所（マンション）。答え p.addrReg：same／differ／unknown（仮の欄）。 */
     if (p.kind === 'condo') {
       const a = p.addrReg || 'unknown';
       out.push({ key: 'addr', type: 'addr', icon: 'prior', nm: '登記の住所',
@@ -2556,6 +2556,8 @@
     const left = need.liv + need.nm + need.loan + need.docs;
     const H = Math.max(left, need.when);
     const L1 = need.liv, L2 = L1 + need.nm, L3 = L2 + need.loan, KAMA = H - GK;
+    window.__cond = window.__cond || {};
+    window.__cond[p.id] = { name: p.name, left, right: need.when, H, need: Object.assign({}, need) };
     const rooms = [
       { id: 'liv', label: '今のうち', kind: 'liv', x1: 0, y1: 0, x2: VC, y2: L1 },
       { id: 'nm', label: '名義', kind: 'room', x1: 0, y1: L1, x2: VL, y2: L2 },
