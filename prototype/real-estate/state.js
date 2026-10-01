@@ -116,7 +116,9 @@
        house  戸建て … 土地と建物が別の権利。境界・越境が起きる
        condo  マンション … 敷地は共有持分。管理組合が相手に出る
        land   土地のみ … 建物が無い。境界と利用の取り決めが中心
-       other  その他 … 収益物件・別荘・共有の山林など           */
+       other  その他 … 収益物件・別荘・共有の山林など
+     登録フォームで選べるのは戸建て・マンションだけ。土地は保留、その他は置かない
+     （出す部屋が決まらない）。`設計/不動産・住まい/土地_カテゴリー検討.md`。 */
   const KINDS = {
     house: { label: '戸建て',     icon: 'house' },
     condo: { label: 'マンション', icon: 'condo' },
@@ -124,13 +126,20 @@
     other: { label: 'その他',     icon: 'other' }
   };
 
-  /* 利用状況。家族が次に取る行動が変わる分け方。 */
+  /* 今ここで暮らしている人（物件の登録で聞く。2026-09-30）。
+     父と母で住んでいるのがいちばん多いので、1つの答えとして置く（2つ選ばせない）。
+     母が住んでいれば、父が亡くなっても母が住み続ける ―― 名義を誰にするかの話になる。
+     父だけなら、父が施設に移るか亡くなると空き家になり、管理する人が要る。
+     家族以外なら、貸す・使わせる関係の相手がいる（契約の部屋）。
+     「貸している」とは書かない ―― 貸しているかは契約の部屋が持つ事実。
+     form は登録フォームの選択肢の言葉、label は見出しの札。 */
   const USES = {
-    self:   { label: WHO + 'が住んでいる', tone: 'gr' },
-    family: { label: '家族が住んでいる', tone: 'gr' },
-    rent:   { label: '貸している',       tone: 'bl' },
-    empty:  { label: '空き家',           tone: 'or' },
-    unused: { label: '使っていない土地', tone: 'or' }
+    pair:   { label: WHO + 'と' + SPOUSE + 'が住んでいる', form: WHO + 'と' + SPOUSE, tone: 'gr' },
+    self:   { label: WHO + 'が住んでいる', form: WHO + 'だけ',  tone: 'gr' },
+    spouse: { label: SPOUSE + 'が住んでいる', form: SPOUSE + 'だけ', tone: 'gr' },
+    family: { label: '家族が住んでいる', form: '子など、ほかの家族', tone: 'gr' },
+    others: { label: '家族以外が使っている', form: '家族以外の人', tone: 'bl' },
+    empty:  { label: '空き家', form: '誰も住んでいない', tone: 'or' }
   };
 
   /* 5. 確認しておきたい事情。項目設計 §5 の A・B・C の3つだけを持つ。
@@ -199,7 +208,7 @@
     {
       id: 'p1',
       /* 1. 基本情報 */
-      name: '自宅', kind: 'house', use: 'self',
+      name: '自宅', kind: 'house', use: 'pair',
       addr: '神奈川県横浜市青葉区あざみ野1丁目12-34',
       built: '2004年', note: '',
 
@@ -357,8 +366,8 @@
          （借りて買うのが多数派で、父の年代では返し終えているのが普通：同 §5-1）。
          管理組合は契約の相手に持たない（窓口は現地で分かる。そのときのカードが言う）。 */
       id: 'p3',
-      name: '横浜マンション', kind: 'condo', use: 'self',
-      addr: '神奈川県横浜市港北区新横浜3丁目5-8 ○○新横浜 604号室',
+      name: '横浜マンション', kind: 'condo', use: 'pair',
+      addr: '神奈川県横浜市港北区新横浜3丁目5-8', room: '○○新横浜 604号室',
       built: '1999年', note: '',
       rights: {
         bldg: { hold: 'own', owner: WHO, shares: '単独', match: 'same', st: 'done', reach: 'public', memo: '' }
@@ -416,6 +425,15 @@
       reach: L.reach || 'askable', items };
   }
 
+  /* 種別ごとの権利の区画。マンションは専有部分だけ（敷地権は第1段階で落とした）。 */
+  function rightKeys(kind) {
+    return kind === 'condo' ? ['bldg'] : kind === 'land' ? ['land'] : ['land', 'bldg'];
+  }
+  /* まだ何も聞いていない区画。持ち方も空（「所有」と決めて出さない）。 */
+  function blankRight() {
+    return { hold: '', owner: '', shares: '', match: 'unknown', st: 'todo', reach: 'public', memo: '' };
+  }
+
   /* 旧 localStorage を読み込んだ場合も、新しい判定項目を補う。 */
   function normalize(p) {
     p.matters = p.matters || {};
@@ -423,6 +441,12 @@
     p.docs.at = p.docs.at || {};
     p.deals = p.deals || [];
     p.rights = p.rights || {};
+    /* 権利関係の部屋は記録のある区画しか出さない（render.js の roomRights）。
+       種別の区画ぶんは、未確認の記録を置いておく（登録直後・種別を変えたとき）。 */
+    rightKeys(p.kind).forEach(k => { if (!p.rights[k]) p.rights[k] = blankRight(); });
+    /* 以前の利用状況（貸している・使っていない土地）を、住んでいる人の答えへ読み替える。 */
+    if (p.use === 'rent') p.use = 'others';
+    if (p.use === 'unused') p.use = 'empty';
     /* 以前の保存では名義・債務者を「本人」と書いていた。続柄へ読み替える。 */
     Object.values(p.rights).forEach(r => { if (r && r.owner === '本人') r.owner = WHO; });
 
@@ -1042,6 +1066,9 @@
         if (d.st === 'have' && m.deal === 'unknown') { m.paper = 'yes'; m.st = stOf(boundaryStatus(m).status); }
       }
       /* 私道・建物の変更は、相手ごと・変更ごとに書面を持つので、所在からは書き戻さない。 */
+    } else if (type === 'prop') {
+      Object.assign(p, propFields(values));
+      normalize(p);
     } else throw new Error('編集する項目が見つかりません。');
     /* 権利関係の状態は、前の代・建物の変更の答えからも決まる。どこで保存しても出し直す。 */
     Object.keys(p.rights || {}).forEach(k => { p.rights[k].st = rightSt(p, k); });
@@ -1050,6 +1077,44 @@
     catch (e) { throw new Error('保存できませんでした。ブラウザーの保存設定・空き容量を確認してください。入力はこの画面に残っています。'); }
     props = next;
     return true;
+  }
+
+  /* 物件の基本情報（登録フォーム。2026-09-30）。聞くのは、どの物件かと、今そこに誰が住んでいるか
+     だけ。名義・ローン・事情は各部屋のフォームが問いを持つ（全体設計 §9）ので、登録では聞かない。
+     土地（建物の無い土地）は保留（`設計/不動産・住まい/土地_カテゴリー検討.md`）。 */
+  function propFields(values) {
+    const year = String(values.built || '').trim();
+    const kind = values.kind === 'condo' ? 'condo' : 'house';
+    return {
+      name: String(values.name || '').trim(), kind,
+      zip: (d => d.length === 7 ? d.slice(0, 3) + '-' + d.slice(3) : '')(String(values.zip || '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '')),
+      addr: String(values.addr || '').trim(),
+      room: kind === 'condo' ? String(values.room || '').trim() : '',
+      built: /^\d{4}$/.test(year) ? year + '年' : '',
+      use: USES[values.use] ? values.use : ''
+    };
+  }
+  function commit(next) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(next)); }
+    catch (e) { throw new Error('保存できませんでした。ブラウザーの保存設定・空き容量を確認してください。入力はこの画面に残っています。'); }
+    props = next;
+  }
+  /* 登録した物件は、どの部屋も「未確認」から始まる。今のうちの行が、次に答えるものを並べる。 */
+  function addProp(values) {
+    const next = JSON.parse(JSON.stringify(props));
+    const p = normalize(Object.assign({
+      id: 'p' + Date.now().toString(36), note: '',
+      rights: {}, deals: [], matters: {}, priorInheritance: {},
+      loan: { has: 'unknown', reach: 'askable', items: [] },
+      access: { who: '', key: '', keyKind: '', code: '', how: '', st: 'todo', reach: 'onlyself' },
+      docs: { place: '', at: {}, st: 'todo' }
+    }, propFields(values)));
+    next.push(p);
+    commit(next);
+    return p.id;
+  }
+  function removeProp(id) {
+    commit(JSON.parse(JSON.stringify(props)).filter(p => p.id !== id));
   }
 
   /* ── 進捗（正本 §12）──────────────────────────────
@@ -1135,7 +1200,7 @@
     find: id => props.filter(p => p.id === id)[0] || null,
     gauge,
     neededDocs,
-    updateRecord, matterStatus, matterPaper, changeState, changeProof, chGrow, priorStatus, priorPending, priorOwner, rightCheck, priorAnswer, priorParty, priorRoute, priorPartyDone,
+    updateRecord, addProp, removeProp, matterStatus, matterPaper, changeState, changeProof, chGrow, priorStatus, priorPending, priorOwner, rightCheck, priorAnswer, priorParty, priorRoute, priorPartyDone,
     save
   };
 })(window);

@@ -1176,7 +1176,9 @@
     const W = WHO;
     if (m.has === 'no') return quiet('建ててから、増築や取り壊しはしていません。');
     /* 何が記録に残らないのか、を事実で言う（「父に聞かないと分からない」とは書かない）。 */
-    if (m.has === 'unasked') return '<p class="pr-why">' + CH_NEED + '請け負った会社や工事の書類の保管場所は、登記にも課税明細書にも載りません。</p>' +
+    /* 答えの無い記録（登録したばかりの物件）も、まだ聞いていないのと同じ。変更の件が0なので、
+       下の「すべて登記に載っています」に落ちていた（2026-09-30）。 */
+    if (!m.has || m.has === 'unasked') return '<p class="pr-why">' + CH_NEED + '請け負った会社や工事の書類の保管場所は、登記にも課税明細書にも載りません。</p>' +
       chAct([{ text: W + 'に、建ててから増築や取り壊し、離れ・車庫の新築をしたことがあるか確かめる', sub: 'あれば、時期と場所、請け負った会社、登記をしたか、工事の書類の保管場所も確かめます。' }]);
     if (m.has === 'unknown') {
       if (m.check === 'same') return quiet('課税明細書では、登記床面積と現況床面積に違いはありませんでした。ただ、市町村も把握していない増築はこれでは分からず、売るときの調査で見つかることがあります。その場合は、相続人全員の上申書を添えて登記します。');
@@ -2089,7 +2091,7 @@
      登記と違うところ（前の代）は今のうちが持ち、書類の有無は書類のありかが持つ（二重にしない）。 */
   function roomNm(p) {
     const r = (p.rights || {}).bldg || {};
-    const hold = r.hold === 'share' ? '共有・' + WHO + 'の持分 ' + (r.shares || '未記録') : '単独';
+    const hold = r.hold === 'share' ? '共有・' + WHO + 'の持分 ' + (r.shares || '未記録') : r.hold ? '単独' : '持ち方は未記録';
     const a = p.addrReg;
     const addr = a === 'same' ? '今の住所と同じ' : a === 'differ' ? '今の住所と違う（変更の登記がまだ）' : 'まだ確かめていない';
     const q = t => '<div class="rk-q">' + esc(t) + '</div>';
@@ -2115,7 +2117,7 @@
       /* 地主は契約の相手（借りている）が持つ（権利関係のフォームで書いても、そこへ入る）。 */
       const lord = (p.deals || []).filter(d => d.kind === 'borrow' && d.who).map(d => d.who).join('・') || r.owner;
       const sub = lease ? '登記の名義は地主' + (lord ? '（' + lord + '）' : '')
-        : [(HOLD[r.hold] || HOLD.own).label, r.shares].filter(Boolean).join('・') + (k === 'bldg' && p.built ? '・' + p.built + '築' : '');
+        : [(HOLD[r.hold] || { label: '持ち方は未記録' }).label, r.shares].filter(Boolean).join('・') + (k === 'bldg' && p.built ? '・' + p.built + '築' : '');
       return '<div class="rk-nm">' + esc(lease ? '借地' : r.owner || '未記録') + '</div><div class="rk-sub">' + esc(sub) + '</div>' +
         (r.memo ? '<div class="rk-memo">' + esc(r.memo) + '</div>' : '');
     };
@@ -3160,17 +3162,19 @@
 
   /* 物件の見出し。屋根（.rf-slot に後から描く）＋その上に重ねる札。
      2行目は 住所｜種別・築年。種別・築年はひと塊で折り返さない。 */
+  /* 住所＋建物名・部屋番号（マンション）。窓口の判定（officeHow など）は住所だけを読む。 */
+  const fullAddr = p => [p.addr, p.room].filter(Boolean).join(' ');
+  /* 住んでいる人が未記録（登録で必ず聞くので、古い記録だけ）の札は出さない。 */
+  const useTag = (p, cls) => { const u = USES[p.use]; return u ? '<span class="' + cls + ' t-' + u.tone + '">' + esc(u.label) + '</span>' : ''; };
   function propHead(p) {
-    const u = USES[p.use] || USES.self;
     const k = KINDS[p.kind] || KINDS.other;
     return '<div class="ph" id="p-' + p.id + '" data-kind="' + esc(p.kind || '') + '">' +
       '<div class="rf-slot"></div>' +
-      '<div class="rf-card">' +
+      '<div class="rf-card">' + penButton(p, 'prop', 'base', p.name + 'の基本情報') +
         '<div class="rf-ln"><span class="rf-t"><h3>' + esc(p.name) + '</h3>' +
-          '<span class="rf-use t-' + u.tone + '">' + esc(u.label) +
-          '</span></span></div>' +
+          useTag(p, 'rf-use') + '</span></div>' +
         '<div class="rf-ln rf-sub"><span class="rf-addr">' + ICONS.pin +
-          esc(p.addr) + '</span><span class="rf-kind"><span class="rf-sep">｜</span>' +
+          esc(fullAddr(p) || '住所 未記録') + '</span><span class="rf-kind"><span class="rf-sep">｜</span>' +
           esc(k.label) + (p.built ? '<span class="rf-sep">｜</span>' + esc(p.built) + '築' : '') +
           '</span></div>' +
       '</div></div>';
@@ -3236,12 +3240,11 @@
     return list.map(p => {
       const g = { risk: nowRows(p).filter(x => ['unknown', 'action'].includes(x.status)) };
       const k = KINDS[p.kind] || KINDS.other;
-      const u = USES[p.use] || USES.self;
       return '<button class="shelf-card" data-go="p-' + p.id + '">' +
         '<span class="card-ic">' + (ICONS[k.icon] || ICONS.house) + '</span>' +
         '<b>' + esc(p.name) + '</b>' +
-        '<span class="card-a">' + esc(p.addr) + '</span>' +
-        '<span class="card-f"><span class="t-' + u.tone + '">' + esc(u.label) + '</span>' +
+        '<span class="card-a">' + esc(fullAddr(p)) + '</span>' +
+        '<span class="card-f">' + useTag(p, '') +
         (g.risk.length ? '<span class="card-r">要確認 ' + g.risk.length + '</span>' : '') +
         '</span></button>';
     }).join('');
@@ -3372,8 +3375,9 @@
        いるほう）へフォーカスとスクロール位置を戻す。 */
     const edit = (trigger, id, type, key, same) => {
       const top = trigger.getBoundingClientRect().top;
-      window.SeiZenRealEstateEditor.open(S.find(id), type, key, trigger, () => {
+      window.SeiZenRealEstateEditor.open(S.find(id), type, key, trigger, res => {
         draw_();
+        if (res && res.removed) { requestAnimationFrame(() => { document.getElementById('addProp').focus(); say('物件を削除しました'); }); return; }
         requestAnimationFrame(() => {
           const match = Array.from(document.querySelectorAll(same)).find(el => el.getBoundingClientRect().width);
           if (match) { match.focus({ preventScroll: true }); window.scrollBy(0, match.getBoundingClientRect().top - top); }
@@ -3459,5 +3463,21 @@
     cancelAnimationFrame(resizeFrame);
     resizeFrame = requestAnimationFrame(draw_);
   });
+  /* 物件を登録する。登録したら、その物件の見出しへ下がる。 */
+  function say(text) {
+    const toast = document.getElementById('toast');
+    toast.textContent = text; toast.setAttribute('role', 'status'); toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2600);
+  }
+  document.getElementById('addProp').onclick = e => {
+    window.SeiZenRealEstateEditor.open({ id: '', name: '' }, 'prop', 'new', e.currentTarget, res => {
+      draw_();
+      requestAnimationFrame(() => {
+        const head = document.getElementById('p-' + res.id);
+        if (head) { head.scrollIntoView({ behavior: 'smooth', block: 'start' }); const h = head.querySelector('h3'); h.tabIndex = -1; h.focus({ preventScroll: true }); }
+        say('物件を登録しました');
+      });
+    });
+  };
   draw_();
 })();

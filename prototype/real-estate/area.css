@@ -71,10 +71,11 @@
   background:rgba(253,252,248,.65);border:1px solid rgba(110,106,96,.35)}
 .rf-ln{display:block;line-height:1.5}
 .rf-ln + .rf-ln{margin-top:4px}
-.rf-t{display:inline-flex;align-items:center;gap:10px;justify-content:center}
+/* 呼び名と住んでいる人の札が1行に入らなければ、札を次の行へ送る（呼び名を途中で折らない）。 */
+.rf-t{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 10px;justify-content:center}
 .rf-t h3{display:inline;margin:0;font-size:19px;font-weight:700;
   letter-spacing:-.01em}
-.rf-use{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px}
+.rf-use{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
 .rf-sub{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
   font-size:12.5px;color:var(--ink2)}
 .rf-addr{display:inline-flex;align-items:center;gap:5px}
@@ -567,6 +568,12 @@ button.bd-item:focus-visible{outline:2px solid #8ca484;outline-offset:1px}
 .pen-edit svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
 .pen-edit:hover{border-color:#a9c0ac;color:var(--gr2)}
 .pen-edit:focus-visible{outline:2px solid #64886B;outline-offset:2px}
+/* 物件の見出しの札：基本情報の入口は札の右上。白い地を敷かず、札（トレーシングペーパー）と
+   同じ透けた地・同じ縁の色にする（白い四角が札の上に浮いていた）。 */
+.rf-card .pen-edit{position:absolute;top:5px;right:5px;width:22px;height:22px;margin:0;
+  background:transparent;border-color:rgba(110,106,96,.35);border-radius:5px;color:var(--ink3)}
+.rf-card .pen-edit:hover{background:rgba(253,252,248,.7);border-color:rgba(110,106,96,.6);color:var(--ink2)}
+.rf-card .pen-edit svg{width:12px;height:12px}
 /* 状態は点つきの字（枠の札にすると押せるボタンに見える）。橙＝気にすること、薄緑＝片付いている。 */
 .mk{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--ink2);white-space:nowrap}
 .mk::before{content:"";width:6px;height:6px;border-radius:50%;background:#B9B3A4}
@@ -940,6 +947,13 @@ textarea.re-q-in{width:100%;resize:vertical;display:block}
 .re-ln-v .re-opts{gap:6px}
 .re-ln-v .re-opt>span{padding:6px 14px}
 .re-ln-v .re-q-in{width:min(260px,100%)}
+.re-ln-v .re-q-in.re-q-wide{width:min(420px,100%)}  /* 住所（都道府県から書くと 260px に入らない） */
+/* 物件の登録：暮らしている人の札は行を持たないが、上の札の行の選択肢と同じ寸法にそろえる。 */
+.re-ln-v .re-q-in.re-q-zip{width:9em}
+.re-zip-msg{margin-left:10px;font-size:12px;color:#858978}
+.re-zip-msg.ng{color:#a34333}  /* .re-error と同じ */
+[data-prop-use] .re-opts{gap:6px}
+[data-prop-use] .re-opt>span{padding:6px 14px}
 .re-ln-sub{margin-top:8px}
 .re-ln-sub .re-opt>span{padding:4px 11px;font-size:13px}
 .re-yr{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:#56604F}

@@ -324,6 +324,39 @@
     if (refocus) del.focus();
     return true;
   }
+  /* 郵便番号から住所を引く（物件の登録。2026-09-30）。7桁そろったら zipcloud に聞き、町名までを住所に入れる。
+     住所が空か、前に引いて入れたままのときだけ書き換える（書き足した番地や、手で書いた住所は消さない）。
+     1つの番号に町名が複数あるときは、全部に共通する前の部分（市区町村まで）を入れる。 */
+  function wireZip() {
+    const zip = dialog.querySelector('[name="zip"]'), addr = dialog.querySelector('[name="addr"]'), msg = dialog.querySelector('[data-zip-msg]');
+    let seq = 0;
+    zip.oninput = () => {
+      const d = zip.value.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '');
+      msg.textContent = ''; msg.classList.remove('ng');
+      if (d.length !== 7) return;
+      const my = ++seq;
+      msg.textContent = '住所を探しています…';
+      fetch('https://zipcloud.ibsnet.co.jp/api/search?zipcode=' + d).then(r => r.json()).then(j => {
+        if (my !== seq) return;
+        const rs = (j && j.results) || [];
+        if (!rs.length) { msg.textContent = 'この郵便番号の住所は見つかりませんでした。'; msg.classList.add('ng'); return; }
+        const all = rs.map(x => x.address1 + x.address2 + x.address3);
+        let found = all[0];
+        all.forEach(a => { let i = 0; while (i < found.length && found[i] === a[i]) i++; found = found.slice(0, i); });
+        msg.textContent = '';
+        /* 書き足した住所は消さない。黙って残すと郵便番号と住所が食い違ったままになるので、言う。 */
+        if (addr.value.trim() && addr.value !== addr.dataset.auto) {
+          if (!addr.value.startsWith(found)) msg.textContent = 'この番号は' + found + 'です。住所は書き換えていません。';
+          return;
+        }
+        addr.value = addr.dataset.auto = found;
+        addr.focus(); addr.setSelectionRange(found.length, found.length);
+      }).catch(() => {
+        if (my !== seq) return;
+        msg.textContent = '住所を引けませんでした。住所を書いてください。'; msg.classList.add('ng');
+      });
+    };
+  }
   /* 同じ値がほかの件にもあるか（空は数えない）。 */
   const dup = (arr, i) => !!arr[i] && arr.filter(x => x === arr[i]).length > 1;
   function open(p, type, key, trigger, onSave) {
@@ -481,7 +514,7 @@
          見出しを外して余白だけにした形は、問いの区切りが見えなかった。 */
       body =
         card('名義', '<div class="re-lines">' +
-          line('持ち方', choice('hold', r.hold || 'own', [['own', '所有'], ['share', '共有']].concat(lease ? [['lease', '借地']] : [], [['other', 'その他']]))) +
+          line('持ち方', choice('hold', r.hold || '', [['own', '所有'], ['share', '共有']].concat(lease ? [['lease', '借地']] : [], [['other', 'その他']]))) +
           line('名義人', '<input class="re-q-in" name="owner" value="' + esc(r.owner) + '" autocomplete="off" aria-label="名義人">', ' data-rt-owner') +
           line('持分', '<input class="re-q-in" name="shares" value="' + esc(r.shares === '単独' ? '' : r.shares) + '" placeholder="例：' + esc(WHO) + ' 2分の1・' + esc(SPOUSE) + ' 2分の1" autocomplete="off" aria-label="持分">', ' data-rt-share') +
           (lease ? line('地主', '<input class="re-q-in" name="lord" value="' + esc(lord ? lord.who : '') + '" placeholder="地主の名前" autocomplete="off" aria-label="地主の名前">', ' data-rt-lord') : '') + '</div>' +
@@ -501,6 +534,38 @@
           'どこにあるかは「書類のありか」で記録します。') +
         card('登記に出ない事情', '<textarea class="re-q-in" rows="3" name="memo">' + esc(r.memo) + '</textarea>',
           WHO + 'しか知らないことを。例：共有している叔父とは、固定資産税を' + WHO + 'が払う約束。');
+    } else if (type === 'prop') {
+      /* 物件の登録と基本情報（2026-09-30）。同じフォームを「＋ 物件を登録」と見出しの鉛筆から開く。
+         聞くのは、どの物件か（種別・呼び名・住所・建った年）と、今そこに誰が住んでいるかだけ。
+         名義・ローン・事情は各部屋のフォームが問いを持つので、ここでは聞かない。
+         種別を最初に聞く ―― マンションだけ建物名・部屋番号の欄が要る。
+         土地（建物の無い土地）は保留。選択肢には出し、選べなくする（`土地_カテゴリー検討.md`）。
+         建った年は、マンションでは1984年より前かで相続登記の文が変わる（render.js の敷地権）。 */
+      const isNew = key === 'new';
+      title = isNew ? '物件を登録' : '基本情報';
+      const now = new Date().getFullYear(), ys = [];
+      for (let y = now; y >= 1920; y--) ys.push(y);
+      const built = parseInt(p.built, 10);
+      /* 組み方は権利関係・ローンのフォームと同じ：話題ごとの白い札、中は「左に名前・右に答え」の行、
+         短い選択肢は横に並べる。問いを縦に積み、選択肢を大きな縦の札にした最初の版は、ほかの
+         フォームと形が揃っていなかった（2026-09-30）。 */
+      body =
+        card('物件', '<div class="re-lines">' +
+          line('種別', choice('kind', p.kind || '', [['house', '戸建て'], ['condo', 'マンション'], ['land', '土地（準備中）', '', ' data-off']])) +
+          line('呼び名', '<input class="re-q-in" name="name" value="' + esc(p.name) + '" placeholder="例：自宅・長岡の家" autocomplete="off" aria-label="呼び名">') + '</div>',
+          '別荘・アパート一棟は戸建て、店舗・事務所の区画はマンションに入れます。') +
+        card('場所と建った年', '<div class="re-lines">' +
+          line('郵便番号', '<input class="re-q-in re-q-zip" name="zip" value="' + esc(p.zip) + '" inputmode="numeric" maxlength="8" placeholder="例：940-0000" autocomplete="off" aria-label="郵便番号">' +
+            '<span class="re-zip-msg" data-zip-msg aria-live="polite"></span>') +
+          line('住所', '<input class="re-q-in re-q-wide" name="addr" value="' + esc(p.addr) + '" placeholder="例：新潟県長岡市○○町2-5-1" autocomplete="off" aria-label="住所">') +
+          line('建物名・部屋番号', '<input class="re-q-in" name="room" value="' + esc(p.room) + '" placeholder="例：○○新横浜 604号室" autocomplete="off" aria-label="建物名・部屋番号">', ' data-prop-room') +
+          line('建った年', '<select class="re-yr-sel" name="built" aria-label="建った年"><option value="">分からない</option>' +
+            ys.map(y => '<option value="' + y + '"' + (y === built ? ' selected' : '') + '>' + y + '年（' + wareki(y) + '）</option>').join('') + '</select>') + '</div>',
+          '郵便番号を入れると、町名までが住所に入ります。続けて番地を書きます。建った年は、登記事項証明書の建物の欄に新築の年月日が載っています。') +
+        card('今ここで暮らしている人', choice('use', S.USES[p.use] ? p.use : '', Object.keys(S.USES).map(k => [k, S.USES[k].form])),
+          '施設や病院に移った人は含めません。家族以外の人は、借りている人・使わせている人です。', ' data-prop-use') +
+        (isNew ? '' : '<div class="re-deal-del">' + entryDel.replace('data-entry-del', 'data-prop-del').replace('data-entry-no', 'data-prop-no').replace('data-entry-yes', 'data-prop-yes').replace('>削除</button>', '>この物件を削除</button>')
+          .replace('削除しますか？', 'この物件の記録を、部屋の中身ごと削除しますか？') + '</div>');
     } else if (type === 'addr') {
       /* 登記の住所（マンション、2026-09-30）。答えは選ぶだけ。何をするか・期限は render.js の行が出す。 */
       title = '登記の住所'; lead = '';
@@ -568,12 +633,16 @@
           '家の中なら部屋と棚、貸金庫なら銀行と支店、預けているなら相手の名前を書きます。貸金庫は、' + WHO + 'が亡くなると開けるのに相続人全員の同意が要ります。',
           ' data-doc-where');
     }
-    dialog.innerHTML = '<form><header class="re-dialog-head"><div><p class="re-eyebrow">' + esc(p.name) + ' ／ 確認と記録</p><h2 id="re-dialog-title" tabindex="-1">' + esc(title) + '</h2></div><span class="re-discardw"><button type="button" class="re-close" aria-label="閉じる" aria-expanded="false">×</button>' +
+    const adding = type === 'prop' && key === 'new';
+    dialog.innerHTML = '<form><header class="re-dialog-head"><div><p class="re-eyebrow">' + (adding ? '持っている不動産 ／ 登録' : esc(p.name) + ' ／ 確認と記録') + '</p><h2 id="re-dialog-title" tabindex="-1">' + esc(title) + '</h2></div><span class="re-discardw"><button type="button" class="re-close" aria-label="閉じる" aria-expanded="false">×</button>' +
       '<span class="re-discard" role="alertdialog" aria-label="閉じる前の確認" hidden><span>保存していない入力があります。</span>' +
       '<span class="re-entry-ask-btns"><button type="button" data-keep>入力に戻る</button><button type="button" data-discard>変更を破棄して閉じる</button></span></span></span></header>' +
       (body.includes('class="re-toc"') ? '' : '<nav class="re-toc" aria-label="件の一覧" hidden></nav>') +
       '<div class="re-dialog-body">' + (lead ? '<p class="re-lead">' + esc(lead) + '</p>' : '') + body + '</div>' +
-      '<footer class="re-dialog-foot"><p class="re-error" role="alert"></p><span>分かったところまで残せます</span><span class="re-discardw"><button type="button" data-cancel aria-expanded="false">キャンセル</button></span><button class="re-save" type="submit">記録を保存</button></footer></form>';
+      '<footer class="re-dialog-foot"><p class="re-error" role="alert"></p><span>分かったところまで残せます</span><span class="re-discardw"><button type="button" data-cancel aria-expanded="false">キャンセル</button></span><button class="re-save" type="submit">' + (adding ? '登録する' : '記録を保存') + '</button></footer></form>';
+    /* 準備中の選択肢（土地）は見せて、選べなくする。 */
+    dialog.querySelectorAll('[data-off] input').forEach(i => { i.disabled = true; });
+    if (type === 'prop') wireZip();
     dialog.querySelector('.re-close').onclick = e => closeRequest(e.currentTarget);
     dialog.querySelector('[data-cancel]').onclick = e => closeRequest(e.currentTarget);
     dialog.querySelector('[data-keep]').onclick = () => closeDiscard(true);
@@ -689,6 +758,8 @@
         });
         dialog.querySelector('[data-entry-add]').hidden = has !== 'yes' || items.length >= 5;
       }
+      const propRoom = dialog.querySelector('[data-prop-room]');
+      if (propRoom) propRoom.hidden = form.elements.kind.value !== 'condo';
       const docWhere = dialog.querySelector('[data-doc-where]');
       if (docWhere && form.elements.st) docWhere.hidden = form.elements.st.value !== 'have';
       const rtShare = dialog.querySelector('[data-rt-share]');
@@ -760,6 +831,8 @@
     }
     /* 答えを直した件からは、足りない印を外す（全部外れたら文も消す）。 */
     dialog.querySelector('form').onchange = e => {
+      /* 登録で足りないと言った問いを答えたら、文を消す。 */
+      if (identity.type === 'prop') dialog.querySelector('.re-error').textContent = '';
       const en = e.target.closest('.re-entry');
       if (en && en.hasAttribute('data-invalid')) {
         en.removeAttribute('data-invalid');
@@ -791,6 +864,21 @@
         if (opening) { ask.hidden = false; ddel.setAttribute('aria-expanded', 'true'); ask.querySelector('[data-deal-no]').focus(); }
       }
       if (ev.target.closest('[data-deal-no]')) closeAsk(true);
+      /* 物件を削除する（同じ吹き出しで確かめてから）。部屋の記録もすべて消える。 */
+      const pdel = ev.target.closest('[data-prop-del]');
+      if (pdel) {
+        const ask = pdel.nextElementSibling, opening = ask.hidden;
+        closeAsk();
+        if (opening) { ask.hidden = false; pdel.setAttribute('aria-expanded', 'true'); ask.querySelector('[data-prop-no]').focus(); }
+      }
+      if (ev.target.closest('[data-prop-no]')) closeAsk(true);
+      if (ev.target.closest('[data-prop-yes]')) {
+        try { S.removeProp(identity.id); }
+        catch (e) { dialog.querySelector('.re-error').textContent = e.message; return; }
+        dialog.close();
+        savedCallback({ removed: true });
+        return;
+      }
       if (ev.target.closest('[data-deal-yes]')) {
         try { S.updateRecord(identity.id, 'deal', identity.key, { remove: true }); }
         catch (e) { dialog.querySelector('.re-error').textContent = e.message; return; }
@@ -872,6 +960,19 @@
       }
       const error = dialog.querySelector('.re-error');
       if (identity.type === 'prior' && values.remains === 'yes' && !values.parcels.length) { error.textContent = '前の代の名義のものを選んでください。'; return; }
+      if (identity.type === 'prop') {
+        const miss = !values.kind ? 'どんな物件かを選んでください。' : !(values.name || '').trim() ? '呼び名を書いてください。'
+          : !values.use ? '今ここで暮らしている人を選んでください。' : '';
+        if (miss) { error.textContent = miss; return; }
+        if (identity.key === 'new') {
+          let id;
+          try { id = S.addProp(values); }
+          catch (e) { error.textContent = e.message; return; }
+          dialog.close();
+          savedCallback({ id });
+          return;
+        }
+      }
       if (identity.type === 'deal' && !values.who.trim()) { error.textContent = '相手の名前・会社名を記録してください。'; return; }
       if (identity.type === 'deal') {
         values.flow = values['flow-' + values.kind];
