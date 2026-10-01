@@ -10,9 +10,18 @@
    （2026-09-20、`_検討/不動産v28.html` から移植）。             */
 
 /* ══ 一覧（上段）══════════════════════════════════
-   物件の数だけ並ぶ小さな札。通帳の棚とは別物にする（正本§13）。
-   ここは「どの家の話か」を選ぶだけの索引なので、造形を持たせず
-   平たい札にとどめる。家の造形は下の間取りが持つ。
+   物件の数だけ並ぶ札。札そのものを物件の正面（戸建て＝屋根と壁と基礎、
+   マンション＝上の階と父の階、土地＝管理看板）にして、文字を壁に書く
+   （2026-10-01、`_検討/不動産v37.html` から移植。以前は「造形を持たせず
+   平たい札にとどめる」としていたが、単なるカードに見えると指摘された）。
+   通帳の棚とは別物にする（正本§13）。
+
+   造形は SVG（render.js の fcHouse／fcCondo／fcLand）が持ち、札の大きさに
+   合わせて後から描く。ここが受け持つのは、文字を壁の中に収める余白だけ。
+     上 47 ＝ 千鳥破風の頂点〜軒天の下端 37＋壁の内側 10
+     左右 27 ＝ 軒の出 15＋壁の内側 12
+     下 28 ＝ 基礎 13＋地盤 5＋壁の内側 10
+   ★3種とも同じ余白にする。呼び名の高さが並びで揃う。
    ★ .card は部屋の中（v27 由来の白いカード）と意味が違うので、
    一覧の札は .shelf-card に分けて名前の衝突を避ける。          */
 /* 先頭の見出しは作業面の上端から始める。shared の .sec-h は段どうしの
@@ -20,20 +29,30 @@
    始まる（他領域はいずれも同じ打ち消しを置いている）。 */
 .inner>.sec-h:first-child{margin-top:0}
 .shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px}
-.shelf-card{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;
-  gap:2px 10px;text-align:left;padding:14px 15px;background:var(--card);
-  border:1px solid var(--line);border-radius:10px;cursor:pointer;font:inherit;
-  color:var(--ink);transition:border-color .15s,box-shadow .15s}
-.shelf-card:hover{border-color:#bfd3c3;box-shadow:0 2px 10px rgba(30,90,61,.07)}
-.card-ic{grid-row:1/3;width:34px;height:34px;display:grid;place-items:center;
-  border:1px solid var(--line2);border-radius:8px;background:var(--paper)}
-.card-ic svg{width:19px;color:var(--gr)}
-.shelf-card b{font-size:14.5px;font-weight:700;align-self:end}
-.card-a{font-size:11.5px;color:var(--ink3);line-height:1.5;align-self:start}
-.card-f{grid-column:1/3;display:flex;gap:8px;align-items:center;margin-top:8px;
+/* button は中身を縦の中央に置くので、上から積む（住所の無い札で呼び名が下がる） */
+.shelf-card{position:relative;isolation:isolate;display:flex;flex-direction:column;
+  justify-content:flex-start;gap:2px;text-align:left;padding:47px 27px 28px;
+  background:none;border:0;cursor:pointer;font:inherit;color:var(--ink)}
+.shelf-card:focus-visible{outline:2px solid var(--gr);outline-offset:3px}
+.shelf-card > svg.fc-bg{position:absolute;left:0;top:0;width:100%;height:100%;z-index:-1;
+  overflow:visible;pointer-events:none}
+.shelf-card b{font-size:14.5px;font-weight:700;line-height:1.5}
+.card-a{font-size:11.5px;color:var(--ink3);line-height:1.5;margin-top:1px}
+.card-f{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;
   font-size:11px;font-weight:600}
 .card-r{color:var(--or);background:var(--or-bg);border:1px solid var(--or-ln);
   border-radius:20px;padding:2px 9px}
+/* 正面の部材。屋根・上の階は見出しの部材（下の .r-* .m-*）をそのまま使う。 */
+.fc-wall {fill:var(--paper)}
+.shelf-card:hover .fc-wall{fill:#fff}
+.shelf-card:hover .r-out{stroke:#4E4B43}
+.fc-kiso {fill:#E4E0D4}
+.fc-gl   {stroke:#6E6A60;stroke-width:1.6;fill:none;stroke-linecap:round}  /* 地盤面 */
+.fc-hat  {stroke:#B9B2A1;stroke-width:.8;fill:none}                         /* 地盤のハッチ */
+.fc-grass{stroke:#9C9584;stroke-width:.9;fill:none;stroke-linecap:round}
+.fc-post {fill:#B9B2A1;stroke:#8C8779;stroke-width:.8}                      /* 看板の支柱 */
+.fc-sign-h{fill:#E4E0D4}                                                    /* 看板の見出し帯 */
+.fc-bolt {fill:#A9A292}
 
 /* ══ 物件の見出し｜屋根の帯＋トレペの札 ══════════════
    2026-09-29、`_検討/不動産v32.html` の H から移植（切妻からの作り替え。
