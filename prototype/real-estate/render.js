@@ -3569,8 +3569,12 @@
        上の帯＝看板の見出し帯／壁＝板面／下の帯＝支柱の脚と草／横枠＝板面の枠
      ★一点鎖線（敷地境界線）と境界杭の版は、空の枠に見える・上の帯が無い・
        土地に見えない、で退けた。ネットフェンスの版は網と支柱が字の後ろを通り、
-       住所が読めなかった（`_検討/不動産v37.html`）。 */
-  function fcLand(w, h) {
+       住所が読めなかった（`_検討/不動産v37.html`）。
+     見出し帯には土地の種類を書く。字の無い帯はカードの見出し欄にしか見えなかった
+     （2026-10-01 ユーザー指摘、`_検討/不動産v40.html`）。公図の区画に置き換える版（v39）と、
+     支柱を板の上へ出す版は退けた。 */
+  const FC_LAND_T = { field: '田・畑', forest: '山林', lot: '宅地', sokochi: '宅地', other: '土地' };
+  function fcLand(w, h, use) {
     const g = el('svg', { class: 'fc-bg', viewBox: '0 0 ' + w + ' ' + h, 'aria-hidden': 'true' });
     const add = (n, a) => g.appendChild(el(n, a));
     const P = rfPath, L = fcL;
@@ -3596,6 +3600,9 @@
     R(wL, yB, wR, yK, 'fc-wall');
     R(wL, yB, wR, wallTop, 'fc-sign-h');
     add('path', { class: 'r-mem', d: L(wL, wallTop, wR, wallTop) });
+    const t = el('text', { class: 'fc-sign-t', x: mid, y: (yB + wallTop) / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+    t.textContent = FC_LAND_T[use] || '土地';
+    g.appendChild(t);
     /* 支柱に留めるボルト（見出し帯と板の下端に、支柱ごと2本） */
     posts.forEach(x => [(yB + wallTop) / 2, yK - 5].forEach(y => add('circle', { class: 'fc-bolt', cx: x, cy: y, r: 1.3 })));
     add('path', { class: 'r-out', d: P([[wL, yB], [wR, yB], [wR, yK], [wL, yK]]) });
@@ -3609,7 +3616,7 @@
       const w = Math.round(r.width), h = Math.round(r.height);
       if (!w || !h) return;
       const kind = btn.dataset.kind;
-      const svg = kind === 'condo' ? fcCondo(w, h) : kind === 'land' ? fcLand(w, h) : fcHouse(w, h);
+      const svg = kind === 'condo' ? fcCondo(w, h) : kind === 'land' ? fcLand(w, h, btn.dataset.landuse) : fcHouse(w, h);
       const old = btn.querySelector(':scope > svg.fc-bg');
       old ? old.replaceWith(svg) : btn.prepend(svg);
     });
@@ -3701,7 +3708,7 @@
     const list = S.all();
     return list.map(p => {
       const g = { risk: nowRows(p).filter(x => ['unknown', 'action'].includes(x.status)) };
-      return '<button class="shelf-card" data-go="p-' + p.id + '" data-kind="' + esc(p.kind || '') + '">' +
+      return '<button class="shelf-card" data-go="p-' + p.id + '" data-kind="' + esc(p.kind || '') + '" data-landuse="' + esc(p.landUse || '') + '">' +
         '<b>' + esc(p.name) + '</b>' +
         '<span class="card-a">' + esc(fullAddr(p)) + '</span>' +
         '<span class="card-f">' + useTag(p, '') +

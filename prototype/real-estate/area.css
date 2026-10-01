@@ -53,6 +53,7 @@
 .fc-post {fill:#B9B2A1;stroke:#8C8779;stroke-width:.8}                      /* 看板の支柱 */
 .fc-sign-h{fill:#E4E0D4}                                                    /* 看板の見出し帯 */
 .fc-bolt {fill:#A9A292}
+.fc-sign-t{font:700 12px var(--font);letter-spacing:.25em;fill:#4E4B43}           /* 看板の見出し＝土地の種類 */
 
 /* ══ 物件の見出し｜屋根の帯＋トレペの札 ══════════════
    2026-09-29、`_検討/不動産v32.html` の H から移植（切妻からの作り替え。
@@ -88,6 +89,10 @@
   width:max-content;max-width:calc(100% - 64px);box-sizing:border-box;
   text-align:center;padding:5px 30px;border-radius:6px;
   background:rgba(253,252,248,.65);border:1px solid rgba(110,106,96,.35)}
+/* 土地（公図の帯）は白地に濃い線なので、.65 では紙の内側の線が外と同じ強さに見え、
+   紙が消えた（2026-10-01 ユーザー指摘「文字の背景が薄すぎるか」）。帯の紙に地色を敷き
+   （.kz-paper）、札を .85 にする。どちらもユーザーが比較から選んだ。 */
+.ph[data-kind="land"] .rf-card{background:rgba(253,252,248,.85)}
 .rf-ln{display:block;line-height:1.5}
 .rf-ln + .rf-ln{margin-top:4px}
 /* 呼び名と住んでいる人の札が1行に入らなければ、札を次の行へ送る（呼び名を途中で折らない）。 */
@@ -131,10 +136,10 @@
 .r-sh  {fill:#000;opacity:.045}
 /* 土地（公図の帯：render.js の kozuBand）。白黒の写しの紙。筆は塗らない（どの筆が父の土地かは
    分からない。帯は家族の土地の地図ではなく「公図という紙」の記号）。右端に方位。 */
-.kz-paper{fill:#FFFFFF}
+.kz-paper{fill:#EEEBE3}
 .kz-lot  {fill:none;stroke:#7A7568;stroke-width:.8;stroke-linejoin:round}
 .kz-edge {fill:none;stroke:#6E6A60;stroke-width:1.4}
-.kz-n-bg {fill:#FFFFFF;stroke:#A9A292;stroke-width:.8}
+.kz-n-bg {fill:#EEEBE3;stroke:#A9A292;stroke-width:.8}
 .kz-n    {fill:#4E4B43}
 .kz-n-t  {font:700 8px var(--font);fill:#4E4B43}
 /* マンション（上の階の外壁）の部材 */
