@@ -147,7 +147,13 @@
   /* いつごろ＝年を選ぶ（自由記入にしない）。建てた年から今年まで、和暦を添える。
      年が分からなくても登記はできるので「分からない」を先頭に。 */
   let chBuilt = 1950;
-  const wareki = y => y >= 2019 ? '令和' + (y === 2019 ? '元' : y - 2018) + '年' : y >= 1989 ? '平成' + (y === 1989 ? '元' : y - 1988) + '年' : '昭和' + (y - 1925) + '年';
+  /* 改元の年は新しい元号で書く（1989年＝平成元年）。登録フォームは1920年まで遡るので大正も持つ。 */
+  const ERAS = [['令和', 2019], ['平成', 1989], ['昭和', 1926], ['大正', 1912], ['明治', 1868]];
+  const wareki = y => {
+    const [era, from] = ERAS.find(([, s]) => y >= s) || ERAS[ERAS.length - 1];
+    const n = y - from + 1;
+    return era + (n === 1 ? '元' : n) + '年';
+  };
   function yearSelect(name, value) {
     const now = new Date().getFullYear(), ys = [];
     for (let y = now; y >= chBuilt; y--) ys.push(y);

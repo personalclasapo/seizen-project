@@ -36,12 +36,17 @@
 .shelf-card:focus-visible{outline:2px solid var(--gr);outline-offset:3px}
 .shelf-card > svg.fc-bg{position:absolute;left:0;top:0;width:100%;height:100%;z-index:-1;
   overflow:visible;pointer-events:none}
-.shelf-card b{font-size:14.5px;font-weight:700;line-height:1.5}
+.card-t{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
+.card-t b{font-size:14.5px;font-weight:700;line-height:1.5}
+.card-u{font-size:11px;font-weight:600}
 .card-a{font-size:11.5px;color:var(--ink3);line-height:1.5;margin-top:1px}
-.card-f{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;
+.card-f{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:auto;padding-top:10px;
   font-size:11px;font-weight:600}
 .card-r{color:var(--or);background:var(--or-bg);border:1px solid var(--or-ln);
   border-radius:20px;padding:2px 9px}
+/* 状態ごとの件数は、行のバッジ（.bdg）と同じ色。数字も札の字と同じ大きさ。 */
+.card-r.bl{color:var(--bl);background:#EDF1F6;border-color:#C6D3E0}
+.card-r b{font:inherit}
 /* 正面の部材。屋根・上の階は見出しの部材（下の .r-* .m-*）をそのまま使う。 */
 .fc-wall {fill:var(--paper)}
 .shelf-card:hover .fc-wall{fill:#fff}
@@ -240,6 +245,8 @@
   white-space:nowrap;color:var(--or);background:var(--or-bg);
   border:1px solid var(--or-ln);border-radius:3px;padding:2px 9px}
 .rt-n b{font-size:12.5px;font-weight:700}
+.rt-n.bl{color:var(--bl);background:#EDF1F6;border-color:#C6D3E0}
+.rt-ns{display:flex;flex-wrap:wrap;gap:5px;flex:none}
 /* 板の地。部屋の床（liv #F7EAD6／when #E9EFE9）より明るい石に
    して、壁から浮いた板に見せる。小口は正面より暗く、面取りは
    明るく（光は左上から）。 */

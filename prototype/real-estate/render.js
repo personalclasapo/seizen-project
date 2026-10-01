@@ -2011,11 +2011,11 @@
   function roomLiv(p) {
     /* 表札の下の説明文は置かない。「今のうち／そのとき」は SeiZen 全体の言葉で、
        部屋ごとに言い直さない。なぜ今のうちかは各行の一文が言う（2026-09-26）。 */
-    return roomTag('liv', '今のうち', tagCounts(nowRows(p))) + nowNav(nowRows(p)) + nowHTML(p);
+    return roomTag('liv', '今のうち', nowTally(p)) + nowNav(nowRows(p)) + nowHTML(p);
   }
   function roomWhen(p) {
     const rows = goneRows(p);
-    return roomTag('when', 'そのとき', { act: 0 }) + (rows.length > 1 ? whenNav(rows) : '') + whenHTML(p);
+    return roomTag('when', 'そのとき', []) + (rows.length > 1 ? whenNav(rows) : '') + whenHTML(p);
   }
   /* そのときの札（2026-09-27）。今のうちの札（nowNav）と同じ仕組み：カードと
      同じ数の札を期限の順に並べ、押すとそのカードの頭へ飛ぶ。部屋の上に張り付き、
@@ -2051,9 +2051,19 @@
      板と影は SVG、文字は HTML（選択・読み上げ・折り返しのため。
      切り文字の影は CSS の text-shadow が受け持つ）。           */
 
-  /* 未確認と要対応の件数だけを数える。合計は中身を見れば分かるので出さない。 */
-  function tagCounts(rows) {
-    return { act: rows.filter(r => ['unknown', 'action'].includes(r.status)).length };
+  /* 今のうちの、状態ごとの件数（正本 §11）。未確認（まだ聞いていない）と対応が必要
+     （聞いた結果、手続きが要る）は別の状態なので、足して1つの数にしない。
+     一覧の札と部屋の札は、どちらもこれを使う（別々に数えて言葉がずれていた）。
+     言葉と色は行のバッジ（NOW_STATUS）と同じ。0件の状態は出さない。
+     確認済み・該当なしは中身を見れば分かるので数えない。 */
+  const TALLY = ['action', 'unknown'];
+  function nowTally(p) {
+    const rows = nowRows(p);
+    return TALLY.map(st => ({ st, n: rows.filter(r => r.status === st).length })).filter(x => x.n);
+  }
+  function tallyTags(t, cls) {
+    return t.map(x => '<span class="' + cls + ' ' + NOW_STATUS[x.st].tone + '">' +
+      esc(NOW_STATUS[x.st].label) + ' <b>' + x.n + '</b></span>').join('');
   }
 
   function roomTag(kind, title, c) {
@@ -2080,11 +2090,9 @@
       /* 面取りのハイライト。光は左上から ―― 上辺と左辺に1本。 */
       '<path class="rt-bevel" d="M3.5 1.4h186M1.4 3.5v60"/>' +
       '</svg>';
-    /* 未確認・要対応の件数。板の右に打つ小さな金物の札（副表札）。
+    /* 状態ごとの件数（nowTally）。板の右に打つ小さな金物の札（副表札）。
        0件のときは付けない ―― 何も無いことを札で言わない。    */
-    const cnt = c && c.act
-      ? '<span class="rt-n">要確認・対応 <b>' + c.act + '</b></span>'
-      : '';
+    const cnt = c && c.length ? '<span class="rt-ns">' + tallyTags(c, 'rt-n') + '</span>' : '';
     return '<div class="rtag rt-' + kind + '">' +
       '<div class="rt-plate-w">' + plate +
         '<h4 class="rt-nm">' + esc(title) + '</h4>' +
@@ -2436,8 +2444,26 @@
      しまうので、ほかの紙と同じく場所を記録する（取る先を出していたのは、保管場所を
      「家の中を探す紙」に限ると取り違えたため）。記録が無いうちは「まだ取っていない」
      ―― 父の除票のように、父が亡くなるまで存在しない紙もある。
-     どの家でも同じ紙なので、段は開閉にして最初は閉じる。 */
-  const openDocOffice = new Set();          // 役所で取る書類を開いている物件 id
+     どの家でも同じ紙なので、段は開閉にする。
+     ★押していないうちは、開いても建物が深くならない（隣の列が深く、書類の部屋の下に
+       床が余っている）ときだけ開く。余っていなければ閉じる。押したらその開閉を守る。
+       判定は間取りを組むとき（buildPlan*）に、開いた中身を実測して決める。 */
+  const docOfficeChoice = new Map();        // 押して決めた開閉（物件 id → true／false）
+  const docOfficeShown = new Map();         // いま描いている開閉（押したときに反転する元）
+  /* alt() は開いたときの { h: 中身, n: 部屋の深さ, fits: 建物の深さが変わらないか }。 */
+  function pickDocOffice(p, alt) {
+    const chosen = docOfficeChoice.get(p.id);
+    if (!officeDocs(p).length || chosen === false) { docOfficeShown.set(p.id, false); return null; }
+    const a = alt();
+    const open = chosen === true || a.fits;
+    docOfficeShown.set(p.id, open);
+    return open ? a : null;
+  }
+  const docOfficeToggle = {
+    has: k => !!docOfficeShown.get(k),
+    delete: k => docOfficeChoice.set(k, false),
+    add: k => docOfficeChoice.set(k, true)
+  };
   /* 取り方（まだ取っていない行の「？」から吹き出しで出す）。
      戸籍は2024年3月から最寄りの市区町村でまとめて取れる（広域交付。直系の家族が請求でき、
      郵送は不可）。除票は最後の住所の市区町村（郵送可）。印鑑証明書は各自の住所の市区町村
@@ -2481,7 +2507,7 @@
       lost: '買った不動産会社（建てた家なら建築会社）に、写しが残っていないか頼みます。無ければ、代金を払った通帳の記録、住宅ローンの契約書、登記に載っている抵当権の債権額、分譲のときのパンフレットを集めて代わりにします。何もなければ、売った額の5%で計算します。' }
   };
   let dcPopN = 0;                           // 吹き出しの id（物件ごと・行ごとに振る）
-  function roomDocs(p) {
+  function roomDocs(p, open) {
     const row = d => {
       const rec = docRec(p, d.key);
       const at = DC_AT[rec.kind] ? rec.kind : 'home';
@@ -2512,7 +2538,7 @@
       return '<li class="dc">' + DC_PAPER[d.fig] + '<div class="dc-b"><p class="dc-n">' + esc(d.n) +
         (d.q ? '<small>（' + esc(d.q) + '）</small>' : '') + '</p><div class="dc-l">' + tag + btn + '</div></div></li>';
     };
-    const offs = officeDocs(p), open = openDocOffice.has(p.id);
+    const offs = officeDocs(p);
     const office = offs.length ? '<section class="dc-shelf dc-office' + (open ? ' open' : '') + '">' +
       '<h5 class="dc-h"><button type="button" class="dc-hl dc-tg" data-doc-office="' + esc(p.id) + '" aria-expanded="' + open + '">役所で取る書類' + PG.down + '</button></h5>' +
       (open ? '<ul class="dc-list">' + offs.map(row).join('') + '</ul>' : '') + '</section>' : '';
@@ -2601,9 +2627,12 @@
   const S1 = parseFloat(Q.get('s')) || LAST2 / (W_ + SITE_U * 2);
   function buildPlan1(p, stageW) {
     const condo = p.kind === 'condo', land = p.kind === 'land';
-    const html = condo ? { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), loan: roomLoan(p), docs: roomDocs(p) }
-      : land ? { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), party: roomParty(p), docs: roomDocs(p) }
-      : { liv: roomLiv(p), when: roomWhen(p), right: roomRights(p), party: roomParty(p), docs: roomDocs(p) };
+    /* 1列は部屋が縦に積むだけで床が余らないので、押していなければ閉じる。 */
+    const d1 = pickDocOffice(p, () => ({ h: roomDocs(p, true), fits: false }));
+    const docs = d1 ? d1.h : roomDocs(p, false);
+    const html = condo ? { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), loan: roomLoan(p), docs }
+      : land ? { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), party: roomParty(p), docs }
+      : { liv: roomLiv(p), when: roomWhen(p), right: roomRights(p), party: roomParty(p), docs };
     const W = Math.round(stageW / S1 - SITE_U * 2);
     const wRoom = W - TO;
     const PADIN = 13;
@@ -2635,7 +2664,7 @@
      短い側の最後の部屋（左なら書類、右ならそのとき）が建物の下端まで伸びる。 */
   const FL = (function () { const v = parseFloat(Q.get('fl')); return v > 0.2 && v < 0.8 ? v : 0.45; })();
   function buildPlanCondo(p, stageW) {
-    const html = { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), loan: roomLoan(p), docs: roomDocs(p) };
+    const html = { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), loan: roomLoan(p), docs: roomDocs(p, false) };
     const CW = 110;
     const VL = Math.round((W_ - CW) * FL), VC = VL + CW;
     const wUnit = { liv: VC - TO / 2 - TI / 2, nm: VL - TO / 2 - TI / 2, loan: VL - TO / 2 - TI / 2,
@@ -2652,6 +2681,13 @@
       const raw = measureHTML(html[k], Math.max(50, toPx(wUnit[k])));
       need[k] = Math.max(MINR, Math.ceil(px2u(raw + headOf(k)) + PADIN * 2 + (wallY[k][0] + wallY[k][1]) / 2));
     });
+    /* 役所で取る書類：左の列が、開いてもそのときより深くならなければ開く。 */
+    const dOpen = pickDocOffice(p, () => {
+      const h = roomDocs(p, true);
+      const n = Math.max(MINR, Math.ceil(px2u(measureHTML(h, Math.max(50, toPx(wUnit.docs))) + headOf('docs')) + PADIN * 2 + (wallY.docs[0] + wallY.docs[1]) / 2));
+      return { h, n, fits: need.liv + need.nm + need.loan + n <= need.when };
+    });
+    if (dOpen) { html.docs = dOpen.h; need.docs = dOpen.n; }
     const left = need.liv + need.nm + need.loan + need.docs;
     const H = Math.max(left, need.when);
     const L1 = need.liv, L2 = L1 + need.nm, L3 = L2 + need.loan, KAMA = H - GK;
@@ -2678,7 +2714,7 @@
      左右の割りはマンションと同じ FL。線が細いので、中身の余白は壁の代わりに LW_（線の太さ）だけ見込む。 */
   const LW_ = 3;
   function buildPlanLand(p, stageW) {
-    const html = { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), party: roomParty(p), docs: roomDocs(p) };
+    const html = { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), party: roomParty(p), docs: roomDocs(p, false) };
     const VL = Math.round(W_ * FL);
     const wUnit = { liv: VL - LW_, nm: VL - LW_, party: VL - LW_, docs: VL - LW_, when: W_ - VL - LW_ };
     const PADIN = 13;
@@ -2692,6 +2728,13 @@
       const raw = measureHTML(html[k], Math.max(50, toPx(wUnit[k])));
       need[k] = Math.max(MINR, Math.ceil(px2u(raw + headOf(k)) + PADIN * 2 + LW_));
     });
+    /* 役所で取る書類：左の列が、開いてもそのときより深くならなければ開く。 */
+    const dOpen = pickDocOffice(p, () => {
+      const h = roomDocs(p, true);
+      const n = Math.max(MINR, Math.ceil(px2u(measureHTML(h, Math.max(50, toPx(wUnit.docs))) + headOf('docs')) + PADIN * 2 + LW_));
+      return { h, n, fits: need.liv + need.nm + need.party + n <= need.when };
+    });
+    if (dOpen) { html.docs = dOpen.h; need.docs = dOpen.n; }
     const H = Math.max(need.liv + need.nm + need.party + need.docs, need.when);
     const L1 = need.liv, L2 = L1 + need.nm, L3 = L2 + need.party;
     const rooms = [
@@ -2709,7 +2752,7 @@
     if (p.kind === 'condo') return buildPlanCondo(p, stageW);
     if (p.kind === 'land') return buildPlanLand(p, stageW);
     const html = { liv: roomLiv(p), when: roomWhen(p),
-      right: roomRights(p), party: roomParty(p), docs: roomDocs(p) };
+      right: roomRights(p), party: roomParty(p), docs: roomDocs(p, false) };
 
     /* 横方向の割り。上段＝今のうち／そのとき 5：5（書類はそのときの下）。
        下段＝廊下を挟んで 権利関係：ローン・契約 ＝ RATIO。 */
@@ -2745,6 +2788,13 @@
       const inUnit = px2u(raw[k] + headOf(k)) + PADIN * 2 + walls;
       need[k] = Math.max(MINR, Math.ceil(inUnit));
     });
+    /* 役所で取る書類：そのとき＋書類が、開いても今のうちより深くならなければ開く。 */
+    const dOpen = pickDocOffice(p, () => {
+      const h = roomDocs(p, true);
+      const n = Math.max(MINR, Math.ceil(px2u(measureHTML(h, Math.max(50, toPx(wUnit.docs))) + headOf('docs')) + PADIN * 2 + (wallY.docs[0] + wallY.docs[1]) / 2));
+      return { h, n, fits: need.when + n <= need.liv };
+    });
+    if (dOpen) { html.docs = dOpen.h; need.docs = dOpen.n; }
 
     /* ══ 上段｜今のうち／そのとき＋書類（2026-09-26）══════════
        今のうちが長くなり、そのときの下に床が余った。書類はそのとき側の
@@ -3703,17 +3753,18 @@
   if (document.fonts) document.fonts.ready.then(drawShelf);
 
   /* ── 一覧（上段）───────────────────────────────── */
-  /* 物件の正面（drawShelf）は後から描く。種別のアイコンは置かない（正面が種別を示す）。 */
+  /* 物件の正面（drawShelf）は後から描く。種別のアイコンは置かない（正面が種別を示す）。
+     住み方の札は呼び名の横（間取りの見出し .rf-t と同じ並び）。下の行は状態の札だけにして、
+     正面の下端に寄せる ―― 住所の有無・札の枚数で、札の高さが物件ごとにずれない。 */
   function shelf() {
     const list = S.all();
     return list.map(p => {
-      const g = { risk: nowRows(p).filter(x => ['unknown', 'action'].includes(x.status)) };
+      const t = nowTally(p);
       return '<button class="shelf-card" data-go="p-' + p.id + '" data-kind="' + esc(p.kind || '') + '" data-landuse="' + esc(p.landUse || '') + '">' +
-        '<b>' + esc(p.name) + '</b>' +
-        '<span class="card-a">' + esc(fullAddr(p)) + '</span>' +
-        '<span class="card-f">' + useTag(p, '') +
-        (g.risk.length ? '<span class="card-r">要確認 ' + g.risk.length + '</span>' : '') +
-        '</span></button>';
+        '<span class="card-t"><b>' + esc(p.name) + '</b>' + useTag(p, 'card-u') + '</span>' +
+        (fullAddr(p) ? '<span class="card-a">' + esc(fullAddr(p)) + '</span>' : '') +
+        (t.length ? '<span class="card-f">' + tallyTags(t, 'card-r') + '</span>' : '') +
+        '</button>';
     }).join('');
   }
 
@@ -3788,7 +3839,7 @@
     });
     /* 開閉は表示中だけの状態。押したら間取りごと描き直す（部屋の深さは
        中身の実測で決まる）。押したボタンを同じ画面位置に留める。 */
-    [['data-procedure', 'procedure', openProcedures], ['data-prior-open', 'priorOpen', openPrior], ['data-matter-open', 'matterOpen', openMatter], ['data-doc-office', 'docOffice', openDocOffice], ['data-bd-nb', 'bdNb', null, bdNb], ['data-rd-nb', 'rdNb', null, rdNb]].forEach(([sel, attr, set, pick]) =>
+    [['data-procedure', 'procedure', openProcedures], ['data-prior-open', 'priorOpen', openPrior], ['data-matter-open', 'matterOpen', openMatter], ['data-doc-office', 'docOffice', docOfficeToggle], ['data-bd-nb', 'bdNb', null, bdNb], ['data-rd-nb', 'rdNb', null, rdNb]].forEach(([sel, attr, set, pick]) =>
       document.querySelectorAll('[' + sel + ']').forEach(button => {
       button.onclick = () => {
         const key = button.dataset[attr];
