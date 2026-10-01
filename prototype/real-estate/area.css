@@ -129,6 +129,14 @@
 .r-end-f{fill:#E8E3D5}
 .r-end-t{fill:#CFC8B6}
 .r-sh  {fill:#000;opacity:.045}
+/* 土地（公図の帯：render.js の kozuBand）。白黒の写しの紙。筆は塗らない（どの筆が父の土地かは
+   分からない。帯は家族の土地の地図ではなく「公図という紙」の記号）。右端に方位。 */
+.kz-paper{fill:#FFFFFF}
+.kz-lot  {fill:none;stroke:#7A7568;stroke-width:.8;stroke-linejoin:round}
+.kz-edge {fill:none;stroke:#6E6A60;stroke-width:1.4}
+.kz-n-bg {fill:#FFFFFF;stroke:#A9A292;stroke-width:.8}
+.kz-n    {fill:#4E4B43}
+.kz-n-t  {font:700 8px var(--font);fill:#4E4B43}
 /* マンション（上の階の外壁）の部材 */
 .m-face  {fill:#EDE9DC}
 .m-slab  {fill:#E4E0D4}                               /* スラブの小口 */
@@ -162,6 +170,13 @@
 .pl-w{stroke:none}
 .pl-w-line{stroke:#6E6A60;stroke-linecap:square}
 .pl-kama{stroke:#B9B3A4;stroke-width:1.6}
+/* 土地の紙面（render.js の drawLand）。白い紙に筆界の細い線、父の土地の外周だけ太い線、
+   余白に隣の筆の境が紙の端まで続く線。影は付けない（紙の写し）。 */
+.kz-plan{filter:none}
+.kz-sheet{fill:#FFFFFF}
+.kz-nb line{stroke:#A9A292;stroke-width:1.1}
+.kz-in line{stroke:#8C8779;stroke-width:1.2}
+.kz-own .pl-w-line{stroke:#4E4B43}
 /* 窓（引違い窓）。壁の切れ目の地・外と内の枠・2枚の障子（render.js の draw）。 */
 .pl-win-bg{fill:#FDFCF8}
 .pl-win-f{stroke:#6E6A60;stroke-width:1}

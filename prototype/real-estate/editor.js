@@ -452,9 +452,9 @@
       const seal = pr.seal || (pr.stage === 'ready' ? 'given' : 'notyet');
       /* 節は話題の白い札にする（権利関係・件の中と同じ形。2026-09-29）。 */
       body = card('名義',
-          question((p.kind === 'condo' ? '専有部分' : '土地・建物') + 'の登記に、前の代の名義が残っていますか',
+          question((p.kind === 'condo' ? '専有部分' : p.kind === 'land' ? 'この土地' : '土地・建物') + 'の登記に、前の代の名義が残っていますか',
             choice('remains', pr.remains || 'unknown', [['yes', '残っている'], ['no', '残っていない'], ['unknown', 'まだ確かめていない']]),
-            '登記事項証明書で分かります。家族でも法務局で取得できます。') +
+            '登記事項証明書で分かります。家族でも法務局で取得できます。' + (p.kind === 'land' ? '何筆かあるなら、1筆でも残っていれば「残っている」です。' : '')) +
           (keys.length > 1 ? question('前の代の名義のもの', choice('parcel-', pr.parcels || [], keys.map(k => [k, nm(k)]), 'pill', 'checkbox'), '', ' data-prior-yes')
             : '<input type="hidden" name="parcel-' + keys[0] + '" value="on">') +
           question('前の代の名義人', '<input class="re-q-in" name="owner" value="' + esc(S.priorOwner(p)) + '" autocomplete="off">',
@@ -539,7 +539,9 @@
          聞くのは、どの物件か（種別・呼び名・住所・建った年）と、今そこに誰が住んでいるかだけ。
          名義・ローン・事情は各部屋のフォームが問いを持つので、ここでは聞かない。
          種別を最初に聞く ―― マンションだけ建物名・部屋番号の欄が要る。
-         土地（建物の無い土地）は保留。選択肢には出し、選べなくする（`土地_カテゴリー検討.md`）。
+         土地（2026-10-01、`設計/不動産・住まい/土地_調査と項目.md` §2-4）は、どんな土地か（今の使われ方）と
+         誰が使っているか。建った年・部屋番号は聞かない。田畑だけ、土地改良区の賦課金の通知が届いているか
+         （届いていれば地区の中。そのときの「土地改良区」が立つ）。
          建った年は、マンションでは1984年より前かで相続登記の文が変わる（render.js の敷地権）。 */
       const isNew = key === 'new';
       title = isNew ? '物件を登録' : '基本情報';
@@ -551,19 +553,26 @@
          フォームと形が揃っていなかった（2026-09-30）。 */
       body =
         card('物件', '<div class="re-lines">' +
-          line('種別', choice('kind', p.kind || '', [['house', '戸建て'], ['condo', 'マンション'], ['land', '土地（準備中）', '', ' data-off']])) +
+          line('種別', choice('kind', p.kind || '', [['house', '戸建て'], ['condo', 'マンション'], ['land', '土地']])) +
+          line('どんな土地か', choice('landUse', S.LAND_KINDS[p.landUse] ? p.landUse : '',
+            [['field', '田・畑'], ['forest', '山林'], ['lot', '家の建っていない宅地', '空き地・駐車場'], ['sokochi', '人の家が建っている', '土地を貸している'], ['other', 'その他', '原野・雑種地など']], 'row'), ' data-prop-land') +
+          line('土地改良区', choice('kairyo', ['yes', 'no'].includes(p.kairyo) ? p.kairyo : 'unknown',
+            [['yes', '賦課金の通知が届く'], ['no', '届かない'], ['unknown', '分からない']]), ' data-prop-kairyo') +
+          line('土地改良区の名前', '<input class="re-q-in" name="kairyoName" value="' + esc(p.kairyoName) + '" placeholder="例：○○土地改良区" autocomplete="off" aria-label="土地改良区の名前">', ' data-prop-kairyo-nm') +
           line('呼び名', '<input class="re-q-in" name="name" value="' + esc(p.name) + '" placeholder="例：自宅・長岡の家" autocomplete="off" aria-label="呼び名">') + '</div>',
-          '別荘・アパート一棟は戸建て、店舗・事務所の区画はマンションに入れます。') +
-        card('場所と建った年', '<div class="re-lines">' +
+          '別荘・アパート一棟は戸建て、店舗・事務所の区画はマンションに入れます。家に付いている田畑は、その家に入れます。土地は今の使われ方で選びます（登記の地目と違っていても）。') +
+        card('場所<span data-prop-built-t>と建った年</span>', '<div class="re-lines">' +
           line('郵便番号', '<input class="re-q-in re-q-zip" name="zip" value="' + esc(p.zip) + '" inputmode="numeric" maxlength="8" placeholder="例：940-0000" autocomplete="off" aria-label="郵便番号">' +
             '<span class="re-zip-msg" data-zip-msg aria-live="polite"></span>') +
           line('住所', '<input class="re-q-in re-q-wide" name="addr" value="' + esc(p.addr) + '" placeholder="例：新潟県長岡市○○町2-5-1" autocomplete="off" aria-label="住所">') +
           line('建物名・部屋番号', '<input class="re-q-in" name="room" value="' + esc(p.room) + '" placeholder="例：○○新横浜 604号室" autocomplete="off" aria-label="建物名・部屋番号">', ' data-prop-room') +
           line('建った年', '<select class="re-yr-sel" name="built" aria-label="建った年"><option value="">分からない</option>' +
-            ys.map(y => '<option value="' + y + '"' + (y === built ? ' selected' : '') + '>' + y + '年（' + wareki(y) + '）</option>').join('') + '</select>') + '</div>',
-          '郵便番号を入れると、町名までが住所に入ります。続けて番地を書きます。建った年は、登記事項証明書の建物の欄に新築の年月日が載っています。') +
-        card('今ここで暮らしている人', choice('use', S.USES[p.use] ? p.use : '', Object.keys(S.USES).map(k => [k, S.USES[k].form])),
+            ys.map(y => '<option value="' + y + '"' + (y === built ? ' selected' : '') + '>' + y + '年（' + wareki(y) + '）</option>').join('') + '</select>', ' data-prop-built') + '</div>' +
+          '<p class="re-q-h" data-prop-place-h></p>') +
+        card('今ここで暮らしている人', choice('use', p.kind !== 'land' && S.USES[p.use] ? p.use : '', Object.keys(S.USES).map(k => [k, S.USES[k].form])),
           '施設や病院に移った人は含めません。家族以外の人は、借りている人・使わせている人です。', ' data-prop-use') +
+        card('この土地を使っている人', choice('luse', p.kind === 'land' && S.LAND_USES[p.use] ? p.use : '', Object.keys(S.LAND_USES).map(k => [k, S.LAND_USES[k].form])),
+          '耕している・駐車場にしている・家を建てているなど。家族以外の人は、借りている人・使わせている人です。', ' data-prop-luse') +
         (isNew ? '' : '<div class="re-deal-del">' + entryDel.replace('data-entry-del', 'data-prop-del').replace('data-entry-no', 'data-prop-no').replace('data-entry-yes', 'data-prop-yes').replace('>削除</button>', '>この物件を削除</button>')
           .replace('削除しますか？', 'この物件の記録を、部屋の中身ごと削除しますか？') + '</div>');
     } else if (type === 'addr') {
@@ -615,6 +624,9 @@
             '', ' data-deal-flow="' + k + '"')).join('') +
           question('<span data-deal-what>頼んでいること</span>', '<textarea class="re-q-in" rows="2" name="what">' + esc(d.what) + '</textarea>',
             '', ' data-deal-whatq') +
+          (p.kind === 'land' && p.landUse === 'field' ? question('農業委員会を通していますか', choice('farm', ['permit', 'bank', 'verbal'].includes(d.farm) ? d.farm : 'unknown',
+            [['permit', '通した', '許可・利用権の設定'], ['bank', '農地バンクを通した'], ['verbal', '通していない', '口約束で貸している'], ['unknown', 'まだ確かめていない']], 'row'),
+            '農地ナビ（インターネット）で、貸し借りの種類と期間が見られます。', ' data-deal-farm') : '') +
           question('契約書はありますか', choice('paper', d.paper || 'unknown', [['have', 'ある'], ['none', '口約束のまま'], ['unknown', 'まだ確かめていない']]),
             'あれば、どこにあるかは「書類のありか」で記録します。', ' data-deal-paper')) +
         (isNew ? '' : '<div class="re-deal-del">' + entryDel.replace('data-entry-del', 'data-deal-del').replace('data-entry-no', 'data-deal-no').replace('data-entry-yes', 'data-deal-yes').replace('>削除</button>', '>この相手を削除</button>') + '</div>');
@@ -640,7 +652,7 @@
       (body.includes('class="re-toc"') ? '' : '<nav class="re-toc" aria-label="件の一覧" hidden></nav>') +
       '<div class="re-dialog-body">' + (lead ? '<p class="re-lead">' + esc(lead) + '</p>' : '') + body + '</div>' +
       '<footer class="re-dialog-foot"><p class="re-error" role="alert"></p><span>分かったところまで残せます</span><span class="re-discardw"><button type="button" data-cancel aria-expanded="false">キャンセル</button></span><button class="re-save" type="submit">' + (adding ? '登録する' : '記録を保存') + '</button></footer></form>';
-    /* 準備中の選択肢（土地）は見せて、選べなくする。 */
+    /* 準備中の選択肢は見せて、選べなくする（いまは無い。土地は 2026-10-01 に選べるようにした）。 */
     dialog.querySelectorAll('[data-off] input').forEach(i => { i.disabled = true; });
     if (type === 'prop') wireZip();
     dialog.querySelector('.re-close').onclick = e => closeRequest(e.currentTarget);
@@ -759,7 +771,21 @@
         dialog.querySelector('[data-entry-add]').hidden = has !== 'yes' || items.length >= 5;
       }
       const propRoom = dialog.querySelector('[data-prop-room]');
-      if (propRoom) propRoom.hidden = form.elements.kind.value !== 'condo';
+      if (propRoom) {
+        const kind = form.elements.kind.value, land = kind === 'land', field = land && form.elements.landUse.value === 'field';
+        propRoom.hidden = kind !== 'condo';
+        dialog.querySelector('[data-prop-built]').hidden = land;
+        dialog.querySelector('[data-prop-built-t]').hidden = land;
+        dialog.querySelector('[data-prop-land]').hidden = !land;
+        dialog.querySelector('[data-prop-kairyo]').hidden = !field;
+        dialog.querySelector('[data-prop-kairyo-nm]').hidden = !(field && form.elements.kairyo.value === 'yes');
+        dialog.querySelector('[data-prop-use]').hidden = land;
+        dialog.querySelector('[data-prop-luse]').hidden = !land;
+        form.elements.addr.placeholder = land ? '例：長野県上伊那郡○○村 大字○○（地番が分かれば）' : '例：新潟県長岡市○○町2-5-1';
+        dialog.querySelector('[data-prop-place-h]').textContent = land
+          ? '土地には住居表示が無いので、市町村と大字・字までを書きます。地番が分かれば続けて書きます（固定資産税の課税明細書に載っています）。'
+          : '郵便番号を入れると、町名までが住所に入ります。続けて番地を書きます。建った年は、登記事項証明書の建物の欄に新築の年月日が載っています。';
+      }
       const docWhere = dialog.querySelector('[data-doc-where]');
       if (docWhere && form.elements.st) docWhere.hidden = form.elements.st.value !== 'have';
       const rtShare = dialog.querySelector('[data-rt-share]');
@@ -808,6 +834,8 @@
         dialog.querySelector('[data-deal-kind-h]').textContent = { manage: '管理会社や、見回りを頼んでいる親族・近所の人など。',
           lend: 'この家・土地を、ほかの人が借りて使っている。', borrow: '借地。建物の下の土地を、地主から借りている。' }[k];
         dialog.querySelectorAll('[data-deal-flow]').forEach(el => { el.hidden = el.dataset.dealFlow !== k; });
+        const farm = dialog.querySelector('[data-deal-farm]');
+        if (farm) { farm.hidden = k !== 'lend'; if (k === 'lend') ta.placeholder = '例：田を耕作してもらっている。賃料は年に米2俵'; }
       }
       if (form.elements.remains) {
         const yes = form.elements.remains.value === 'yes';
@@ -961,8 +989,12 @@
       const error = dialog.querySelector('.re-error');
       if (identity.type === 'prior' && values.remains === 'yes' && !values.parcels.length) { error.textContent = '前の代の名義のものを選んでください。'; return; }
       if (identity.type === 'prop') {
-        const miss = !values.kind ? 'どんな物件かを選んでください。' : !(values.name || '').trim() ? '呼び名を書いてください。'
-          : !values.use ? '今ここで暮らしている人を選んでください。' : '';
+        if (values.kind === 'land') values.use = values.luse;
+        delete values.luse;
+        const miss = !values.kind ? 'どんな物件かを選んでください。'
+          : values.kind === 'land' && !values.landUse ? 'どんな土地かを選んでください。'
+          : !(values.name || '').trim() ? '呼び名を書いてください。'
+          : !values.use ? (values.kind === 'land' ? 'この土地を使っている人を選んでください。' : '今ここで暮らしている人を選んでください。') : '';
         if (miss) { error.textContent = miss; return; }
         if (identity.key === 'new') {
           let id;

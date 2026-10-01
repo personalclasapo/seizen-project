@@ -115,10 +115,10 @@
      （分類学ではない。正本 §3）。
        house  戸建て … 土地と建物が別の権利。境界・越境が起きる
        condo  マンション … 敷地は共有持分。管理組合が相手に出る
-       land   土地のみ … 建物が無い。境界と利用の取り決めが中心
-       other  その他 … 収益物件・別荘・共有の山林など
-     登録フォームで選べるのは戸建て・マンションだけ。土地は保留、その他は置かない
-     （出す部屋が決まらない）。`設計/不動産・住まい/土地_カテゴリー検討.md`。 */
+       land   土地 … 建物の無い土地（田畑・山林・空き地・駐車場・底地）。家に付く田畑は家に入れる
+       other  その他 … 収益物件など
+     登録フォームで選べるのは戸建て・マンション・土地。その他は置かない（出す部屋が決まらない）。
+     土地は `設計/不動産・住まい/土地_調査と項目.md`（2026-10-01）。 */
   const KINDS = {
     house: { label: '戸建て',     icon: 'house' },
     condo: { label: 'マンション', icon: 'condo' },
@@ -141,6 +141,32 @@
     others: { label: '家族以外が使っている', form: '家族以外の人', tone: 'bl' },
     empty:  { label: '空き家', form: '誰も住んでいない', tone: 'or' }
   };
+
+  /* 土地（kind=land）の、どんな土地か（今の使われ方で聞く。農地法は登記の地目でなく現況で決まる）。
+     田畑は農地の届出・土地改良区、山林は森林の届出、宅地は境界・私道の問いが立つ。 */
+  const LAND_KINDS = {
+    field:   { label: '田・畑',           form: '田・畑' },
+    forest:  { label: '山林',             form: '山林' },
+    lot:     { label: '宅地（建物なし）', form: '家の建っていない宅地（空き地・駐車場）' },
+    sokochi: { label: '宅地（人の家が建っている）', form: '人の家が建っている' },
+    other:   { label: 'その他',           form: 'その他（原野・雑種地など）' }
+  };
+  /* 土地を誰が使っているか。住んでいる人（USES）と同じ分け方（2026-10-01。はじめ「父（と母）」を
+     1つにしていたが、母が使っているかで父の死後が変わる）。
+       父だけ … 父が亡くなると誰も使わなくなる → そのときの「要らないとき」が立つ
+       父と母・母だけ … 母が使い続ける
+       家族以外 … 契約の部屋の「貸している」
+       誰も使っていない … 「要らないとき」が立つ */
+  const LAND_USES = {
+    pair:   { label: WHO + 'と' + SPOUSE + 'が使っている', form: WHO + 'と' + SPOUSE, tone: 'gr' },
+    self:   { label: WHO + 'が使っている', form: WHO + 'だけ', tone: 'gr' },
+    spouse: { label: SPOUSE + 'が使っている', form: SPOUSE + 'だけ', tone: 'gr' },
+    family: { label: '家族が使っている', form: '子など、ほかの家族', tone: 'gr' },
+    others: { label: '家族以外が使っている', form: '家族以外の人', tone: 'bl' },
+    idle:   { label: '誰も使っていない', form: '誰も使っていない', tone: 'or' }
+  };
+  /* 田畑を貸しているとき、農業委員会を通したか（そのときの扱いが変わる：render.js の landGone）。 */
+  const FARMS = ['permit', 'bank', 'verbal', 'unknown'];
 
   /* 5. 確認しておきたい事情。項目設計 §5 の A・B・C の3つだけを持つ。
 
@@ -391,6 +417,26 @@
         },
         st: 'todo'
       }
+    },
+
+    {
+      /* 土地（2026-10-01、`設計/不動産・住まい/土地_調査と項目.md`）。父が受け継いだ田んぼ。
+         近所の人が口約束で耕作し、賃料を受け取っている。一部が祖父の名義のまま、登記の住所も古い。
+         土地改良区の地区の中（毎年、賦課金の納付通知書が届く）。 */
+      id: 'p4',
+      name: '長野の田んぼ', kind: 'land', landUse: 'field', use: 'others',
+      addr: '長野県上伊那郡○○村 大字○○', note: '',
+      kairyo: 'yes', kairyoName: '○○土地改良区',
+      rights: {
+        land: { hold: 'own', owner: WHO, shares: '単独', match: 'unknown', st: 'todo', reach: 'public', memo: '' }
+      },
+      deals: [{ kind: 'lend', who: '田中 一男さん（近所）', tel: '0265-00-0000', what: '田を耕作してもらっている', flow: 'recv', farm: 'verbal', paper: 'none', st: 'done' }],
+      loan: { has: 'no', reach: 'public', memo: '', items: [] },
+      matters: {},
+      priorInheritance: { remains: 'yes', parcels: ['land'], owner: '祖父 正一（故人）', rel: 'parent', route: 'split', died: 'before', stage: 'none', taker: 'self', takerName: '' },
+      addrReg: 'differ',
+      access: { who: '', key: '', keyKind: '', code: '', how: '', st: 'todo', reach: 'onlyself' },
+      docs: { place: '', at: { deed: { st: 'unknown', place: '' }, acquire: { st: 'unknown', place: '' } }, st: 'todo' }
     }
   ];
 
@@ -1041,6 +1087,8 @@
         const ok = { lend: ['recv', 'none'], borrow: ['pay', 'none'] }[d.kind];
         d.flow = !ok ? '' : ok.includes(d.flow) ? d.flow : ok[0];
         d.paper = d.kind === 'manage' ? '' : ['have', 'none'].includes(values.paper) ? values.paper : 'unknown';
+        /* 田畑を貸しているときだけ、農業委員会を通したか（口約束なら契約書も無い）。 */
+        d.farm = p.kind === 'land' && p.landUse === 'field' && d.kind === 'lend' ? (FARMS.includes(values.farm) ? values.farm : 'unknown') : '';
         /* 相手と電話が分かれば、家族が連絡できる（済み）。相手だけなら途中。 */
         d.st = d.who && d.tel ? 'done' : d.who ? 'doing' : 'todo';
         p.deals[index] = d;
@@ -1081,17 +1129,21 @@
 
   /* 物件の基本情報（登録フォーム。2026-09-30）。聞くのは、どの物件かと、今そこに誰が住んでいるか
      だけ。名義・ローン・事情は各部屋のフォームが問いを持つ（全体設計 §9）ので、登録では聞かない。
-     土地（建物の無い土地）は保留（`設計/不動産・住まい/土地_カテゴリー検討.md`）。 */
+     土地（2026-10-01）は、どんな土地か・誰が使っているか。田畑だけ土地改良区の地区の中か
+     （毎年届く賦課金の納付通知書で分かる。そのときの「土地改良区」が立つ）。建った年・部屋番号は持たない。 */
   function propFields(values) {
     const year = String(values.built || '').trim();
-    const kind = values.kind === 'condo' ? 'condo' : 'house';
+    const kind = ['condo', 'land'].includes(values.kind) ? values.kind : 'house';
+    const land = kind === 'land', landUse = land && LAND_KINDS[values.landUse] ? values.landUse : '';
+    const field = landUse === 'field', kairyo = field && ['yes', 'no'].includes(values.kairyo) ? values.kairyo : field ? 'unknown' : '';
     return {
-      name: String(values.name || '').trim(), kind,
+      name: String(values.name || '').trim(), kind, landUse,
       zip: (d => d.length === 7 ? d.slice(0, 3) + '-' + d.slice(3) : '')(String(values.zip || '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '')),
       addr: String(values.addr || '').trim(),
       room: kind === 'condo' ? String(values.room || '').trim() : '',
-      built: /^\d{4}$/.test(year) ? year + '年' : '',
-      use: USES[values.use] ? values.use : ''
+      built: !land && /^\d{4}$/.test(year) ? year + '年' : '',
+      use: (land ? LAND_USES : USES)[values.use] ? values.use : '',
+      kairyo, kairyoName: kairyo === 'yes' ? String(values.kairyoName || '').trim() : ''
     };
   }
   function commit(next) {
@@ -1195,7 +1247,7 @@
   }
 
   global.SeiZenRealEstate = {
-    ST, NOW_STATUS, REACH, MATCH, KINDS, USES, MATTERS, FINDINGS, DEALS, FLOWS, DOC_KINDS,
+    ST, NOW_STATUS, REACH, MATCH, KINDS, USES, LAND_KINDS, LAND_USES, MATTERS, FINDINGS, DEALS, FLOWS, DOC_KINDS,
     all: () => props,
     find: id => props.filter(p => p.id === id)[0] || null,
     gauge,

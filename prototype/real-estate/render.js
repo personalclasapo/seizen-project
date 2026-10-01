@@ -169,7 +169,7 @@
     /* 話し合いがまとまらないうちの手（相続人申告登記・法定相続分の登記）
        が使えるのは、遺産分割の前だけ。分割後は分割の結果で登記する。 */
     const before = route === 'unknown' || (route === 'split' && ['none', 'agreed'].includes(st));
-    return { pr, route, P, mine, st, duty, before, t: priorTaker(pr), where: priorParcels(p, pr) || '土地・建物' };
+    return { pr, route, P, mine, st, duty, before, t: priorTaker(pr), where: priorParcels(p, pr) || (p.kind === 'land' ? '土地' : p.kind === 'condo' ? '専有部分' : '土地・建物') };
   }
 
   const PR_NEED = '相続登記は法律上の<b>義務</b>です。名義が亡くなった人のままでは、<b>売ることも、担保に入れることもできません</b>。';
@@ -306,7 +306,7 @@
     if (pr.remains === 'no') return '<p class="pr-quiet">前の代の名義は残っていません。</p>';
     if (pr.remains !== 'yes') return '<p class="pr-why">前の代の名義が残っていると、<b>売ることも、担保に入れることもできず</b>、相続登記の<b>義務</b>もかかります。' +
       '遺産分割には' + WHO + 'が加わることが多いため、' + WHO + 'が元気なうちに確かめておきます。</p>' +
-      '<div class="pr-nm one"><div class="pr-nb pr-to"><small>土地・建物の名義</small><span>まだ確かめていない</span></div></div>' +
+      '<div class="pr-nm one"><div class="pr-nb pr-to"><small>' + (p.kind === 'land' ? '土地' : p.kind === 'condo' ? '専有部分' : '土地・建物') + 'の名義</small><span>まだ確かめていない</span></div></div>' +
       '<div class="pr-act"><div class="pr-act-h"><span>次にすること</span></div><p>登記事項証明書で、名義が前の代のままか見る<small>家族でも法務局で取得できます。</small></p></div>';
     const c = priorCase(p);
     if (S.priorStatus(p) === 'done') return '<p class="pr-why">' + priorDoneWhy(c) + '</p>' + priorNames(p, c);
@@ -1281,9 +1281,14 @@
      ・間取り：左に今のうち（廊下の上をまたいで、そのときと接する）→ 名義 → ローン → 書類、
        中に玄関から今のうちへ上がる廊下、右にそのとき。左右の割りは 0.45（?fl= で振れる）
      調査と判定は `設計/不動産・住まい/マンション_調査と項目.md`、検討は `_検討/不動産v36.html`。 */
+  /* v38｜土地（建物の無い土地）。どんな土地か（p.landUse）：field 田・畑／forest 山林／
+     lot 家の建っていない宅地／sokochi 人の家が建っている／other。
+     境界・私道は宅地だけ（戸建てと同じ事実）。田畑・山林の場所は台帳で辿れる
+     （`設計/不動産・住まい/土地_調査と項目.md` §2-3）。 */
+  const landLot = p => p.kind === 'land' && ['lot', 'sokochi'].includes(p.landUse);
   function nowRows(p) {
     const names ={ boundary: '境界・越境の取り決め', road: '私道・通行・配管の取り決め', changed: '建物の変更・登記' };
-    const out = ['boundary', 'road', 'changed'].filter(key => p.kind !== 'condo' && !(key === 'changed' && p.kind === 'land')).map(key => {
+    const out = ['boundary', 'road', 'changed'].filter(key => p.kind !== 'condo' && !(key === 'changed' && p.kind === 'land') && !(p.kind === 'land' && !landLot(p))).map(key => {
       const ms = S.matterStatus(p, key), status = ms.status;
       if (key === 'boundary') return { key, type: 'matter', nm: names[key], status, label: ms.label, body: boundaryBody };
       if (key === 'road') return { key, type: 'matter', nm: names[key], status, label: ms.label, body: roadBody };
@@ -1297,7 +1302,7 @@
         : S.priorRoute(pr) === 'will' ? '手続きなし' : (S.priorParty(pr) || '相続人') + 'の分は済み') : '' });
 
     /* v36｜登記の住所（マンション）。答え p.addrReg：same／differ／unknown（editor.js の addr）。 */
-    if (p.kind === 'condo') {
+    if (p.kind === 'condo' || p.kind === 'land') {
       const a = p.addrReg || 'unknown';
       out.push({ key: 'addr', type: 'addr', icon: 'prior', nm: '登記の住所',
         status: a === 'same' ? 'none' : a === 'differ' ? 'action' : 'unknown', label: a === 'same' ? '同じ' : '',
@@ -1386,6 +1391,12 @@
     /* v36｜敷地権が登記されていない古いマンション（1983年の区分所有法改正の前）。 */
     if (p.kind === 'condo' && parseInt(p.built, 10) < 1984)
       say.push('古いマンションは、敷地の持分が建物とは別に登記されていることがあります。登記事項証明書に「敷地権の表示」が無ければ、<b>土地の持分も同じ申請に入れます</b>。');
+    /* v38｜土地。課税されない土地は課税明細書に載らない。評価額100万円以下の土地は免税。 */
+    if (p.kind === 'land' && !landLot(p)) {
+      say.push('固定資産税がかからない土地は課税明細書に載らないので、<b>名寄帳か所有不動産記録証明で地番を確かめます</b>（前の代の名義の土地も、相続人なら請求できます）。' +
+        '評価額が100万円以下の土地は、<b>登録免許税がかかりません</b>（令和9年3月31日まで）。');
+      office = office.concat(['名寄帳']);
+    }
     /* 何を登記するか（借地・共有・私道）。 */
     if (lease) say.push('土地は借地なので、登記するのは建物だけです。借地権は建物と一緒に引き継ぎます。');
     ['land', 'bldg'].forEach(k => {
@@ -1563,7 +1574,8 @@
        貸主が亡くなっても使用貸借は終わらず、相続人へ移る（終わるのは借主の死亡：
        民法597条3項）。期間・目的を決めていなければ、貸主はいつでも終わらせられる（598条2項）。 */
     const lendFree = lend.length && lend.every(d => d.flow === 'none');
-    if (owns && lendFree) {
+    if (p.kind === 'land' && p.landUse === 'field') { /* landGone が出す */ }
+    else if (owns && lendFree) {
       const who = lend.map(d => d.who || '借主').join('・');
       out.push({ id: 'lend', ord: 4, icon: 'keiyaku', nm: '無償で使わせている', eyebrow: '使用貸借',
         card: {
@@ -1624,6 +1636,8 @@
           detail: h6(1, '相続人以外に遺すとき') + '<p>孫や相続人の配偶者など、相続人ではない人に遺言で渡すときは、地主の承諾が要ります。</p></section>' +
             h6(2, '建物の登記') + '<p>建物が' + WHO + 'の名義のままでも、土地が売られたとき新しい地主に借地権を主張できます。それでも相続登記の義務（3年）はかかります。</p></section>' } });
     }
+    /* ■ v38｜土地のそのとき（`設計/不動産・住まい/土地_調査と項目.md` §2-4）。 */
+    if (owns && p.kind === 'land') landGone(p, out, { sv, unit, homeDoc, h6, src, docAt });
     /* v36｜管理組合（マンション）。 */
     if (owns && p.kind === 'condo') {
       out.push({ id: 'kumiai', ord: 1, icon: 'keiyaku', nm: '管理組合', eyebrow: '管理費・修繕積立金',
@@ -1657,6 +1671,80 @@
     return out.sort((a, b) => a.ord - b.ord);
   }
 
+
+  /* v38｜土地のそのときのカード。森林の届出（90日）・要らないとき（放棄は3か月）・
+     農地の届出（10か月）・田畑を使っている人との関係。 */
+  const FARM = { permit: '農業委員会を通した', bank: '農地バンクを通した', verbal: '口約束（農業委員会を通していない）', unknown: '農業委員会を通したか、まだ確かめていない' };
+  function landGone(p, out, k) {
+    const { sv, unit, homeDoc, h6, docAt } = k;
+    const lend = (p.deals || []).filter(d => d.kind === 'lend');
+    if (p.landUse === 'forest') out.push({ id: 'shinrin', ord: 2.9, icon: 'todoke', nm: '森林の土地の所有者届出', eyebrow: '森林法',
+      lim: '所有者になった日から90日以内',
+      card: {
+        say: '山林を相続したら、<b>分割がまとまる前でも</b>、相続人の共有として市町村に届け出ます。分割がまとまったら、取得した人がもう一度届け出ます。',
+        secs: [{ lb: '出す先', html: '<p class="sw-line"><b>山林のある市町村の林務の担当</b>　届出書に、相続したことが分かる書類の写しと、土地の場所が分かる図面を添える</p>' },
+          { lb: 'すること', html: sv([
+            { when: '90日以内', t: '相続人の共有として届け出る', w: '市町村' },
+            { when: '分割のあと', t: '取得した人が届け出る', w: '市町村' }]) }],
+        toc: '場所の確かめ方・届け出ないと',
+        detail: h6(1, '場所の確かめ方') + '<p>市町村の<b>林地台帳</b>と地図で、所在・地番と、境界の測量が済んでいるかが分かります。相続人は、名前や住所を含む全部の項目を受け取れます。</p></section>' +
+          h6(2, '届け出ないと') + '<p>10万円以下の過料の対象になります（森林法）。</p></section>' } });
+    /* 誰も使っていない土地と、父だけが使っている土地（父が亡くなると誰も使わなくなる）。 */
+    if (['empty', 'idle', 'self'].includes(p.use)) out.push({ id: 'iranai', ord: 3.2, icon: 'keiyaku', nm: '要らないとき', eyebrow: '持ち続けるか',
+      lim: '相続放棄なら、相続を知った日から3か月以内',
+      card: {
+        say: (p.use === 'self' ? WHO + 'が亡くなると、この土地は誰も使わなくなります。' : '') +
+          '<b>この土地だけを放棄することはできません。</b>相続放棄は、預貯金や家も含めて全部を受け取らないことです。受け継いだうえで手放す道があります。',
+        secs: [{ lb: '手放す道', html: sv([
+            { t: '国に引き取ってもらう', w: '法務局', s: '相続土地国庫帰属制度。相続した人が申請する。審査手数料は1筆1万4千円、負担金は原則20万円' + (p.landUse === 'forest' ? '（山林は面積で計算）' : '') + '。境界が分からない・通路になっている土地などは引き取られない' },
+            { t: '隣の人や地元の人に譲る', w: p.landUse === 'forest' ? '森林組合・市町村' : '農業委員会', s: '国への申請を取り下げた理由でいちばん多いのは、隣の人などが使うことになったもの' }]) }],
+        toc: '放棄したとき・持ち続けるとき',
+        detail: h6(1, '放棄したとき') + '<p>放棄しても、そのときこの土地を使っていた人は、次の人に引き渡すまで保存する義務を負います（民法940条）。</p></section>' +
+          h6(2, '持ち続けるとき') + '<p>' + (p.landUse === 'forest' ? '手入れができない山林は、市町村に管理を任せられることがあります（森林経営管理制度）。市町村から意向を聞く調査が届きます。' : '貸したいときは、農業委員会か農地バンクに相談します。') + '</p></section>' } });
+    if (p.landUse === 'field') out.push({ id: 'nochi', ord: 10, icon: 'todoke', nm: '農地の相続の届出', eyebrow: '農地法',
+      lim: '相続を知った時から10か月以内',
+      card: {
+        say: '相続で田畑を取得したら、<b>農業委員会へ届け出ます</b>。相続には農業委員会の許可は要りません。',
+        secs: [{ lb: '出す先', html: '<p class="sw-line"><b>田畑のある市町村の農業委員会</b>　届出書に、登記事項証明書など相続したことが分かる書類の写しを添える</p>' },
+          { lb: 'すること', html: sv([{ when: '10か月以内', t: '取得した人が届け出る', w: '農業委員会', s: '自分で耕すか、貸したいか、売りたいかも書く。貸し手・買い手探しの相談に乗ってもらえる' }]) }],
+        toc: '届け出ないと',
+        detail: h6(1, '届け出ないと') + '<p>10万円以下の過料の対象になります（農地法）。</p></section>' } });
+    /* 土地改良区（田畑）。地区の中の農地を相続すると、意思にかかわらず組合員の資格を引き継ぐ
+       （土地改良法3条・11条）。資格の得喪の通知を出さないと、故人の名義のまま賦課金が請求され続ける。
+       地区は全国で約246万ha（農水省 令和3年度末）＝農地のおよそ6割。毎年届く賦課金の納付通知書に名前がある。 */
+    if (p.landUse === 'field' && p.kairyo !== 'no') {
+      const nm = p.kairyoName || '土地改良区', sure = p.kairyo === 'yes';
+      out.push({ id: 'kairyo', ord: 4.5, icon: 'keiyaku', nm: '土地改良区', eyebrow: '賦課金',
+        card: {
+          say: sure ? 'この田畑は' + esc(nm) + 'の地区の中にあります。相続した人は、<b>意思にかかわらず組合員の資格を引き継ぎます</b>。通知を出さないと、賦課金の納付通知書が' + WHO + 'の名義のまま届き続けます。'
+            : 'この田畑が土地改良区の地区の中にあるか、まだ確かめていません。中にあれば、相続した人は<b>意思にかかわらず組合員の資格を引き継ぎ</b>、賦課金を払います。',
+          secs: [{ lb: '窓口', html: '<p class="sw-line"><b>' + esc(sure ? nm : '土地改良区') + '</b>　毎年届く賦課金の納付通知書に名前がある' + (sure ? '' : '（届いていれば、地区の中にある）') + '</p>' },
+            { lb: 'すること', html: sv([
+              { when: '分割のあと', t: '取得した人が、組合員の資格が変わったことを通知する', w: sure ? nm : '土地改良区', s: '通知書は土地改良区の窓口やホームページにある' },
+              { t: '賦課金の払い方を変える', w: sure ? nm : '土地改良区', s: WHO + 'の口座からの引き落としは、銀行が死亡を知ると止まる' }]) }],
+          toc: '貸しているとき・相続放棄したとき',
+          detail: h6(1, '貸しているとき') + '<p>耕作している人がいる農地では、耕作している人が組合員になる決まりです（土地改良法3条）。誰が組合員になっているかは、土地改良区の名簿で確かめます。</p></section>' +
+            h6(2, '相続放棄したとき') + '<p>組合員の資格は引き継がず、賦課金もかかりません。</p></section>' } });
+    }
+    if (p.landUse === 'field' && lend.length) {
+      const who = lend.map(d => d.who || '耕作している人').join('・');
+      const free = lend.every(d => d.flow === 'none'), farm = (lend[0].farm || 'unknown');
+      const say = free ? '無償で使わせている関係は、' + WHO + 'が亡くなっても<b>終わらず、貸す側の立場が相続人へ移ります</b>。'
+        : farm === 'permit' ? '農業委員会を通した貸し借りは、<b>そのまま続きます</b>。貸す側の立場は相続人へ移り、解約するには知事の許可が要ります。'
+        : farm === 'bank' ? '農地バンクを通した貸し借りは、<b>契約の期間が終わるまで続きます</b>。貸す側の立場は相続人へ移ります。'
+        : farm === 'verbal' ? '農業委員会を通していない口約束の貸し借りは、<b>法律上の効力がなく、相続人を縛りません</b>。ただ、賃料を受け取りながら長く耕作が続くと、耕作している人が賃借権を時効で主張することがあります。'
+        : '農業委員会を通した貸し借りなら続き、口約束なら相続人を縛りません。<b>まず、どちらか確かめます</b>。';
+      const steps = [{ when: 'すぐ', t: WHO + 'が亡くなったことを知らせる', w: who }];
+      if (farm === 'unknown') steps.push({ t: '貸し借りの記録があるか確かめる', w: '農業委員会', s: '農地ナビ（インターネット）でも、貸し借りの種類と期間が見られる' });
+      steps.push(farm === 'verbal' && !free ? { when: '分割のあと', t: '続けるなら農業委員会を通した貸し借りに切り替え、やめるなら返してもらう', w: who + '・農業委員会' }
+        : { when: '分割のあと', t: '継いだ人を知らせる' + (free ? '' : '。賃料の受け取り先も変える'), w: who });
+      out.push({ id: 'lend', ord: 4, icon: 'keiyaku', nm: '田畑を使っている人', eyebrow: free ? '使用貸借' : FARM[farm].replace(/（.*$/, ''),
+        card: { say, secs: [{ lb: '使っている人', html: lend.map(unit).join('') }, { lb: 'すること', html: sv(steps) },
+            lend.some(d => d.paper === 'have') ? { lb: 'そろえる書類', html: homeDoc('賃貸借の契約書', '期間・賃料を確かめる', docAt('lend')) } : null].filter(Boolean),
+          toc: '時効の主張',
+          detail: h6(1, '時効の主張') + '<p>農業委員会の許可が無くても、賃料を払って耕作を続けた人は、賃借権を時効で取得することがあります（最高裁 平成16年7月13日）。口約束のままにせず、早めに整理します。</p></section>' } });
+    }
+  }
   /* ══ 造形｜書面。CLAUDE.md の振り分け1（幾何プリミティブ数個で
      寸法を決めれば済む）に該当。A4 の実寸比 1:1.414 から引く。 */
 
@@ -1935,7 +2023,7 @@
      ときは出さない（飛ぶ先が目の前にある）。 */
   /* 札の名前は短く（今のうちの NOW_SHORT と同じ考え方）。5枚立っても部屋の
      幅（ウィンドウ幅1000〜1440で約435〜450px）の1行に収める。 */
-  const WHEN_SHORT = { toki: '相続登記', todoke: '現所有者の申告', loan: 'ローン', lend: '貸している', borrow: '借地', kumiai: '管理組合', massho: '抵当権の抹消' };
+  const WHEN_SHORT = { kairyo: '土地改良区', shinrin: '森林の届出', nochi: '農地の届出', iranai: '要らないとき', toki: '相続登記', todoke: '現所有者の申告', loan: 'ローン', lend: '貸している', borrow: '借地', kumiai: '管理組合', massho: '抵当権の抹消' };
   function whenNav(rows) {
     return '<nav class="now-nav when-nav" aria-label="そのときの手続き"><div class="now-nav-in">' + rows.map(x =>
       '<button type="button" class="now-go" data-now-go="' + esc(x.id) + '" aria-label="' + esc(x.nm + 'へ移動') + '">' +
@@ -2090,14 +2178,15 @@
   /* v36｜マンションの名義の部屋。名義（単独か共有か）と登記の住所だけ。
      登記と違うところ（前の代）は今のうちが持ち、書類の有無は書類のありかが持つ（二重にしない）。 */
   function roomNm(p) {
-    const r = (p.rights || {}).bldg || {};
+    const land = p.kind === 'land', key = land ? 'land' : 'bldg', what = land ? '土地' : '専有部分';
+    const r = (p.rights || {})[key] || {};
     const hold = r.hold === 'share' ? '共有・' + WHO + 'の持分 ' + (r.shares || '未記録') : r.hold ? '単独' : '持ち方は未記録';
     const a = p.addrReg;
     const addr = a === 'same' ? '今の住所と同じ' : a === 'differ' ? '今の住所と違う（変更の登記がまだ）' : 'まだ確かめていない';
     const q = t => '<div class="rk-q">' + esc(t) + '</div>';
-    return sceneHead('right', '名義', '専有部分', penButton(p, 'right', 'bldg', '専有部分の名義')) +
+    return sceneHead('right', '名義', what, penButton(p, 'right', key, what + 'の名義')) +
       '<div class="rk" style="--n:1">' + q('名義') +
-      '<div class="rk-c"><div class="rk-nm">' + esc(r.owner || '未記録') + '</div><div class="rk-sub">' + esc(hold + (p.built ? '・' + p.built + '築' : '')) + '</div></div>' +
+      '<div class="rk-c"><div class="rk-nm">' + esc(r.owner || '未記録') + '</div><div class="rk-sub">' + esc(hold + (!land && p.built ? '・' + p.built + '築' : '')) + '</div></div>' +
       q('登記の住所') + '<div class="rk-c"><p class="rk-tx' + (a === 'same' ? ' none' : '') + '">' + esc(addr) + '</p></div></div>';
   }
   function roomRights(p) {
@@ -2190,10 +2279,15 @@
       const st = !d.who ? mark('相手が未記録', 1) : !d.tel ? mark('電話が未記録', 1) : '';
       const kv = [];
       if (d.tel) kv.push(['電話', telDD(d.tel), 'tel']);
-      if (flow) kv.push(['お金', esc(flow)]);
+      if (flow) kv.push(['お金', esc(p.kind === 'land' && d.flow === 'recv' ? '賃料を受け取っている' : flow)]);
+      if (p.kind === 'land' && p.landUse === 'field' && d.kind === 'lend') kv.push(['農業委員会', esc(FARM[d.farm || 'unknown'].replace('口約束（農業委員会を通していない）', '通していない（口約束）'))]);
       return lcCard({ band: DEAL_BAND[d.kind] || (DEALS[d.kind] || DEALS.manage).label, nm: d.who || '相手が未記録', sub: d.what || '', kv,
         right: st + penButton(p, 'deal', String(i), d.who || '契約の相手') });
     }).join('');
+    if (p.kind === 'land') return '<div class="lc-room">' + (l.has === 'yes' ? '<div class="lc-sc">' + sceneHead('loan', 'ローン・借入', 'この土地に付いている借入', penButton(p, 'loan', 'loan', '借入')) + loan + '</div>' : '') +
+      '<div class="lc-sc">' + sceneHead('deal', '契約', '使っている人・頼んでいる先',
+        '<button type="button" class="lc-add" data-edit-p="' + esc(p.id) + '" data-edit-type="deal" data-edit-key="new">＋ 追加</button>') +
+      (deals || '<p class="lc-none">使っている人・管理を頼んでいる先の記録はない。</p>') + '</div></div>';
     return '<div class="lc-room"><div class="lc-sc">' + sceneHead('loan', 'ローン・借入', 'この家に付いている借入', penButton(p, 'loan', 'loan', '借入')) + loan + '</div>' +
       '<div class="lc-sc">' + sceneHead('deal', '契約', '続いている相手',
         '<button type="button" class="lc-add" data-edit-p="' + esc(p.id) + '" data-edit-type="deal" data-edit-key="new">＋ 追加</button>') +
@@ -2309,13 +2403,15 @@
       now.push({ key: dcKey.changed(c), fig: 'contract', n: k.length ? k.join('・') : '工事の書類', q: chName(c) });
     });
     rights.push({ key: 'deed', fig: 'deed', n: '権利証', q: '登記済証・登記識別情報', own: true });
-    rights.push({ key: 'acquire', fig: 'contract', n: '買ったとき・建てたときの契約書・領収書', own: true });
+    rights.push(p.kind === 'land' ? { key: 'acquire', fig: 'split', n: '受け継いだとき・買ったときの書類', q: '前の代の遺産分割協議書・売買契約書', own: true }
+      : { key: 'acquire', fig: 'contract', n: '買ったとき・建てたときの契約書・領収書', own: true });
     const who = kind => (p.deals || []).filter(d => d.kind === kind).map(d => d.who).filter(Boolean).join('・');
     /* 契約書は、契約のフォームで「口約束のまま」と答えた相手だけのときは出さない。 */
     const paper = kind => (p.deals || []).some(d => d.kind === kind && d.paper !== 'none');
     const free = kind => (p.deals || []).filter(d => d.kind === kind).every(d => d.flow === 'none');
-    if (paper('lend')) deals.push({ key: 'lend', fig: 'lease', n: free('lend') ? '使用貸借の契約書' : '賃貸借契約書', q: who('lend') });
+    if (paper('lend')) deals.push({ key: 'lend', fig: 'lease', n: free('lend') ? '使用貸借の契約書' : p.kind === 'land' && p.landUse === 'field' ? '賃貸借の契約書・農業委員会の許可書' : '賃貸借契約書', q: who('lend') });
     if (paper('borrow')) deals.push({ key: 'borrow', fig: 'lease', n: free('borrow') ? '使用貸借の契約書' : '借地契約書', q: who('borrow') });
+    if (p.kind === 'land') return [{ label: '今のうち', rows: now }, { label: '名義', rows: rights }, { label: '契約', rows: deals }].filter(x => x.rows.length);
     return [{ label: '今のうち', rows: now }, { label: '権利関係', rows: rights }, { label: 'ローン・契約', rows: deals }].filter(x => x.rows.length);
   }
   /* v36｜マンションの書類のありか。家の中にしかなく、取り直しがきかない紙。
@@ -2504,8 +2600,9 @@
   const ONE = matchMedia('(max-width:' + (LAST2 - 1) + 'px)');
   const S1 = parseFloat(Q.get('s')) || LAST2 / (W_ + SITE_U * 2);
   function buildPlan1(p, stageW) {
-    const condo = p.kind === 'condo';
+    const condo = p.kind === 'condo', land = p.kind === 'land';
     const html = condo ? { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), loan: roomLoan(p), docs: roomDocs(p) }
+      : land ? { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), party: roomParty(p), docs: roomDocs(p) }
       : { liv: roomLiv(p), when: roomWhen(p), right: roomRights(p), party: roomParty(p), docs: roomDocs(p) };
     const W = Math.round(stageW / S1 - SITE_U * 2);
     const wRoom = W - TO;
@@ -2516,19 +2613,19 @@
     const u2px = u => u / viewW * stageW;
     const px2u = x => x * viewW / stageW;
     const toPx = u => u2px(u - PADIN * 2);
-    const order = condo ? ['liv', 'when', 'nm', 'loan', 'docs'] : ['liv', 'when', 'docs', 'right', 'party'];
-    const LABEL = { liv: '今のうち', when: 'そのとき', docs: '書類', right: '権利関係', party: 'ローン・契約', nm: '名義', loan: 'ローン' };
+    const order = condo ? ['liv', 'when', 'nm', 'loan', 'docs'] : land ? ['liv', 'when', 'nm', 'party', 'docs'] : ['liv', 'when', 'docs', 'right', 'party'];
+    const LABEL = { liv: '今のうち', when: 'そのとき', docs: '書類', right: '権利関係', party: land ? '契約' : 'ローン・契約', nm: '名義', loan: 'ローン' };
     const KIND = { liv: 'liv', when: 'main2', docs: 'room', right: 'room', party: 'room', nm: 'room', loan: 'room' };
     const rooms = []; let y = 0;
     order.forEach((k, i) => {
       const raw = measureHTML(html[k], Math.max(50, toPx(wRoom)), true);
       const top = i === 0 ? TO : TI, bot = i === order.length - 1 ? TO : TI;
-      const need = Math.max(MINR, Math.ceil(px2u(raw + headOf(k)) + PADIN * 2 + (top + bot) / 2));
+      const need = Math.max(MINR, Math.ceil(px2u(raw + headOf(k)) + PADIN * 2 + (land ? LW_ : (top + bot) / 2)));
       rooms.push({ id: k, label: LABEL[k], kind: KIND[k], x1: 0, y1: y, x2: W, y2: y + need });
       y += need;
     });
     return { p, rooms, R: Object.fromEntries(rooms.map(r => [r.id, r])),
-      H: y, W, html, one: true,
+      H: y, W, html, one: true, land,
       links: condo ? [['liv', 'when'], ['when', 'nm'], ['nm', 'loan'], ['loan', 'docs']] : [['liv', 'when'], ['when', 'docs'], ['docs', 'right'], ['right', 'party']],
       nowall: [] };
   }
@@ -2572,9 +2669,45 @@
       nowall: [['corr', 'gk'], ['corr', 'liv']] };
   }
 
+  /* ■ v38｜土地の紙面（公図）。部屋＝筆。仕切りは壁の厚みの無い細い線（筆界）、父の土地の外周だけ太い線。
+     左＝今のうち → 名義 → 契約 → 書類、右＝そのとき。今のうちとそのときは隣り合う（戸建て・マンションと同じ）。
+     ★真ん中に道を通していたのは外した（2026-10-01）。部屋どうしの関係を何も言わず、1倍では列の間の溝にしか
+       見えなかった。
+     ★外周の外（紙の下の余白）に水路の帯を描いた版も外した（同日）。帯が言うのは「○○土地改良区の地区」だけで、
+       そのときの土地改良区のカードの言い直しだった。紙面のいちばん下にあり、カードから約2,000px離れていた。
+     左右の割りはマンションと同じ FL。線が細いので、中身の余白は壁の代わりに LW_（線の太さ）だけ見込む。 */
+  const LW_ = 3;
+  function buildPlanLand(p, stageW) {
+    const html = { liv: roomLiv(p), when: roomWhen(p), nm: roomNm(p), party: roomParty(p), docs: roomDocs(p) };
+    const VL = Math.round(W_ * FL);
+    const wUnit = { liv: VL - LW_, nm: VL - LW_, party: VL - LW_, docs: VL - LW_, when: W_ - VL - LW_ };
+    const PADIN = 13;
+    const HEADPX = { liv: 28, when: 28 }, HEADPX_D = 23;
+    const headOf = k => HEADPX[k] != null ? HEADPX[k] : HEADPX_D;
+    const viewW = W_ + SITE_U * 2;
+    const u2px = u => u / viewW * stageW, px2u = x => x * viewW / stageW;
+    const toPx = u => u2px(u - PADIN * 2);
+    const need = {};
+    Object.keys(html).forEach(k => {
+      const raw = measureHTML(html[k], Math.max(50, toPx(wUnit[k])));
+      need[k] = Math.max(MINR, Math.ceil(px2u(raw + headOf(k)) + PADIN * 2 + LW_));
+    });
+    const H = Math.max(need.liv + need.nm + need.party + need.docs, need.when);
+    const L1 = need.liv, L2 = L1 + need.nm, L3 = L2 + need.party;
+    const rooms = [
+      { id: 'liv', label: '今のうち', kind: 'liv', x1: 0, y1: 0, x2: VL, y2: L1 },
+      { id: 'nm', label: '名義', kind: 'room', x1: 0, y1: L1, x2: VL, y2: L2 },
+      { id: 'party', label: '契約', kind: 'room', x1: 0, y1: L2, x2: VL, y2: L3 },
+      { id: 'docs', label: '書類', kind: 'room', x1: 0, y1: L3, x2: VL, y2: H },
+      { id: 'when', label: 'そのとき', kind: 'main2', x1: VL, y1: 0, x2: W_, y2: H }
+    ];
+    return { p, rooms, R: Object.fromEntries(rooms.map(r => [r.id, r])), H, html, W: W_, land: true };
+  }
+
   function buildPlan(p, stageW) {
     if (ONE.matches) return buildPlan1(p, stageW);
     if (p.kind === 'condo') return buildPlanCondo(p, stageW);
+    if (p.kind === 'land') return buildPlanLand(p, stageW);
     const html = { liv: roomLiv(p), when: roomWhen(p),
       right: roomRights(p), party: roomParty(p), docs: roomDocs(p) };
 
@@ -2661,7 +2794,75 @@
     return h;
   }
 
+  /* ■ v38｜土地の紙面を描く。公図の写しの紙：白い地に、筆界の細い線。
+     ・父の土地（部屋）の外周＝太い線。道との境も外周（道は父の土地ではない）
+     ・部屋どうしの境＝細い線
+     ・紙の余白（SITE_U）に、隣の筆の境が紙の端まで続く線を引く（紙の外へ地割りが続く）
+     ・道は番号を振らず「道」とだけ書く。上下の端は線で閉じない（紙の外へ続く）
+     床の色（今のうち＝橙・そのとき＝緑）は戸建て・マンションと同じ。 */
+  function drawLand(plan, uid) {
+    const { rooms, H } = plan, W_ = plan.W, SITE = SITE_U;
+    const BOT = SITE;
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'plan kz-plan');
+    svg.setAttribute('viewBox', -SITE + ' ' + -SITE + ' ' + (W_ + SITE * 2) + ' ' + (H + SITE + BOT));
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', plan.p.name + 'の地割り');
+    svg.appendChild(el('rect', { x: -SITE, y: -SITE, width: W_ + SITE * 2, height: H + SITE + BOT, class: 'kz-sheet' }));
+    const FLOOR = { liv: '#F7EAD6', main2: '#E9EFE9', room: '#FDFCF8', road: '#FFFFFF' };
+    rooms.forEach(r => svg.appendChild(el('rect', { x: r.x1, y: r.y1, width: r.x2 - r.x1, height: r.y2 - r.y1, fill: FLOOR[r.kind] || '#FDFCF8' })));
+
+    /* 隣の筆：外周から紙の端まで。間隔は物件ごとに決まった乱れ（同じ物件では毎回同じ） */
+    let seed = Array.from(plan.p.id || 'x').reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296;
+    const nb = el('g', { class: 'kz-nb' });
+    const tick = (x1, y1, x2, y2) => nb.appendChild(el('line', { x1, y1, x2, y2 }));
+    const own = rooms.filter(r => r.kind !== 'road');
+    /* 上下の辺：180〜360 ごとに。少し斜めにする（地割りは直角とは限らない） */
+    [[0, -SITE], [H, H + BOT]].forEach(([y, y2]) => {
+      for (let x = 120 + rnd() * 120; x < W_ - 60; x += 180 + rnd() * 180) tick(x, y, x + (rnd() - .5) * 22, y2);
+    });
+    [[0, -SITE], [W_, W_ + SITE]].forEach(([x, x2]) => {
+      for (let y = 90 + rnd() * 160; y < H - 60; y += 220 + rnd() * 260) tick(x, y, x2, y + (rnd() - .5) * 22);
+    });
+    /* 外周の線を紙の端まで延ばす（隣の筆の境が続く）。角は斜めに逃がさない */
+    tick(-SITE, 0, 0, 0); tick(W_, 0, W_ + SITE, 0); tick(-SITE, H, 0, H); tick(W_, H, W_ + SITE, H);
+    tick(0, -SITE, 0, 0); tick(W_, -SITE, W_, 0);
+    tick(0, H, 0, H + SITE); tick(W_, H, W_, H + SITE);
+    svg.appendChild(nb);
+
+    /* 筆界：部屋の辺ごとに、向こう側が父の土地なら細い線、そうでなければ（道・紙の外）太い線 */
+    const inOwn = (x, y) => own.some(o => o.x1 < x - .01 && o.x2 > x + .01 && o.y1 < y - .01 && o.y2 > y + .01);
+    const seen = new Set(), thin = el('g', { class: 'kz-in' }), thick = el('g', { class: 'kz-own' });
+    own.forEach(r => {
+      [['h', r.y1, r.x1, r.x2, -1], ['h', r.y2, r.x1, r.x2, 1], ['v', r.x1, r.y1, r.y2, -1], ['v', r.x2, r.y1, r.y2, 1]].forEach(([d, pos, a, b, sgn]) => {
+        const k = d + pos + ':' + a + ':' + b; if (seen.has(k)) return; seen.add(k);
+        const m = (a + b) / 2, out = d === 'h' ? !inOwn(m, pos + sgn * 2) : !inOwn(pos + sgn * 2, m);
+        const at = d === 'h' ? { x1: a, y1: pos, x2: b, y2: pos } : { x1: pos, y1: a, x2: pos, y2: b };
+        (out ? thick : thin).appendChild(el('line', Object.assign(at, out ? { class: 'pl-w-line', 'stroke-width': 2.6 } : {})));
+      });
+    });
+    svg.appendChild(thin); svg.appendChild(thick);
+
+    const layer = document.createElement('div');
+    layer.className = 'layer';
+    const VBW = W_ + SITE * 2, VBH = H + SITE + BOT, PADIN = 13, IN = LW_ / 2 + PADIN;
+    rooms.forEach(r => {
+      if (!plan.html[r.id]) return;
+      const d = document.createElement('div');
+      d.className = 'cell c-' + r.id;
+      d.style.left = ((r.x1 + IN + SITE) / VBW * 100) + '%';
+      d.style.top = ((r.y1 + IN + SITE) / VBH * 100) + '%';
+      d.style.width = ((r.x2 - r.x1 - IN * 2) / VBW * 100) + '%';
+      d.style.height = ((r.y2 - r.y1 - IN * 2) / VBH * 100) + '%';
+      d.innerHTML = '<div class="body">' + plan.html[r.id] + '</div>';
+      layer.appendChild(d);
+    });
+    return { svg, layer };
+  }
+
   function draw(plan, uid) {
+    if (plan.land) return drawLand(plan, uid);
     const { rooms, R, H, KAMA } = plan;
     const W_ = plan.W;
     /* 廊下から下段の左右へ開口。上段は今のうち⇔そのとき、
@@ -2974,7 +3175,7 @@
          あるのは屋根ではなく上の階。陸屋根と塔屋は「ビル」の記号にしか
          ならず、塔屋は1倍で煙突に見えた（v35 の A〜D で失敗）。
          マンションと読ませるのは、階ごとに積まれたバルコニーと窓
-     土地（kind=land）もいまは戸建ての屋根になる（切妻の頃から同じ）。
+     土地（kind=land）＝屋根も上の階も無い。公図の帯（kozuBand。2026-10-01、`_検討/不動産v38.html`）。
 
      ★屋根の下に壁のスラブは立てない。軒天の下端を間取り図の外壁の
      上端に接する（下の drawRoofs）。
@@ -3080,6 +3281,49 @@
     return g;
   }
 
+
+  /* ■ v38｜土地の見出し＝公図の帯。屋根（戸建て）・上の階（マンション）にあたる。
+     法務省の登記所備付地図データ（`kozu.js`。素材の記録は `prototype/assets/不動産-公図の帯.README.md`）から切り出した実在の地割りを、
+     帯の中心に合わせて描く。札（トレペ）はその上に重なる。地番は書かない（本物の写しに見せかけない）。
+     ★土地の種類によらず同じ1本（田畑の地割り、0.6m／px）。帯は家族の土地の地図ではなく「公図という紙」の
+       記号。種類で絵を変えると「うちの土地の形」と読ませる方へ寄る。種類は札の字が言う。山林の地割りの版は、
+       筆の間の大きな空白・ギザギザの筆界・札の字にかかる濃い線で質も落ちていた（2026-10-01 ユーザーと合意）。
+     ★父の土地として筆を塗るのもやめた。どの筆が父の土地かは分からない（地図ではない）ので、塗ると
+       ありもしないことを言う。札に隠れないよう横へずらすと、1倍では意味の分からない四角が1つ残った。
+     方位（北）は右端。左右の端は間取り図の外周に揃える（屋根と同じ edge）。 */
+  function kozuBand(w, band, edge, use, cardW, cardH) {
+    const data = (window.KOZU || {}).field;
+    if (!data) return houseRoof(w, band, edge);
+    const H = band + 30, yT = 3, yB = H - 4;
+    const xL = edge != null ? edge : 10, xR = w - xL, cx = w / 2, cy = (yT + yB) / 2;
+    const g = el('svg', { viewBox: '0 0 ' + w + ' ' + H, class: 'rf kz', height: H, role: 'img', 'aria-label': '公図（地割り）' });
+    const id = 'kzc' + (kzSeq++);
+    const defs = el('defs'), cp = el('clipPath', { id });
+    cp.appendChild(el('rect', { x: xL, y: yT, width: xR - xL, height: yB - yT }));
+    defs.appendChild(cp); g.appendChild(defs);
+    g.appendChild(el('rect', { x: xL, y: yT, width: xR - xL, height: yB - yT, class: 'kz-paper' }));
+    const lots = el('g', { 'clip-path': 'url(#' + id + ')' });
+    let d = '';
+    data.forEach(f => {
+      let minx = 1e9, maxx = -1e9;
+      for (let i = 0; i < f.length; i += 2) { minx = Math.min(minx, cx + f[i]); maxx = Math.max(maxx, cx + f[i]); }
+      if (maxx < xL || minx > xR) return;
+      for (let i = 0; i < f.length; i += 2) d += (i ? ' L ' : 'M ') + (cx + f[i]).toFixed(1) + ' ' + (cy + f[i + 1]).toFixed(1);
+      d += ' Z ';
+    });
+    lots.appendChild(el('path', { class: 'kz-lot', d }));
+    g.appendChild(lots);
+    /* 方位：右端に北の矢印 */
+    const ax = xR - 26, ay = cy;
+    g.appendChild(el('circle', { cx: ax, cy: ay, r: 15, class: 'kz-n-bg' }));
+    g.appendChild(el('path', { class: 'kz-n', d: 'M ' + ax + ' ' + (ay - 11) + ' L ' + (ax + 5) + ' ' + (ay + 7) + ' L ' + ax + ' ' + (ay + 3) + ' L ' + (ax - 5) + ' ' + (ay + 7) + ' Z' }));
+    const nt = el('text', { x: ax, y: ay - 13.5, class: 'kz-n-t', 'text-anchor': 'middle' }); nt.textContent = 'N'; g.appendChild(nt);
+    /* 紙の縁 */
+    g.appendChild(el('path', { class: 'kz-edge', d: 'M ' + xL + ' ' + yB + ' L ' + xL + ' ' + yT + ' L ' + xR + ' ' + yT + ' L ' + xR + ' ' + yB }));
+    g._mid = cy; g._eave = yB;
+    return g;
+  }
+  let kzSeq = 0;
   /* マンション｜上の階の外壁。父の住戸（下の間取り）の上に積まれた、
      1つ上の階を外から見る。下から 上の階のスラブの小口 → バルコニーの
      手すり（縦格子）→ その奥のサッシと外壁 → さらに上の階のスラブの小口。
@@ -3376,17 +3620,19 @@
   /* 住所＋建物名・部屋番号（マンション）。窓口の判定（officeHow など）は住所だけを読む。 */
   const fullAddr = p => [p.addr, p.room].filter(Boolean).join(' ');
   /* 住んでいる人が未記録（登録で必ず聞くので、古い記録だけ）の札は出さない。 */
-  const useTag = (p, cls) => { const u = USES[p.use]; return u ? '<span class="' + cls + ' t-' + u.tone + '">' + esc(u.label) + '</span>' : ''; };
+  const useTag = (p, cls) => { const u = (p.kind === 'land' ? S.LAND_USES : USES)[p.use]; return u ? '<span class="' + cls + ' t-' + u.tone + '">' + esc(u.label) + '</span>' : ''; };
   function propHead(p) {
     const k = KINDS[p.kind] || KINDS.other;
-    return '<div class="ph" id="p-' + p.id + '" data-kind="' + esc(p.kind || '') + '">' +
+    const LU = { field: '田・畑', forest: '山林', lot: '宅地（建物なし）', sokochi: '宅地（人の家が建っている）', other: 'その他' };
+    const kindLabel = p.kind === 'land' && LU[p.landUse] ? '土地・' + LU[p.landUse] : k.label;
+    return '<div class="ph" id="p-' + p.id + '" data-kind="' + esc(p.kind || '') + '" data-landuse="' + esc(p.landUse || '') + '">' +
       '<div class="rf-slot"></div>' +
       '<div class="rf-card">' + penButton(p, 'prop', 'base', p.name + 'の基本情報') +
         '<div class="rf-ln"><span class="rf-t"><h3>' + esc(p.name) + '</h3>' +
           useTag(p, 'rf-use') + '</span></div>' +
         '<div class="rf-ln rf-sub"><span class="rf-addr">' + ICONS.pin +
           esc(fullAddr(p) || '住所 未記録') + '</span><span class="rf-kind"><span class="rf-sep">｜</span>' +
-          esc(k.label) + (p.built ? '<span class="rf-sep">｜</span>' + esc(p.built) + '築' : '') +
+          esc(kindLabel) + (p.built && p.kind !== 'land' ? '<span class="rf-sep">｜</span>' + esc(p.built) + '築' : '') +
           '</span></div>' +
       '</div></div>';
   }
@@ -3420,7 +3666,8 @@
           edge = pr.left + (wallL - vb.x) / vb.width * pr.width - slot.getBoundingClientRect().left;
         }
       }
-      const svg = ph.dataset.kind === 'condo' ? condoFloor(w, ch + 12, edge) : houseRoof(w, ch + 12, edge);
+      const svg = ph.dataset.kind === 'condo' ? condoFloor(w, ch + 12, edge)
+        : ph.dataset.kind === 'land' ? kozuBand(w, ch + 12, edge, ph.dataset.landuse, card.getBoundingClientRect().width, ch) : houseRoof(w, ch + 12, edge);
       slot.replaceChildren(svg);
       card.style.top = (svg._mid - ch / 2) + 'px';
 
