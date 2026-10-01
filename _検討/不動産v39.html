@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>不動産v39｜土地の札を公図の1区画にする</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../prototype/shared/tokens.css">
+  <link rel="stylesheet" href="../prototype/shared/shell.css">
+  <link rel="stylesheet" href="../prototype/real-estate/area.css?v=v39">
+  <!--
+    不動産v39｜一覧の土地の札を、公図から切り出した1区画にする（2026-10-01）
+
+    本番（prototype/real-estate）をそのまま読み込み、一覧の土地の札（.shelf-card[data-kind=land]）
+    の正面（svg.fc-bg）だけを差し替える。戸建て・マンションの札は本番のまま。
+    ★このページで編集すると本番と同じ保存先に書かれる。触らない。
+
+    ■ なぜ
+      ユーザー指摘：土地が分かりづらい。看板でも、ただのカードに見える。
+      看板はもともと「見出し帯の付いた四角い板」で、字が無ければ形がカードそのもの。
+      土地らしさは足元の草と支柱だけが負っていた。
+      もう1つ：戸建て・マンションは一覧の札の上の帯が、開いた見出しと同じ物
+      （屋根・上の階）。土地だけ見出し（公図の帯）と一覧（看板）が別の物だった。
+
+    ■ 作り
+      紙（公図の写し）の上に地割りを引き、真ん中の1区画＝この土地を外周の太線で囲う。
+      文字はその区画の中。区画の中は地割りを消す（字の後ろに線を通さない。v37 の網の教訓）。
+        上の帯 ＝ 紙の上端（戸建ての棟包みの頭 yB）〜区画の上辺（軒天の下端 wallTop）
+        横     ＝ 戸建ての外壁の位置（OV）が区画の左右
+        下の帯 ＝ 区画の下辺（基礎の上端 yK）〜紙の下端（地盤面 yGL）
+      ★縦横は維持（ユーザー指示 2026-10-01）：地割りは見出しの帯と同じ 0.6m／px を
+        縦横同じ倍率で描く。札の形に合わせて伸ばさない。札の外寸も戸建てと同じ。
+      ★区画は塗らない（見出しの帯で「筆は塗らない」と決めたのと同じ）。外周の太線だけ。
+      ★地割りは見出しの帯と同じ1本（kozu.js）。土地の種類で変えない。
+      地盤面の線・草・支柱は描かない（上から見た図に、横から見た地面を混ぜない）。
+      紙の下端を戸建ての地盤面の高さに揃えて、並びの下を揃える。
+
+    ■ 比べるもの（右下の切り替え）
+      今  本番（看板）
+      A   公図の1区画（区画の中＝白）
+      B   A ＋右上に方位（見出しの帯と同じ北の矢印）
+      C   実在の1筆（kozu.js の 1）に合わせる。地図を回さず・伸ばさず、縦横同じ倍率で
+          その筆の内側が文字の範囲を覆うように描く。上が道・左右も道・右上が隅切り
+
+    ■ 結論（2026-10-01）：不採用。ユーザー「看板の方が全然よい。なぜ看板＋αで考えない？」→ v40
+
+    ■ 見て分かったこと（1倍のスクショ、ウィンドウ幅 1280・1000・800・420）
+      A/B：区画の外の地割りが疎ら（札の幅で 5本ほど）。白い矩形が地図に載っているだけで、
+           カードのまま。
+      C  ：道・隅切り・わずかな傾きで「地図の中の1区画」に見える。ただし筆の縦横比
+           （内側 2.94）は1つに決まっていて、札の縦横比はウィンドウ幅で 2.0〜5.0 動く。
+           ウィンドウ幅 1000〜1280（札 291〜293）では収まる。800（札 245）では左右の辺が
+           紙の外へ出る。1列（札 380 以上）では下の辺が紙の外へ出る。
+      D（外した）：隣り合う筆を束ねた「まとまり」（36〜44 の列）から縦横比の合う組を選ぶ版。
+           筆ごとに下端が 54〜99 と不揃いで、どの組も外周が紙の下へ 40〜250px はみ出した。
+      → 縦横を保つなら、札の縦横比ごとに「その比の横長の筆」が要る。kozu.js の範囲には
+        横長の筆が 1 しか無い。山形村の地図XML（同じ出どころ）から、横長でほぼ矩形の筆を
+        縦横比 2.0〜5.0 で数個切り出し、札ごとに選ぶのが次の手。
+  -->
+  <style>
+    .fc-kz-paper{fill:#FFFFFF}
+    .fc-kz-lot  {fill:none;stroke:#8C8779;stroke-width:.8;stroke-linejoin:round}
+    .fc-kz-edge {fill:none;stroke:#8C8779;stroke-width:1.2}
+    .fc-kz-own  {fill:#FFFFFF}
+    .fc-kz-out  {fill:none;stroke:#4E4B43;stroke-width:2.2;stroke-linejoin:miter}
+    .fc-kz-own  {stroke:#FFFFFF;stroke-width:.6}
+    .fc-kz-out2 {fill:none;stroke:#4E4B43;stroke-width:4.4;stroke-linejoin:round}
+    .shelf-card:hover .fc-kz-out,.shelf-card:hover .fc-kz-out2{stroke:#2F2D28}
+
+    .v39-sw{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;gap:4px;flex-wrap:wrap;
+      background:#fff;border:1px solid var(--line2);border-radius:10px;padding:6px;
+      box-shadow:0 4px 14px rgba(0,0,0,.08);font-size:12.5px}
+    .v39-sw button{border:1px solid var(--line);background:#FBFAF6;border-radius:7px;
+      padding:5px 10px;cursor:pointer;font:inherit}
+    .v39-sw button[aria-pressed="true"]{background:#2E4A3A;color:#fff;border-color:#2E4A3A}
+    .v39-sw .h{align-self:center;color:var(--ink3);padding:0 6px 0 4px}
+  </style>
+</head>
+<body data-area="real-estate" data-root="../prototype/">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+
+    <div class="sec-h">
+      <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 11.5 12 4.2l8.5 7.3"/><path d="M5.8 10.8V19a1 1 0 0 0 1 1h10.4a1 1 0 0 0 1-1v-8.2"/><path d="M9.8 20v-5.4a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1V20"/></svg></span>
+      <h3>持っている不動産</h3><span class="cnt" id="cntShelf"></span>
+      <button class="addbtn" id="addProp">＋ 物件を登録</button>
+    </div>
+    <p class="sec-lead">自宅・実家・土地など、名義や持分に関わる不動産を並べています。</p>
+    <div class="sec"><div class="shelf" id="shelf"></div></div>
+
+    <div class="sec"><div id="plans"></div></div>
+
+  </div></main>
+</div>
+<div class="toast" id="toast"></div>
+<div class="v39-sw" id="v39sw"><span class="h">土地の札</span></div>
+<script src="../prototype/shared/areas.js"></script>
+<script src="../prototype/shared/shell.js"></script>
+<script src="../prototype/real-estate/state.js?v=v39"></script>
+<script src="../prototype/real-estate/editor.js?v=v39"></script>
+<script src="../prototype/real-estate/kozu.js?v=v39"></script>
+<script src="../prototype/real-estate/render.js?v=v39"></script>
+<script>
+(function () {
+  'use strict';
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const P = pts => 'M ' + pts.map(q => q.join(' ')).join(' L ') + ' Z';
+
+  const V = { now: '今（看板）', A: 'A 公図の1区画', B: 'B ＋方位', C: 'C 実在の1筆に合わせる' };
+
+  /* C：地割りの中の横長の1筆（kozu.js の 1。上が道、左右も道、右上が隅切り）。
+     この筆の内側（隅切り・斜めの辺を除いた矩形）が文字の範囲を覆う倍率を、縦横同じに取る。
+     地図は回さない・伸ばさない。 */
+  const OWN = 1, OWN_IN = { x0: 411.5, x1: 536.9, y0: -19.3, y1: 23.3 };
+  function landC(w, h) {
+    const g = el('svg', { class: 'fc-bg', viewBox: '0 0 ' + w + ' ' + h, 'aria-hidden': 'true', 'data-v39': cur });
+    const add = (n, a) => g.appendChild(el(n, a));
+    const { yB, yGL } = frame(h);
+    const xL = 3, xR = w - 3;
+    /* 文字の範囲＝札の余白（area.css の padding 47 27 28）の内側 */
+    const T = { x0: 27, x1: w - 27, y0: 47, y1: h - 28 };
+    const s = Math.max((T.x1 - T.x0) / (OWN_IN.x1 - OWN_IN.x0), (T.y1 - T.y0) / (OWN_IN.y1 - OWN_IN.y0));
+    const tx = (T.x0 + T.x1) / 2 - s * (OWN_IN.x0 + OWN_IN.x1) / 2;
+    const ty = (T.y0 + T.y1) / 2 - s * (OWN_IN.y0 + OWN_IN.y1) / 2;
+    const path = f => { let d = ''; for (let i = 0; i < f.length; i += 2) d += (i ? ' L ' : 'M ') + (tx + s * f[i]).toFixed(1) + ' ' + (ty + s * f[i + 1]).toFixed(1); return d + ' Z '; };
+
+    const id = 'v39c' + (seq++);
+    const defs = el('defs', {}), cp = el('clipPath', { id });
+    cp.appendChild(el('rect', { x: xL, y: yB, width: xR - xL, height: yGL - yB }));
+    defs.appendChild(cp); g.appendChild(defs);
+    add('rect', { class: 'fc-kz-paper', x: xL, y: yB, width: xR - xL, height: yGL - yB });
+    const F = window.KOZU.field || [];
+    const lots = el('g', { 'clip-path': 'url(#' + id + ')' });
+    lots.appendChild(el('path', { class: 'fc-kz-lot', d: F.filter((f, i) => i !== OWN).map(path).join('') }));
+    lots.appendChild(el('path', { class: 'fc-kz-own', d: path(F[OWN]) }));
+    lots.appendChild(el('path', { class: 'fc-kz-out', d: path(F[OWN]) }));
+    g.appendChild(lots);
+    add('rect', { class: 'fc-kz-edge', x: xL, y: yB, width: xR - xL, height: yGL - yB });
+    g.dataset.scale = s.toFixed(2);
+    return g;
+  }
+  const qs = new URLSearchParams(location.search);
+  let cur = V[qs.get('v')] ? qs.get('v') : 'C';
+
+  /* 縦の割り付けは本番 fcFrame と同じ数（render.js の FC。ここでは読めないので写す） */
+  const FC = { OV: 15, MUNE: 4, TILE: 12, HAFU: 6, TOI: 3.5, NOKI: 3, KISO: 13, GL: 5, GABLE: 80, PITCH: .4 };
+  function frame(h) {
+    const band = FC.MUNE * .5 + FC.TILE + FC.HAFU + FC.TOI;
+    const yB = Math.max(2, FC.GABLE * FC.PITCH - band + 2);
+    const wallTop = yB + band + FC.NOKI;
+    const yGL = h - FC.GL;
+    return { yB, wallTop, yGL, yK: yGL - FC.KISO };
+  }
+
+  let seq = 0;
+  function land(w, h) {
+    const g = el('svg', { class: 'fc-bg', viewBox: '0 0 ' + w + ' ' + h, 'aria-hidden': 'true', 'data-v39': cur });
+    const add = (n, a) => g.appendChild(el(n, a));
+    const { yB, wallTop, yK, yGL } = frame(h);
+    const xL = 3, xR = w - 3;                 /* 紙の左右＝戸建ての軒先（ケラバ）の位置 */
+    const wL = FC.OV, wR = w - FC.OV;         /* 区画の左右＝戸建ての外壁の位置 */
+    const cx = w / 2, cy = (yB + yGL) / 2;
+
+    /* 紙 */
+    const id = 'v39c' + (seq++);
+    const defs = el('defs', {}), cp = el('clipPath', { id });
+    cp.appendChild(el('rect', { x: xL, y: yB, width: xR - xL, height: yGL - yB }));
+    defs.appendChild(cp); g.appendChild(defs);
+    add('rect', { class: 'fc-kz-paper', x: xL, y: yB, width: xR - xL, height: yGL - yB });
+
+    /* 地割り：見出しの帯と同じデータを、同じ倍率（0.6m／px）で。伸ばさない */
+    let d = '';
+    (window.KOZU.field || []).forEach(f => {
+      let minx = 1e9, maxx = -1e9;
+      for (let i = 0; i < f.length; i += 2) { minx = Math.min(minx, cx + f[i]); maxx = Math.max(maxx, cx + f[i]); }
+      if (maxx < xL || minx > xR) return;
+      for (let i = 0; i < f.length; i += 2) d += (i ? ' L ' : 'M ') + (cx + f[i]).toFixed(1) + ' ' + (cy + f[i + 1]).toFixed(1);
+      d += ' Z ';
+    });
+    const lots = el('g', { 'clip-path': 'url(#' + id + ')' });
+    lots.appendChild(el('path', { class: 'fc-kz-lot', d }));
+    g.appendChild(lots);
+    add('rect', { class: 'fc-kz-edge', x: xL, y: yB, width: xR - xL, height: yGL - yB });
+
+    /* この土地：区画の中は白く抜き、外周だけ太線 */
+    add('path', { class: 'fc-kz-own', d: P([[wL, wallTop], [wR, wallTop], [wR, yK], [wL, yK]]) });
+    add('path', { class: 'fc-kz-out', d: P([[wL, wallTop], [wR, wallTop], [wR, yK], [wL, yK]]) });
+
+    /* 方位（B）：見出しの帯と同じ北の矢印を、上の帯の右端に。帯の高さに収まる大きさで */
+    if (cur === 'B') {
+      const r = (wallTop - yB) / 2 - 2, ax = wR - r - 6, ay = (yB + wallTop) / 2;
+      add('circle', { class: 'kz-n-bg', cx: ax, cy: ay, r });
+      add('path', { class: 'kz-n', d: 'M ' + ax + ' ' + (ay - r * .72) + ' L ' + (ax + r * .33) + ' ' + (ay + r * .46) +
+        ' L ' + ax + ' ' + (ay + r * .2) + ' L ' + (ax - r * .33) + ' ' + (ay + r * .46) + ' Z' });
+    }
+    return g;
+  }
+
+  const orig = new WeakMap();
+  function apply() {
+    document.querySelectorAll('#shelf .shelf-card[data-kind="land"]').forEach(btn => {
+      const old = btn.querySelector(':scope > svg.fc-bg');
+      if (!old) return;
+      if (!old.hasAttribute('data-v39')) orig.set(btn, old);
+      if (cur === 'now') { const o = orig.get(btn); if (o && o !== old) old.replaceWith(o); return; }
+      if (old.dataset.v39 === cur) return;
+      const r = btn.getBoundingClientRect();
+      old.replaceWith((cur === 'C' ? landC : land)(Math.round(r.width), Math.round(r.height)));
+    });
+  }
+  /* 本番の drawShelf が描き直すたびに差し替える */
+  const mo = new MutationObserver(() => requestAnimationFrame(apply));
+  mo.observe(document.getElementById('shelf'), { childList: true, subtree: true });
+  addEventListener('resize', () => requestAnimationFrame(() => requestAnimationFrame(apply)));
+
+  const sw = document.getElementById('v39sw'), btns = {};
+  Object.keys(V).forEach(k => {
+    const b = document.createElement('button'); b.textContent = V[k];
+    b.onclick = () => { cur = k; sync(); document.querySelectorAll('#shelf svg.fc-bg[data-v39]').forEach(s => s.dataset.v39 = 'stale'); apply(); };
+    sw.appendChild(b); btns[k] = b;
+  });
+  function sync() { Object.keys(btns).forEach(k => btns[k].setAttribute('aria-pressed', k === cur)); }
+  sync();
+  window.__v39 = { set: v => { cur = v; sync(); document.querySelectorAll('#shelf svg.fc-bg[data-v39]').forEach(s => s.dataset.v39 = 'stale'); apply(); } };
+})();
+</script>
+</body>
+</html>

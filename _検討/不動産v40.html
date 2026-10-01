@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>不動産v40｜土地の札を看板＋αにする</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../prototype/shared/tokens.css">
+  <link rel="stylesheet" href="../prototype/shared/shell.css">
+  <link rel="stylesheet" href="../prototype/real-estate/area.css?v=v40">
+  <!--
+    不動産v40｜一覧の土地の札を、看板のまま「カードに見えない」ようにする（2026-10-01）
+
+    本番（prototype/real-estate）をそのまま読み込み、一覧の土地の札の正面（svg.fc-bg）だけを差し替える。
+    ★このページで編集すると本番と同じ保存先に書かれる。触らない。
+
+    ■ 経緯
+      ユーザー指摘：土地が分かりづらい。看板だとしても、ただのカードに見える。
+      v39 で看板を公図の区画に置き換えたが、ユーザー判断「看板の方が全然よい。なぜ看板＋αで考えない？」
+      → 看板は残す。カードに見える理由を潰す。
+
+    ■ 結論（2026-10-01）：本番の看板のまま、見出し帯に種類を書くだけ（B の字、支柱は本番どおり）。
+      支柱を上へ出すのは不要（ユーザー）。render.js の fcLand へ移植済み。
+
+    ■ カードに見える理由（本番の看板を見て）
+      1. 輪郭が四角で閉じている。戸建ては千鳥破風が屋根の帯の上へ、マンションは階が上下へ続くのに、
+         看板は板の四角がそのまま札の外形。支柱は板の下の 13px にしか見えない
+      2. 見出し帯が無地。看板の見出し帯は、本来いちばん大きな字が書いてある所。
+         字の無い帯は、カードの見出し欄にしか見えない
+
+    ■ ＋α
+      A  支柱を板の裏に通し、板の上へ出してキャップを付ける（角パイプの立て看板の作り）。
+         出す高さは、戸建ての千鳥破風が屋根の帯から出る高さと同じ（頂点＝札の上端 2px）。
+         支柱 60角 → 2px（1px＝30mm）。本番は 4px で描いていたので、実寸に直す
+      B  A ＋見出し帯に土地の種類を書く（LAND_KINDS。田・畑／山林／宅地／その他→土地）。
+         一覧の札は種類を言っていなかったので、新しく知ることが1つ増える。地色の帯に墨の字
+      C  B の帯を墨にして白抜きの字（管理看板によくある帯）
+  -->
+  <style>
+    .fc-cap   {fill:#8C8779}
+    .fc-sign-t{font:700 12px var(--font);letter-spacing:.25em;fill:#4E4B43}
+    .fc-sign-h.ink{fill:#4E4B43}
+    .fc-sign-t.ink{fill:#FFFFFF}
+    .v40-sw{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;gap:4px;flex-wrap:wrap;
+      background:#fff;border:1px solid var(--line2);border-radius:10px;padding:6px;
+      box-shadow:0 4px 14px rgba(0,0,0,.08);font-size:12.5px}
+    .v40-sw button{border:1px solid var(--line);background:#FBFAF6;border-radius:7px;
+      padding:5px 10px;cursor:pointer;font:inherit}
+    .v40-sw button[aria-pressed="true"]{background:#2E4A3A;color:#fff;border-color:#2E4A3A}
+    .v40-sw .h{align-self:center;color:var(--ink3);padding:0 6px 0 4px}
+  </style>
+</head>
+<body data-area="real-estate" data-root="../prototype/">
+<div class="shell">
+  <aside class="guide"></aside>
+  <main class="work"><div class="inner">
+
+    <div class="sec-h">
+      <span class="sec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.5 11.5 12 4.2l8.5 7.3"/><path d="M5.8 10.8V19a1 1 0 0 0 1 1h10.4a1 1 0 0 0 1-1v-8.2"/><path d="M9.8 20v-5.4a1 1 0 0 1 1-1h2.4a1 1 0 0 1 1 1V20"/></svg></span>
+      <h3>持っている不動産</h3><span class="cnt" id="cntShelf"></span>
+      <button class="addbtn" id="addProp">＋ 物件を登録</button>
+    </div>
+    <p class="sec-lead">自宅・実家・土地など、名義や持分に関わる不動産を並べています。</p>
+    <div class="sec"><div class="shelf" id="shelf"></div></div>
+
+    <div class="sec"><div id="plans"></div></div>
+
+  </div></main>
+</div>
+<div class="toast" id="toast"></div>
+<div class="v40-sw" id="v40sw"><span class="h">土地の札</span></div>
+<script src="../prototype/shared/areas.js"></script>
+<script src="../prototype/shared/shell.js"></script>
+<script src="../prototype/real-estate/state.js?v=v40"></script>
+<script src="../prototype/real-estate/editor.js?v=v40"></script>
+<script src="../prototype/real-estate/kozu.js?v=v40"></script>
+<script src="../prototype/real-estate/render.js?v=v40"></script>
+<script>
+(function () {
+  'use strict';
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const P = pts => 'M ' + pts.map(q => q.join(' ')).join(' L ') + ' Z';
+  const L = (x0, y0, x1, y1) => 'M ' + x0 + ' ' + y0 + ' L ' + x1 + ' ' + y1 + ' ';
+  const S = window.SeiZenRealEstate;
+
+  const V = { now: '今（本番）', A: 'A 支柱を上へ', B: 'B ＋種類を書く', C: 'C ＋墨の帯' };
+  const qs = new URLSearchParams(location.search);
+  let cur = V[qs.get('v')] ? qs.get('v') : 'B';
+
+  /* 本番 fcFrame と同じ数（render.js の FC を写す） */
+  const FC = { OV: 15, MUNE: 4, TILE: 12, HAFU: 6, TOI: 3.5, NOKI: 3, KISO: 13, GL: 5, GABLE: 80, PITCH: .4 };
+  function frame(h) {
+    const band = FC.MUNE * .5 + FC.TILE + FC.HAFU + FC.TOI;
+    const yB = Math.max(2, FC.GABLE * FC.PITCH - band + 2);
+    const yGL = h - FC.GL;
+    return { yB, wallTop: yB + band + FC.NOKI, yGL, yK: yGL - FC.KISO };
+  }
+  const SHORT = { field: '田・畑', forest: '山林', lot: '宅地', sokochi: '宅地', other: '土地' };
+
+  function sign(w, h, p) {
+    const g = el('svg', { class: 'fc-bg', viewBox: '0 0 ' + w + ' ' + h, 'aria-hidden': 'true', 'data-v40': cur });
+    const add = (n, a) => g.appendChild(el(n, a));
+    const R = (x0, y0, x1, y1, c) => add('path', { class: c, d: P([[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) });
+    const { yB, wallTop, yK, yGL } = frame(h);
+    const wL = FC.OV, wR = w - FC.OV, mid = (wL + wR) / 2;
+
+    /* 地盤（本番と同じ） */
+    let hat = '';
+    for (let x = 2; x < w; x += 6) hat += L(x, yGL + FC.GL, x + 4, yGL + 1);
+    add('path', { class: 'fc-hat', d: hat });
+
+    /* 支柱：角パイプ 60角 → 2px。板の裏を通り、板の上端から出してキャップ。
+       頂は戸建ての千鳥破風の頂点と同じ高さ（2px） */
+    const posts = [wL + (wR - wL) * .2, wL + (wR - wL) * .8];
+    const top = 2, cap = 2.5;
+    posts.forEach(x => {
+      R(x - 1.5, top + cap, x + 1.5, h, 'fc-post');
+      R(x - 2.2, top, x + 2.2, top + cap, 'fc-cap');
+    });
+    let grass = '';
+    [wL + 6, posts[0] - 9, posts[0] + 10, mid - 20, mid + 14, posts[1] - 11, posts[1] + 9, wR - 7].forEach((x, i) => {
+      const k = 1 + (i % 3) * .18;
+      grass += L(x, yGL, x - 3.2 * k, yGL - 3.5 * k) + L(x, yGL, x - 1.2 * k, yGL - 6 * k) +
+        L(x, yGL, x + .4, yGL - 7.5 * k) + L(x, yGL, x + 2 * k, yGL - 5.2 * k) + L(x, yGL, x + 3.6 * k, yGL - 3 * k);
+    });
+    add('path', { class: 'fc-grass', d: grass });
+    add('path', { class: 'fc-gl', d: L(0, yGL, w, yGL) });
+
+    /* 板面＋見出し帯 */
+    const ink = cur === 'C';
+    R(wL, yB, wR, yK, 'fc-wall');
+    R(wL, yB, wR, wallTop, 'fc-sign-h' + (ink ? ' ink' : ''));
+    add('path', { class: 'r-mem', d: L(wL, wallTop, wR, wallTop) });
+    if (cur !== 'A') {
+      const t = el('text', { class: 'fc-sign-t' + (ink ? ' ink' : ''), x: mid, y: (yB + wallTop) / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+      t.textContent = SHORT[p && p.landUse] || '土地';
+      g.appendChild(t);
+    }
+    posts.forEach(x => [(yB + wallTop) / 2, yK - 5].forEach(y => add('circle', { class: 'fc-bolt', cx: x, cy: y, r: 1.3 })));
+    add('path', { class: 'r-out', d: P([[wL, yB], [wR, yB], [wR, yK], [wL, yK]]) });
+    return g;
+  }
+
+  const orig = new WeakMap();
+  function apply() {
+    document.querySelectorAll('#shelf .shelf-card[data-kind="land"]').forEach(btn => {
+      const old = btn.querySelector(':scope > svg.fc-bg');
+      if (!old) return;
+      if (!old.hasAttribute('data-v40')) orig.set(btn, old);
+      if (cur === 'now') { const o = orig.get(btn); if (o && o !== old) old.replaceWith(o); return; }
+      if (old.dataset.v40 === cur) return;
+      const r = btn.getBoundingClientRect();
+      const p = S.find((btn.dataset.go || '').replace(/^p-/, ''));
+      old.replaceWith(sign(Math.round(r.width), Math.round(r.height), p));
+    });
+  }
+  const mo = new MutationObserver(() => requestAnimationFrame(apply));
+  mo.observe(document.getElementById('shelf'), { childList: true, subtree: true });
+  addEventListener('resize', () => requestAnimationFrame(() => requestAnimationFrame(apply)));
+
+  const sw = document.getElementById('v40sw'), btns = {};
+  const set = v => { cur = v; sync(); document.querySelectorAll('#shelf svg.fc-bg[data-v40]').forEach(s => s.dataset.v40 = 'stale'); apply(); };
+  Object.keys(V).forEach(k => { const b = document.createElement('button'); b.textContent = V[k]; b.onclick = () => set(k); sw.appendChild(b); btns[k] = b; });
+  function sync() { Object.keys(btns).forEach(k => btns[k].setAttribute('aria-pressed', k === cur)); }
+  sync();
+  window.__v40 = { set };
+})();
+</script>
+</body>
+</html>
